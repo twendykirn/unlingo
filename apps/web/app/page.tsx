@@ -1,116 +1,654 @@
-import Image from "next/image";
-import { Card } from "@repo/ui/card";
-import { Gradient } from "@repo/ui/gradient";
-import { TurborepoLogo } from "@repo/ui/turborepo-logo";
+"use client";
 
-const LINKS = [
+import { motion } from "framer-motion";
+import { ArrowRight, Globe2, Zap, Code2, Database, Palette, Check, ChevronDown, GitBranch, Calendar } from "lucide-react";
+import { Button } from "@repo/ui/button";
+import { Gradient } from "@repo/ui/gradient";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+const features = [
   {
-    title: "Docs",
-    href: "https://turborepo.com/docs",
-    description: "Find in-depth information about Turborepo features and API.",
+    icon: Globe2,
+    title: "Global Low Latency",
+    description: "Lightning-fast translation delivery from edge locations worldwide"
   },
   {
-    title: "Learn",
-    href: "https://turborepo.com/docs/handbook",
-    description: "Learn more about monorepos with our handbook.",
+    icon: Code2,
+    title: "i18next Compatible",
+    description: "Seamless integration with your existing i18next setup"
   },
   {
-    title: "Templates",
-    href: "https://turborepo.com/docs/getting-started/from-example",
-    description: "Choose from over 15 examples and deploy with a single click.",
+    icon: Zap,
+    title: "Developer-Friendly API",
+    description: "Simple, intuitive API that developers love to work with"
   },
   {
-    title: "Deploy",
-    href: "https://vercel.com/new",
-    description:
-      "Instantly deploy your Turborepo to a shareable URL with Vercel.",
+    icon: Database,
+    title: "Automatic Caching",
+    description: "Smart caching system that optimizes performance automatically"
   },
+  {
+    icon: Palette,
+    title: "Easy UI",
+    description: "Beautiful, intuitive interface for managing translations"
+  },
+  {
+    icon: GitBranch,
+    title: "Version Control",
+    description: "Create different translation versions for different apps and environments"
+  }
+];
+
+const pricingOptions = [
+  { requests: "250k", price: 25 },
+  { requests: "500k", price: 50 },
+  { requests: "1M", price: 75 },
+  { requests: "2M", price: 100 },
+  { requests: "10M", price: 250 },
+  { requests: "50M", price: 500 },
+  { requests: "100M", price: 1000 },
 ];
 
 export default function Page() {
+  const [selectedPricing, setSelectedPricing] = useState(pricingOptions[0]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [activeCodeTab, setActiveCodeTab] = useState<'i18next' | 'rest'>('i18next');
+  const router = useRouter();
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const navigateToDashboard = () => {
+    router.push('/dashboard');
+  };
   return (
-    <main className="flex flex-col items-center justify-between min-h-screen p-24">
-      <div className="z-10 items-center justify-between w-full max-w-5xl font-mono text-sm lg:flex">
-        <p className="fixed top-0 left-0 flex justify-center w-full px-4 pt-8 pb-6 border backdrop-blur-2xl border-neutral-800 from-inherit lg:static lg:w-auto lg:rounded-xl lg:p-4">
-          examples/with-tailwind -&nbsp;
-          <code className="font-mono font-bold">web</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex items-end justify-center w-full h-48 lg:static lg:h-auto lg:w-auto">
-          <a
-            className="flex gap-2 p-8 pointer-events-none place-items-center lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-turbo&utm_medium=basic&utm_campaign=create-turbo"
-            rel="noopener noreferrer"
-            target="_blank"
+    <main className="min-h-screen bg-black text-white overflow-hidden">
+      {/* Navigation Header */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <div className="text-2xl font-bold">
+              <button
+                onClick={() => scrollToSection('hero')}
+                className="cursor-pointer"
+              >
+                <span className="bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent">
+                  Unlingo
+                </span>
+              </button>
+            </div>
+
+            {/* Navigation Links */}
+            <div className="hidden md:flex items-center space-x-8">
+              <button
+                onClick={() => scrollToSection('hero')}
+                className="text-gray-300 hover:text-white transition-colors cursor-pointer"
+              >
+                Home
+              </button>
+              <button
+                onClick={() => scrollToSection('features')}
+                className="text-gray-300 hover:text-white transition-colors cursor-pointer"
+              >
+                Features
+              </button>
+              <button
+                onClick={() => scrollToSection('pricing')}
+                className="text-gray-300 hover:text-white transition-colors cursor-pointer"
+              >
+                Pricing
+              </button>
+              <button
+                className="text-gray-300 hover:text-white transition-colors cursor-pointer"
+              >
+                Documentation
+              </button>
+            </div>
+
+            {/* Auth Buttons */}
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                className="text-gray-300 hover:text-white cursor-pointer"
+                onClick={navigateToDashboard}
+              >
+                Sign in
+              </Button>
+              <Button
+                size="sm"
+                className="bg-white text-black hover:bg-gray-200 cursor-pointer"
+                onClick={navigateToDashboard}
+              >
+                Get Started
+              </Button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Background gradients */}
+      <div className="absolute inset-0">
+        <Gradient className="top-0 left-0 opacity-20 w-[800px] h-[800px]" conic />
+        <Gradient className="bottom-0 right-0 opacity-15 w-[600px] h-[600px]" conic />
+      </div>
+      
+      {/* Hero Section */}
+      <section id="hero" className="relative min-h-screen flex items-center justify-center px-6 pt-20">
+        <div className="max-w-6xl mx-auto text-center space-y-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="space-y-6"
           >
-            By{" "}
-            <Image
-              alt="Vercel Logo"
-              className="dark:invert"
-              height={24}
-              priority
-              src="/vercel.svg"
-              width={100}
-            />
-          </a>
-        </div>
-      </div>
+            <div className="inline-flex items-center space-x-2 bg-gray-900/50 border border-gray-800 rounded-full px-4 py-2 text-sm">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+              <span className="text-gray-300">Translations made simple</span>
+            </div>
+            
+            <h1 className="text-6xl md:text-8xl font-bold tracking-tight">
+              <span className="bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent">
+                Unlingo
+              </span>
+            </h1>
+            
+            <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
+              The developer platform for modern internationalization. 
+              Host, manage, and deliver translations with zero complexity.
+            </p>
+          </motion.div>
 
-      <div className="relative flex place-items-center ">
-        <div className="font-sans w-auto pb-16 pt-[48px] md:pb-24 lg:pb-32 md:pt-16 lg:pt-20 flex justify-between gap-8 items-center flex-col relative z-0">
-          <div className="z-50 flex items-center justify-center w-full">
-            <div className="absolute min-w-[614px] min-h-[614px]">
-              <Image
-                alt="Turborepo"
-                height={614}
-                src="circles.svg"
-                width={614}
-              />
-            </div>
-            <div className="absolute z-50 flex items-center justify-center w-64 h-64">
-              <Gradient
-                className="opacity-90 w-[120px] h-[120px]"
-                conic
-                small
-              />
-            </div>
-
-            <div className="flex justify-center items-center z-50">
-              <TurborepoLogo />
-            </div>
-          </div>
-          <Gradient
-            className="top-[-500px] opacity-[0.15] w-[1000px] h-[1000px]"
-            conic
-          />
-          <div className="z-50 flex flex-col items-center justify-center gap-5 px-6 text-center lg:gap-6">
-            <svg
-              className="w-[160px] md:w-[200px] fill-black dark:fill-white"
-              viewBox="0 0 506 50"
-              width={200}
-              xmlns="http://www.w3.org/2000/svg"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+          >
+            <Button 
+              size="lg" 
+              className="bg-white text-black hover:bg-gray-200 font-semibold px-8 py-4 text-lg group cursor-pointer"
+              onClick={navigateToDashboard}
             >
-              <title>Turborepo logo</title>
-              <path d="M53.7187 12.0038V1.05332H0.945312V12.0038H20.8673V48.4175H33.7968V12.0038H53.7187Z" />
-              <path d="M83.5362 49.1431C99.764 49.1431 108.67 40.8972 108.67 27.3081V1.05332H95.7401V26.0547C95.7401 33.6409 91.7821 37.9287 83.5362 37.9287C75.2904 37.9287 71.3324 33.6409 71.3324 26.0547V1.05332H58.4029V27.3081C58.4029 40.8972 67.3084 49.1431 83.5362 49.1431Z" />
-              <path d="M128.462 32.7174H141.325L151.484 48.4175H166.327L154.848 31.3321C161.313 29.0232 165.271 23.8778 165.271 16.8853C165.271 6.72646 157.685 1.05332 146.141 1.05332H115.532V48.4175H128.462V32.7174ZM128.462 22.4925V11.8719H145.481C150.033 11.8719 152.54 13.8509 152.54 17.2152C152.54 20.3816 150.033 22.4925 145.481 22.4925H128.462Z" />
-              <path d="M171.287 48.4175H205.128C215.683 48.4175 221.752 43.404 221.752 35.0262C221.752 29.419 218.189 25.593 213.967 23.8778C216.87 22.4925 220.432 19.1942 220.432 13.9828C220.432 5.60502 214.495 1.05332 204.006 1.05332H171.287V48.4175ZM183.689 19.59V11.542H202.687C206.249 11.542 208.228 12.9273 208.228 15.566C208.228 18.2047 206.249 19.59 202.687 19.59H183.689ZM183.689 29.2871H203.875C207.371 29.2871 209.284 31.0022 209.284 33.5749C209.284 36.1476 207.371 37.8628 203.875 37.8628H183.689V29.2871Z" />
-              <path d="M253.364 0.261719C236.806 0.261719 224.866 10.6185 224.866 24.7354C224.866 38.8523 236.806 49.2091 253.364 49.2091C269.922 49.2091 281.796 38.8523 281.796 24.7354C281.796 10.6185 269.922 0.261719 253.364 0.261719ZM253.364 11.4761C262.072 11.4761 268.602 16.6215 268.602 24.7354C268.602 32.8493 262.072 37.9947 253.364 37.9947C244.656 37.9947 238.126 32.8493 238.126 24.7354C238.126 16.6215 244.656 11.4761 253.364 11.4761Z" />
-              <path d="M300.429 32.7174H313.292L323.451 48.4175H338.294L326.815 31.3321C333.28 29.0232 337.238 23.8778 337.238 16.8853C337.238 6.72646 329.652 1.05332 318.108 1.05332H287.499V48.4175H300.429V32.7174ZM300.429 22.4925V11.8719H317.448C322 11.8719 324.507 13.8509 324.507 17.2152C324.507 20.3816 322 22.4925 317.448 22.4925H300.429Z" />
-              <path d="M343.254 1.05332V48.4175H389.299V37.467H355.92V29.7489H385.539V19.0622H355.92V12.0038H389.299V1.05332H343.254Z" />
-              <path d="M408.46 33.3111H425.677C437.221 33.3111 444.807 27.7699 444.807 17.2152C444.807 6.59453 437.221 1.05332 425.677 1.05332H395.53V48.4175H408.46V33.3111ZM408.46 22.5585V11.8719H424.951C429.569 11.8719 432.076 13.8509 432.076 17.2152C432.076 20.5135 429.569 22.5585 424.951 22.5585H408.46Z" />
-              <path d="M476.899 0.261719C460.341 0.261719 448.401 10.6185 448.401 24.7354C448.401 38.8523 460.341 49.2091 476.899 49.2091C493.456 49.2091 505.33 38.8523 505.33 24.7354C505.33 10.6185 493.456 0.261719 476.899 0.261719ZM476.899 11.4761C485.606 11.4761 492.137 16.6215 492.137 24.7354C492.137 32.8493 485.606 37.9947 476.899 37.9947C468.191 37.9947 461.66 32.8493 461.66 24.7354C461.66 16.6215 468.191 11.4761 476.899 11.4761Z" />
-            </svg>
+              Get Started Free
+              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="lg"
+              className="border-gray-800 hover:bg-gray-900 px-8 py-4 text-lg cursor-pointer"
+            >
+              View Documentation
+            </Button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="pt-12"
+          >
+            <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 max-w-2xl mx-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex space-x-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full" />
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full" />
+                  <div className="w-3 h-3 bg-green-500 rounded-full" />
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setActiveCodeTab('i18next')}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors cursor-pointer ${
+                      activeCodeTab === 'i18next'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    i18next
+                  </button>
+                  <button
+                    onClick={() => setActiveCodeTab('rest')}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors cursor-pointer ${
+                      activeCodeTab === 'rest'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    REST API
+                  </button>
+                </div>
+              </div>
+              <pre className="text-left text-sm text-gray-300 font-mono">
+                <code>
+                  {activeCodeTab === 'i18next' ? 
+                    `import i18next from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import UnlingoBackend from '@unlingo/i18next';
+
+i18next
+  .use(UnlingoBackend) 
+  .use(initReactI18next)
+  .init({
+    backend: {
+      apiKey: '...',
+      version: '1.5.0', 
+    }
+  });
+
+export default i18next;` :
+                    `// Fetch translations from Unlingo API
+const response = await fetch(
+  'https://api.unlingo.com/v1/translations', {
+  headers: {
+    'Authorization': 'Bearer your-api-key',
+    'X-Unlingo-Version': '1.5.0'
+  }
+});
+
+const translations = await response.json();
+
+// Use translations in your app
+console.log(translations.en.welcome);`
+                  }
+                </code>
+              </pre>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="relative py-32 px-6">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-20"
+          >
+            <h2 className="text-4xl md:text-6xl font-bold mb-6">
+              Built for{" "}
+              <span className="bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
+                developers
+              </span>
+            </h2>
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+              Everything you need to internationalize your application, 
+              without the complexity.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                viewport={{ once: true }}
+                className="group"
+              >
+                <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-8 h-full hover:border-gray-700 transition-colors">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="p-3 bg-gray-800 rounded-lg group-hover:bg-gray-700 transition-colors">
+                      <feature.icon className="h-6 w-6 text-white" />
+                    </div>
+                    <h3 className="text-xl font-semibold">{feature.title}</h3>
+                  </div>
+                  <p className="text-gray-400 leading-relaxed">{feature.description}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="grid mb-32 text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        {LINKS.map(({ title, href, description }) => (
-          <Card href={href} key={title} title={title}>
-            {description}
-          </Card>
-        ))}
-      </div>
+      {/* Pricing Section */}
+      <section id="pricing" className="relative py-32 px-6">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-20"
+          >
+            <h2 className="text-4xl md:text-6xl font-bold mb-6">
+              Simple{" "}
+              <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
+                pricing
+              </span>
+            </h2>
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+              Choose the plan that fits your needs. Start free and scale as you grow.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {/* Free Tier */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+              className="bg-gray-900/50 border border-gray-800 rounded-lg p-8 relative"
+            >
+              <h3 className="text-2xl font-bold mb-2">Free</h3>
+              <div className="mb-6">
+                <span className="text-4xl font-bold">$0</span>
+                <span className="text-gray-400">/month</span>
+              </div>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>1 project</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>150k requests/month</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>Basic support</span>
+                </li>
+              </ul>
+              <Button 
+                variant="outline" 
+                className="w-full border-gray-700 hover:bg-gray-800 cursor-pointer"
+                onClick={navigateToDashboard}
+              >
+                Get Started Free
+              </Button>
+            </motion.div>
+
+            {/* Pro Tier */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              viewport={{ once: true }}
+              className="bg-gray-900/50 border-2 border-blue-500 rounded-lg p-8 relative"
+            >
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <span className="bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                  Most Popular
+                </span>
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Pro</h3>
+              <div className="mb-6">
+                <span className="text-4xl font-bold">${selectedPricing.price}</span>
+                <span className="text-gray-400">/month</span>
+              </div>
+              
+              {/* Dropdown for request amounts */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Monthly requests
+                </label>
+                <div className="relative">
+                  <button
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-md px-4 py-2 flex items-center justify-between hover:bg-gray-750 transition-colors cursor-pointer"
+                  >
+                    <span>{selectedPricing.requests}</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {isDropdownOpen && (
+                    <div className="absolute top-full mt-1 w-full bg-gray-800 border border-gray-700 rounded-md shadow-lg z-10">
+                      {pricingOptions.map((option) => (
+                        <button
+                          key={option.requests}
+                          onClick={() => {
+                            setSelectedPricing(option);
+                            setIsDropdownOpen(false);
+                          }}
+                          className="w-full px-4 py-2 text-left hover:bg-gray-700 transition-colors first:rounded-t-md last:rounded-b-md cursor-pointer"
+                        >
+                          {option.requests}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>Unlimited projects</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>{selectedPricing.requests} requests/month</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>AI translations</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>Priority support</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>Advanced analytics</span>
+                </li>
+              </ul>
+              <Button 
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
+                onClick={navigateToDashboard}
+              >
+                Upgrade to Pro
+              </Button>
+            </motion.div>
+
+            {/* Enterprise Tier */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              viewport={{ once: true }}
+              className="bg-gray-900/50 border border-gray-800 rounded-lg p-8 relative"
+            >
+              <h3 className="text-2xl font-bold mb-2">Enterprise</h3>
+              <div className="mb-6">
+                <span className="text-4xl font-bold">Custom</span>
+                <span className="text-gray-400"> pricing</span>
+              </div>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>Unlimited projects</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>Custom request limits</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>Dedicated support</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>SLA guarantees</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>Custom integrations</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="h-5 w-5 text-green-400 mr-3" />
+                  <span>On-premise deployment</span>
+                </li>
+              </ul>
+              <Button 
+                variant="outline" 
+                className="w-full border-gray-700 hover:bg-gray-800 cursor-pointer"
+              >
+                Contact Us
+              </Button>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="relative py-32 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="space-y-8"
+          >
+            <h2 className="text-4xl md:text-6xl font-bold">
+              Translate your{" "}
+              <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
+                app today
+              </span>
+            </h2>
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+              Get started with Unlingo and bring your application to a global audience 
+              with powerful translation management tools.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Button 
+                size="lg" 
+                className="bg-white text-black hover:bg-gray-200 font-semibold px-8 py-4 text-lg group cursor-pointer"
+                onClick={navigateToDashboard}
+              >
+                Start Now
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="lg"
+                className="text-gray-400 hover:text-white px-8 py-4 text-lg cursor-pointer"
+              >
+                <Calendar className="mr-2 h-5 w-5" />
+                Contact Us
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="relative bg-black border-t border-gray-800">
+        <div className="max-w-6xl mx-auto px-6 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+            {/* Company Info */}
+            <div className="space-y-4">
+              <div className="text-2xl font-bold">
+                <span className="bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent">
+                  Unlingo
+                </span>
+              </div>
+              <p className="text-gray-400 text-sm">
+                Simplifying global translation management for developers worldwide.
+              </p>
+              <p className="text-gray-500 text-xs">
+                © 2024 Unlingo Inc.
+              </p>
+            </div>
+
+            {/* Sections */}
+            <div className="space-y-4">
+              <h3 className="text-white font-semibold">Sections</h3>
+              <div className="space-y-2">
+                <button
+                  onClick={() => scrollToSection('hero')}
+                  className="block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer"
+                >
+                  Home
+                </button>
+                <button
+                  onClick={() => scrollToSection('features')}
+                  className="block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer"
+                >
+                  Features
+                </button>
+                <button
+                  onClick={() => scrollToSection('pricing')}
+                  className="block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer"
+                >
+                  Pricing
+                </button>
+              </div>
+            </div>
+
+            {/* Documentation & Social */}
+            <div className="space-y-4">
+              <h3 className="text-white font-semibold">Resources</h3>
+              <div className="space-y-2">
+                <button className="block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer">
+                  Documentation
+                </button>
+                <button className="block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer">
+                  API Reference
+                </button>
+              </div>
+              
+              <h3 className="text-white font-semibold pt-4">Community</h3>
+              <div className="space-y-2">
+                <button className="block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer">
+                  X
+                </button>
+                <button className="block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer">
+                  Discord
+                </button>
+                <button className="block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer">
+                  Contact Us
+                </button>
+              </div>
+            </div>
+
+            {/* Legal */}
+            <div className="space-y-4">
+              <h3 className="text-white font-semibold">Legal</h3>
+              <div className="space-y-2">
+                <button className="block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer">
+                  Terms of Service
+                </button>
+                <button className="block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer">
+                  Privacy Policy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sliding Unlingo Text Animation */}
+        <div className="bg-black overflow-hidden">
+          <div className="flex justify-center">
+            <div className="text-[12rem] md:text-[16rem] lg:text-[20rem] font-bold tracking-wider">
+              {["U", "n", "l", "i", "n", "g", "o"].map((letter, index) => (
+                <motion.span
+                  key={index}
+                  initial={{ y: 100, opacity: 0 }}
+                  whileInView={{ y: 0, opacity: 0.3 }}
+                  transition={{
+                    duration: 0.8,
+                    ease: "easeOut",
+                    delay: index * 0.15,
+                  }}
+                  viewport={{ once: true }}
+                  className="inline-block bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent select-none"
+                >
+                  {letter}
+                </motion.span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
