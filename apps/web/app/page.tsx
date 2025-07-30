@@ -67,15 +67,6 @@ export default function Page() {
     const [activeCodeTab, setActiveCodeTab] = useState<'i18next' | 'rest'>('i18next');
     const router = useRouter();
 
-    const getVersionCount = (requests: string) => {
-        if (requests === '250k') return 5;
-        if (requests === '500k') return 8;
-        if (requests === '1M') return 12;
-        if (requests === '2M') return 20;
-        if (requests === '10M') return 20;
-        return 30;
-    };
-
     const scrollToSection = (sectionId: string) => {
         const element = document.getElementById(sectionId);
         if (element) {
@@ -348,7 +339,11 @@ console.log(translations.en.welcome);`}
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>Up to 5 languages</span>
+                                    <span>5 namespaces per project</span>
+                                </li>
+                                <li className='flex items-center'>
+                                    <Check className='h-5 w-5 text-green-400 mr-3' />
+                                    <span>5 languages per namespace</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
@@ -422,17 +417,19 @@ console.log(translations.en.welcome);`}
                             <ul className='space-y-3 mb-8'>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>100 projects</span>
+                                    <span>30 projects</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>Unlimited languages</span>
+                                    <span>40 namespaces per project</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>
-                                        Up to {getVersionCount(selectedPricing?.requests ?? '')} versions per project
-                                    </span>
+                                    <span>35 languages per namespace</span>
+                                </li>
+                                <li className='flex items-center'>
+                                    <Check className='h-5 w-5 text-green-400 mr-3' />
+                                    <span>20 versions per namespace</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
@@ -445,10 +442,6 @@ console.log(translations.en.welcome);`}
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
                                     <span>Priority support</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>Advanced analytics</span>
                                 </li>
                             </ul>
                             <Button
@@ -474,6 +467,10 @@ console.log(translations.en.welcome);`}
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
                                     <span>Unlimited projects</span>
+                                </li>
+                                <li className='flex items-center'>
+                                    <Check className='h-5 w-5 text-green-400 mr-3' />
+                                    <span>Unlimited namespaces</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
