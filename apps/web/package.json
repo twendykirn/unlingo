@@ -11,6 +11,9 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/backend": "^2.6.1",
+    "@clerk/nextjs": "^6.28.0",
+    "@clerk/themes": "^2.4.3",
     "@repo/ui": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -20,6 +23,7 @@
     "next": "^15.4.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "svix": "^1.69.0",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
