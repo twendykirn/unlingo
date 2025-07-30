@@ -460,29 +460,13 @@ console.log(translations.en.welcome);`}
                             className='bg-gray-900/50 border border-gray-800 rounded-lg p-8 relative'>
                             <h3 className='text-2xl font-bold mb-2'>Enterprise</h3>
                             <div className='mb-6'>
-                                <span className='text-4xl font-bold'>Custom</span>
-                                <span className='text-gray-400'> pricing</span>
+                                <span className='text-4xl font-bold'>Custom $</span>
+                                <span className='text-gray-400'>/month</span>
                             </div>
                             <ul className='space-y-3 mb-8'>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>Unlimited projects</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>Unlimited namespaces</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>Unlimited languages</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>Unlimited versions</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>Custom request limits</span>
+                                    <span>Custom Quotas</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
