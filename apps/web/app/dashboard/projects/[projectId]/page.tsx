@@ -2,7 +2,7 @@
 
 import { Key, GitBranch, Globe, Settings, ArrowLeft } from 'lucide-react';
 import { use, useState } from 'react';
-import { UserButton, OrganizationSwitcher, useUser, useOrganization } from '@clerk/nextjs';
+import { UserButton, useUser, useOrganization } from '@clerk/nextjs';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import { Id } from '../../../../convex/_generated/dataModel';
@@ -143,16 +143,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     {project.description && (
                         <p className='text-sm text-gray-400 mt-1 line-clamp-2'>{project.description}</p>
                     )}
-                </div>
-
-                {/* Organization Switcher for Premium Users */}
-                <div className='px-4 py-3 border-b border-gray-800'>
-                    <OrganizationSwitcher
-                        afterSelectOrganizationUrl='/dashboard'
-                        afterCreateOrganizationUrl='/dashboard'
-                        afterSelectPersonalUrl='/dashboard'
-                        afterLeaveOrganizationUrl='/dashboard'
-                    />
                 </div>
 
                 {/* Navigation */}

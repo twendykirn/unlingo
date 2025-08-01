@@ -17,7 +17,7 @@ export const getApiKeys = query({
 
         // Verify user owns the workspace
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.subject) {
+        if (!workspace || (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId)) {
             throw new Error('Workspace not found or access denied');
         }
 
@@ -51,7 +51,7 @@ export const generateApiKey = mutation({
 
         // Verify user owns the workspace
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.subject) {
+        if (!workspace || (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId)) {
             throw new Error('Workspace not found or access denied');
         }
 
@@ -112,7 +112,7 @@ export const deleteApiKey = mutation({
 
         // Verify user owns the workspace
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.subject) {
+        if (!workspace || (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId)) {
             throw new Error('Workspace not found or access denied');
         }
 

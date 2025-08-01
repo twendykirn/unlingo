@@ -210,12 +210,11 @@ export const getWorkspaceByClerkId = query({
         if (!identity) {
             throw new Error('Not authenticated');
         }
-        
-        // Only allow users to query their own workspace
-        if (identity.subject !== args.clerkId) {
-            throw new Error('Unauthorized: Cannot access another user\'s workspace');
+
+        if (identity.org !== args.clerkId && identity.subject !== args.clerkId) {
+            throw new Error("Unauthorized: Cannot access another user's workspace");
         }
-        
+
         return await ctx.db
             .query('workspaces')
             .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkId))
@@ -237,12 +236,12 @@ export const getWorkspaceWithSubscription = query({
         if (!identity) {
             throw new Error('Not authenticated');
         }
-        
+
         // Only allow users to query their own workspace
-        if (identity.subject !== args.clerkId) {
-            throw new Error('Unauthorized: Cannot access another user\'s workspace');
+        if (identity.org !== args.clerkId && identity.subject !== args.clerkId) {
+            throw new Error("Unauthorized: Cannot access another user's workspace");
         }
-        
+
         const workspace = await ctx.db
             .query('workspaces')
             .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkId))

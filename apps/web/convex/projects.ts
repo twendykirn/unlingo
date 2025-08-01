@@ -20,7 +20,8 @@ export const getProjects = query({
             throw new Error('Workspace not found');
         }
 
-        if (workspace.clerkId !== identity.subject) {
+        // Only allow users to query their own workspace
+        if (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId) {
             throw new Error("Unauthorized: Cannot access projects from another user's workspace");
         }
 
@@ -50,7 +51,8 @@ export const getProject = query({
             throw new Error('Workspace not found');
         }
 
-        if (workspace.clerkId !== identity.subject) {
+        // Only allow users to query their own workspace
+        if (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId) {
             throw new Error("Unauthorized: Cannot access projects from another user's workspace");
         }
 
@@ -85,7 +87,7 @@ export const createProject = mutation({
         }
 
         // Verify user owns this workspace
-        if (workspace.clerkId !== identity.subject) {
+        if (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId) {
             throw new Error("Unauthorized: Cannot create projects in another user's workspace");
         }
 
@@ -143,7 +145,7 @@ export const updateProject = mutation({
             throw new Error('Workspace not found');
         }
 
-        if (workspace.clerkId !== identity.subject) {
+        if (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId) {
             throw new Error("Unauthorized: Cannot update projects in another user's workspace");
         }
 
@@ -197,7 +199,7 @@ export const deleteProject = mutation({
             throw new Error('Workspace not found');
         }
 
-        if (workspace.clerkId !== identity.subject) {
+        if (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId) {
             throw new Error("Unauthorized: Cannot delete projects from another user's workspace");
         }
 
