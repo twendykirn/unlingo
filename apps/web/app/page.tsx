@@ -13,10 +13,10 @@ import {
     GitBranch,
     Calendar,
 } from 'lucide-react';
-import { Button } from '@repo/ui/button';
-import { Gradient } from '@repo/ui/gradient';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Gradient } from '@/components/ui/gradient';
 
 const features = [
     {
@@ -74,9 +74,6 @@ export default function Page() {
         }
     };
 
-    const navigateToDashboard = () => {
-        router.push('/dashboard');
-    };
     return (
         <main className='min-h-screen bg-black text-white overflow-hidden'>
             {/* Navigation Header */}
@@ -119,13 +116,13 @@ export default function Page() {
                             <Button
                                 variant='ghost'
                                 className='text-gray-300 hover:text-white cursor-pointer'
-                                onClick={navigateToDashboard}>
+                                onClick={() => router.push('/sign-in')}>
                                 Sign in
                             </Button>
                             <Button
                                 size='sm'
                                 className='bg-white text-black hover:bg-gray-200 cursor-pointer'
-                                onClick={navigateToDashboard}>
+                                onClick={() => router.push('/sign-up')}>
                                 Get Started
                             </Button>
                         </div>
@@ -172,7 +169,7 @@ export default function Page() {
                         <Button
                             size='lg'
                             className='bg-white text-black hover:bg-gray-200 font-semibold px-8 py-4 text-lg group cursor-pointer'
-                            onClick={navigateToDashboard}>
+                            onClick={() => router.push('/sign-up')}>
                             Get Started Free
                             <ArrowRight className='ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform' />
                         </Button>
@@ -361,7 +358,7 @@ console.log(translations.en.welcome);`}
                             <Button
                                 variant='outline'
                                 className='w-full border-gray-700 hover:bg-gray-800 cursor-pointer'
-                                onClick={navigateToDashboard}>
+                                onClick={() => router.push('/sign-up')}>
                                 Get Started Free
                             </Button>
                         </motion.div>
@@ -446,7 +443,7 @@ console.log(translations.en.welcome);`}
                             </ul>
                             <Button
                                 className='w-full bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
-                                onClick={navigateToDashboard}>
+                                onClick={() => router.push('/sign-up')}>
                                 Upgrade to Pro
                             </Button>
                         </motion.div>
@@ -506,7 +503,7 @@ console.log(translations.en.welcome);`}
                             <Button
                                 size='lg'
                                 className='bg-white text-black hover:bg-gray-200 font-semibold px-8 py-4 text-lg group cursor-pointer'
-                                onClick={navigateToDashboard}>
+                                onClick={() => router.push('/sign-up')}>
                                 Start Now
                                 <ArrowRight className='ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform' />
                             </Button>

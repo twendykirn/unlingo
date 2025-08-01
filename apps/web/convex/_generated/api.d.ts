@@ -13,7 +13,9 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as apiKeys from "../apiKeys.js";
 import type * as http from "../http.js";
+import type * as projects from "../projects.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as verifications from "../verifications.js";
 import type * as workspaces from "../workspaces.js";
@@ -27,7 +29,9 @@ import type * as workspaces from "../workspaces.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  apiKeys: typeof apiKeys;
   http: typeof http;
+  projects: typeof projects;
   subscriptions: typeof subscriptions;
   verifications: typeof verifications;
   workspaces: typeof workspaces;
