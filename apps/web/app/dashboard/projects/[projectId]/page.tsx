@@ -167,17 +167,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                         ))}
                     </ul>
                 </nav>
-
-                {/* User Section */}
-                <div className='p-4 border-t border-gray-800'>
-                    <div className='flex items-center space-x-3'>
-                        <UserButton />
-                        <div className='flex-1 min-w-0'>
-                            <p className='text-sm font-medium truncate'>{user?.firstName || 'User'}</p>
-                            <p className='text-xs text-gray-400 truncate'>{user?.emailAddresses?.[0]?.emailAddress}</p>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             {/* Main Content */}

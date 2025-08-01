@@ -88,7 +88,12 @@ export default function Dashboard() {
 
                     {/* Right side: Org Switcher + Profile */}
                     <div className='flex items-center space-x-4'>
-                        <OrganizationSwitcher />
+                        <OrganizationSwitcher
+                            afterCreateOrganizationUrl='/dashboard'
+                            afterLeaveOrganizationUrl='/dashboard'
+                            afterSelectOrganizationUrl='/dashboard'
+                            afterSelectPersonalUrl='/dashboard'
+                        />
                         <UserButton />
                     </div>
                 </div>
