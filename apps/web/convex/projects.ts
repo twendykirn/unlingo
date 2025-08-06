@@ -20,9 +20,9 @@ export const getProjects = query({
             throw new Error('Workspace not found');
         }
 
-        // Only allow users to query their own workspace
-        if (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId) {
-            throw new Error("Unauthorized: Cannot access projects from another user's workspace");
+        // Only allow access to organization workspaces
+        if (identity.org !== workspace.clerkId) {
+            throw new Error("Unauthorized: Can only access organization workspaces");
         }
 
         return await ctx.db
@@ -51,9 +51,9 @@ export const getProject = query({
             throw new Error('Workspace not found');
         }
 
-        // Only allow users to query their own workspace
-        if (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId) {
-            throw new Error("Unauthorized: Cannot access projects from another user's workspace");
+        // Only allow access to organization workspaces
+        if (identity.org !== workspace.clerkId) {
+            throw new Error("Unauthorized: Can only access organization workspaces");
         }
 
         const project = await ctx.db.get(args.projectId);
@@ -86,9 +86,9 @@ export const createProject = mutation({
             throw new Error('Workspace not found');
         }
 
-        // Verify user owns this workspace
-        if (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId) {
-            throw new Error("Unauthorized: Cannot create projects in another user's workspace");
+        // Verify user is in organization that owns this workspace
+        if (identity.org !== workspace.clerkId) {
+            throw new Error("Unauthorized: Can only create projects in organization workspaces");
         }
 
         // Check if user has reached project limit
@@ -111,6 +111,9 @@ export const createProject = mutation({
             workspaceId: args.workspaceId,
             name: args.name,
             description: args.description,
+            usage: {
+                namespaces: 0,
+            },
         });
 
         // Update workspace usage
@@ -145,8 +148,8 @@ export const updateProject = mutation({
             throw new Error('Workspace not found');
         }
 
-        if (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId) {
-            throw new Error("Unauthorized: Cannot update projects in another user's workspace");
+        if (identity.org !== workspace.clerkId) {
+            throw new Error("Unauthorized: Can only update projects in organization workspaces");
         }
 
         const project = await ctx.db.get(args.projectId);
@@ -199,8 +202,8 @@ export const deleteProject = mutation({
             throw new Error('Workspace not found');
         }
 
-        if (identity.org !== workspace.clerkId && identity.subject !== workspace.clerkId) {
-            throw new Error("Unauthorized: Cannot delete projects from another user's workspace");
+        if (identity.org !== workspace.clerkId) {
+            throw new Error("Unauthorized: Can only delete projects from organization workspaces");
         }
 
         const project = await ctx.db.get(args.projectId);
@@ -242,6 +245,10 @@ export const deleteProject = mutation({
                     .collect();
 
                 for (const language of languages) {
+                    // Delete the file from Convex Storage
+                    if (language.fileId) {
+                        await ctx.storage.delete(language.fileId);
+                    }
                     await ctx.db.delete(language._id);
                 }
 

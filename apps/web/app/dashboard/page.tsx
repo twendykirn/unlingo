@@ -7,13 +7,23 @@ import { useQuery, usePaginatedQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function Dashboard() {
     const { user } = useUser();
     const { organization } = useOrganization();
+    const router = useRouter();
 
-    // Get the current workspace identifier (user or organization)
-    const clerkId = organization?.id || user?.id;
+    // Ensure user has an organization for org-only mode
+    useEffect(() => {
+        if (user && !organization) {
+            router.push('/select-org');
+        }
+    }, [user, organization, router]);
+
+    // Get the current workspace identifier (organization only)
+    const clerkId = organization?.id;
 
     // Query workspace with subscription info
     const workspace = useQuery(api.workspaces.getWorkspaceWithSubscription, clerkId ? { clerkId } : 'skip');
@@ -28,7 +38,7 @@ export default function Dashboard() {
     });
 
     // Loading state
-    if (!user || !clerkId) {
+    if (!user || !organization || !clerkId) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
                 <div className='text-center'>
@@ -89,10 +99,10 @@ export default function Dashboard() {
                     {/* Right side: Org Switcher + Profile */}
                     <div className='flex items-center space-x-4'>
                         <OrganizationSwitcher
+                            hidePersonal={true}
                             afterCreateOrganizationUrl='/dashboard'
-                            afterLeaveOrganizationUrl='/dashboard'
+                            afterLeaveOrganizationUrl='/select-org'
                             afterSelectOrganizationUrl='/dashboard'
-                            afterSelectPersonalUrl='/dashboard'
                         />
                         <UserButton />
                     </div>

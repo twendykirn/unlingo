@@ -183,7 +183,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
                 {/* Content */}
                 <main className='flex-1 p-8'>
-                    {activeTab === 'namespaces' && <NamespacesTab />}
+                    {activeTab === 'namespaces' && <NamespacesTab project={project} workspace={workspace} />}
                     {activeTab === 'releases' && <ReleasesTab />}
                     {activeTab === 'api keys' && <ApiKeysTab project={project} workspace={workspace} />}
                     {activeTab === 'settings' && <SettingsTab project={project} workspace={workspace} />}

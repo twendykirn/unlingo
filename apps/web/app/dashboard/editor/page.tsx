@@ -1,8 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Plus, Globe, ChevronDown, Trash2, Code, Search, ChevronRight, X, Copy } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Save, Plus, Globe, ChevronDown, Trash2, Code, Search, ChevronRight, X, Copy, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useQuery, useMutation } from 'convex/react';
+import { useUser, useOrganization } from '@clerk/nextjs';
+import { api } from '../../../convex/_generated/api';
+import { Id } from '../../../convex/_generated/dataModel';
 
 interface TranslationNode {
     id: string;
@@ -12,20 +17,27 @@ interface TranslationNode {
     parent?: string;
     children: string[];
     collapsed: boolean;
+    hasEmptyValues?: boolean; // Track if node has empty values
 }
 
 export default function TranslationEditor() {
+    const { user } = useUser();
+    const { organization } = useOrganization();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    
+    // Extract URL parameters
+    const languageId = searchParams.get('languageId') as Id<'languages'> | null;
+    const workspaceId = searchParams.get('workspaceId') as Id<'workspaces'> | null;
+    const namespaceVersionId = searchParams.get('namespaceVersionId') as Id<'namespaceVersions'> | null;
+    const namespaceId = searchParams.get('namespaceId') as Id<'namespaces'> | null;
+    
     const [nodes, setNodes] = useState<TranslationNode[]>([]);
     const [selectedNode, setSelectedNode] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
     const [editKey, setEditKey] = useState('');
-    const [namespace, setNamespace] = useState('translations');
-    const [version, setVersion] = useState('1.0.0');
-    const [selectedLanguage, setSelectedLanguage] = useState('en');
     const [jsonEditMode, setJsonEditMode] = useState(false);
     const [rawJsonEdit, setRawJsonEdit] = useState('');
-    const [availableLanguages] = useState(['en', 'es', 'fr', 'de', 'ja', 'ko', 'zh']);
-    const [availableVersions] = useState(['1.0.0', '1.1.0', '1.2.0', '2.0.0']);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [originalNodes, setOriginalNodes] = useState<TranslationNode[]>([]);
     const [showAddKeyModal, setShowAddKeyModal] = useState(false);
@@ -35,6 +47,61 @@ export default function TranslationEditor() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredNodes, setFilteredNodes] = useState<TranslationNode[]>([]);
     const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+    const [emptyValueCount, setEmptyValueCount] = useState(0);
+    const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
+    
+    // Backend queries and mutations
+    const updateLanguageContent = useMutation(api.languages.updateLanguageContent);
+    const getLanguageFileUrl = useMutation(api.languages.getLanguageFileUrl);
+    
+    // Get current workspace
+    const clerkId = organization?.id || user?.id;
+    const currentWorkspace = useQuery(
+        api.workspaces.getWorkspaceWithSubscription,
+        clerkId ? { clerkId } : 'skip'
+    );
+    
+    // Get language details
+    const language = useQuery(
+        api.languages.getLanguage,
+        languageId && workspaceId ? { languageId, workspaceId } : 'skip'
+    );
+    
+    // Get namespace version details
+    const namespaceVersion = useQuery(
+        api.namespaceVersions.getNamespaceVersion,
+        namespaceVersionId && workspaceId ? { 
+            namespaceVersionId, 
+            workspaceId 
+        } : 'skip'
+    );
+    
+    // Simplified: we'll derive namespace data from the namespaceVersion
+    // Since we have the namespaceVersion, we can get the namespace from that
+    const namespaceFromVersion = namespaceVersion?.namespaceId;
+    
+    // For simplicity, we'll use the data we have rather than making complex queries
+    
+    // Get all versions for this namespace
+    const allVersions = useQuery(
+        api.namespaceVersions.getNamespaceVersions,
+        namespaceFromVersion && workspaceId ? {
+            namespaceId: namespaceFromVersion,
+            workspaceId,
+            paginationOpts: { numItems: 50, cursor: null }
+        } : 'skip'
+    );
+    
+    // Get all languages for current version
+    const allLanguages = useQuery(
+        api.languages.getLanguages,
+        namespaceVersionId && workspaceId ? {
+            namespaceVersionId,
+            workspaceId,
+            paginationOpts: { numItems: 50, cursor: null }
+        } : 'skip'
+    );
 
     // Copy to clipboard utility
     const copyToClipboard = async (text: string) => {
@@ -48,6 +115,53 @@ export default function TranslationEditor() {
             textArea.select();
             document.execCommand('copy');
             document.body.removeChild(textArea);
+        }
+    };
+    
+    // Derive current values from backend data
+    const selectedLanguage = language?.languageCode || 'en';
+    const currentNamespace = 'namespace'; // We'll show a generic name for now
+    const currentVersion = namespaceVersion?.version || '1.0.0';
+    
+    // Available options from backend
+    const availableVersions = allVersions?.page?.map(v => v.version) || ['1.0.0'];
+    const availableLanguages = allLanguages?.page?.map(l => l.languageCode) || ['en'];
+    
+    // Navigation functions
+    const handleLanguageChange = async (newLanguageCode: string) => {
+        if (hasUnsavedChanges) {
+            const confirmSwitch = window.confirm(
+                'You have unsaved changes. Switching language will discard them. Continue?'
+            );
+            if (!confirmSwitch) return;
+        }
+        
+        // Find the new language in the current version
+        const targetLanguage = allLanguages?.page?.find(l => l.languageCode === newLanguageCode);
+        if (targetLanguage && workspaceId && namespaceVersionId && namespaceId) {
+            // Update URL to switch to new language
+            const newUrl = `/dashboard/editor?languageId=${targetLanguage._id}&workspaceId=${workspaceId}&namespaceVersionId=${namespaceVersionId}&namespaceId=${namespaceId}`;
+            router.push(newUrl);
+        }
+    };
+    
+    const handleVersionChange = async (newVersion: string) => {
+        if (hasUnsavedChanges) {
+            const confirmSwitch = window.confirm(
+                'You have unsaved changes. Switching version will discard them. Continue?'
+            );
+            if (!confirmSwitch) return;
+        }
+        
+        // Find the new version
+        const targetVersion = allVersions?.page?.find(v => v.version === newVersion);
+        if (targetVersion && workspaceId && namespaceId) {
+            // Find a language in the new version (prefer same language code if available)
+            const newVersionLanguages = await fetch(`/api/languages?namespaceVersionId=${targetVersion._id}&workspaceId=${workspaceId}`);
+            // For now, redirect to the version's first available language
+            // In a real implementation, you'd query the languages for the new version
+            const newUrl = `/dashboard/editor?namespaceVersionId=${targetVersion._id}&workspaceId=${workspaceId}&namespaceId=${namespaceId}`;
+            router.push(newUrl);
         }
     };
 
@@ -156,13 +270,15 @@ export default function TranslationEditor() {
         [jsonToNodes]
     );
 
-    // Initialize nodes from sample data
+    // Initialize nodes from sample data (fallback when no backend language is loaded)
     useEffect(() => {
-        const initialNodes = createNodesFromJson(sampleTranslations);
-        setNodes(initialNodes);
-        setOriginalNodes(initialNodes);
-        setHasUnsavedChanges(false);
-    }, [createNodesFromJson]);
+        if (!languageId && nodes.length === 0) {
+            const initialNodes = createNodesFromJson(sampleTranslations);
+            setNodes(initialNodes);
+            setOriginalNodes(initialNodes);
+            setHasUnsavedChanges(false);
+        }
+    }, [createNodesFromJson, languageId, nodes.length]);
 
     // Track changes to nodes
     useEffect(() => {
@@ -172,46 +288,71 @@ export default function TranslationEditor() {
         }
     }, [nodes, originalNodes]);
 
-    // Handle language switching - reset to original if there are unsaved changes
-    const handleLanguageChange = (newLanguage: string) => {
-        if (hasUnsavedChanges) {
-            const confirmSwitch = window.confirm(
-                'You have unsaved changes. Switching language will discard them. Continue?'
-            );
-            if (!confirmSwitch) return;
-
-            // Reset to original state
-            setNodes([...originalNodes]);
-            setHasUnsavedChanges(false);
-            setSelectedNode(null);
-            setEditValue('');
-            setEditKey('');
-            setEditKey('');
-            setEditValue('');
-        }
-        setSelectedLanguage(newLanguage);
+    // Handle loading state
+    if (!currentWorkspace && clerkId) {
+        return (
+            <div className='min-h-screen bg-black text-white flex items-center justify-center'>
+                <div className='text-center'>
+                    <div className='w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4'></div>
+                    <p className='text-gray-400'>Loading workspace...</p>
+                </div>
+            </div>
+        );
+    }
+    
+    if (!languageId || !workspaceId) {
+        return (
+            <div className='min-h-screen bg-black text-white flex items-center justify-center'>
+                <div className='text-center'>
+                    <h2 className='text-xl font-semibold text-gray-400 mb-2'>No Language Selected</h2>
+                    <p className='text-gray-500'>Please select a language from the project dashboard.</p>
+                    <Button 
+                        onClick={() => router.push('/dashboard')}
+                        className='mt-4 bg-blue-600 hover:bg-blue-700'
+                    >
+                        Go to Dashboard
+                    </Button>
+                </div>
+            </div>
+        );
     };
 
-    // Handle version switching - reset to original if there are unsaved changes
-    const handleVersionChange = (newVersion: string) => {
-        if (hasUnsavedChanges) {
-            const confirmSwitch = window.confirm(
-                'You have unsaved changes. Switching version will discard them. Continue?'
-            );
-            if (!confirmSwitch) return;
-
-            // Reset to original state
-            setNodes([...originalNodes]);
-            setHasUnsavedChanges(false);
-            setSelectedNode(null);
-            setEditValue('');
-            setEditKey('');
-            setEditKey('');
-            setEditValue('');
+    // Load language content from backend
+    useEffect(() => {
+        const loadLanguageContent = async () => {
+            if (!languageId || !workspaceId || !language) return;
+            
+            try {
+                if (language.fileId) {
+                    const fileUrl = await getLanguageFileUrl({ languageId, workspaceId });
+                    const response = await fetch(fileUrl);
+                    const content = await response.text();
+                    const parsedContent = JSON.parse(content);
+                    
+                    const initialNodes = createNodesFromJson(parsedContent);
+                    setNodes(initialNodes);
+                    setOriginalNodes(initialNodes);
+                    setHasUnsavedChanges(false);
+                } else {
+                    // Language has no file yet, start with empty
+                    setNodes([]);
+                    setOriginalNodes([]);
+                    setHasUnsavedChanges(false);
+                }
+            } catch (error) {
+                console.error('Failed to load language content:', error);
+                // Fallback to sample data or empty state
+                const initialNodes = createNodesFromJson(sampleTranslations);
+                setNodes(initialNodes);
+                setOriginalNodes(initialNodes);
+                setHasUnsavedChanges(false);
+            }
+        };
+        
+        if (language) {
+            loadLanguageContent();
         }
-        setVersion(newVersion);
-        // Here you would typically load the new version's data
-    };
+    }, [language, languageId, workspaceId, createNodesFromJson]);
 
     // Utility functions
     const isValidJson = (str: string) => {
@@ -222,6 +363,44 @@ export default function TranslationEditor() {
             return false;
         }
     };
+    
+    // Check if a value is empty or contains only empty values
+    const isEmptyValue = (value: any): boolean => {
+        if (value === null || value === undefined) return true;
+        if (typeof value === 'string') return value.trim() === '';
+        if (typeof value === 'object' && !Array.isArray(value)) {
+            // For translation objects, check if all language values are empty
+            const values = Object.values(value);
+            return values.length === 0 || values.every(v => typeof v === 'string' && v.trim() === '');
+        }
+        if (Array.isArray(value)) {
+            return value.length === 0 || value.every(isEmptyValue);
+        }
+        return false;
+    };
+    
+    // Validate nodes and count empty values
+    const validateNodes = useCallback((nodesToValidate: TranslationNode[]) => {
+        let emptyCount = 0;
+        const errors: string[] = [];
+        
+        nodesToValidate.forEach(node => {
+            if (node.type === 'string' && isEmptyValue(node.value)) {
+                emptyCount++;
+                errors.push(`Empty value at key: ${node.key}`);
+            }
+        });
+        
+        setEmptyValueCount(emptyCount);
+        setValidationErrors(errors);
+        
+        return emptyCount === 0;
+    }, []);
+    
+    // Update validation when nodes change
+    useEffect(() => {
+        validateNodes(nodes);
+    }, [nodes, validateNodes]);
 
     // Handle keyboard events
     useEffect(() => {
@@ -480,18 +659,75 @@ export default function TranslationEditor() {
         setHasUnsavedChanges(true);
     };
 
-    const handleSave = () => {
-        if (!hasUnsavedChanges) return;
-
-        // Here you would typically save to the backend
-        console.log('Saving changes...', nodes);
-
-        // Update the original state to reflect saved changes
-        setOriginalNodes([...nodes]);
-        setHasUnsavedChanges(false);
-
-        // You could show a success message here
-        alert('Changes saved successfully!');
+    const handleSave = async () => {
+        if (!hasUnsavedChanges || !languageId || !workspaceId) return;
+        
+        // Validate before saving
+        const isValid = validateNodes(nodes);
+        if (!isValid) {
+            alert(`Cannot save: ${emptyValueCount} empty values found. Please fill in all required fields.`);
+            return;
+        }
+        
+        setIsSaving(true);
+        
+        try {
+            // Convert nodes back to JSON structure
+            const jsonContent = convertNodesToJson(nodes);
+            
+            // Save to backend
+            await updateLanguageContent({
+                languageId,
+                workspaceId,
+                content: JSON.stringify(jsonContent, null, 2)
+            });
+            
+            // Update the original state to reflect saved changes
+            setOriginalNodes([...nodes]);
+            setHasUnsavedChanges(false);
+            
+            // Success notification
+            alert('Changes saved successfully!');
+        } catch (error) {
+            console.error('Failed to save changes:', error);
+            alert('Failed to save changes. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    
+    // Convert nodes back to JSON structure
+    const convertNodesToJson = (nodesToConvert: TranslationNode[]) => {
+        const result: any = {};
+        
+        // Get all root level nodes (nodes without parents)
+        const rootNodes = nodesToConvert.filter(node => !node.parent);
+        
+        const buildObject = (nodeId: string): any => {
+            const node = nodesToConvert.find(n => n.id === nodeId);
+            if (!node) return {};
+            
+            if (node.type === 'object') {
+                const obj: any = {};
+                node.children.forEach(childId => {
+                    const childNode = nodesToConvert.find(n => n.id === childId);
+                    if (childNode) {
+                        const key = childNode.key.split('.').pop() || childNode.key;
+                        obj[key] = buildObject(childId);
+                    }
+                });
+                return obj;
+            } else {
+                return node.value;
+            }
+        };
+        
+        rootNodes.forEach(rootNode => {
+            const key = rootNode.key.split('.').pop() || rootNode.key;
+            result[key] = buildObject(rootNode.id);
+        });
+        
+        return result;
     };
 
     const enterJsonEditMode = () => {
@@ -710,12 +946,17 @@ export default function TranslationEditor() {
                 }
                 return String(node.value || '');
             };
+            
+            // Check if this node has empty values for highlighting
+            const hasEmptyValue = node.type === 'string' && isEmptyValue(node.value);
 
             return (
                 <div key={node.id} className='select-none'>
                     <div
                         className={`flex items-center py-2 px-3 hover:bg-gray-800 cursor-pointer rounded-md transition-colors ${
                             selectedNode === node.id ? 'bg-blue-900 border-l-4 border-blue-500' : ''
+                        } ${
+                            hasEmptyValue ? 'border-l-2 border-yellow-500 bg-yellow-900/20' : ''
                         }`}
                         style={{ marginLeft: level * 20 }}
                         onClick={handleNodeClick}>
@@ -796,9 +1037,11 @@ export default function TranslationEditor() {
                         <h1 className='text-2xl font-bold'>Translation Editor</h1>
                         <div className='flex items-center space-x-2 text-sm text-gray-400'>
                             <Globe className='h-4 w-4' />
-                            <span>{namespace}</span>
+                            <span>{currentNamespace}</span>
                             <span>•</span>
-                            <span>v{version}</span>
+                            <span>v{currentVersion}</span>
+                            <span>•</span>
+                            <span>{selectedLanguage.toUpperCase()}</span>
                         </div>
                     </div>
 
@@ -808,9 +1051,10 @@ export default function TranslationEditor() {
                             <span className='text-sm text-gray-400'>Version:</span>
                             <div className='relative'>
                                 <select
-                                    value={version}
+                                    value={currentVersion}
                                     onChange={e => handleVersionChange(e.target.value)}
-                                    className='bg-gray-800 border border-gray-700 text-white rounded-md px-3 py-2 text-sm appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer'>
+                                    className='bg-gray-800 border border-gray-700 text-white rounded-md px-3 py-2 text-sm appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer'
+                                    disabled={!allVersions?.page || allVersions.page.length <= 1}>
                                     {availableVersions.map(ver => (
                                         <option key={ver} value={ver}>
                                             v{ver}
@@ -828,7 +1072,8 @@ export default function TranslationEditor() {
                                 <select
                                     value={selectedLanguage}
                                     onChange={e => handleLanguageChange(e.target.value)}
-                                    className='bg-gray-800 border border-gray-700 text-white rounded-md px-3 py-2 text-sm appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer'>
+                                    className='bg-gray-800 border border-gray-700 text-white rounded-md px-3 py-2 text-sm appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer'
+                                    disabled={!allLanguages?.page || allLanguages.page.length <= 1}>
                                     {availableLanguages.map(lang => (
                                         <option key={lang} value={lang}>
                                             {lang.toUpperCase()}
@@ -840,6 +1085,14 @@ export default function TranslationEditor() {
                         </div>
 
                         <div className='flex items-center space-x-2'>
+                            {emptyValueCount > 0 && (
+                                <div className='flex items-center space-x-2 px-3 py-1 bg-yellow-900/50 border border-yellow-500/50 rounded-md'>
+                                    <AlertTriangle className='h-4 w-4 text-yellow-500' />
+                                    <span className='text-sm text-yellow-400'>
+                                        {emptyValueCount} empty value{emptyValueCount !== 1 ? 's' : ''}
+                                    </span>
+                                </div>
+                            )}
                             <Button variant='outline' size='sm' onClick={enterJsonEditMode} className='cursor-pointer'>
                                 <Code className='h-4 w-4 mr-2' />
                                 JSON Mode
@@ -847,10 +1100,14 @@ export default function TranslationEditor() {
                             <Button
                                 size='sm'
                                 onClick={handleSave}
-                                disabled={!hasUnsavedChanges}
-                                className={`cursor-pointer ${hasUnsavedChanges ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 cursor-not-allowed'}`}>
+                                disabled={!hasUnsavedChanges || isSaving || emptyValueCount > 0}
+                                className={`cursor-pointer ${
+                                    hasUnsavedChanges && emptyValueCount === 0
+                                        ? 'bg-blue-600 hover:bg-blue-700' 
+                                        : 'bg-gray-600 cursor-not-allowed'
+                                }`}>
                                 <Save className='h-4 w-4 mr-2' />
-                                {hasUnsavedChanges ? 'Save Changes' : 'Saved'}
+                                {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save Changes' : 'Saved'}
                             </Button>
                         </div>
                     </div>

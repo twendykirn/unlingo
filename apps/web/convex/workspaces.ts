@@ -2,44 +2,7 @@ import { internalMutation, MutationCtx, query } from './_generated/server';
 import { v } from 'convex/values';
 import { Id } from './_generated/dataModel';
 
-// Create a personal workspace for a new user
-export const createUserWorkspace = internalMutation({
-    args: {
-        clerkUserId: v.string(),
-    },
-    handler: async (ctx, args) => {
-        // Check if workspace already exists
-        const existingWorkspace = await ctx.db
-            .query('workspaces')
-            .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkUserId))
-            .first();
-
-        if (existingWorkspace) {
-            console.log(`Workspace already exists for user ${args.clerkUserId}`);
-            return existingWorkspace._id;
-        }
-
-        // Create personal workspace
-        const workspaceId = await ctx.db.insert('workspaces', {
-            clerkId: args.clerkUserId,
-            type: 'personal',
-            currentUsage: {
-                requests: 0,
-                projects: 0,
-            },
-            limits: {
-                requests: 100000, // Free tier limits
-                projects: 1,
-                namespacesPerProject: 5,
-                languagesPerNamespace: 5,
-                versionsPerNamespace: 0,
-            },
-        });
-
-        console.log(`Created personal workspace for user ${args.clerkUserId}`);
-        return workspaceId;
-    },
-});
+// Personal workspaces are no longer supported - only organization workspaces
 
 // Create a team workspace for a new organization
 export const createOrganizationWorkspace = internalMutation({
@@ -80,27 +43,7 @@ export const createOrganizationWorkspace = internalMutation({
     },
 });
 
-// Delete a user's workspace and all related data
-export const deleteUserWorkspace = internalMutation({
-    args: {
-        clerkUserId: v.string(),
-    },
-    handler: async (ctx, args) => {
-        // Find workspace by Clerk user ID
-        const workspace = await ctx.db
-            .query('workspaces')
-            .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkUserId))
-            .first();
-
-        if (!workspace) {
-            console.log(`No workspace found for user ${args.clerkUserId}`);
-            return;
-        }
-
-        await deleteWorkspaceAndRelatedData(ctx, workspace._id);
-        console.log(`Deleted workspace for user ${args.clerkUserId}`);
-    },
-});
+// Personal workspace deletion is no longer supported - only organization workspaces
 
 // Delete an organization's workspace and all related data
 export const deleteOrganizationWorkspace = internalMutation({
@@ -184,6 +127,10 @@ async function deleteWorkspaceAndRelatedData(ctx: MutationCtx, workspaceId: Id<'
                     .collect();
 
                 for (const language of languages) {
+                    // Delete the file from Convex Storage
+                    if (language.fileId) {
+                        await ctx.storage.delete(language.fileId);
+                    }
                     await ctx.db.delete(language._id);
                 }
 
@@ -200,7 +147,7 @@ async function deleteWorkspaceAndRelatedData(ctx: MutationCtx, workspaceId: Id<'
     await ctx.db.delete(workspaceId);
 }
 
-// Query to get workspace by Clerk ID
+// Query to get workspace by organization ID
 export const getWorkspaceByClerkId = query({
     args: {
         clerkId: v.string(),
@@ -211,8 +158,9 @@ export const getWorkspaceByClerkId = query({
             throw new Error('Not authenticated');
         }
 
-        if (identity.org !== args.clerkId && identity.subject !== args.clerkId) {
-            throw new Error("Unauthorized: Cannot access another user's workspace");
+        // Only allow access to organization workspaces, not personal
+        if (identity.org !== args.clerkId) {
+            throw new Error("Unauthorized: Can only access organization workspaces");
         }
 
         return await ctx.db
@@ -226,7 +174,7 @@ export const getWorkspaceByClerkId = query({
 // Note: 'canceled' is NOT in this list, as it depends on the period end date.
 const INACTIVE_STATUSES = ['expired', 'past_due', 'unpaid', 'incomplete', 'incomplete_expired', 'paused'];
 
-// Query to get workspace with subscription
+// Query to get workspace with subscription (organization only)
 export const getWorkspaceWithSubscription = query({
     args: {
         clerkId: v.string(),
@@ -237,9 +185,9 @@ export const getWorkspaceWithSubscription = query({
             throw new Error('Not authenticated');
         }
 
-        // Only allow users to query their own workspace
-        if (identity.org !== args.clerkId && identity.subject !== args.clerkId) {
-            throw new Error("Unauthorized: Cannot access another user's workspace");
+        // Only allow access to organization workspaces
+        if (identity.org !== args.clerkId) {
+            throw new Error("Unauthorized: Can only access organization workspaces");
         }
 
         const workspace = await ctx.db

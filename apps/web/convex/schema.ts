@@ -2,10 +2,10 @@ import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
 export default defineSchema({
-    // Workspaces (personal or team from Clerk)
+    // Workspaces (organization only)
     workspaces: defineTable({
-        clerkId: v.string(), // Clerk user or organization ID
-        type: v.union(v.literal('personal'), v.literal('team')), // workspace type
+        clerkId: v.string(), // Clerk organization ID
+        type: v.literal('team'), // only team workspaces supported
         // Usage tracking and limits
         currentUsage: v.object({
             requests: v.number(), // current translation requests
@@ -45,6 +45,10 @@ export default defineSchema({
         workspaceId: v.id('workspaces'),
         name: v.string(),
         description: v.optional(v.string()),
+        // Usage tracking
+        usage: v.optional(v.object({
+            namespaces: v.number(), // current namespace count
+        })),
     })
         .index('by_workspace', ['workspaceId'])
         .index('by_workspace_name', ['workspaceId', 'name']),
@@ -68,6 +72,12 @@ export default defineSchema({
     namespaces: defineTable({
         projectId: v.id('projects'),
         name: v.string(),
+        primaryLanguageId: v.optional(v.id('languages')), // Primary/fallback language ID for faster lookup
+        // Usage tracking
+        usage: v.optional(v.object({
+            languages: v.number(), // current language count across all versions
+            versions: v.number(),  // current version count
+        })),
     }).index('by_project', ['projectId']),
 
     // Namespace versions
@@ -82,8 +92,8 @@ export default defineSchema({
     languages: defineTable({
         namespaceVersionId: v.id('namespaceVersions'),
         languageCode: v.string(), // e.g., "en", "es", "fr"
-        fileId: v.id('_storage'), // reference to JSON file in Convex storage
-        fileSize: v.number(), // size of JSON file in bytes
+        fileId: v.optional(v.id('_storage')), // reference to JSON file in Convex storage (created later)
+        fileSize: v.optional(v.number()), // size of JSON file in bytes
     })
         .index('by_namespace_version', ['namespaceVersionId'])
         .index('by_namespace_version_language', ['namespaceVersionId', 'languageCode'])
