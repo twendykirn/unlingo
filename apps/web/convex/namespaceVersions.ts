@@ -23,7 +23,7 @@ export const getNamespaceVersions = query({
 
         // Only allow access to organization workspaces
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+            throw new Error('Unauthorized: Can only access organization workspaces');
         }
 
         // Verify namespace exists and user has access
@@ -66,7 +66,7 @@ export const getNamespaceVersion = query({
 
         // Only allow access to organization workspaces
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+            throw new Error('Unauthorized: Can only access organization workspaces');
         }
 
         const namespaceVersion = await ctx.db.get(args.namespaceVersionId);
@@ -111,7 +111,7 @@ export const createNamespaceVersion = mutation({
 
         // Verify user is in organization that owns this workspace
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only create versions in organization workspaces");
+            throw new Error('Unauthorized: Can only create versions in organization workspaces');
         }
 
         // Verify namespace exists and user has access
@@ -129,10 +129,7 @@ export const createNamespaceVersion = mutation({
         // Check if version already exists for this namespace
         const existingVersion = await ctx.db
             .query('namespaceVersions')
-            .withIndex('by_namespace_version', q => 
-                q.eq('namespaceId', args.namespaceId)
-                 .eq('version', args.version)
-            )
+            .withIndex('by_namespace_version', q => q.eq('namespaceId', args.namespaceId).eq('version', args.version))
             .first();
 
         if (existingVersion) {
@@ -142,12 +139,14 @@ export const createNamespaceVersion = mutation({
         // Check if namespace has reached version limit using usage counter
         const currentVersionCount = namespace.usage?.versions ?? 0;
         if (currentVersionCount >= workspace.limits.versionsPerNamespace) {
-            throw new Error(`Version limit reached. Maximum ${workspace.limits.versionsPerNamespace} versions per namespace. Please upgrade your plan.`);
+            throw new Error(
+                `Version limit reached. Maximum ${workspace.limits.versionsPerNamespace} versions per namespace. Please upgrade your plan.`
+            );
         }
 
-        // Validate version format (semantic versioning)
-        if (!/^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$/.test(args.version)) {
-            throw new Error('Version must follow semantic versioning format (e.g., "1.0.0", "1.2.3-beta.1")');
+        // Validate version format (semantic versioning or special names)
+        if (args.version !== 'main' && !/^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$/.test(args.version)) {
+            throw new Error('Version must follow semantic versioning format (e.g., "1.0.0", "1.2.3-beta.1") or be "main"');
         }
 
         // Create the namespace version
@@ -175,15 +174,18 @@ export const createNamespaceVersion = mutation({
                 for (const sourceLang of sourceLanguages) {
                     let newFileId: string | undefined = undefined;
                     let newFileSize: number | undefined = undefined;
-                    
+
                     // Only copy file if source language has one
                     if (sourceLang.fileId) {
                         try {
                             // Get the source file content
                             const sourceFileUrl = await ctx.storage.getUrl(sourceLang.fileId);
+                            if (!sourceFileUrl) {
+                                throw new Error('Failed to get source file URL');
+                            }
                             const sourceResponse = await fetch(sourceFileUrl);
                             const sourceContent = await sourceResponse.text();
-                            
+
                             // Create a new file with the same content
                             const newBlob = new Blob([sourceContent], { type: 'application/json' });
                             const uploadUrl = await ctx.storage.generateUploadUrl();
@@ -192,7 +194,7 @@ export const createNamespaceVersion = mutation({
                                 headers: { 'Content-Type': 'application/json' },
                                 body: newBlob,
                             });
-                            
+
                             const { storageId } = await uploadResponse.json();
                             newFileId = storageId;
                             newFileSize = newBlob.size;
@@ -200,7 +202,7 @@ export const createNamespaceVersion = mutation({
                             console.error('Failed to copy file for language:', sourceLang.languageCode, error);
                         }
                     }
-                    
+
                     // Create the language record for the new version (with or without file)
                     await ctx.db.insert('languages', {
                         namespaceVersionId: versionId,
@@ -249,7 +251,7 @@ export const deleteNamespaceVersion = mutation({
         }
 
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only delete versions from organization workspaces");
+            throw new Error('Unauthorized: Can only delete versions from organization workspaces');
         }
 
         const namespaceVersion = await ctx.db.get(args.versionId);
@@ -288,7 +290,7 @@ export const deleteNamespaceVersion = mutation({
         // Update namespace usage counters
         const currentVersionCount = namespace.usage?.versions ?? 1;
         const currentLanguageCount = namespace.usage?.languages ?? languages.length;
-        
+
         await ctx.db.patch(namespace._id, {
             usage: {
                 languages: Math.max(0, currentLanguageCount - languages.length),

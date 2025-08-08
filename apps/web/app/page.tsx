@@ -344,7 +344,7 @@ console.log(translations.en.welcome);`}
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>No versions</span>
+                                    <span>1 version per namespace</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />

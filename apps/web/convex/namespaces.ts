@@ -23,7 +23,7 @@ export const getNamespaces = query({
 
         // Only allow access to organization workspaces
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+            throw new Error('Unauthorized: Can only access organization workspaces');
         }
 
         // Verify project belongs to workspace
@@ -61,7 +61,7 @@ export const getNamespace = query({
 
         // Only allow access to organization workspaces
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+            throw new Error('Unauthorized: Can only access organization workspaces');
         }
 
         // Verify project belongs to workspace
@@ -102,7 +102,7 @@ export const createNamespace = mutation({
 
         // Verify user is in organization that owns this workspace
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only create namespaces in organization workspaces");
+            throw new Error('Unauthorized: Can only create namespaces in organization workspaces');
         }
 
         // Verify project belongs to workspace
@@ -125,7 +125,9 @@ export const createNamespace = mutation({
         // Check if project has reached namespace limit using usage counter
         const currentNamespaceCount = project.usage?.namespaces ?? 0;
         if (currentNamespaceCount >= workspace.limits.namespacesPerProject) {
-            throw new Error(`Namespace limit reached. Maximum ${workspace.limits.namespacesPerProject} namespaces per project. Please upgrade your plan.`);
+            throw new Error(
+                `Namespace limit reached. Maximum ${workspace.limits.namespacesPerProject} namespaces per project. Please upgrade your plan.`
+            );
         }
 
         // Validate namespace name
@@ -148,8 +150,14 @@ export const createNamespace = mutation({
             name: args.name.trim(),
             usage: {
                 languages: 0,
-                versions: 0,
+                versions: 1, // Start with 1 version (main)
             },
+        });
+
+        // Automatically create a "main" version for the namespace
+        await ctx.db.insert('namespaceVersions', {
+            namespaceId: namespaceId,
+            version: 'main',
         });
 
         // Update project usage counter
@@ -184,7 +192,7 @@ export const updateNamespace = mutation({
         }
 
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only update namespaces in organization workspaces");
+            throw new Error('Unauthorized: Can only update namespaces in organization workspaces');
         }
 
         // Verify project belongs to workspace
@@ -256,7 +264,7 @@ export const deleteNamespace = mutation({
         }
 
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only delete namespaces from organization workspaces");
+            throw new Error('Unauthorized: Can only delete namespaces from organization workspaces');
         }
 
         // Verify project belongs to workspace
@@ -319,7 +327,6 @@ export const deleteNamespace = mutation({
         await ctx.db.delete(args.namespaceId);
 
         // 4. Update project usage counter
-        const project = await ctx.db.get(args.projectId);
         if (project) {
             const currentNamespaceCount = project.usage?.namespaces ?? 1;
             await ctx.db.patch(args.projectId, {
@@ -353,7 +360,7 @@ export const getNamespaceCount = query({
 
         // Only allow access to organization workspaces
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+            throw new Error('Unauthorized: Can only access organization workspaces');
         }
 
         // Verify project belongs to workspace
@@ -393,7 +400,7 @@ export const setPrimaryLanguage = mutation({
         }
 
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only update namespaces in organization workspaces");
+            throw new Error('Unauthorized: Can only update namespaces in organization workspaces');
         }
 
         // Verify namespace exists and belongs to workspace

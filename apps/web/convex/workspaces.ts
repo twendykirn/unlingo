@@ -1,6 +1,8 @@
-import { internalMutation, MutationCtx, query } from './_generated/server';
+import { internalMutation, internalQuery, MutationCtx, query, mutation, internalAction } from './_generated/server';
 import { v } from 'convex/values';
 import { Id } from './_generated/dataModel';
+import { cancelCurrentSubscription, polar } from './polar';
+import { internal } from './_generated/api';
 
 // Personal workspaces are no longer supported - only organization workspaces
 
@@ -8,6 +10,7 @@ import { Id } from './_generated/dataModel';
 export const createOrganizationWorkspace = internalMutation({
     args: {
         clerkOrgId: v.string(),
+        contactEmail: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         // Check if workspace already exists
@@ -24,7 +27,7 @@ export const createOrganizationWorkspace = internalMutation({
         // Create team workspace
         const workspaceId = await ctx.db.insert('workspaces', {
             clerkId: args.clerkOrgId,
-            type: 'team',
+            contactEmail: args.contactEmail || '', // Default to empty string if not provided
             currentUsage: {
                 requests: 0,
                 projects: 0,
@@ -34,7 +37,7 @@ export const createOrganizationWorkspace = internalMutation({
                 projects: 1,
                 namespacesPerProject: 5,
                 languagesPerNamespace: 5,
-                versionsPerNamespace: 0,
+                versionsPerNamespace: 1, // Allow 1 version (main) for free tier
             },
         });
 
@@ -43,7 +46,11 @@ export const createOrganizationWorkspace = internalMutation({
     },
 });
 
-// Personal workspace deletion is no longer supported - only organization workspaces
+export const cancelWorkspaceSubscription = internalAction({
+    handler: async ctx => {
+        await polar.cancelSubscription(ctx, { revokeImmediately: true });
+    },
+});
 
 // Delete an organization's workspace and all related data
 export const deleteOrganizationWorkspace = internalMutation({
@@ -69,14 +76,19 @@ export const deleteOrganizationWorkspace = internalMutation({
 
 // Helper function to delete workspace and all related data
 async function deleteWorkspaceAndRelatedData(ctx: MutationCtx, workspaceId: Id<'workspaces'>) {
-    // Delete subscriptions
-    const subscriptions = await ctx.db
-        .query('subscriptions')
-        .withIndex('by_workspace', q => q.eq('workspaceId', workspaceId))
-        .collect();
+    // Cancel any active Polar subscriptions first
+    try {
+        const currentSubscription = await polar.getCurrentSubscription(ctx, {
+            userId: workspaceId,
+        });
 
-    for (const subscription of subscriptions) {
-        await ctx.db.delete(subscription._id);
+        if (currentSubscription && currentSubscription.status === 'active') {
+            await ctx.scheduler.runAfter(0, internal.workspaces.cancelWorkspaceSubscription);
+            console.log(`Cancelled active subscription for workspace ${workspaceId}`);
+        }
+    } catch (error) {
+        console.warn(`Failed to cancel subscription for workspace ${workspaceId}:`, error);
+        // Continue with deletion even if subscription cancellation fails
     }
 
     // Delete API keys
@@ -147,6 +159,27 @@ async function deleteWorkspaceAndRelatedData(ctx: MutationCtx, workspaceId: Id<'
     await ctx.db.delete(workspaceId);
 }
 
+export const getWorkspaceInfo = internalQuery({
+    args: {},
+    handler: async ctx => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity || !identity.org) {
+            throw new Error('Not authenticated');
+        }
+
+        const workspace = await ctx.db
+            .query('workspaces')
+            .withIndex('by_clerk_id', q => q.eq('clerkId', identity.org as string))
+            .first();
+
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        return workspace;
+    },
+});
+
 // Query to get workspace by organization ID
 export const getWorkspaceByClerkId = query({
     args: {
@@ -158,9 +191,14 @@ export const getWorkspaceByClerkId = query({
             throw new Error('Not authenticated');
         }
 
-        // Only allow access to organization workspaces, not personal
-        if (identity.org !== args.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+        // Handle race condition: during org creation, Clerk's token might not have updated yet
+        // Allow query if either identity.org matches OR if the user just created this org
+        const hasOrgAccess = identity.org === args.clerkId;
+        
+        if (!hasOrgAccess) {
+            // For race condition during org creation, return null instead of throwing
+            // This allows the frontend to handle the "not yet available" state gracefully
+            return null;
         }
 
         return await ctx.db
@@ -169,10 +207,6 @@ export const getWorkspaceByClerkId = query({
             .first();
     },
 });
-
-// Statuses that generally mean access should NOT be granted, even if period end hasn't passed
-// Note: 'canceled' is NOT in this list, as it depends on the period end date.
-const INACTIVE_STATUSES = ['expired', 'past_due', 'unpaid', 'incomplete', 'incomplete_expired', 'paused'];
 
 // Query to get workspace with subscription (organization only)
 export const getWorkspaceWithSubscription = query({
@@ -185,9 +219,12 @@ export const getWorkspaceWithSubscription = query({
             throw new Error('Not authenticated');
         }
 
-        // Only allow access to organization workspaces
-        if (identity.org !== args.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+        // Handle race condition: during org creation, Clerk's token might not have updated yet
+        const hasOrgAccess = identity.org === args.clerkId;
+        
+        if (!hasOrgAccess) {
+            // For race condition during org creation, return null instead of throwing
+            return null;
         }
 
         const workspace = await ctx.db
@@ -199,52 +236,107 @@ export const getWorkspaceWithSubscription = query({
             return null;
         }
 
-        const now = Date.now(); // Current time in milliseconds
+        // Get current subscription status from Polar
+        try {
+            const currentSubscription = await polar.getCurrentSubscription(ctx, {
+                userId: workspace._id,
+            });
 
-        const subscriptions = await ctx.db
-            .query('subscriptions')
-            .withIndex('by_workspace', q => q.eq('workspaceId', workspace._id))
-            .collect();
+            const isPremium =
+                currentSubscription &&
+                currentSubscription.status === 'active' &&
+                !currentSubscription.customerCancellationReason;
 
-        if (subscriptions.length === 0) {
-            // No subscription grants access at this moment
-            console.log(`Workspace ${workspace._id} has no currently active subscription.`);
+            console.log(
+                `Workspace ${workspace._id} premium status: ${isPremium}, subscription: ${currentSubscription?.id || 'none'}`
+            );
+
+            return {
+                ...workspace,
+                isPremium: Boolean(isPremium),
+            };
+        } catch (error) {
+            // If Polar query fails, fall back to free tier
+            console.warn(`Failed to get subscription for workspace ${workspace._id}:`, error);
             return {
                 ...workspace,
                 isPremium: false,
             };
         }
+    },
+});
 
-        // Check if *any* subscription grants access right now
-        for (const sub of subscriptions) {
-            // 1. Check if the subscription period is currently active (or hasn't started yet, edge case)
-            const isWithinPeriod =
-                sub.currentPeriodEnd === undefined || sub.currentPeriodEnd === null || sub.currentPeriodEnd > now;
-
-            // 2. Check if the status indicates the subscription *should* be active during its period
-            //    (i.e., it's not explicitly inactive like 'expired' or 'past_due')
-            const statusAllowsAccess = !INACTIVE_STATUSES.includes(sub.status.toLowerCase());
-
-            // Access is granted if the period is current AND the status doesn't explicitly deny access
-            if (isWithinPeriod && statusAllowsAccess) {
-                // This covers:
-                // - status: 'active', 'trialing' and now < currentPeriodEnd
-                // - status: 'canceled' and now < currentPeriodEnd (access continues until period end)
-                console.log(
-                    `Workspace ${workspace._id} has active access via subscription: ${sub._id} (Status: ${sub.status}, Ends: ${sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toISOString() : 'N/A'})`
-                );
-                return {
-                    ...workspace,
-                    isPremium: true,
-                };
-            }
+// Update workspace contact email
+export const updateWorkspaceContactEmail = mutation({
+    args: {
+        clerkId: v.string(),
+        contactEmail: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error('Not authenticated');
         }
 
-        // No subscription grants access at this moment
-        console.log(`Workspace ${workspace._id} has no currently active subscription.`);
-        return {
-            ...workspace,
-            isPremium: false,
-        };
+        // Handle race condition: during org creation, Clerk's token might not have updated yet
+        const hasOrgAccess = identity.org === args.clerkId;
+        
+        if (!hasOrgAccess) {
+            throw new Error('Unauthorized: Can only update organization workspaces - please try again in a moment');
+        }
+
+        const workspace = await ctx.db
+            .query('workspaces')
+            .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkId))
+            .first();
+
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        await ctx.db.patch(workspace._id, {
+            contactEmail: args.contactEmail,
+        });
+
+        return { success: true };
+    },
+});
+
+// Update workspace limits based on premium status
+export const updateWorkspaceLimits = internalMutation({
+    args: {
+        workspaceId: v.id('workspaces'),
+        isPremium: v.boolean(),
+        requestLimit: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const workspace = await ctx.db.get(args.workspaceId);
+
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        const limits = args.isPremium
+            ? {
+                  // Pro tier limits from pricing page
+                  requests: args.requestLimit || 250000, // Default to 250k requests
+                  projects: 30,
+                  namespacesPerProject: 40,
+                  versionsPerNamespace: 20,
+                  languagesPerNamespace: 35,
+              }
+            : {
+                  // Free tier limits
+                  requests: 100000,
+                  projects: 1,
+                  namespacesPerProject: 5,
+                  versionsPerNamespace: 1, // Allow 1 version (main) for free tier
+                  languagesPerNamespace: 5,
+              };
+
+        await ctx.db.patch(workspace._id, { limits });
+
+        console.log(`Updated limits for workspace ${workspace._id}, premium: ${args.isPremium}`);
+        return { success: true };
     },
 });

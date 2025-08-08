@@ -23,7 +23,7 @@ export const getLanguages = query({
 
         // Only allow access to organization workspaces
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+            throw new Error('Unauthorized: Can only access organization workspaces');
         }
 
         // Verify namespace version exists and user has access
@@ -72,7 +72,7 @@ export const getLanguage = query({
 
         // Only allow access to organization workspaces
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+            throw new Error('Unauthorized: Can only access organization workspaces');
         }
 
         const language = await ctx.db.get(args.languageId);
@@ -100,13 +100,68 @@ export const getLanguage = query({
     },
 });
 
+// Query to get language with additional context for the editor
+export const getLanguageWithContext = query({
+    args: {
+        languageId: v.id('languages'),
+        workspaceId: v.id('workspaces'),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error('Not authenticated');
+        }
+
+        // Verify user has access to this workspace
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        // Only allow access to organization workspaces
+        if (identity.org !== workspace.clerkId) {
+            throw new Error('Unauthorized: Can only access organization workspaces');
+        }
+
+        const language = await ctx.db.get(args.languageId);
+        if (!language) {
+            return null;
+        }
+
+        // Verify access through the hierarchy
+        const namespaceVersion = await ctx.db.get(language.namespaceVersionId);
+        if (!namespaceVersion) {
+            return null;
+        }
+
+        const namespace = await ctx.db.get(namespaceVersion.namespaceId);
+        if (!namespace) {
+            return null;
+        }
+
+        const project = await ctx.db.get(namespace.projectId);
+        if (!project || project.workspaceId !== args.workspaceId) {
+            return null;
+        }
+
+        return {
+            ...language,
+            namespaceName: namespace.name,
+            version: namespaceVersion.version,
+            projectId: project._id,
+            namespaceId: namespace._id,
+            namespaceVersionId: namespaceVersion._id,
+        };
+    },
+});
+
 // Mutation to create a new language (without file initially)
 export const createLanguage = mutation({
     args: {
         namespaceVersionId: v.id('namespaceVersions'),
         workspaceId: v.id('workspaces'),
         languageCode: v.string(),
-        copyFromLanguage: v.optional(v.string()), // Language code to copy keys from
+        copyFromLanguage: v.optional(v.id('languages')), // Language ID to copy keys from
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -122,7 +177,7 @@ export const createLanguage = mutation({
 
         // Verify user is in organization that owns this workspace
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only create languages in organization workspaces");
+            throw new Error('Unauthorized: Can only create languages in organization workspaces');
         }
 
         // Verify namespace version exists and user has access
@@ -146,9 +201,8 @@ export const createLanguage = mutation({
         // Check if language already exists for this namespace version
         const existingLanguage = await ctx.db
             .query('languages')
-            .withIndex('by_namespace_version_language', q => 
-                q.eq('namespaceVersionId', args.namespaceVersionId)
-                 .eq('languageCode', args.languageCode)
+            .withIndex('by_namespace_version_language', q =>
+                q.eq('namespaceVersionId', args.namespaceVersionId).eq('languageCode', args.languageCode)
             )
             .first();
 
@@ -159,7 +213,9 @@ export const createLanguage = mutation({
         // Check if namespace has reached language limit using usage counter
         const currentLanguageCount = namespace.usage?.languages ?? 0;
         if (currentLanguageCount >= workspace.limits.languagesPerNamespace) {
-            throw new Error(`Language limit reached. Maximum ${workspace.limits.languagesPerNamespace} languages per namespace. Please upgrade your plan.`);
+            throw new Error(
+                `Language limit reached. Maximum ${workspace.limits.languagesPerNamespace} languages per namespace. Please upgrade your plan.`
+            );
         }
 
         // Validate language code format (ISO 639-1 or similar)
@@ -169,27 +225,29 @@ export const createLanguage = mutation({
 
         // Check if this is the first language in the namespace using usage counter
         const isFirstLanguage = (namespace.usage?.languages ?? 0) === 0;
-        
+
         // Prepare file content
         let fileId: string | undefined = undefined;
         let fileSize: number | undefined = undefined;
-        
+
         if (args.copyFromLanguage) {
             // Manual copy from specified language
-            const sourceLanguage = await ctx.db
-                .query('languages')
-                .withIndex('by_namespace_version_language', q => 
-                    q.eq('namespaceVersionId', args.namespaceVersionId)
-                     .eq('languageCode', args.copyFromLanguage)
-                )
-                .first();
+            const sourceLanguage = await ctx.db.get(args.copyFromLanguage);
+            
+            // Validate that source language belongs to the same namespace version
+            if (!sourceLanguage || sourceLanguage.namespaceVersionId !== args.namespaceVersionId) {
+                throw new Error('Source language not found or belongs to different namespace version');
+            }
 
-            if (sourceLanguage && sourceLanguage.fileId) {
+            if (sourceLanguage.fileId) {
                 try {
                     const sourceFileUrl = await ctx.storage.getUrl(sourceLanguage.fileId);
+                    if (!sourceFileUrl) {
+                        throw new Error('Failed to get source file URL');
+                    }
                     const sourceResponse = await fetch(sourceFileUrl);
                     const sourceContent = await sourceResponse.text();
-                    
+
                     const newBlob = new Blob([sourceContent], { type: 'application/json' });
                     const uploadUrl = await ctx.storage.generateUploadUrl();
                     const uploadResponse = await fetch(uploadUrl, {
@@ -197,7 +255,7 @@ export const createLanguage = mutation({
                         headers: { 'Content-Type': 'application/json' },
                         body: newBlob,
                     });
-                    
+
                     const { storageId } = await uploadResponse.json();
                     fileId = storageId;
                     fileSize = newBlob.size;
@@ -208,13 +266,16 @@ export const createLanguage = mutation({
         } else if (!isFirstLanguage && namespace.primaryLanguageId) {
             // Auto-copy from primary language for 2nd, 3rd, etc. languages
             const primaryLanguage = await ctx.db.get(namespace.primaryLanguageId);
-            
+
             if (primaryLanguage && primaryLanguage.fileId) {
                 try {
                     const sourceFileUrl = await ctx.storage.getUrl(primaryLanguage.fileId);
+                    if (!sourceFileUrl) {
+                        throw new Error('Failed to get primary language file URL');
+                    }
                     const sourceResponse = await fetch(sourceFileUrl);
                     const sourceContent = await sourceResponse.text();
-                    
+
                     const newBlob = new Blob([sourceContent], { type: 'application/json' });
                     const uploadUrl = await ctx.storage.generateUploadUrl();
                     const uploadResponse = await fetch(uploadUrl, {
@@ -222,7 +283,7 @@ export const createLanguage = mutation({
                         headers: { 'Content-Type': 'application/json' },
                         body: newBlob,
                     });
-                    
+
                     const { storageId } = await uploadResponse.json();
                     fileId = storageId;
                     fileSize = newBlob.size;
@@ -280,7 +341,7 @@ export const updateLanguage = mutation({
         }
 
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only update languages in organization workspaces");
+            throw new Error('Unauthorized: Can only update languages in organization workspaces');
         }
 
         const language = await ctx.db.get(args.languageId);
@@ -350,7 +411,7 @@ export const deleteLanguage = mutation({
         }
 
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only delete languages from organization workspaces");
+            throw new Error('Unauthorized: Can only delete languages from organization workspaces');
         }
 
         const language = await ctx.db.get(args.languageId);
@@ -415,7 +476,7 @@ export const updateLanguageContent = mutation({
         }
 
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only update languages in organization workspaces");
+            throw new Error('Unauthorized: Can only update languages in organization workspaces');
         }
 
         const language = await ctx.db.get(args.languageId);
@@ -492,7 +553,7 @@ export const getLanguageCount = query({
 
         // Only allow access to organization workspaces
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+            throw new Error('Unauthorized: Can only access organization workspaces');
         }
 
         // Verify namespace version exists and user has access
@@ -524,8 +585,8 @@ export const getLanguageCount = query({
     },
 });
 
-// Query to get file URL for a language (for downloading/viewing)
-export const getLanguageFileUrl = query({
+// Query to get language content as JSON object (replaces getLanguageFileUrl)
+export const getLanguageContent = query({
     args: {
         languageId: v.id('languages'),
         workspaceId: v.id('workspaces'),
@@ -544,7 +605,7 @@ export const getLanguageFileUrl = query({
 
         // Only allow access to organization workspaces
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+            throw new Error('Unauthorized: Can only access organization workspaces');
         }
 
         const language = await ctx.db.get(args.languageId);
@@ -568,12 +629,25 @@ export const getLanguageFileUrl = query({
             throw new Error('Access denied: Project does not belong to workspace');
         }
 
-        // Generate and return the file URL
+        // If no file exists, return empty object
         if (!language.fileId) {
-            throw new Error('No file associated with this language');
+            return {};
         }
 
-        const fileUrl = await ctx.storage.getUrl(language.fileId);
-        return fileUrl;
+        try {
+            // Fetch file content directly and parse as JSON
+            const fileUrl = await ctx.storage.getUrl(language.fileId);
+            if (!fileUrl) {
+                console.warn('File URL is null for language:', args.languageId);
+                return {};
+            }
+            const response = await fetch(fileUrl);
+            const content = await response.text();
+            return JSON.parse(content);
+        } catch (error) {
+            console.error('Failed to fetch language content:', error);
+            // Return empty object if file is corrupted or missing
+            return {};
+        }
     },
 });

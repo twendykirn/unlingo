@@ -38,6 +38,11 @@ export default function CreateProjectPage() {
             return;
         }
 
+        if (!workspace.contactEmail) {
+            router.push('/dashboard/settings');
+            return;
+        }
+
         if (!name.trim()) {
             setError('Project name is required');
             return;
@@ -78,6 +83,23 @@ export default function CreateProjectPage() {
                 <div className='text-center'>
                     <Loader2 className='h-8 w-8 animate-spin mx-auto mb-4' />
                     <p className='text-gray-400'>Loading...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Check if contactEmail is required
+    if (!workspace.contactEmail) {
+        return (
+            <div className='min-h-screen bg-black text-white flex items-center justify-center'>
+                <div className='text-center max-w-md'>
+                    <h2 className='text-2xl font-bold mb-4'>Setup Required</h2>
+                    <p className='text-gray-400 mb-6'>
+                        Please complete your workspace setup by providing a contact email before creating projects.
+                    </p>
+                    <Link href='/dashboard/settings'>
+                        <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer'>Complete Setup</Button>
+                    </Link>
                 </div>
             </div>
         );
@@ -136,10 +158,14 @@ export default function CreateProjectPage() {
                                     {workspace.currentUsage.projects} / {workspace.limits.projects}
                                 </span>
                             </div>
-                            {!canCreateProject && (
-                                <p className='text-red-400 text-sm mt-2'>
-                                    You've reached your project limit. Upgrade your plan to create more projects.
-                                </p>
+                            {!isCreating && !canCreateProject && (
+                                <div className='text-red-400 text-sm mt-2'>
+                                    <p>You've reached your project limit.</p>
+                                    <Link href='/dashboard/settings' className='underline hover:text-red-300'>
+                                        Upgrade your plan
+                                    </Link>{' '}
+                                    to create more projects.
+                                </div>
                             )}
                         </div>
 

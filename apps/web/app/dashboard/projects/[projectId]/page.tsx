@@ -105,6 +105,25 @@ export default function ProjectPage({ params }: ProjectPageProps) {
         );
     }
 
+    // Check if contactEmail is required
+    if (workspace && !workspace.contactEmail) {
+        return (
+            <div className='min-h-screen bg-black text-white flex items-center justify-center'>
+                <div className='text-center max-w-md'>
+                    <h2 className='text-2xl font-bold mb-4'>Setup Required</h2>
+                    <p className='text-gray-400 mb-6'>
+                        Please complete your workspace setup by providing a contact email.
+                    </p>
+                    <Link href="/dashboard/settings">
+                        <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
+                            Complete Setup
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
     if (!workspace || !project) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>

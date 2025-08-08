@@ -5,7 +5,7 @@ export default defineSchema({
     // Workspaces (organization only)
     workspaces: defineTable({
         clerkId: v.string(), // Clerk organization ID
-        type: v.literal('team'), // only team workspaces supported
+        contactEmail: v.string(), // Contact email for billing
         // Usage tracking and limits
         currentUsage: v.object({
             requests: v.number(), // current translation requests
@@ -18,37 +18,18 @@ export default defineSchema({
             versionsPerNamespace: v.number(), // max versions per namespace
             languagesPerNamespace: v.number(), // max languages per namespace
         }),
-        webPaymentCustomerId: v.optional(v.string()),
-    })
-        .index('by_clerk_id', ['clerkId'])
-        .index('by_webPaymentCustomerId', ['webPaymentCustomerId']),
-    subscriptions: defineTable({
-        workspaceId: v.id('workspaces'),
-        // Common Statuses
-        // 'active', 'trialing', 'past_due', 'canceled', 'unpaid', 'incomplete', 'incomplete_expired', 'paused'
-        status: v.string(),
-        // Stripe Specific Fields (only populated if source is 'web')
-        webPaymentSubscriptionId: v.optional(v.string()),
-        webPaymentProductId: v.optional(v.string()),
-        // Billing Period
-        currentPeriodStart: v.optional(v.number()), // Timestamp ms
-        currentPeriodEnd: v.optional(v.number()), // Timestamp ms - **CRITICAL for status check**
-        // Cancellation Info
-        canceledAt: v.optional(v.number()), // Timestamp ms when cancellation processed
-    })
-        // Indexes for efficient lookups
-        .index('by_workspace', ['workspaceId'])
-        .index('by_webPaymentSubscriptionId', ['webPaymentSubscriptionId']),
-
+    }).index('by_clerk_id', ['clerkId']),
     // Projects within workspaces
     projects: defineTable({
         workspaceId: v.id('workspaces'),
         name: v.string(),
         description: v.optional(v.string()),
         // Usage tracking
-        usage: v.optional(v.object({
-            namespaces: v.number(), // current namespace count
-        })),
+        usage: v.optional(
+            v.object({
+                namespaces: v.number(), // current namespace count
+            })
+        ),
     })
         .index('by_workspace', ['workspaceId'])
         .index('by_workspace_name', ['workspaceId', 'name']),
@@ -74,10 +55,12 @@ export default defineSchema({
         name: v.string(),
         primaryLanguageId: v.optional(v.id('languages')), // Primary/fallback language ID for faster lookup
         // Usage tracking
-        usage: v.optional(v.object({
-            languages: v.number(), // current language count across all versions
-            versions: v.number(),  // current version count
-        })),
+        usage: v.optional(
+            v.object({
+                languages: v.number(), // current language count across all versions
+                versions: v.number(), // current version count
+            })
+        ),
     }).index('by_project', ['projectId']),
 
     // Namespace versions

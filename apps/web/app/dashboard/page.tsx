@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { FolderOpen, Plus, ArrowRight, Clock } from 'lucide-react';
+import { FolderOpen, Plus, ArrowRight, Clock, Settings } from 'lucide-react';
 import { UserButton, OrganizationSwitcher, useUser, useOrganization } from '@clerk/nextjs';
 import { useQuery, usePaginatedQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -14,13 +14,6 @@ export default function Dashboard() {
     const { user } = useUser();
     const { organization } = useOrganization();
     const router = useRouter();
-
-    // Ensure user has an organization for org-only mode
-    useEffect(() => {
-        if (user && !organization) {
-            router.push('/select-org');
-        }
-    }, [user, organization, router]);
 
     // Get the current workspace identifier (organization only)
     const clerkId = organization?.id;
@@ -36,6 +29,20 @@ export default function Dashboard() {
     } = usePaginatedQuery(api.projects.getProjects, workspace ? { workspaceId: workspace._id } : 'skip', {
         initialNumItems: 12,
     });
+
+    // Ensure user has an organization for org-only mode
+    useEffect(() => {
+        if (user && !organization) {
+            router.push('/select-org');
+        }
+    }, [user, organization, router]);
+
+    // Redirect to contact email setup if required
+    useEffect(() => {
+        if (workspace && !workspace.contactEmail) {
+            router.push('/dashboard/contact-email');
+        }
+    }, [workspace, router]);
 
     // Loading state
     if (!user || !organization || !clerkId) {
@@ -96,8 +103,13 @@ export default function Dashboard() {
                         </span>
                     </h1>
 
-                    {/* Right side: Org Switcher + Profile */}
+                    {/* Right side: Settings + Org Switcher + Profile */}
                     <div className='flex items-center space-x-4'>
+                        <Link href='/dashboard/settings'>
+                            <Button variant='ghost' size='sm' className='text-gray-400 hover:text-white cursor-pointer'>
+                                <Settings className='h-4 w-4' />
+                            </Button>
+                        </Link>
                         <OrganizationSwitcher
                             hidePersonal={true}
                             afterCreateOrganizationUrl='/dashboard'
@@ -137,9 +149,13 @@ export default function Dashboard() {
                                     <Plus className='h-5 w-5 mr-2' />
                                     Project Limit Reached
                                 </Button>
-                                <p className='text-sm text-gray-500'>
-                                    You've reached your project limit. Upgrade your plan to create more projects.
-                                </p>
+                                <div className='text-sm text-gray-500'>
+                                    <p>You've reached your project limit.</p>
+                                    <Link href='/dashboard/settings' className='underline hover:text-gray-400'>
+                                        Upgrade your plan
+                                    </Link>{' '}
+                                    to create more projects.
+                                </div>
                             </div>
                         )}
                     </div>
