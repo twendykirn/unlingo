@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Save, Plus, Trash2, Code, Search, ChevronRight, X, Copy, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Save, Plus, Trash2, Code, Search, ChevronRight, X, Copy, AlertTriangle, ArrowLeft, ChevronDown, Undo, Redo } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQuery, useMutation } from 'convex/react';
 import { useUser, useOrganization } from '@clerk/nextjs';
-import { api } from '../../../convex/_generated/api';
-import { Id } from '../../../convex/_generated/dataModel';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import { debugZodSchema, validateWithAjv } from '@/lib/zodSchemaGenerator';
 
 interface TranslationNode {
     id: string;
@@ -19,6 +21,55 @@ interface TranslationNode {
     children: string[];
     collapsed: boolean;
     hasEmptyValues?: boolean; // Track if node has empty values
+}
+
+interface ChangeRecord {
+    id: string;
+    timestamp: number;
+    type: 'add_key' | 'edit_value' | 'delete_key' | 'json_bulk_edit';
+    operation: {
+        // For add_key operations
+        added?: {
+            nodeId: string;
+            key: string;
+            value: any;
+            type: 'object' | 'string' | 'array';
+            parentKey?: string;
+        };
+        // For edit_value operations
+        edited?: {
+            nodeId: string;
+            key: string;
+            oldValue: any;
+            newValue: any;
+            type: 'object' | 'string' | 'array';
+        };
+        // For delete_key operations
+        deleted?: {
+            nodeId: string;
+            key: string;
+            value: any;
+            type: 'object' | 'string' | 'array';
+            parentKey?: string;
+            children?: TranslationNode[]; // Store deleted children for complete restoration
+        };
+        // For json_bulk_edit operations
+        bulkEdit?: {
+            oldNodes: TranslationNode[];
+            newNodes: TranslationNode[];
+            addedKeys: string[];
+            deletedKeys: string[];
+            modifiedKeys: string[];
+        };
+    };
+    // Metadata for backend sync
+    metadata: {
+        affectedKeys: string[]; // All keys that were affected by this change
+        requiresSync: boolean; // Whether other languages need to be updated
+        syncType: 'structure_change' | 'value_only' | 'key_rename' | 'key_delete';
+        languageId?: string;
+        isPrimaryLanguage: boolean;
+    };
 }
 
 export default function TranslationEditor() {
@@ -58,8 +109,18 @@ export default function TranslationEditor() {
     const [filteredNodes, setFilteredNodes] = useState<TranslationNode[]>([]);
     const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
     const [emptyValueCount, setEmptyValueCount] = useState(0);
+    const [showEmptyValuesDialog, setShowEmptyValuesDialog] = useState(false);
+    const [emptyValueNodes, setEmptyValueNodes] = useState<TranslationNode[]>([]);
+
+    // JSON Schema state for primary language validation
+    const [primaryLanguageSchema, setPrimaryLanguageSchema] = useState<any | null>(null);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    
+    // Change tracking state
+    const [changeHistory, setChangeHistory] = useState<ChangeRecord[]>([]);
+    const [currentChangeIndex, setCurrentChangeIndex] = useState(-1);
+    const [hasUncommittedChanges, setHasUncommittedChanges] = useState(false);
 
     // Edit mode state for existing nodes
     const [editMode, setEditMode] = useState<'ui' | 'json'>('json');
@@ -122,6 +183,9 @@ export default function TranslationEditor() {
 
     // Derive current values from backend data
     const selectedLanguage = language?.languageCode || 'en';
+
+    // Check if this is the primary language
+    const isPrimaryLanguage = !!language?.isPrimary;
 
     // Navigation function to go back
     const handleGoBack = () => {
@@ -265,10 +329,24 @@ export default function TranslationEditor() {
         return emptyCount === 0;
     }, []);
 
+    // Collect all empty value nodes
+    const collectEmptyValueNodes = useCallback(() => {
+        const emptyNodes: TranslationNode[] = [];
+        
+        nodes.forEach(node => {
+            if (node.type === 'string' && isEmptyValue(node.value)) {
+                emptyNodes.push(node);
+            }
+        });
+        
+        return emptyNodes.sort((a, b) => a.key.localeCompare(b.key));
+    }, [nodes]);
+
     // Update validation when nodes change
     useEffect(() => {
         validateNodes(nodes);
-    }, [nodes, validateNodes]);
+        setEmptyValueNodes(collectEmptyValueNodes());
+    }, [nodes, validateNodes, collectEmptyValueNodes]);
 
     // Update available parents when nodes change
     useEffect(() => {
@@ -278,6 +356,234 @@ export default function TranslationEditor() {
             .sort((a, b) => a.key.localeCompare(b.key));
         setAvailableParents(objectNodes);
     }, [nodes]);
+
+    // Navigate to and select an empty value node
+    const navigateToEmptyValue = (nodeId: string) => {
+        const node = nodes.find(n => n.id === nodeId);
+        if (!node) return;
+
+        // Select the node
+        setSelectedNode(nodeId);
+        setShowEmptyValuesDialog(false);
+
+        // Expand parent nodes to make sure the node is visible
+        const keyParts = node.key.split('.');
+        const newExpandedKeys = new Set(expandedKeys);
+        
+        for (let i = 1; i < keyParts.length; i++) {
+            const parentKey = keyParts.slice(0, i).join('.');
+            const parentNode = nodes.find(n => n.key === parentKey);
+            if (parentNode) {
+                newExpandedKeys.add(parentNode.id);
+            }
+        }
+        setExpandedKeys(newExpandedKeys);
+
+        // Scroll to the node
+        setTimeout(() => {
+            const element = document.querySelector(`[data-node-id="${nodeId}"]`);
+            if (element) {
+                element.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center',
+                    inline: 'nearest' 
+                });
+                
+                // Add a brief highlight effect
+                element.classList.add('ring-2', 'ring-blue-500', 'ring-opacity-50');
+                setTimeout(() => {
+                    element.classList.remove('ring-2', 'ring-blue-500', 'ring-opacity-50');
+                }, 2000);
+            }
+        }, 100);
+    };
+
+    // Record a change in the history
+    const recordChange = useCallback((changeRecord: Omit<ChangeRecord, 'id' | 'timestamp'>) => {
+        const newChange: ChangeRecord = {
+            ...changeRecord,
+            id: `change_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            timestamp: Date.now(),
+        };
+
+        setChangeHistory(prev => {
+            // Remove any changes after current index (when user makes new change after undo)
+            const newHistory = prev.slice(0, currentChangeIndex + 1);
+            newHistory.push(newChange);
+            return newHistory;
+        });
+        
+        setCurrentChangeIndex(prev => prev + 1);
+        setHasUncommittedChanges(false); // Reset uncommitted flag after recording
+    }, [currentChangeIndex]);
+
+    // Undo last change
+    const undoChange = useCallback(() => {
+        if (currentChangeIndex < 0) return;
+
+        const changeToUndo = changeHistory[currentChangeIndex];
+        
+        // Apply the reverse operation
+        switch (changeToUndo.type) {
+            case 'add_key':
+                if (changeToUndo.operation.added) {
+                    // Remove the added node
+                    setNodes(prev => prev.filter(node => node.id !== changeToUndo.operation.added!.nodeId));
+                }
+                break;
+                
+            case 'edit_value':
+                if (changeToUndo.operation.edited) {
+                    // Restore old value
+                    setNodes(prev => prev.map(node => 
+                        node.id === changeToUndo.operation.edited!.nodeId
+                            ? { ...node, value: changeToUndo.operation.edited!.oldValue }
+                            : node
+                    ));
+                }
+                break;
+                
+            case 'delete_key':
+                if (changeToUndo.operation.deleted) {
+                    // Restore deleted node and its children
+                    const restoredNode: TranslationNode = {
+                        id: changeToUndo.operation.deleted.nodeId,
+                        key: changeToUndo.operation.deleted.key,
+                        value: changeToUndo.operation.deleted.value,
+                        type: changeToUndo.operation.deleted.type,
+                        parent: changeToUndo.operation.deleted.parentKey,
+                        children: changeToUndo.operation.deleted.children?.map(c => c.id) || [],
+                        collapsed: false,
+                    };
+                    
+                    setNodes(prev => {
+                        const newNodes = [...prev, restoredNode];
+                        // Also restore children if any
+                        if (changeToUndo.operation.deleted!.children) {
+                            newNodes.push(...changeToUndo.operation.deleted!.children);
+                        }
+                        return newNodes;
+                    });
+                }
+                break;
+                
+            case 'json_bulk_edit':
+                if (changeToUndo.operation.bulkEdit) {
+                    // Restore old nodes state
+                    setNodes(changeToUndo.operation.bulkEdit.oldNodes);
+                }
+                break;
+        }
+
+        setCurrentChangeIndex(prev => prev - 1);
+    }, [currentChangeIndex, changeHistory]);
+
+    // Redo change
+    const redoChange = useCallback(() => {
+        if (currentChangeIndex >= changeHistory.length - 1) return;
+
+        const nextIndex = currentChangeIndex + 1;
+        const changeToRedo = changeHistory[nextIndex];
+        
+        // Apply the original operation
+        switch (changeToRedo.type) {
+            case 'add_key':
+                if (changeToRedo.operation.added) {
+                    const newNode: TranslationNode = {
+                        id: changeToRedo.operation.added.nodeId,
+                        key: changeToRedo.operation.added.key,
+                        value: changeToRedo.operation.added.value,
+                        type: changeToRedo.operation.added.type,
+                        parent: changeToRedo.operation.added.parentKey,
+                        children: [],
+                        collapsed: false,
+                    };
+                    setNodes(prev => [...prev, newNode]);
+                }
+                break;
+                
+            case 'edit_value':
+                if (changeToRedo.operation.edited) {
+                    setNodes(prev => prev.map(node => 
+                        node.id === changeToRedo.operation.edited!.nodeId
+                            ? { ...node, value: changeToRedo.operation.edited!.newValue }
+                            : node
+                    ));
+                }
+                break;
+                
+            case 'delete_key':
+                if (changeToRedo.operation.deleted) {
+                    setNodes(prev => prev.filter(node => 
+                        node.id !== changeToRedo.operation.deleted!.nodeId &&
+                        !changeToRedo.operation.deleted!.children?.find(c => c.id === node.id)
+                    ));
+                }
+                break;
+                
+            case 'json_bulk_edit':
+                if (changeToRedo.operation.bulkEdit) {
+                    setNodes(changeToRedo.operation.bulkEdit.newNodes);
+                }
+                break;
+        }
+
+        setCurrentChangeIndex(nextIndex);
+    }, [currentChangeIndex, changeHistory]);
+
+    // Apply current edit changes and record them in history
+    const applyEdit = useCallback(() => {
+        if (!selectedNode || !editValue.trim()) return;
+
+        const currentNode = nodes.find(n => n.id === selectedNode);
+        if (!currentNode) return;
+
+        try {
+            const newValue = JSON.parse(editValue);
+            const oldValue = currentNode.value;
+
+            // Don't record if value hasn't changed
+            if (JSON.stringify(oldValue) === JSON.stringify(newValue)) {
+                setHasUncommittedChanges(false);
+                return;
+            }
+
+            // Update the node
+            setNodes(prev => prev.map(node => 
+                node.id === selectedNode 
+                    ? { ...node, value: newValue } 
+                    : node
+            ));
+
+            // Record the change
+            recordChange({
+                type: 'edit_value',
+                operation: {
+                    edited: {
+                        nodeId: selectedNode,
+                        key: currentNode.key,
+                        oldValue,
+                        newValue,
+                        type: currentNode.type,
+                    }
+                },
+                metadata: {
+                    affectedKeys: [currentNode.key],
+                    requiresSync: isPrimaryLanguage, // Only sync if editing primary language
+                    syncType: 'value_only',
+                    languageId: languageId || undefined,
+                    isPrimaryLanguage: !!isPrimaryLanguage,
+                }
+            });
+
+            setHasUncommittedChanges(false);
+            setHasUnsavedChanges(true);
+        } catch (error) {
+            console.error('Failed to apply edit:', error);
+            alert('Invalid JSON format. Please fix the syntax before applying.');
+        }
+    }, [selectedNode, editValue, nodes, recordChange, isPrimaryLanguage, languageId]);
+
 
     // Handle keyboard events
     useEffect(() => {
@@ -373,7 +679,7 @@ export default function TranslationEditor() {
         return JSON.stringify(oldKeys) !== JSON.stringify(newKeys);
     };
 
-    // Real-time JSON editing with validation and structural change detection
+    // Real-time JSON editing with validation and visual feedback
     const handleJsonValueChange = (newJsonValue: string) => {
         setEditValue(newJsonValue);
 
@@ -382,82 +688,21 @@ export default function TranslationEditor() {
             setEditUIValuesFromJSON(newJsonValue);
         }
 
-        // Try to parse and apply changes in real-time if valid JSON
-        if (selectedNode && newJsonValue.trim()) {
-            try {
-                const parsedValue = JSON.parse(newJsonValue);
-                const currentNode = nodes.find(n => n.id === selectedNode);
-
-                if (currentNode) {
-                    // Check if this is a structural change to an object
-                    const isStructuralChange = hasStructuralChanges(currentNode.value, parsedValue);
-
-                    if (isStructuralChange && (currentNode.type === 'object' || currentNode.type === 'array')) {
-                        // For structural changes, we need to rebuild the entire tree
-                        // First, update the specific node
-                        const updatedNodes = nodes.map(node =>
-                            node.id === selectedNode ? { ...node, value: parsedValue } : node
-                        );
-
-                        // Build the complete JSON structure from updated nodes
-                        const completeJson: any = {};
-                        const rootNodes = updatedNodes.filter(node => !node.parent);
-
-                        const buildJsonFromNodes = (nodeId: string, nodeList: TranslationNode[]): any => {
-                            const node = nodeList.find(n => n.id === nodeId);
-                            if (!node) return {};
-
-                            if (node.id === selectedNode) {
-                                // Use the new parsed value for the selected node
-                                return parsedValue;
-                            } else if (node.type === 'object') {
-                                const obj: any = {};
-                                node.children.forEach(childId => {
-                                    const childNode = nodeList.find(n => n.id === childId);
-                                    if (childNode) {
-                                        const key = childNode.key.split('.').pop() || childNode.key;
-                                        obj[key] = buildJsonFromNodes(childId, nodeList);
-                                    }
-                                });
-                                return obj;
-                            } else if (node.type === 'array') {
-                                // For arrays, just return the value directly since we don't create child nodes for array items
-                                return node.value;
-                            } else {
-                                return node.value;
-                            }
-                        };
-
-                        rootNodes.forEach(rootNode => {
-                            const key = rootNode.key.split('.').pop() || rootNode.key;
-                            completeJson[key] = buildJsonFromNodes(rootNode.id, updatedNodes);
-                        });
-
-                        // Rebuild the entire node structure
-                        const newNodes = createNodesFromJson(completeJson);
-                        setNodes(newNodes);
-
-                        // Try to preserve selection by finding the node with the same key
-                        const currentKey = currentNode.key;
-                        const newSelectedNode = newNodes.find(n => n.key === currentKey);
-                        if (newSelectedNode) {
-                            setSelectedNode(newSelectedNode.id);
-                            setEditValue(JSON.stringify(newSelectedNode.value, null, 2));
-                            setEditKey(newSelectedNode.key.split('.').pop() || newSelectedNode.key);
-                        } else {
-                            setSelectedNode(null);
-                            setEditValue('');
-                            setEditKey('');
-                        }
-                    } else {
-                        // Simple value update, no structural changes
-                        setNodes(prev =>
-                            prev.map(node => (node.id === selectedNode ? { ...node, value: parsedValue } : node))
-                        );
-                    }
+        // Mark as having uncommitted changes if the value has changed
+        if (selectedNode) {
+            const currentNode = nodes.find(n => n.id === selectedNode);
+            if (currentNode) {
+                try {
+                    const newParsedValue = JSON.parse(newJsonValue);
+                    const currentParsedValue = currentNode.value;
+                    
+                    const hasChanged = JSON.stringify(currentParsedValue) !== JSON.stringify(newParsedValue);
+                    setHasUncommittedChanges(hasChanged);
+                } catch {
+                    // Invalid JSON, still mark as uncommitted if text has changed
+                    const currentValueString = JSON.stringify(currentNode.value, null, 2);
+                    setHasUncommittedChanges(newJsonValue !== currentValueString);
                 }
-            } catch (error) {
-                // Invalid JSON - don't update the node, just keep the edit value
             }
         }
     };
@@ -557,6 +802,53 @@ export default function TranslationEditor() {
             // Convert nodes back to JSON structure
             const jsonContent = convertNodesToJson(nodes);
 
+            // Validate against JSON schema if available (for non-primary languages)
+            if (!isPrimaryLanguage && primaryLanguageSchema) {
+                const validation = validateWithAjv(jsonContent, primaryLanguageSchema);
+
+                console.group(`🔍 AJV Schema Validation - ${selectedLanguage.toUpperCase()}`);
+                console.log('📄 Input JSON:', jsonContent);
+                console.log('📋 Schema:', primaryLanguageSchema);
+                console.log('✅ Validation Result:', validation.isValid ? 'PASSED' : 'FAILED');
+
+                if (!validation.isValid) {
+                    console.error('❌ Validation Errors:', validation.errors);
+                    setValidationErrors(
+                        validation.errors?.map(err => `${err.instancePath || 'root'}: ${err.message}`) || []
+                    );
+
+                    const errorMessage =
+                        validation.errors
+                            ?.slice(0, 3)
+                            .map(err => `• ${err.instancePath || 'root'}: ${err.message}`)
+                            .join('\n') || 'Unknown validation errors';
+
+                    alert(
+                        `Schema validation failed:\n${errorMessage}${validation.errors && validation.errors.length > 3 ? '\n... and more errors' : ''}`
+                    );
+                    console.groupEnd();
+                    setIsSaving(false);
+                    return; // Don't save if validation fails
+                } else {
+                    setValidationErrors([]);
+                }
+                console.groupEnd();
+            }
+
+            // Generate and save JSON schema if this is the primary language
+            if (isPrimaryLanguage) {
+                const schemas = debugZodSchema(
+                    jsonContent,
+                    `Primary Language Schema - ${selectedLanguage.toUpperCase()}`
+                );
+
+                // Save JSON schema to state for future validation
+                if (!primaryLanguageSchema) {
+                    setPrimaryLanguageSchema(schemas.jsonSchema);
+                    console.log('📋 JSON Schema saved to state for validation');
+                }
+            }
+
             // Save to backend
             await updateLanguageContent({
                 languageId,
@@ -655,11 +947,98 @@ export default function TranslationEditor() {
     const saveJsonEdit = () => {
         try {
             const parsedJson = JSON.parse(rawJsonEdit);
+
+            // Validate against JSON schema if available (for non-primary languages)
+            if (primaryLanguageSchema) {
+                const validation = validateWithAjv(parsedJson, primaryLanguageSchema);
+
+                console.group(`🔍 AJV Schema Validation - ${selectedLanguage.toUpperCase()}`);
+                console.log('📄 Input JSON:', parsedJson);
+                console.log('📋 Schema:', primaryLanguageSchema);
+                console.log('✅ Validation Result:', validation.isValid ? 'PASSED' : 'FAILED');
+
+                if (!validation.isValid) {
+                    console.error('❌ Validation Errors:', validation.errors);
+                    setValidationErrors(
+                        validation.errors?.map(err => `${err.instancePath || 'root'}: ${err.message}`) || []
+                    );
+
+                    const errorMessage =
+                        validation.errors
+                            ?.slice(0, 3)
+                            .map(err => `• ${err.instancePath || 'root'}: ${err.message}`)
+                            .join('\n') || 'Unknown validation errors';
+
+                    alert(
+                        `Schema validation failed:\n${errorMessage}${validation.errors && validation.errors.length > 3 ? '\n... and more errors' : ''}`
+                    );
+                    console.groupEnd();
+                    return; // Don't save if validation fails
+                } else {
+                    setValidationErrors([]);
+                }
+                console.groupEnd();
+            }
+
+            // Record the bulk edit change before applying
+            const oldNodes = [...nodes];
             const newNodes = createNodesFromJson(parsedJson);
+            
+            // Analyze the changes for metadata
+            const oldKeys = new Set(oldNodes.map(n => n.key));
+            const newKeys = new Set(newNodes.map(n => n.key));
+            
+            const addedKeys = [...newKeys].filter(k => !oldKeys.has(k));
+            const deletedKeys = [...oldKeys].filter(k => !newKeys.has(k));
+            const modifiedKeys = newNodes
+                .filter(newNode => {
+                    const oldNode = oldNodes.find(n => n.key === newNode.key);
+                    return oldNode && JSON.stringify(oldNode.value) !== JSON.stringify(newNode.value);
+                })
+                .map(n => n.key);
+
+            // Generate and save schema if this is the primary language
+            if (isPrimaryLanguage) {
+                const schemas = debugZodSchema(
+                    parsedJson,
+                    `Primary Language Schema - ${selectedLanguage.toUpperCase()}`
+                );
+
+                // Save JSON schema to state for future validation
+                if (!primaryLanguageSchema) {
+                    setPrimaryLanguageSchema(schemas.jsonSchema);
+                    console.log('📋 JSON Schema saved to state for validation');
+                }
+            }
+
+            // Apply the changes
             setNodes(newNodes);
+            
+            // Record the bulk edit in change history
+            recordChange({
+                type: 'json_bulk_edit',
+                operation: {
+                    bulkEdit: {
+                        oldNodes,
+                        newNodes,
+                        addedKeys,
+                        deletedKeys,
+                        modifiedKeys,
+                    }
+                },
+                metadata: {
+                    affectedKeys: [...addedKeys, ...deletedKeys, ...modifiedKeys],
+                    requiresSync: isPrimaryLanguage && (addedKeys.length > 0 || deletedKeys.length > 0),
+                    syncType: addedKeys.length > 0 || deletedKeys.length > 0 ? 'structure_change' : 'value_only',
+                    languageId: languageId || undefined,
+                    isPrimaryLanguage: !!isPrimaryLanguage,
+                }
+            });
+
             setJsonEditMode(false);
             setRawJsonEdit('');
         } catch (error) {
+            console.error('Failed to save changes:', error);
             alert('Invalid JSON format');
         }
     };
@@ -913,6 +1292,30 @@ export default function TranslationEditor() {
         }
     };
 
+    // Handle UI value changes for uncommitted tracking (without auto-applying)
+    const handleEditUIValueChangeUncommitted = () => {
+        if (editMode === 'ui' && selectedNode) {
+            const jsonValue = getEditUIValueAsJSON();
+            setEditValue(jsonValue);
+            
+            // Mark as uncommitted if changed
+            const currentNode = nodes.find(n => n.id === selectedNode);
+            if (currentNode) {
+                try {
+                    const newParsedValue = JSON.parse(jsonValue);
+                    const currentParsedValue = currentNode.value;
+                    
+                    const hasChanged = JSON.stringify(currentParsedValue) !== JSON.stringify(newParsedValue);
+                    setHasUncommittedChanges(hasChanged);
+                } catch {
+                    // Invalid JSON, mark as uncommitted if text has changed
+                    const currentValueString = JSON.stringify(currentNode.value, null, 2);
+                    setHasUncommittedChanges(jsonValue !== currentValueString);
+                }
+            }
+        }
+    };
+
     // Add new key functionality
     const addNewKey = () => {
         if (!newKeyName.trim()) {
@@ -1011,6 +1414,27 @@ export default function TranslationEditor() {
                     ),
                     ...newNodes,
                 ]);
+
+                // Record the add key change
+                recordChange({
+                    type: 'add_key',
+                    operation: {
+                        added: {
+                            nodeId: newNodeId,
+                            key: newNodeKey,
+                            value: parsedValue,
+                            type: nodeType,
+                            parentKey: parentNode.key,
+                        }
+                    },
+                    metadata: {
+                        affectedKeys: [newNodeKey],
+                        requiresSync: isPrimaryLanguage, // Sync structure changes if primary
+                        syncType: 'structure_change',
+                        languageId: languageId || undefined,
+                        isPrimaryLanguage: !!isPrimaryLanguage,
+                    }
+                });
             } else {
                 // Adding to root level - merge with existing JSON structure
                 const rootKeyName = newKeyName.trim();
@@ -1034,6 +1458,27 @@ export default function TranslationEditor() {
                 // Rebuild all nodes from the merged JSON
                 const newNodes = createNodesFromJson(updatedJson);
                 setNodes(newNodes);
+
+                // Record the root level add key change
+                const newNodeId = newNodes.find(n => n.key === rootKeyName)?.id || `node-${rootKeyName}`;
+                recordChange({
+                    type: 'add_key',
+                    operation: {
+                        added: {
+                            nodeId: newNodeId,
+                            key: rootKeyName,
+                            value: parsedValue,
+                            type: nodeType,
+                        }
+                    },
+                    metadata: {
+                        affectedKeys: [rootKeyName],
+                        requiresSync: isPrimaryLanguage, // Sync structure changes if primary
+                        syncType: 'structure_change',
+                        languageId: languageId || undefined,
+                        isPrimaryLanguage: !!isPrimaryLanguage,
+                    }
+                });
             }
 
             // Reset modal state
@@ -1159,7 +1604,7 @@ export default function TranslationEditor() {
             const hasEmptyValue = node.type === 'string' && isEmptyValue(node.value);
 
             return (
-                <div key={node.id} className='select-none'>
+                <div key={node.id} className='select-none' data-node-id={node.id}>
                     <div
                         className={`flex items-center py-2 px-3 hover:bg-gray-800 cursor-pointer rounded-md transition-colors ${
                             selectedNode === node.id ? 'bg-blue-900 border-l-4 border-blue-500' : ''
@@ -1203,8 +1648,9 @@ export default function TranslationEditor() {
         };
 
         return (
-            <div className='h-full overflow-auto bg-gray-900 p-4'>
-                <div className='space-y-1'>
+            <div className='flex-1 flex flex-col bg-gray-900'>
+                <div className='flex-1 overflow-y-auto p-4'>
+                    <div className='space-y-1'>
                     {rootNodes.length > 0 ? (
                         rootNodes.map(node => renderTreeNode(node, 0))
                     ) : (
@@ -1220,6 +1666,7 @@ export default function TranslationEditor() {
                             </p>
                         </div>
                     )}
+                    </div>
                 </div>
             </div>
         );
@@ -1289,7 +1736,7 @@ export default function TranslationEditor() {
     }
 
     return (
-        <div className='min-h-screen bg-black text-white flex flex-col'>
+        <div className='h-screen bg-black text-white flex flex-col overflow-hidden'>
             {/* Header */}
             <div className='bg-gray-950 border-b border-gray-800 px-6 py-4'>
                 <div className='flex items-center justify-between'>
@@ -1298,7 +1745,7 @@ export default function TranslationEditor() {
                             variant='ghost'
                             size='sm'
                             onClick={handleGoBack}
-                            className='text-gray-400 hover:text-white'>
+                            className='text-gray-400 hover:text-white cursor-pointer'>
                             <ArrowLeft className='h-4 w-4 mr-2' />
                             Back
                         </Button>
@@ -1313,13 +1760,42 @@ export default function TranslationEditor() {
                     </div>
 
                     <div className='flex items-center space-x-2'>
+                        {/* Undo/Redo buttons */}
+                        {changeHistory.length > 0 && (
+                            <div className='flex items-center border border-gray-700 rounded-md'>
+                                <Button
+                                    variant='ghost'
+                                    size='sm'
+                                    onClick={undoChange}
+                                    disabled={currentChangeIndex < 0}
+                                    className='px-2 py-1 h-8 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-r-none border-r border-gray-700'
+                                    title={`Undo (${currentChangeIndex + 1}/${changeHistory.length})`}
+                                >
+                                    <Undo className='h-3 w-3' />
+                                </Button>
+                                <Button
+                                    variant='ghost'
+                                    size='sm'
+                                    onClick={redoChange}
+                                    disabled={currentChangeIndex >= changeHistory.length - 1}
+                                    className='px-2 py-1 h-8 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-l-none'
+                                    title={`Redo (${currentChangeIndex + 1}/${changeHistory.length})`}
+                                >
+                                    <Redo className='h-3 w-3' />
+                                </Button>
+                            </div>
+                        )}
+                        
                         {emptyValueCount > 0 && (
-                            <div className='flex items-center space-x-2 px-3 py-1 bg-yellow-900/50 border border-yellow-500/50 rounded-md'>
+                            <button
+                                onClick={() => setShowEmptyValuesDialog(true)}
+                                className='flex items-center space-x-2 px-3 py-1 bg-yellow-900/50 border border-yellow-500/50 rounded-md hover:bg-yellow-900/70 transition-colors cursor-pointer'
+                            >
                                 <AlertTriangle className='h-4 w-4 text-yellow-500' />
                                 <span className='text-sm text-yellow-400'>
                                     {emptyValueCount} empty value{emptyValueCount !== 1 ? 's' : ''}
                                 </span>
-                            </div>
+                            </button>
                         )}
                         <Button variant='outline' size='sm' onClick={enterJsonEditMode} className='cursor-pointer'>
                             <Code className='h-4 w-4 mr-2' />
@@ -1384,14 +1860,16 @@ export default function TranslationEditor() {
             {/* Main Content */}
             <div className='flex-1 flex'>
                 {/* Tree View */}
-                <div className='flex-1 relative overflow-hidden'>
+                <div className='flex-1 relative flex flex-col overflow-hidden'>
                     <TreeView />
                 </div>
 
                 {/* Side Panel */}
                 <div className='w-80 bg-gray-950 border-l border-gray-800 flex flex-col'>
                     {selectedNode ? (
-                        <div className='p-6 flex flex-col h-full'>
+                        <div className='flex flex-col h-full'>
+                            {/* Fixed header */}
+                            <div className='p-6 pb-4 flex-shrink-0 border-b border-gray-800'>
                             <div className='flex items-center justify-between mb-6'>
                                 <h3 className='text-lg font-semibold'>Selected Key</h3>
                                 <div className='flex items-center space-x-2'>
@@ -1430,7 +1908,10 @@ export default function TranslationEditor() {
                                     </Button>
                                 </div>
                             </div>
+                            </div>
 
+                            {/* Scrollable content area */}
+                            <div className='flex-1 overflow-y-auto p-6 pt-4'>
                             {(() => {
                                 const node = nodes.find(n => n.id === selectedNode);
                                 if (!node) return null;
@@ -1579,8 +2060,7 @@ export default function TranslationEditor() {
                                                                     )
                                                                 );
                                                             }}
-                                                            className='w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500'
-                                                            rows={4}
+                                                            className='w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-y-auto min-h-[6rem] max-h-48'
                                                             placeholder={`Enter ${selectedLanguage.toUpperCase()} translation...`}
                                                         />
                                                     </div>
@@ -1672,7 +2152,7 @@ export default function TranslationEditor() {
                                                                     value={editUIStringValue}
                                                                     onChange={e => {
                                                                         setEditUIStringValue(e.target.value);
-                                                                        setTimeout(handleEditUIValueChange, 0);
+                                                                        setTimeout(handleEditUIValueChangeUncommitted, 0);
                                                                     }}
                                                                     className='w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
                                                                     placeholder='Enter string value...'
@@ -1685,7 +2165,7 @@ export default function TranslationEditor() {
                                                                     value={editUINumberValue}
                                                                     onChange={e => {
                                                                         setEditUINumberValue(e.target.value);
-                                                                        setTimeout(handleEditUIValueChange, 0);
+                                                                        setTimeout(handleEditUIValueChangeUncommitted, 0);
                                                                     }}
                                                                     className='w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
                                                                     placeholder='Enter number value...'
@@ -1697,7 +2177,7 @@ export default function TranslationEditor() {
                                                                     value={editUIBooleanValue.toString()}
                                                                     onValueChange={value => {
                                                                         setEditUIBooleanValue(value === 'true');
-                                                                        setTimeout(handleEditUIValueChange, 0);
+                                                                        setTimeout(handleEditUIValueChangeUncommitted, 0);
                                                                     }}>
                                                                     <SelectTrigger className='w-full bg-gray-800 border-gray-700 text-white'>
                                                                         <SelectValue />
@@ -2102,6 +2582,31 @@ export default function TranslationEditor() {
                                                                     </Button>
                                                                 </div>
                                                             )}
+                                                            
+                                                            {/* Apply button for UI mode */}
+                                                            <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-700">
+                                                                <div className={`text-xs ${
+                                                                    hasUncommittedChanges
+                                                                        ? 'text-yellow-400'
+                                                                        : 'text-gray-500'
+                                                                }`}>
+                                                                    {hasUncommittedChanges
+                                                                        ? 'You have uncommitted changes'
+                                                                        : 'No changes to apply'}
+                                                                </div>
+                                                                <Button
+                                                                    size="sm"
+                                                                    onClick={applyEdit}
+                                                                    disabled={!hasUncommittedChanges}
+                                                                    className={`ml-2 ${
+                                                                        hasUncommittedChanges
+                                                                            ? 'bg-blue-600 hover:bg-blue-700'
+                                                                            : 'bg-gray-600 cursor-not-allowed'
+                                                                    }`}
+                                                                >
+                                                                    Apply
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                     ) : (
                                                         <div className='space-y-2'>
@@ -2113,12 +2618,11 @@ export default function TranslationEditor() {
                                                                     onChange={e =>
                                                                         handleJsonValueChange(e.target.value)
                                                                     }
-                                                                    className={`w-full px-3 py-2 bg-gray-800 border rounded-md text-sm font-mono resize-none focus:outline-none focus:ring-2 ${
+                                                                    className={`w-full px-3 py-2 bg-gray-800 border rounded-md text-sm font-mono resize-none focus:outline-none focus:ring-2 overflow-y-auto min-h-[8rem] max-h-64 ${
                                                                         editValue && !isValidJson(editValue)
                                                                             ? 'border-red-500 focus:ring-red-500'
                                                                             : 'border-gray-700 focus:ring-blue-500'
                                                                     }`}
-                                                                    rows={6}
                                                                     placeholder='Edit JSON value...'
                                                                 />
                                                                 {editValue && !isValidJson(editValue) && (
@@ -2127,15 +2631,34 @@ export default function TranslationEditor() {
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            <div
-                                                                className={`text-xs ${
+                                                            
+                                                            {/* Apply button and status */}
+                                                            <div className="flex items-center justify-between mt-2">
+                                                                <div className={`text-xs ${
                                                                     editValue && !isValidJson(editValue)
                                                                         ? 'text-red-400'
-                                                                        : 'text-gray-500'
+                                                                        : hasUncommittedChanges
+                                                                            ? 'text-yellow-400'
+                                                                            : 'text-gray-500'
                                                                 }`}>
-                                                                {editValue && !isValidJson(editValue)
-                                                                    ? 'Invalid JSON format - fix syntax to apply changes'
-                                                                    : 'Changes apply automatically when JSON is valid'}
+                                                                    {editValue && !isValidJson(editValue)
+                                                                        ? 'Invalid JSON format'
+                                                                        : hasUncommittedChanges
+                                                                            ? 'You have uncommitted changes'
+                                                                            : 'No changes to apply'}
+                                                                </div>
+                                                                <Button
+                                                                    size="sm"
+                                                                    onClick={applyEdit}
+                                                                    disabled={!hasUncommittedChanges || (editValue && !isValidJson(editValue))}
+                                                                    className={`ml-2 ${
+                                                                        hasUncommittedChanges && isValidJson(editValue || '{}')
+                                                                            ? 'bg-blue-600 hover:bg-blue-700'
+                                                                            : 'bg-gray-600 cursor-not-allowed'
+                                                                    }`}
+                                                                >
+                                                                    Apply
+                                                                </Button>
                                                             </div>
                                                         </div>
                                                     )}
@@ -2145,6 +2668,7 @@ export default function TranslationEditor() {
                                     </div>
                                 );
                             })()}
+                            </div>
                         </div>
                     ) : (
                         <div className='p-6 text-center text-gray-500'>
@@ -2175,7 +2699,7 @@ export default function TranslationEditor() {
                             <textarea
                                 value={rawJsonEdit}
                                 onChange={e => setRawJsonEdit(e.target.value)}
-                                className='flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-md text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                className='flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-md text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-y-auto'
                                 placeholder='Paste your JSON here...'
                             />
 
@@ -2632,14 +3156,13 @@ export default function TranslationEditor() {
                                         <textarea
                                             value={newKeyValue}
                                             onChange={e => setNewKeyValue(e.target.value)}
-                                            className={`w-full px-3 py-2 bg-gray-800 border rounded-md text-sm resize-none focus:outline-none focus:ring-2 ${
+                                            className={`w-full px-3 py-2 bg-gray-800 border rounded-md text-sm resize-none focus:outline-none focus:ring-2 overflow-y-auto min-h-[6rem] max-h-48 ${
                                                 !newKeyValue.trim()
                                                     ? 'border-red-500 focus:ring-red-500'
                                                     : newKeyValue.trim() && !isValidJson(newKeyValue)
                                                       ? 'border-red-500 focus:ring-red-500'
                                                       : 'border-gray-700 focus:ring-blue-500'
                                             }`}
-                                            rows={4}
                                             placeholder={`Enter valid JSON value...\n\nExamples:\n- "Hello World" (string)\n- {"en": "Hello", "es": "Hola"} (object)\n- ["item1", "item2"] (array)\n- 42 (number)\n- true (boolean)`}
                                         />
                                         {newKeyValue.trim() && isValidJson(newKeyValue) && (
@@ -2744,6 +3267,55 @@ export default function TranslationEditor() {
                     </div>
                 </div>
             )}
+
+            {/* Empty Values Dialog */}
+            <Dialog open={showEmptyValuesDialog} onOpenChange={setShowEmptyValuesDialog}>
+                <DialogContent className="max-w-md max-h-[70vh] bg-gray-900 border-gray-700 overflow-hidden flex flex-col">
+                    <DialogHeader className="flex-shrink-0">
+                        <DialogTitle className="flex items-center space-x-2 text-white">
+                            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                            <span>Empty Values ({emptyValueCount})</span>
+                        </DialogTitle>
+                    </DialogHeader>
+                    
+                    <div className="flex-1 overflow-hidden flex flex-col mt-4">
+                        <p className="text-sm text-gray-400 mb-4 flex-shrink-0">
+                            Click on any item below to navigate to it in the editor.
+                        </p>
+                        
+                        <div className="flex-1 overflow-y-auto">
+                            <div className="space-y-1 pr-2">
+                                {emptyValueNodes.map(node => (
+                                    <button
+                                        key={node.id}
+                                        onClick={() => navigateToEmptyValue(node.id)}
+                                        className="w-full text-left p-3 rounded-lg hover:bg-gray-800 transition-colors group border border-transparent hover:border-gray-600"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors truncate">
+                                                    {node.key}
+                                                </div>
+                                                <div className="text-xs text-gray-500 mt-1">
+                                                    {node.type} • Empty value
+                                                </div>
+                                            </div>
+                                            <ChevronRight className="h-4 w-4 text-gray-500 group-hover:text-blue-400 flex-shrink-0 ml-2" />
+                                        </div>
+                                    </button>
+                                ))}
+                            
+                                {emptyValueNodes.length === 0 && (
+                                    <div className="text-center py-8 text-gray-500">
+                                        <AlertTriangle className="h-12 w-12 mx-auto mb-3 text-gray-600" />
+                                        <p>No empty values found</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

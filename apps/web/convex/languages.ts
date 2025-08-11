@@ -151,6 +151,7 @@ export const getLanguageWithContext = query({
             projectId: project._id,
             namespaceId: namespace._id,
             namespaceVersionId: namespaceVersion._id,
+            isPrimary: namespace.primaryLanguageId === language._id,
         };
     },
 });
@@ -233,7 +234,7 @@ export const createLanguage = mutation({
         if (args.copyFromLanguage) {
             // Manual copy from specified language
             const sourceLanguage = await ctx.db.get(args.copyFromLanguage);
-            
+
             // Validate that source language belongs to the same namespace version
             if (!sourceLanguage || sourceLanguage.namespaceVersionId !== args.namespaceVersionId) {
                 throw new Error('Source language not found or belongs to different namespace version');
