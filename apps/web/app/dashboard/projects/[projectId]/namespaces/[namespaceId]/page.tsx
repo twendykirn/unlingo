@@ -18,8 +18,8 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { api } from '../../../../../../convex/_generated/api';
-import { Id } from '../../../../../../convex/_generated/dataModel';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 export default function NamespaceVersionsPage() {
     const { user } = useUser();
@@ -149,8 +149,10 @@ export default function NamespaceVersionsPage() {
                 <Button
                     variant='ghost'
                     size='sm'
-                    onClick={() => router.back()}
-                    className='text-gray-400 hover:text-white'>
+                    onClick={() => {
+                        router.push(`/dashboard/projects/${projectId}`);
+                    }}
+                    className='text-gray-400 hover:text-white cursor-pointer'>
                     <ArrowLeft className='h-4 w-4 mr-2' />
                     Back
                 </Button>
@@ -248,11 +250,12 @@ export default function NamespaceVersionsPage() {
                                         </div>
                                         <h4 className='font-semibold text-white'>{version.version}</h4>
                                     </div>
-                                    <button
-                                        className='text-gray-400 hover:text-white'
+                                    <Button
+                                        variant='outline'
+                                        className='text-gray-400 hover:text-white cursor-pointer'
                                         onClick={e => handleMoreVerticalClick(e, version)}>
                                         <MoreVertical className='h-4 w-4' />
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         ))}
@@ -264,7 +267,7 @@ export default function NamespaceVersionsPage() {
                             <Button
                                 onClick={() => loadMore(20)}
                                 variant='outline'
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800'>
+                                className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
                                 Load More Versions
                             </Button>
                         </div>
@@ -313,23 +316,17 @@ export default function NamespaceVersionsPage() {
                                 setIsDeleteVersionOpen(true);
                                 setIsEditVersionOpen(false);
                             }}
-                            className='border-red-700 text-red-400 hover:bg-red-900/20'>
+                            className='border-red-700 text-red-400 hover:bg-red-900/20 cursor-pointer'>
                             <Trash2 className='h-4 w-4 mr-2' />
                             Delete
                         </Button>
                         <div className='flex gap-2'>
                             <Button
-                                variant='outline'
-                                onClick={() => setIsEditVersionOpen(false)}
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800'>
-                                Cancel
-                            </Button>
-                            <Button
                                 onClick={() => {
                                     /* TODO: Add update version handler */
                                 }}
                                 disabled={!editVersionNumber.trim()}
-                                className='bg-white text-black hover:bg-gray-200'>
+                                className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
                                 Save Changes
                             </Button>
                         </div>
@@ -352,10 +349,12 @@ export default function NamespaceVersionsPage() {
                         <Button
                             variant='outline'
                             onClick={() => setIsDeleteVersionOpen(false)}
-                            className='border-gray-700 text-gray-300 hover:bg-gray-800'>
+                            className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
                             Cancel
                         </Button>
-                        <Button onClick={handleDeleteVersion} className='bg-red-600 text-white hover:bg-red-700'>
+                        <Button
+                            onClick={handleDeleteVersion}
+                            className='bg-red-600 text-white hover:bg-red-700 cursor-pointer'>
                             Delete Version
                         </Button>
                     </DialogFooter>

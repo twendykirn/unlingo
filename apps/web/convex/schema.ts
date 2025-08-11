@@ -67,6 +67,9 @@ export default defineSchema({
     namespaceVersions: defineTable({
         namespaceId: v.id('namespaces'),
         version: v.string(), // e.g., "1.0.0", "1.1.0"
+        jsonSchemaFileId: v.optional(v.id('_storage')), // reference to JSON schema file in Convex storage (created later)
+        jsonSchemaSize: v.optional(v.number()), // size of JSON schema file in bytes
+        schemaUpdatedAt: v.optional(v.number()), // timestamp of last schema update
     })
         .index('by_namespace', ['namespaceId'])
         .index('by_namespace_version', ['namespaceId', 'version']),

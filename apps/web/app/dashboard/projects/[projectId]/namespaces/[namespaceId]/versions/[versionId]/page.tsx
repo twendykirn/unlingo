@@ -160,8 +160,10 @@ export default function VersionLanguagesPage() {
                 <Button
                     variant='ghost'
                     size='sm'
-                    onClick={() => router.back()}
-                    className='text-gray-400 hover:text-white'>
+                    onClick={() => {
+                        router.push(`/dashboard/projects/${projectId}/namespaces/${namespaceId}`);
+                    }}
+                    className='text-gray-400 hover:text-white cursor-pointer'>
                     <ArrowLeft className='h-4 w-4 mr-2' />
                     Back
                 </Button>
@@ -296,7 +298,7 @@ export default function VersionLanguagesPage() {
                                             size='sm'
                                             variant='outline'
                                             onClick={() => handleSetPrimaryLanguage(language._id)}
-                                            className='flex-1 border-gray-700 text-yellow-400 hover:bg-yellow-400/10 hover:border-yellow-400'>
+                                            className='flex-1 border-gray-700 text-yellow-400 hover:bg-yellow-400/10 hover:border-yellow-400 cursor-pointer'>
                                             <Star className='h-3 w-3 mr-1' />
                                             Set Primary
                                         </Button>
@@ -305,7 +307,7 @@ export default function VersionLanguagesPage() {
                                         size='sm'
                                         variant='outline'
                                         onClick={() => handleEditLanguage(language)}
-                                        className='flex-1 border-gray-700 text-gray-300 hover:bg-gray-700 hover:border-gray-600'>
+                                        className='flex-1 border-gray-700 text-gray-300 hover:bg-gray-700 hover:border-gray-600 cursor-pointer'>
                                         <Edit2 className='h-3 w-3 mr-1' />
                                         Edit
                                     </Button>
@@ -317,7 +319,7 @@ export default function VersionLanguagesPage() {
                                         className={`${
                                             namespaceQuery?.primaryLanguageId === language._id
                                                 ? 'border-gray-600 text-gray-500 cursor-not-allowed'
-                                                : 'border-red-700 text-red-400 hover:bg-red-900/20 hover:border-red-600'
+                                                : 'border-red-700 text-red-400 hover:bg-red-900/20 hover:border-red-600 cursor-pointer'
                                         }`}>
                                         <Trash2 className='h-3 w-3' />
                                     </Button>
@@ -332,7 +334,7 @@ export default function VersionLanguagesPage() {
                             <Button
                                 onClick={() => loadMore(20)}
                                 variant='outline'
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800'>
+                                className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
                                 Load More Languages
                             </Button>
                         </div>

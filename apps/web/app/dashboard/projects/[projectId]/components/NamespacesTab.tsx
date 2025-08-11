@@ -4,12 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, usePaginatedQuery } from 'convex/react';
 import { useUser, useOrganization } from '@clerk/nextjs';
-import {
-    Globe,
-    Plus,
-    MoreVertical,
-    Trash2,
-} from 'lucide-react';
+import { Globe, Plus, MoreVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -131,7 +126,6 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
         }
     };
 
-
     const handleEditNamespace = async () => {
         if (!editNamespaceName.trim() || !selectedNamespace || !currentProject || !currentWorkspace) return;
 
@@ -176,7 +170,6 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
         setIsEditNamespaceOpen(true);
     };
 
-
     // If no namespaces exist, show the empty state
     if (!namespaces || namespaces.length === 0) {
         return (
@@ -217,13 +210,13 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                             <Button
                                 variant='outline'
                                 onClick={() => setIsCreateNamespaceOpen(false)}
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800'>
+                                className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleCreateNamespace}
                                 disabled={!newNamespaceName.trim()}
-                                className='bg-white text-black hover:bg-gray-200'>
+                                className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
                                 Create Namespace
                             </Button>
                         </DialogFooter>
@@ -269,7 +262,7 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                                     placeholder='e.g., common, auth, dashboard'
                                     value={newNamespaceName}
                                     onChange={e => setNewNamespaceName(e.target.value)}
-                                    className='bg-gray-900 border-gray-700 text-white'
+                                    className='bg-gray-900 border-gray-700 text-white mt-2'
                                 />
                             </div>
                         </div>
@@ -278,13 +271,13 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                             <Button
                                 variant='outline'
                                 onClick={() => setIsCreateNamespaceOpen(false)}
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800'>
+                                className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleCreateNamespace}
                                 disabled={!newNamespaceName.trim()}
-                                className='bg-white text-black hover:bg-gray-200'>
+                                className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
                                 Create Namespace
                             </Button>
                         </DialogFooter>
@@ -296,35 +289,36 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
             <div className='space-y-6'>
                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
                     {namespaces.map((namespace: any) => (
-                    <div
-                        key={namespace._id}
-                        className='bg-gray-900 border border-gray-800 rounded-lg p-6 cursor-pointer transition-all hover:border-gray-700'
-                        onClick={() => handleNamespaceCardClick(namespace)}>
-                        <div className='flex items-center justify-between mb-4'>
-                            <div className='flex items-center space-x-3'>
-                                <div className='w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center'>
-                                    <Globe className='h-5 w-5 text-white' />
+                        <div
+                            key={namespace._id}
+                            className='bg-gray-900 border border-gray-800 rounded-lg p-6 cursor-pointer transition-all hover:border-gray-700'
+                            onClick={() => handleNamespaceCardClick(namespace)}>
+                            <div className='flex items-center justify-between mb-4'>
+                                <div className='flex items-center space-x-3'>
+                                    <div className='w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center'>
+                                        <Globe className='h-5 w-5 text-white' />
+                                    </div>
+                                    <h4 className='font-semibold text-white'>{namespace.name}</h4>
                                 </div>
-                                <h4 className='font-semibold text-white'>{namespace.name}</h4>
+                                <Button
+                                    variant='outline'
+                                    className='text-gray-400 hover:text-white cursor-pointer'
+                                    onClick={e => handleMoreVerticalClick(e, namespace)}>
+                                    <MoreVertical className='h-4 w-4' />
+                                </Button>
                             </div>
-                            <button
-                                className='text-gray-400 hover:text-white'
-                                onClick={e => handleMoreVerticalClick(e, namespace)}>
-                                <MoreVertical className='h-4 w-4' />
-                            </button>
-                        </div>
 
-                        <div className='space-y-2 text-sm text-gray-400'>
-                            <div className='flex items-center justify-between'>
-                                <span>Versions:</span>
-                                <span>{namespace.usage?.versions || 0}</span>
-                            </div>
-                            <div className='flex items-center justify-between'>
-                                <span>Languages:</span>
-                                <span>{namespace.usage?.languages || 0}</span>
+                            <div className='space-y-2 text-sm text-gray-400'>
+                                <div className='flex items-center justify-between'>
+                                    <span>Versions:</span>
+                                    <span>{namespace.usage?.versions || 0}</span>
+                                </div>
+                                <div className='flex items-center justify-between'>
+                                    <span>Languages:</span>
+                                    <span>{namespace.usage?.languages || 0}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     ))}
                 </div>
 
@@ -334,17 +328,14 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                         <Button
                             onClick={() => loadMore(20)}
                             variant='outline'
-                            className='border-gray-700 text-gray-300 hover:bg-gray-800'>
+                            className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
                             Load More Namespaces
                         </Button>
                     </div>
                 )}
                 {status === 'LoadingMore' && (
                     <div className='flex justify-center'>
-                        <Button
-                            disabled
-                            variant='outline'
-                            className='border-gray-700 text-gray-300'>
+                        <Button disabled variant='outline' className='border-gray-700 text-gray-300'>
                             Loading...
                         </Button>
                     </div>
@@ -379,21 +370,15 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                                 setIsDeleteNamespaceOpen(true);
                                 setIsEditNamespaceOpen(false);
                             }}
-                            className='border-red-700 text-red-400 hover:bg-red-900/20'>
+                            className='border-red-700 text-red-400 hover:bg-red-900/20 cursor-pointer'>
                             <Trash2 className='h-4 w-4 mr-2' />
                             Delete
                         </Button>
                         <div className='flex gap-2'>
                             <Button
-                                variant='outline'
-                                onClick={() => setIsEditNamespaceOpen(false)}
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800'>
-                                Cancel
-                            </Button>
-                            <Button
                                 onClick={handleEditNamespace}
                                 disabled={!editNamespaceName.trim()}
-                                className='bg-white text-black hover:bg-gray-200'>
+                                className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
                                 Save Changes
                             </Button>
                         </div>
@@ -416,16 +401,17 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                         <Button
                             variant='outline'
                             onClick={() => setIsDeleteNamespaceOpen(false)}
-                            className='border-gray-700 text-gray-300 hover:bg-gray-800'>
+                            className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
                             Cancel
                         </Button>
-                        <Button onClick={handleDeleteNamespace} className='bg-red-600 text-white hover:bg-red-700'>
+                        <Button
+                            onClick={handleDeleteNamespace}
+                            className='bg-red-600 text-white hover:bg-red-700 cursor-pointer'>
                             Delete Namespace
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
         </div>
     );
 }

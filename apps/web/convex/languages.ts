@@ -1,6 +1,7 @@
 import { paginationOptsValidator } from 'convex/server';
-import { mutation, query } from './_generated/server';
+import { mutation, MutationCtx, query } from './_generated/server';
 import { v } from 'convex/values';
+import Ajv2020 from 'ajv/dist/2020';
 
 // Query to get languages for a namespace version with pagination
 export const getLanguages = query({
@@ -503,8 +504,57 @@ export const updateLanguageContent = mutation({
 
         try {
             // Validate JSON content
-            JSON.parse(args.content);
+            const parsedContent = JSON.parse(args.content);
+
+            // Get namespace and check if this is the primary language
+            const namespace = await ctx.db.get(namespaceVersion.namespaceId);
+            if (!namespace) {
+                throw new Error('Namespace not found');
+            }
+
+            const isCurrentLanguagePrimary = namespace.primaryLanguageId === args.languageId;
+
+            // If this is not the primary language, validate against schema
+            if (!isCurrentLanguagePrimary && namespaceVersion.jsonSchemaFileId) {
+                try {
+                    // Fetch the primary language schema
+                    const schemaFileUrl = await ctx.storage.getUrl(namespaceVersion.jsonSchemaFileId);
+                    if (schemaFileUrl) {
+                        const schemaResponse = await fetch(schemaFileUrl);
+                        const schemaContent = await schemaResponse.text();
+                        const primarySchema = JSON.parse(schemaContent);
+
+                        // Validate against schema using AJV
+                        const ajv = new Ajv2020({ allErrors: true, verbose: true, strict: true });
+                        const validate = ajv.compile(primarySchema);
+                        const isValid = validate(parsedContent);
+
+                        if (!isValid) {
+                            const errorMessages =
+                                validate.errors
+                                    ?.map(err => `${err.instancePath || 'root'}: ${err.message}`)
+                                    .join('; ') || 'Unknown validation errors';
+
+                            throw new Error(
+                                `Schema validation failed: ${errorMessages}. Non-primary languages must match the primary language structure.`
+                            );
+                        }
+
+                        console.log(`✅ Schema validation passed for non-primary language: ${language.languageCode}`);
+                    }
+                } catch (schemaError) {
+                    console.error('Schema validation error:', schemaError);
+                    if (schemaError instanceof Error && schemaError.message.includes('Schema validation failed')) {
+                        throw schemaError; // Re-throw validation errors
+                    }
+                    // Continue if schema fetch/parse fails (don't block saves)
+                    console.warn('Could not validate against schema, proceeding with save');
+                }
+            }
         } catch (error) {
+            if (error instanceof Error && error.message.includes('Schema validation failed')) {
+                throw error; // Re-throw schema validation errors
+            }
             throw new Error('Invalid JSON content');
         }
 
@@ -652,3 +702,1246 @@ export const getLanguageContent = query({
         }
     },
 });
+
+// Mutation to save/update JSON schema for a namespace version
+export const saveJsonSchema = mutation({
+    args: {
+        namespaceVersionId: v.id('namespaceVersions'),
+        workspaceId: v.id('workspaces'),
+        jsonSchema: v.any(), // The JSON schema object
+        primaryLanguageId: v.id('languages'),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error('Not authenticated');
+        }
+
+        // Verify user has access to this workspace
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        if (identity.org !== workspace.clerkId) {
+            throw new Error('Unauthorized: Can only update schemas in organization workspaces');
+        }
+
+        // Verify namespace version exists and user has access
+        const namespaceVersion = await ctx.db.get(args.namespaceVersionId);
+        if (!namespaceVersion) {
+            throw new Error('Namespace version not found');
+        }
+
+        // Get namespace to verify project ownership
+        const namespace = await ctx.db.get(namespaceVersion.namespaceId);
+        if (!namespace) {
+            throw new Error('Namespace not found');
+        }
+
+        // Get project to verify workspace ownership
+        const project = await ctx.db.get(namespace.projectId);
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Access denied: Project does not belong to workspace');
+        }
+
+        // Verify the primary language exists and belongs to this namespace version
+        const primaryLanguage = await ctx.db.get(args.primaryLanguageId);
+        if (!primaryLanguage || primaryLanguage.namespaceVersionId !== args.namespaceVersionId) {
+            throw new Error('Primary language not found or does not belong to this namespace version');
+        }
+
+        // Store the JSON schema as a file
+        const schemaContent = JSON.stringify(args.jsonSchema, null, 2);
+        const schemaBlob = new Blob([schemaContent], { type: 'application/json' });
+
+        const uploadUrl = await ctx.storage.generateUploadUrl();
+        const uploadResponse = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: schemaBlob,
+        });
+
+        const { storageId } = await uploadResponse.json();
+
+        // Delete old schema file if it exists
+        if (namespaceVersion.jsonSchemaFileId) {
+            await ctx.storage.delete(namespaceVersion.jsonSchemaFileId);
+        }
+
+        // Update namespace version with schema file ID
+        await ctx.db.patch(args.namespaceVersionId, {
+            jsonSchemaFileId: storageId,
+            jsonSchemaSize: schemaBlob.size,
+            schemaUpdatedAt: Date.now(),
+        });
+
+        return storageId;
+    },
+});
+
+// Query to get JSON schema for a namespace version
+export const getJsonSchema = query({
+    args: {
+        namespaceVersionId: v.id('namespaceVersions'),
+        workspaceId: v.id('workspaces'),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error('Not authenticated');
+        }
+
+        // Verify user has access to this workspace
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        if (identity.org !== workspace.clerkId) {
+            throw new Error('Unauthorized: Can only access schemas in organization workspaces');
+        }
+
+        // Get namespace version and verify access
+        const namespaceVersion = await ctx.db.get(args.namespaceVersionId);
+        if (!namespaceVersion) {
+            throw new Error('Namespace version not found');
+        }
+
+        const namespace = await ctx.db.get(namespaceVersion.namespaceId);
+        if (!namespace) {
+            throw new Error('Namespace not found');
+        }
+
+        const project = await ctx.db.get(namespace.projectId);
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Access denied: Project does not belong to workspace');
+        }
+
+        // Return null if no schema exists
+        if (!namespaceVersion.jsonSchemaFileId) {
+            return null;
+        }
+
+        try {
+            // Fetch and parse the schema file
+            const fileUrl = await ctx.storage.getUrl(namespaceVersion.jsonSchemaFileId);
+            if (!fileUrl) {
+                console.warn('Schema file URL is null for namespace version:', args.namespaceVersionId);
+                return null;
+            }
+
+            const response = await fetch(fileUrl);
+            const schemaContent = await response.text();
+            return JSON.parse(schemaContent);
+        } catch (error) {
+            console.error('Failed to fetch schema content:', error);
+            return null;
+        }
+    },
+});
+
+// Mutation to synchronize all languages in a namespace version with primary language changes
+export const synchronizeLanguages = mutation({
+    args: {
+        namespaceVersionId: v.id('namespaceVersions'),
+        workspaceId: v.id('workspaces'),
+        primaryLanguageId: v.id('languages'),
+        changeMetadata: v.object({
+            addedKeys: v.array(v.string()),
+            deletedKeys: v.array(v.string()),
+            changedTypes: v.array(
+                v.object({
+                    key: v.string(),
+                    oldType: v.string(),
+                    newType: v.string(),
+                })
+            ),
+        }),
+        jsonSchema: v.any(), // The updated JSON schema
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error('Not authenticated');
+        }
+
+        // Verify user has access to this workspace
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        if (identity.org !== workspace.clerkId) {
+            throw new Error('Unauthorized: Can only synchronize languages in organization workspaces');
+        }
+
+        // Get all languages in this namespace version
+        const allLanguages = await ctx.db
+            .query('languages')
+            .withIndex('by_namespace_version', q => q.eq('namespaceVersionId', args.namespaceVersionId))
+            .collect();
+
+        if (allLanguages.length === 0) {
+            return { synchronized: 0, errors: [] };
+        }
+
+        const primaryLanguage = allLanguages.find(lang => lang._id === args.primaryLanguageId);
+        if (!primaryLanguage) {
+            throw new Error('Primary language not found');
+        }
+
+        const nonPrimaryLanguages = allLanguages.filter(lang => lang._id !== args.primaryLanguageId);
+        const errors: string[] = [];
+        let synchronized = 0;
+
+        // Helper function to validate JSON against schema
+        const validateWithAjv = (data: any, schema: any) => {
+            const ajv = new Ajv2020({ allErrors: true, verbose: true, strict: true });
+            const validate = ajv.compile(schema);
+            const isValid = validate(data);
+            return { isValid, errors: validate.errors || null };
+        };
+
+        // Helper function to apply structural changes to a language JSON
+        const applySyncChanges = (languageJson: any, changes: typeof args.changeMetadata): any => {
+            const result = { ...languageJson };
+
+            // Apply deletions (remove keys that were deleted from primary)
+            const deleteKeyFromObject = (obj: any, keyPath: string) => {
+                const keys = keyPath.split('.');
+                const lastKey = keys.pop();
+                if (!lastKey) return;
+
+                let current = obj;
+                for (const key of keys) {
+                    if (current && typeof current === 'object' && key in current) {
+                        current = current[key];
+                    } else {
+                        return; // Path doesn't exist
+                    }
+                }
+
+                if (current && typeof current === 'object' && lastKey in current) {
+                    delete current[lastKey];
+                }
+            };
+
+            // Apply additions (add keys that were added to primary with empty/default values)
+            const addKeyToObject = (obj: any, keyPath: string, defaultValue: any) => {
+                const keys = keyPath.split('.');
+                const lastKey = keys.pop();
+                if (!lastKey) return;
+
+                let current = obj;
+                for (const key of keys) {
+                    if (!current || typeof current !== 'object') return;
+                    if (!(key in current)) {
+                        current[key] = {};
+                    }
+                    current = current[key];
+                }
+
+                if (current && typeof current === 'object') {
+                    current[lastKey] = defaultValue;
+                }
+            };
+
+            // Delete removed keys
+            changes.deletedKeys.forEach(key => deleteKeyFromObject(result, key));
+
+            // Add new keys with empty string defaults
+            changes.addedKeys.forEach(key => addKeyToObject(result, key, ''));
+
+            // Handle type changes by preserving existing values if possible, otherwise use defaults
+            changes.changedTypes.forEach(change => {
+                const keys = change.key.split('.');
+                let current = result;
+                for (let i = 0; i < keys.length - 1; i++) {
+                    if (current && typeof current === 'object' && keys[i] in current) {
+                        current = current[keys[i]];
+                    } else {
+                        return; // Path doesn't exist
+                    }
+                }
+
+                const lastKey = keys[keys.length - 1];
+                if (current && typeof current === 'object' && lastKey in current) {
+                    // Try to preserve value if types are compatible
+                    const currentValue = current[lastKey];
+                    if (change.newType === 'string' && typeof currentValue !== 'string') {
+                        current[lastKey] = String(currentValue || '');
+                    } else if (change.newType === 'number' && typeof currentValue !== 'number') {
+                        const num = Number(currentValue);
+                        current[lastKey] = isNaN(num) ? 0 : num;
+                    } else if (change.newType === 'boolean' && typeof currentValue !== 'boolean') {
+                        current[lastKey] = Boolean(currentValue);
+                    } else if (change.newType === 'object' && typeof currentValue !== 'object') {
+                        current[lastKey] = {};
+                    } else if (change.newType === 'array' && !Array.isArray(currentValue)) {
+                        current[lastKey] = [];
+                    }
+                }
+            });
+
+            return result;
+        };
+
+        // Process each non-primary language
+        for (const language of nonPrimaryLanguages) {
+            try {
+                if (!language.fileId) {
+                    // Create empty language file with structure from primary
+                    const emptyContent = applySyncChanges({}, args.changeMetadata);
+                    const contentBlob = new Blob([JSON.stringify(emptyContent, null, 2)], { type: 'application/json' });
+
+                    const uploadUrl = await ctx.storage.generateUploadUrl();
+                    const uploadResponse = await fetch(uploadUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: contentBlob,
+                    });
+
+                    const { storageId } = await uploadResponse.json();
+
+                    await ctx.db.patch(language._id, {
+                        fileId: storageId,
+                        fileSize: contentBlob.size,
+                    });
+
+                    synchronized++;
+                    continue;
+                }
+
+                // Get existing language content
+                const fileUrl = await ctx.storage.getUrl(language.fileId);
+                if (!fileUrl) {
+                    errors.push(`Failed to get file URL for language ${language.languageCode}`);
+                    continue;
+                }
+
+                const response = await fetch(fileUrl);
+                const existingContent = await response.text();
+                const languageJson = JSON.parse(existingContent);
+
+                // Apply structural changes
+                const updatedJson = applySyncChanges(languageJson, args.changeMetadata);
+
+                // Validate against schema
+                const validation = validateWithAjv(updatedJson, args.jsonSchema);
+                if (!validation.isValid) {
+                    errors.push(
+                        `Validation failed for ${language.languageCode}: ${validation.errors?.map(e => e.message).join(', ')}`
+                    );
+                    continue;
+                }
+
+                // Save updated content
+                const updatedContent = JSON.stringify(updatedJson, null, 2);
+                const updatedBlob = new Blob([updatedContent], { type: 'application/json' });
+
+                const uploadUrl = await ctx.storage.generateUploadUrl();
+                const uploadResponse = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: updatedBlob,
+                });
+
+                const { storageId } = await uploadResponse.json();
+
+                // Delete old file and update language record
+                await ctx.storage.delete(language.fileId);
+                await ctx.db.patch(language._id, {
+                    fileId: storageId,
+                    fileSize: updatedBlob.size,
+                });
+
+                synchronized++;
+            } catch (error) {
+                errors.push(`Failed to sync ${language.languageCode}: ${error}`);
+            }
+        }
+
+        return {
+            synchronized,
+            total: nonPrimaryLanguages.length,
+            errors,
+        };
+    },
+});
+
+// Enhanced mutation to handle primary language saves with automatic schema generation and synchronization
+export const updatePrimaryLanguageWithSync = mutation({
+    args: {
+        languageId: v.id('languages'),
+        workspaceId: v.id('workspaces'),
+        content: v.string(), // JSON content as string
+        previousContent: v.optional(v.string()), // Previous content to detect changes
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error('Not authenticated');
+        }
+
+        // Verify user has access to this workspace
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        if (identity.org !== workspace.clerkId) {
+            throw new Error('Unauthorized: Can only update languages in organization workspaces');
+        }
+
+        const language = await ctx.db.get(args.languageId);
+        if (!language) {
+            throw new Error('Language not found');
+        }
+
+        // Verify access through the hierarchy
+        const namespaceVersion = await ctx.db.get(language.namespaceVersionId);
+        if (!namespaceVersion) {
+            throw new Error('Namespace version not found');
+        }
+
+        const namespace = await ctx.db.get(namespaceVersion.namespaceId);
+        if (!namespace) {
+            throw new Error('Namespace not found');
+        }
+
+        const project = await ctx.db.get(namespace.projectId);
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Access denied: Project does not belong to workspace');
+        }
+
+        // Verify this is the primary language
+        if (namespace.primaryLanguageId !== args.languageId) {
+            throw new Error(
+                'This mutation is only for primary languages. Use updateLanguageContent for other languages.'
+            );
+        }
+
+        try {
+            // Validate JSON content
+            const parsedContent = JSON.parse(args.content);
+
+            // Generate JSON schema from the content
+            const generateJsonSchemaFromContent = (content: any): any => {
+                const generateSchema = (value: any): any => {
+                    if (value === null) {
+                        return { type: 'null' };
+                    }
+
+                    if (Array.isArray(value)) {
+                        if (value.length === 0) {
+                            return { type: 'array', items: {}, minItems: 0, maxItems: 0 };
+                        }
+
+                        // Use tuple schema for exact array structure
+                        const prefixItems = value.map(item => generateSchema(item));
+                        return {
+                            type: 'array',
+                            prefixItems: prefixItems,
+                            minItems: value.length,
+                            maxItems: value.length,
+                            additionalItems: false,
+                        };
+                    }
+
+                    if (typeof value === 'object' && value !== null) {
+                        const properties: any = {};
+                        const required: string[] = [];
+
+                        for (const [key, val] of Object.entries(value)) {
+                            properties[key] = generateSchema(val);
+                            required.push(key);
+                        }
+
+                        return {
+                            type: 'object',
+                            properties,
+                            required,
+                            additionalProperties: false,
+                        };
+                    }
+
+                    return { type: typeof value };
+                };
+
+                return {
+                    $schema: 'https://json-schema.org/draft/2020-12/schema',
+                    ...generateSchema(content),
+                };
+            };
+
+            const jsonSchema = generateJsonSchemaFromContent(parsedContent);
+
+            // Save the primary language content first
+            const contentBlob = new Blob([args.content], { type: 'application/json' });
+            const uploadUrl = await ctx.storage.generateUploadUrl();
+            const uploadResponse = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: contentBlob,
+            });
+
+            const { storageId } = await uploadResponse.json();
+
+            // Delete the old file if it exists
+            if (language.fileId) {
+                await ctx.storage.delete(language.fileId);
+            }
+
+            // Update the primary language record
+            await ctx.db.patch(args.languageId, {
+                fileId: storageId,
+                fileSize: contentBlob.size,
+            });
+
+            // Save JSON schema to backend
+            const schemaContent = JSON.stringify(jsonSchema, null, 2);
+            const schemaBlob = new Blob([schemaContent], { type: 'application/json' });
+
+            const schemaUploadUrl = await ctx.storage.generateUploadUrl();
+            const schemaUploadResponse = await fetch(schemaUploadUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: schemaBlob,
+            });
+
+            const { storageId: schemaStorageId } = await schemaUploadResponse.json();
+
+            // Delete old schema file if it exists
+            if (namespaceVersion.jsonSchemaFileId) {
+                await ctx.storage.delete(namespaceVersion.jsonSchemaFileId);
+            }
+
+            // Update namespace version with schema file ID
+            await ctx.db.patch(language.namespaceVersionId, {
+                jsonSchemaFileId: schemaStorageId,
+                jsonSchemaSize: schemaBlob.size,
+                schemaUpdatedAt: Date.now(),
+            });
+
+            console.log('📋 JSON Schema saved to backend storage');
+
+            // Detect structural changes if previous content is provided
+            let hasStructuralChanges = false;
+            let changeDetails: any = null;
+
+            if (args.previousContent) {
+                try {
+                    const previousParsedContent = JSON.parse(args.previousContent);
+                    changeDetails = detectStructuralChanges(previousParsedContent, parsedContent);
+                    hasStructuralChanges = changeDetails.hasStructuralChanges;
+                } catch (error) {
+                    console.warn('Could not parse previous content for change detection:', error);
+                }
+            }
+
+            // If there are structural changes or this is first time, synchronize other languages
+            if (hasStructuralChanges || !args.previousContent) {
+                console.log('🔄 Starting language synchronization');
+
+                // Get all other languages in this namespace version
+                const allLanguages = await ctx.db
+                    .query('languages')
+                    .withIndex('by_namespace_version', q => q.eq('namespaceVersionId', language.namespaceVersionId))
+                    .collect();
+
+                const otherLanguages = allLanguages.filter(lang => lang._id !== args.languageId);
+                let synchronized = 0;
+                const errors: string[] = [];
+
+                // Process each other language
+                for (const otherLanguage of otherLanguages) {
+                    try {
+                        let targetContent;
+
+                        if (!otherLanguage.fileId) {
+                            // No existing file - copy entire primary language structure
+                            targetContent = parsedContent;
+                            console.log(
+                                `📄 Creating new file for ${otherLanguage.languageCode} with primary language structure`
+                            );
+                        } else {
+                            // Get existing content and apply structural changes
+                            const fileUrl = await ctx.storage.getUrl(otherLanguage.fileId);
+                            if (!fileUrl) {
+                                // Fallback to copy entire structure
+                                targetContent = parsedContent;
+                            } else {
+                                const response = await fetch(fileUrl);
+                                const existingContent = await response.text();
+                                const existingJson = JSON.parse(existingContent);
+
+                                // Apply structural synchronization while preserving existing values
+                                targetContent = applyStructuralSync(existingJson, parsedContent);
+                                console.log(`🔧 Applied structural sync for ${otherLanguage.languageCode}`);
+                            }
+                        }
+
+                        // Validate against schema
+                        const ajv = new Ajv2020({ allErrors: true, verbose: true, strict: true });
+                        const validate = ajv.compile(jsonSchema);
+                        const isValid = validate(targetContent);
+
+                        if (!isValid) {
+                            errors.push(
+                                `Validation failed for ${otherLanguage.languageCode}: ${validate.errors?.map(e => e.message).join(', ')}`
+                            );
+                            continue;
+                        }
+
+                        // Save the synchronized content
+                        const syncedContentBlob = new Blob([JSON.stringify(targetContent, null, 2)], {
+                            type: 'application/json',
+                        });
+                        const syncUploadUrl = await ctx.storage.generateUploadUrl();
+                        const syncUploadResponse = await fetch(syncUploadUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: syncedContentBlob,
+                        });
+
+                        const { storageId: syncStorageId } = await syncUploadResponse.json();
+
+                        // Delete old file and update language record
+                        if (otherLanguage.fileId) {
+                            await ctx.storage.delete(otherLanguage.fileId);
+                        }
+
+                        await ctx.db.patch(otherLanguage._id, {
+                            fileId: syncStorageId,
+                            fileSize: syncedContentBlob.size,
+                        });
+
+                        synchronized++;
+                    } catch (error) {
+                        errors.push(`Failed to sync ${otherLanguage.languageCode}: ${error}`);
+                    }
+                }
+
+                console.log(`✅ Synchronized ${synchronized} languages`);
+
+                return {
+                    success: true,
+                    synchronized,
+                    total: otherLanguages.length,
+                    errors,
+                    schemaUpdated: true,
+                };
+            }
+
+            return {
+                success: true,
+                synchronized: 0,
+                total: 0,
+                errors: [],
+                schemaUpdated: true,
+            };
+        } catch (error) {
+            console.error('Primary language update failed:', error);
+            throw error;
+        }
+    },
+});
+
+// Helper function to apply structural synchronization while preserving existing values
+function detectStructuralChanges(
+    oldObj: any,
+    newObj: any
+): {
+    hasStructuralChanges: boolean;
+    addedPaths: { path: string; value: any }[];
+    deletedPaths: { path: string; value: any }[];
+    changedTypes: { path: string; oldValue: any; newValue: any }[];
+} {
+    const result = {
+        hasStructuralChanges: false,
+        addedPaths: [] as { path: string; value: any }[],
+        deletedPaths: [] as { path: string; value: any }[],
+        changedTypes: [] as { path: string; oldValue: any; newValue: any }[],
+    };
+
+    const compare = (old: any, current: any, path = '') => {
+        if (old === null && current === null) return;
+
+        const oldType = old === null ? 'null' : Array.isArray(old) ? 'array' : typeof old;
+        const currentType = current === null ? 'null' : Array.isArray(current) ? 'array' : typeof current;
+
+        if (oldType !== currentType) {
+            result.changedTypes.push({ path, oldValue: old, newValue: current });
+            result.hasStructuralChanges = true;
+            return;
+        }
+
+        if (Array.isArray(old) && Array.isArray(current)) {
+            const maxLength = Math.max(old.length, current.length);
+
+            for (let i = 0; i < maxLength; i++) {
+                const currentPath = path ? `${path}[${i}]` : `[${i}]`;
+
+                if (i >= old.length) {
+                    result.addedPaths.push({ path: currentPath, value: current[i] });
+                    result.hasStructuralChanges = true;
+                } else if (i >= current.length) {
+                    result.deletedPaths.push({ path: currentPath, value: old[i] });
+                    result.hasStructuralChanges = true;
+                } else {
+                    compare(old[i], current[i], currentPath);
+                }
+            }
+        } else if (oldType === 'object' && currentType === 'object' && old !== null && current !== null) {
+            const allKeys = new Set([...Object.keys(old), ...Object.keys(current)]);
+
+            for (const key of allKeys) {
+                const currentPath = path ? `${path}.${key}` : key;
+
+                if (!(key in old)) {
+                    result.addedPaths.push({ path: currentPath, value: current[key] });
+                    result.hasStructuralChanges = true;
+                } else if (!(key in current)) {
+                    result.deletedPaths.push({ path: currentPath, value: old[key] });
+                    result.hasStructuralChanges = true;
+                } else {
+                    compare(old[key], current[key], currentPath);
+                }
+            }
+        }
+    };
+
+    compare(oldObj, newObj);
+    return result;
+}
+
+function applyStructuralSync(existingLanguage: any, primaryLanguage: any): any {
+    const result = JSON.parse(JSON.stringify(existingLanguage)); // Deep clone
+
+    const applyChanges = (existing: any, primary: any, path = ''): any => {
+        if (primary === null) return null;
+
+        const primaryType = Array.isArray(primary) ? 'array' : typeof primary;
+        const existingType =
+            existing === null || existing === undefined
+                ? 'undefined'
+                : Array.isArray(existing)
+                  ? 'array'
+                  : typeof existing;
+
+        // If types don't match, use primary structure
+        if (existingType !== primaryType || existing === undefined || existing === null) {
+            return primary; // Use primary language value for new/type-changed nodes
+        }
+
+        if (Array.isArray(primary)) {
+            const syncedArray = [];
+
+            // Sync array structure exactly
+            for (let i = 0; i < primary.length; i++) {
+                if (i < existing.length) {
+                    // Preserve existing value if structure matches, otherwise use primary
+                    syncedArray[i] = applyChanges(existing[i], primary[i], `${path}[${i}]`);
+                } else {
+                    // New array element - use primary language value
+                    syncedArray[i] = primary[i];
+                }
+            }
+
+            return syncedArray;
+        }
+
+        if (primaryType === 'object' && primary !== null) {
+            const syncedObject: any = {};
+
+            // Process all keys from primary language
+            for (const key in primary) {
+                const currentPath = path ? `${path}.${key}` : key;
+
+                if (key in existing) {
+                    // Key exists - recursively sync
+                    syncedObject[key] = applyChanges(existing[key], primary[key], currentPath);
+                } else {
+                    // New key - use primary language value
+                    syncedObject[key] = primary[key];
+                }
+            }
+
+            return syncedObject;
+        }
+
+        // For primitives, preserve existing value
+        return existing;
+    };
+
+    return applyChanges(result, primaryLanguage);
+}
+
+// New mutation that processes change operations for more precise updates
+export const applyChangeOperations = mutation({
+    args: {
+        languageId: v.id('languages'),
+        workspaceId: v.id('workspaces'),
+        changeSet: v.object({
+            operations: v.array(
+                v.object({
+                    type: v.union(v.literal('add'), v.literal('delete'), v.literal('modify'), v.literal('move')),
+                    path: v.string(),
+                    value: v.optional(v.any()),
+                    oldValue: v.optional(v.any()),
+                    index: v.optional(v.number()),
+                    parentType: v.union(v.literal('object'), v.literal('array'), v.literal('root')),
+                })
+            ),
+            affectedPaths: v.array(v.string()),
+            hasStructuralChanges: v.boolean(),
+            metadata: v.object({
+                timestamp: v.number(),
+                languageId: v.string(),
+                isPrimaryLanguage: v.boolean(),
+            }),
+        }),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error('Not authenticated');
+        }
+
+        // Verify user has access to this workspace
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        if (identity.org !== workspace.clerkId) {
+            throw new Error('Unauthorized: Can only update languages in organization workspaces');
+        }
+
+        const language = await ctx.db.get(args.languageId);
+        if (!language) {
+            throw new Error('Language not found');
+        }
+
+        // Verify access through the hierarchy
+        const namespaceVersion = await ctx.db.get(language.namespaceVersionId);
+        if (!namespaceVersion) {
+            throw new Error('Namespace version not found');
+        }
+
+        const namespace = await ctx.db.get(namespaceVersion.namespaceId);
+        if (!namespace) {
+            throw new Error('Namespace not found');
+        }
+
+        const project = await ctx.db.get(namespace.projectId);
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Access denied: Project does not belong to workspace');
+        }
+
+        const isPrimaryLanguage = namespace.primaryLanguageId === args.languageId;
+        const changeSet = args.changeSet;
+
+        // For non-primary languages, reject structural changes
+        if (!isPrimaryLanguage && changeSet.hasStructuralChanges) {
+            throw new Error(
+                'Non-primary languages cannot make structural changes. Only primitive values can be modified.'
+            );
+        }
+
+        try {
+            // Get current language content
+            let currentContent: any = {};
+
+            if (language.fileId) {
+                const fileUrl = await ctx.storage.getUrl(language.fileId);
+                if (fileUrl) {
+                    const response = await fetch(fileUrl);
+                    const contentText = await response.text();
+                    currentContent = JSON.parse(contentText);
+                }
+            }
+
+            // Apply change operations to current content
+            const updatedContent = applyChangeOperationsToJson(currentContent, changeSet.operations);
+
+            // For primary language: Generate schema and potentially sync other languages
+            let syncResult = null;
+            if (isPrimaryLanguage) {
+                // Generate JSON schema
+                const jsonSchema = generateJsonSchemaFromContent(updatedContent);
+
+                // Save JSON schema to backend
+                const schemaContent = JSON.stringify(jsonSchema, null, 2);
+                const schemaBlob = new Blob([schemaContent], { type: 'application/json' });
+
+                const schemaUploadUrl = await ctx.storage.generateUploadUrl();
+                const schemaUploadResponse = await fetch(schemaUploadUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: schemaBlob,
+                });
+
+                const { storageId: schemaStorageId } = await schemaUploadResponse.json();
+
+                // Delete old schema file if it exists
+                if (namespaceVersion.jsonSchemaFileId) {
+                    await ctx.storage.delete(namespaceVersion.jsonSchemaFileId);
+                }
+
+                // Update namespace version with schema file ID
+                await ctx.db.patch(language.namespaceVersionId, {
+                    jsonSchemaFileId: schemaStorageId,
+                    jsonSchemaSize: schemaBlob.size,
+                    schemaUpdatedAt: Date.now(),
+                });
+
+                // If there are structural changes, sync other languages
+                if (changeSet.hasStructuralChanges) {
+                    syncResult = await synchronizeLanguagesWithOperations(
+                        ctx,
+                        language.namespaceVersionId,
+                        args.languageId,
+                        changeSet.operations,
+                        jsonSchema,
+                        updatedContent
+                    );
+                }
+            } else {
+                // For non-primary languages, validate against existing schema
+                if (namespaceVersion.jsonSchemaFileId) {
+                    const schemaFileUrl = await ctx.storage.getUrl(namespaceVersion.jsonSchemaFileId);
+                    if (schemaFileUrl) {
+                        const schemaResponse = await fetch(schemaFileUrl);
+                        const schemaContent = await schemaResponse.text();
+                        const primarySchema = JSON.parse(schemaContent);
+
+                        // Validate against schema using AJV
+                        const ajv = new Ajv2020({ allErrors: true, verbose: true, strict: true });
+                        const validate = ajv.compile(primarySchema);
+                        const isValid = validate(updatedContent);
+
+                        if (!isValid) {
+                            const errorMessages =
+                                validate.errors
+                                    ?.map(err => `${err.instancePath || 'root'}: ${err.message}`)
+                                    .join('; ') || 'Unknown validation errors';
+
+                            throw new Error(`Schema validation failed: ${errorMessages}`);
+                        }
+                    }
+                }
+            }
+
+            // Save the updated content
+            const updatedContentString = JSON.stringify(updatedContent, null, 2);
+            const contentBlob = new Blob([updatedContentString], { type: 'application/json' });
+            const uploadUrl = await ctx.storage.generateUploadUrl();
+            const uploadResponse = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: contentBlob,
+            });
+
+            const { storageId } = await uploadResponse.json();
+
+            // Delete old file and update language record
+            if (language.fileId) {
+                await ctx.storage.delete(language.fileId);
+            }
+
+            await ctx.db.patch(args.languageId, {
+                fileId: storageId,
+                fileSize: contentBlob.size,
+            });
+
+            return {
+                success: true,
+                operationsApplied: changeSet.operations.length,
+                synchronized: syncResult?.synchronized || 0,
+                syncErrors: syncResult?.errors || [],
+                schemaUpdated: isPrimaryLanguage,
+            };
+        } catch (error) {
+            console.error('Failed to apply change operations:', error);
+            throw error;
+        }
+    },
+});
+
+// Helper function to apply change operations to JSON content
+function applyChangeOperationsToJson(content: any, operations: any[]): any {
+    let result = JSON.parse(JSON.stringify(content)); // Deep clone
+
+    for (const operation of operations) {
+        const path = operation.path;
+        const pathParts = parsePath(path);
+
+        if (operation.type === 'add') {
+            setValueAtPath(result, pathParts, operation.value);
+        } else if (operation.type === 'delete') {
+            deleteValueAtPath(result, pathParts);
+        } else if (operation.type === 'modify') {
+            setValueAtPath(result, pathParts, operation.value);
+        }
+        // 'move' operations would be more complex and can be added later if needed
+    }
+
+    return result;
+}
+
+// Helper function to parse JSON path into parts
+function parsePath(path: string): Array<string | number> {
+    if (!path) return [];
+
+    const parts: Array<string | number> = [];
+    const regex = /\[(\d+)\]|\.?([^.\[]+)/g;
+    let match;
+
+    while ((match = regex.exec(path)) !== null) {
+        if (match[1] !== undefined) {
+            // Array index
+            parts.push(parseInt(match[1], 10));
+        } else if (match[2] !== undefined) {
+            // Object key
+            parts.push(match[2]);
+        }
+    }
+
+    return parts;
+}
+
+// Helper function to set value at path
+function setValueAtPath(obj: any, pathParts: Array<string | number>, value: any): void {
+    let current = obj;
+
+    for (let i = 0; i < pathParts.length - 1; i++) {
+        const part = pathParts[i];
+
+        if (!(part in current)) {
+            // Create intermediate objects/arrays as needed
+            const nextPart = pathParts[i + 1];
+            current[part] = typeof nextPart === 'number' ? [] : {};
+        }
+
+        current = current[part];
+    }
+
+    if (pathParts.length > 0) {
+        const lastPart = pathParts[pathParts.length - 1];
+        current[lastPart] = value;
+    }
+}
+
+// Helper function to delete value at path
+function deleteValueAtPath(obj: any, pathParts: Array<string | number>): void {
+    if (pathParts.length === 0) return;
+
+    let current = obj;
+
+    for (let i = 0; i < pathParts.length - 1; i++) {
+        const part = pathParts[i];
+
+        if (!(part in current)) {
+            return; // Path doesn't exist
+        }
+
+        current = current[part];
+    }
+
+    const lastPart = pathParts[pathParts.length - 1];
+
+    if (Array.isArray(current) && typeof lastPart === 'number') {
+        current.splice(lastPart, 1);
+    } else if (typeof current === 'object' && current !== null) {
+        delete current[lastPart];
+    }
+}
+
+// Helper function to synchronize other languages with change operations
+async function synchronizeLanguagesWithOperations(
+    ctx: MutationCtx,
+    namespaceVersionId: any,
+    primaryLanguageId: any,
+    operations: any[],
+    jsonSchema: any,
+    primaryContent: any
+) {
+    // Get all other languages in this namespace version
+    const allLanguages = await ctx.db
+        .query('languages')
+        .withIndex('by_namespace_version', q => q.eq('namespaceVersionId', namespaceVersionId))
+        .collect();
+
+    const otherLanguages = allLanguages.filter((lang: any) => lang._id !== primaryLanguageId);
+    let synchronized = 0;
+    const errors: string[] = [];
+
+    // Process each other language
+    for (const otherLanguage of otherLanguages) {
+        try {
+            let targetContent: any;
+
+            if (!otherLanguage.fileId) {
+                // No existing file - copy entire primary language structure
+                targetContent = primaryContent;
+                console.log(`📄 Creating new file for ${otherLanguage.languageCode} with primary language structure`);
+            } else {
+                // Get existing content and apply operations selectively
+                const fileUrl = await ctx.storage.getUrl(otherLanguage.fileId);
+                if (!fileUrl) {
+                    // Fallback to copy entire structure
+                    targetContent = primaryContent;
+                } else {
+                    const response = await fetch(fileUrl);
+                    const existingContent = await response.text();
+                    const existingJson = JSON.parse(existingContent);
+
+                    // Apply structural operations while preserving values for non-structural changes
+                    targetContent = applyStructuralOperations(existingJson, operations, primaryContent);
+                    console.log(`🔧 Applied structural operations for ${otherLanguage.languageCode}`);
+                }
+            }
+
+            // Validate against schema
+            const ajv = new Ajv2020({ allErrors: true, verbose: true, strict: true });
+            const validate = ajv.compile(jsonSchema);
+            const isValid = validate(targetContent);
+
+            if (!isValid) {
+                errors.push(
+                    `Validation failed for ${otherLanguage.languageCode}: ${validate.errors?.map(e => e.message).join(', ')}`
+                );
+                continue;
+            }
+
+            // Save the synchronized content
+            const syncedContentBlob = new Blob([JSON.stringify(targetContent, null, 2)], { type: 'application/json' });
+            const syncUploadUrl = await ctx.storage.generateUploadUrl();
+            const syncUploadResponse = await fetch(syncUploadUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: syncedContentBlob,
+            });
+
+            const { storageId: syncStorageId } = await syncUploadResponse.json();
+
+            // Delete old file and update language record
+            if (otherLanguage.fileId) {
+                await ctx.storage.delete(otherLanguage.fileId);
+            }
+
+            await ctx.db.patch(otherLanguage._id, {
+                fileId: syncStorageId,
+                fileSize: syncedContentBlob.size,
+            });
+
+            synchronized++;
+        } catch (error) {
+            errors.push(`Failed to sync ${otherLanguage.languageCode}: ${error}`);
+        }
+    }
+
+    return {
+        synchronized,
+        total: otherLanguages.length,
+        errors,
+    };
+}
+
+// Helper function to apply structural operations while preserving existing values
+function applyStructuralOperations(existingContent: any, operations: any[], primaryContent: any): any {
+    let result = JSON.parse(JSON.stringify(existingContent)); // Deep clone
+
+    for (const operation of operations) {
+        if (operation.type === 'add') {
+            // For add operations, use the primary language value
+            const pathParts = parsePath(operation.path);
+            setValueAtPath(result, pathParts, operation.value);
+        } else if (operation.type === 'delete') {
+            // For delete operations, remove from existing content
+            const pathParts = parsePath(operation.path);
+            deleteValueAtPath(result, pathParts);
+        }
+        // For modify operations on structural changes (type changes),
+        // we use the primary language structure
+        else if (operation.type === 'modify' && operation.parentType !== 'root') {
+            const pathParts = parsePath(operation.path);
+            // Only apply if it's a structural change (type change)
+            const currentValue = getValueAtPath(result, pathParts);
+            const oldType = Array.isArray(operation.oldValue) ? 'array' : typeof operation.oldValue;
+            const newType = Array.isArray(operation.value) ? 'array' : typeof operation.value;
+
+            if (oldType !== newType) {
+                setValueAtPath(result, pathParts, operation.value);
+            }
+            // For same-type modifications, preserve the existing value
+        }
+    }
+
+    return result;
+}
+
+// Helper function to get value at path
+function getValueAtPath(obj: any, pathParts: Array<string | number>): any {
+    let current = obj;
+
+    for (const part of pathParts) {
+        if (current === null || current === undefined || !(part in current)) {
+            return undefined;
+        }
+        current = current[part];
+    }
+
+    return current;
+}
+
+// Helper function to generate JSON schema from content (simplified version)
+function generateJsonSchemaFromContent(content: any): any {
+    const generateSchema = (value: any): any => {
+        if (value === null) {
+            return { type: 'null' };
+        }
+
+        if (Array.isArray(value)) {
+            if (value.length === 0) {
+                return { type: 'array', items: {}, minItems: 0, maxItems: 0 };
+            }
+
+            // Use tuple schema for exact array structure
+            const prefixItems = value.map(item => generateSchema(item));
+            return {
+                type: 'array',
+                prefixItems: prefixItems,
+                minItems: value.length,
+                maxItems: value.length,
+                additionalItems: false,
+            };
+        }
+
+        if (typeof value === 'object' && value !== null) {
+            const properties: any = {};
+            const required: string[] = [];
+
+            for (const [key, val] of Object.entries(value)) {
+                properties[key] = generateSchema(val);
+                required.push(key);
+            }
+
+            return {
+                type: 'object',
+                properties,
+                required,
+                additionalProperties: false,
+            };
+        }
+
+        return { type: typeof value };
+    };
+
+    return {
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        ...generateSchema(content),
+    };
+}
