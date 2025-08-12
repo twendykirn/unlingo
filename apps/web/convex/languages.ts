@@ -1502,6 +1502,13 @@ export const applyChangeOperations = mutation({
                 isPrimaryLanguage: v.boolean(),
             }),
         }),
+        // New optional field for json-diff changes
+        languageChanges: v.optional(v.object({
+            changes: v.any(), // structured changes object with precise array indexing
+            timestamp: v.number(),
+            languageId: v.string(),
+            isPrimaryLanguage: v.boolean(),
+        })),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -1563,8 +1570,15 @@ export const applyChangeOperations = mutation({
                 }
             }
 
-            // Apply change operations to current content
-            const updatedContent = applyChangeOperationsToJson(currentContent, changeSet.operations);
+            // Apply changes to current content
+            let updatedContent: any;
+            if (args.languageChanges && args.languageChanges.changes) {
+                // Use json-diff format (for primary language saves)
+                updatedContent = applyJsonDiffToContent(currentContent, args.languageChanges.changes);
+            } else {
+                // Use legacy change operations format (fallback)
+                updatedContent = applyChangeOperationsToJson(currentContent, changeSet.operations);
+            }
 
             // For primary language: Generate schema and potentially sync other languages
             let syncResult = null;
@@ -1598,12 +1612,20 @@ export const applyChangeOperations = mutation({
                 });
 
                 // If there are structural changes, sync other languages
-                if (changeSet.hasStructuralChanges) {
+                const hasStructuralChanges = args.languageChanges?.changes 
+                    ? args.languageChanges.changes.hasStructuralChanges
+                    : changeSet.hasStructuralChanges;
+
+                if (hasStructuralChanges) {
+                    const changesForSync = args.languageChanges?.changes 
+                        ? args.languageChanges.changes.structuredChanges 
+                        : changeSet.operations;
+
                     syncResult = await synchronizeLanguagesWithOperations(
                         ctx,
                         language.namespaceVersionId,
                         args.languageId,
-                        changeSet.operations,
+                        changesForSync,
                         jsonSchema,
                         updatedContent
                     );
@@ -1656,9 +1678,14 @@ export const applyChangeOperations = mutation({
                 fileSize: contentBlob.size,
             });
 
+            // Calculate operations applied count
+            const operationsApplied = args.languageChanges?.changes ? 
+                (args.languageChanges.changes.structuredChanges?.length || 0) : // Count of structured changes
+                changeSet.operations.length; // Use operations length for legacy format
+
             return {
                 success: true,
-                operationsApplied: changeSet.operations.length,
+                operationsApplied,
                 synchronized: syncResult?.synchronized || 0,
                 syncErrors: syncResult?.errors || [],
                 schemaUpdated: isPrimaryLanguage,
@@ -1669,6 +1696,130 @@ export const applyChangeOperations = mutation({
         }
     },
 });
+
+// Helper function to apply structured changes to JSON content with precise array indexing
+function applyJsonDiffToContent(originalContent: any, structuredChangesData: any): any {
+    if (!structuredChangesData || !structuredChangesData.structuredChanges) {
+        return originalContent;
+    }
+
+    // Deep clone the original content
+    let result = JSON.parse(JSON.stringify(originalContent));
+    
+    // Apply each structured change in order
+    const changes = structuredChangesData.structuredChanges;
+    
+    for (const change of changes) {
+        result = applyStructuredChange(result, change);
+    }
+    
+    return result;
+}
+
+// Apply a single structured change to the content
+function applyStructuredChange(content: any, change: any): any {
+    const pathParts = parseJSONPath(change.path);
+    
+    if (change.type === 'add') {
+        return setValueAtJSONPath(content, pathParts, change.newValue, change.arrayIndex);
+    } else if (change.type === 'delete') {
+        return deleteValueAtJSONPath(content, pathParts, change.arrayIndex);
+    } else if (change.type === 'modify') {
+        return setValueAtJSONPath(content, pathParts, change.newValue, change.arrayIndex);
+    }
+    
+    return content;
+}
+
+// Parse JSON path with array indices (e.g., "items[2].title" -> ["items", 2, "title"])
+function parseJSONPath(path: string): Array<string | number> {
+    if (!path) return [];
+    
+    const parts: Array<string | number> = [];
+    const regex = /\[(\d+)\]|\.?([^.\[]+)/g;
+    let match;
+    
+    while ((match = regex.exec(path)) !== null) {
+        if (match[1] !== undefined) {
+            // Array index
+            parts.push(parseInt(match[1], 10));
+        } else if (match[2] !== undefined) {
+            // Object key
+            parts.push(match[2]);
+        }
+    }
+    
+    return parts;
+}
+
+// Set value at JSON path with precise array index handling
+function setValueAtJSONPath(obj: any, pathParts: Array<string | number>, value: any, arrayIndex?: number): any {
+    if (pathParts.length === 0) return value;
+    
+    const result = Array.isArray(obj) ? [...obj] : { ...obj };
+    const [currentKey, ...remainingPath] = pathParts;
+    
+    if (remainingPath.length === 0) {
+        // We're at the target location
+        if (typeof currentKey === 'number') {
+            // Array index operation
+            const arr = Array.isArray(result) ? result : [];
+            
+            // For array operations, use the arrayIndex if provided (for precise positioning)
+            // otherwise use currentKey (from path)
+            const targetIndex = arrayIndex !== undefined ? arrayIndex : currentKey;
+            
+            // Insert at specific index (for additions) or set at index (for modifications)
+            if (arrayIndex !== undefined) {
+                // This is an addition - insert at specific position
+                arr.splice(targetIndex, 0, value);
+            } else {
+                // This is a modification - set at existing index
+                arr[targetIndex] = value;
+            }
+            return arr;
+        } else {
+            // Object property
+            result[currentKey] = value;
+        }
+    } else {
+        // Recurse deeper
+        const nextValue = result[currentKey] || (typeof remainingPath[0] === 'number' ? [] : {});
+        result[currentKey] = setValueAtJSONPath(nextValue, remainingPath, value, arrayIndex);
+    }
+    
+    return result;
+}
+
+// Delete value at JSON path with precise array index handling
+function deleteValueAtJSONPath(obj: any, pathParts: Array<string | number>, arrayIndex?: number): any {
+    if (pathParts.length === 0) return obj;
+    
+    const result = Array.isArray(obj) ? [...obj] : { ...obj };
+    const [currentKey, ...remainingPath] = pathParts;
+    
+    if (remainingPath.length === 0) {
+        // We're at the target location to delete
+        if (typeof currentKey === 'number' && Array.isArray(result)) {
+            // Array index deletion - always use arrayIndex for precise positioning
+            // The currentKey from path might not match the actual deletion index
+            const indexToDelete = arrayIndex !== undefined ? arrayIndex : currentKey;
+            if (indexToDelete >= 0 && indexToDelete < result.length) {
+                result.splice(indexToDelete, 1);
+            }
+        } else {
+            // Object property deletion
+            delete result[currentKey];
+        }
+    } else {
+        // Recurse deeper
+        if (result[currentKey] !== undefined) {
+            result[currentKey] = deleteValueAtJSONPath(result[currentKey], remainingPath, arrayIndex);
+        }
+    }
+    
+    return result;
+}
 
 // Helper function to apply change operations to JSON content
 function applyChangeOperationsToJson(content: any, operations: any[]): any {
