@@ -10,11 +10,14 @@
 
 import type * as apiKeys from "../apiKeys.js";
 import type * as http from "../http.js";
+import type * as internalLang from "../internalLang.js";
+import type * as internalNamespaces from "../internalNamespaces.js";
 import type * as languages from "../languages.js";
 import type * as namespaceVersions from "../namespaceVersions.js";
 import type * as namespaces from "../namespaces.js";
 import type * as polar from "../polar.js";
 import type * as projects from "../projects.js";
+import type * as utils from "../utils.js";
 import type * as workspaces from "../workspaces.js";
 
 import type {
@@ -34,11 +37,14 @@ import type {
 declare const fullApi: ApiFromModules<{
   apiKeys: typeof apiKeys;
   http: typeof http;
+  internalLang: typeof internalLang;
+  internalNamespaces: typeof internalNamespaces;
   languages: typeof languages;
   namespaceVersions: typeof namespaceVersions;
   namespaces: typeof namespaces;
   polar: typeof polar;
   projects: typeof projects;
+  utils: typeof utils;
   workspaces: typeof workspaces;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

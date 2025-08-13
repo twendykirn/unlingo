@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useMutation, usePaginatedQuery } from 'convex/react';
+import { useQuery, useMutation, usePaginatedQuery, useAction } from 'convex/react';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { ArrowLeft, Plus, Languages, Star, Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ export default function VersionLanguagesPage() {
     const [newLanguageCode, setNewLanguageCode] = useState('');
 
     // Mutations
-    const createLanguage = useMutation(api.languages.createLanguage);
+    const createLanguage = useAction(api.languages.createLanguage);
     const deleteLanguage = useMutation(api.languages.deleteLanguage);
     const setPrimaryLanguage = useMutation(api.namespaces.setPrimaryLanguage);
 
@@ -216,7 +216,7 @@ export default function VersionLanguagesPage() {
                                     placeholder='e.g., en, es, fr, pt-BR'
                                     value={newLanguageCode}
                                     onChange={e => setNewLanguageCode(e.target.value)}
-                                    className='bg-gray-900 border-gray-700 text-white'
+                                    className='bg-gray-900 border-gray-700 text-white mt-2'
                                 />
                                 <p className='text-xs text-gray-500 mt-1'>
                                     Use ISO language codes like "en", "es", "fr", or "en-US", "pt-BR"
@@ -240,13 +240,13 @@ export default function VersionLanguagesPage() {
                                     setIsCreateLanguageOpen(false);
                                     setNewLanguageCode('');
                                 }}
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800'>
+                                className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleCreateLanguage}
                                 disabled={!newLanguageCode.trim()}
-                                className='bg-green-500 text-white hover:bg-green-600'>
+                                className='bg-green-500 text-white hover:bg-green-600 cursor-pointer'>
                                 Create Language
                             </Button>
                         </DialogFooter>

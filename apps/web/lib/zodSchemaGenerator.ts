@@ -110,7 +110,9 @@ function fixJsonSchemaForAjv(schema: any): any {
         }
     });
 
-    return fixed;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { $schema, ...rest } = fixed;
+    return rest;
 }
 
 export function generateSchemas(obj: JsonValue): {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useMutation, usePaginatedQuery } from 'convex/react';
+import { useQuery, useMutation, usePaginatedQuery, useAction } from 'convex/react';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { ArrowLeft, Plus, MoreVertical, GitBranch, Tag, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,7 @@ export default function NamespaceVersionsPage() {
     const [editVersionNumber, setEditVersionNumber] = useState('');
 
     // Mutations
-    const createVersion = useMutation(api.namespaceVersions.createNamespaceVersion);
+    const createVersion = useAction(api.namespaceVersions.createNamespaceVersion);
     const deleteVersion = useMutation(api.namespaceVersions.deleteNamespaceVersion);
 
     // Queries
@@ -189,7 +189,7 @@ export default function NamespaceVersionsPage() {
                                     placeholder='e.g., 1.0.0, 1.2.3-beta'
                                     value={newVersionNumber}
                                     onChange={e => setNewVersionNumber(e.target.value)}
-                                    className='bg-gray-900 border-gray-700 text-white'
+                                    className='bg-gray-900 border-gray-700 text-white mt-2'
                                 />
                             </div>
 
@@ -220,13 +220,13 @@ export default function NamespaceVersionsPage() {
                                     setNewVersionNumber('');
                                     setCopyFromVersion('');
                                 }}
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800'>
+                                className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleCreateVersion}
                                 disabled={!newVersionNumber.trim()}
-                                className='bg-blue-500 text-white hover:bg-blue-600'>
+                                className='bg-blue-500 text-white hover:bg-blue-600 cursor-pointer'>
                                 Create Version
                             </Button>
                         </DialogFooter>

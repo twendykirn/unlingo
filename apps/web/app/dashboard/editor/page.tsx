@@ -5,11 +5,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Plus, X, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useAction } from 'convex/react';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { debugZodSchema, validateWithAjv } from '@/lib/zodSchemaGenerator';
+import { validateWithAjv } from '@/lib/zodSchemaGenerator';
 import * as diff from 'json-diff';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EmptyValuesButton from './components/EmptyValuesButton';
@@ -69,14 +69,14 @@ export default function TranslationEditor() {
 
     const [isSaving, setIsSaving] = useState(false);
 
-    // Change tracking state
-
     // Track original content for change detection
     const [originalJsonContent, setOriginalJsonContent] = useState<string>('');
 
+    const [didInit, setDidInit] = useState(false);
+    const [loadingContent, setLoadingContent] = useState(false);
+
     // Backend queries and mutations
-    const updateLanguageContent = useMutation(api.languages.updateLanguageContent);
-    const applyChangeOperations = useMutation(api.languages.applyChangeOperations);
+    const applyChangeOperations = useAction(api.languages.applyChangeOperations);
 
     // Get current workspace
     const clerkId = organization?.id || user?.id;
@@ -94,25 +94,9 @@ export default function TranslationEditor() {
     );
 
     // Get language content as JSON object directly
-    const languageContent = useQuery(
-        api.languages.getLanguageContent,
-        languageId && currentWorkspace && language
-            ? {
-                  languageId,
-                  workspaceId: currentWorkspace._id,
-              }
-            : 'skip'
-    );
+    const getLanguageContent = useAction(api.languages.getLanguageContent);
 
-    const getJsonSchema = useQuery(
-        api.languages.getJsonSchema,
-        languageId && currentWorkspace && language?.namespaceVersionId
-            ? {
-                  namespaceVersionId: language.namespaceVersionId,
-                  workspaceId: currentWorkspace._id,
-              }
-            : 'skip'
-    );
+    const getJsonSchema = useAction(api.languages.getJsonSchema);
 
     // Derive current values from backend data
     const selectedLanguage = language?.languageCode || 'en';
@@ -152,11 +136,25 @@ export default function TranslationEditor() {
         }
     };
 
-    // Load language content from backend using the new query
-    useEffect(() => {
-        if (languageContent === undefined) return;
-
+    const getContentOnInit = async () => {
         try {
+            if (!languageId || !currentWorkspace || !language) return;
+
+            setLoadingContent(true);
+
+            const languageContent = await getLanguageContent({
+                languageId,
+                workspaceId: currentWorkspace._id,
+            });
+
+            const primarySchema = await getJsonSchema({
+                namespaceVersionId: language.namespaceVersionId,
+                workspaceId: currentWorkspace._id,
+            });
+
+            if (primarySchema) {
+                setPrimaryLanguageSchema(JSON.parse(primarySchema));
+            }
             // languageContent is already parsed JSON object from the query
             // It will be {} (empty object) if no content exists, which is fine
             const initialNodes = createNodesFromJson(languageContent);
@@ -165,13 +163,24 @@ export default function TranslationEditor() {
 
             // Initialize original content for change detection
             setOriginalJsonContent(JSON.stringify(languageContent, null, 2));
+            setDidInit(true);
         } catch (error) {
             console.error('Failed to process language content:', error);
             // Fallback to empty state if content is invalid
             nodes$.set([]);
             hasUnsavedChanges$.set(false);
+        } finally {
+            setLoadingContent(false);
         }
-    }, [languageContent]);
+    };
+
+    // Load language content from backend using the new query
+    useEffect(() => {
+        if (!didInit && languageId && currentWorkspace?._id && language) {
+            getContentOnInit();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [languageId, currentWorkspace, didInit, language]);
 
     // Navigate to and select an empty value node
     const navigateToEmptyValue = (nodeId: string) => {
@@ -244,25 +253,12 @@ export default function TranslationEditor() {
                 }
             }
 
-            // For primary language, generate schema for local validation
-            if (isPrimaryLanguage) {
-                const schemas = debugZodSchema(
-                    jsonContent,
-                    `Primary Language Schema - ${selectedLanguage.toUpperCase()}`
-                );
-
-                // Update local schema state for immediate validation
-                setPrimaryLanguageSchema(schemas.jsonSchema);
-            }
-
             // Generate changes using json-diff for primary language saves
             const originalJson = originalJsonContent ? JSON.parse(originalJsonContent) : {};
             const languageChanges = generateLanguageChanges(originalJson, jsonContent);
 
-            console.log('📝 Generated language changes:', languageChanges);
-
             // Save with changes for backend sync - only send changes for primary language
-            const result = await applyChangeOperations({
+            await applyChangeOperations({
                 languageId,
                 workspaceId: currentWorkspace._id,
                 ...(languageChanges.changes !== undefined ? { languageChanges } : {}),
@@ -271,24 +267,8 @@ export default function TranslationEditor() {
             // Update original content for next time
             setOriginalJsonContent(JSON.stringify(jsonContent, null, 2));
 
-            // Show results to user
-            if (result.syncErrors.length > 0) {
-                alert(
-                    `Changes saved successfully! Applied ${result.operationsApplied} operations.\n\nSynchronization warnings:\n${result.syncErrors.slice(0, 3).join('\n')}${result.syncErrors.length > 3 ? '\n... and more' : ''}`
-                );
-            } else if (result.synchronized > 0) {
-                alert(
-                    `✅ Changes saved successfully! Applied ${result.operationsApplied} operations.\n\nAutomatically synchronized ${result.synchronized} other languages.`
-                );
-            } else {
-                alert(`✅ Changes saved successfully! Applied ${result.operationsApplied} operations.`);
-            }
-
             // Update the original state to reflect saved changes
             hasUnsavedChanges$.set(false);
-
-            // Success notification
-            alert('Changes saved successfully!');
         } catch (error) {
             console.error('Failed to save changes:', error);
             alert('Failed to save changes. Please try again.');
@@ -610,14 +590,6 @@ export default function TranslationEditor() {
         }
     });
 
-    // Load schema from backend when component mounts or language changes
-    useEffect(() => {
-        if (getJsonSchema) {
-            setPrimaryLanguageSchema(getJsonSchema);
-            console.log('📋 Loaded JSON schema from backend:', getJsonSchema);
-        }
-    }, [getJsonSchema]);
-
     // Handle loading and error states
     if (!currentWorkspace && clerkId) {
         return (
@@ -660,7 +632,7 @@ export default function TranslationEditor() {
         );
     }
 
-    if (!language) {
+    if (!language || loadingContent) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
                 <div className='text-center'>
