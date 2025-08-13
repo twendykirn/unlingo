@@ -17,6 +17,7 @@ import type * as namespaceVersions from "../namespaceVersions.js";
 import type * as namespaces from "../namespaces.js";
 import type * as polar from "../polar.js";
 import type * as projects from "../projects.js";
+import type * as releases from "../releases.js";
 import type * as utils from "../utils.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   namespaces: typeof namespaces;
   polar: typeof polar;
   projects: typeof projects;
+  releases: typeof releases;
   utils: typeof utils;
   workspaces: typeof workspaces;
 }>;
