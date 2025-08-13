@@ -7,12 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { copyToClipboard } from '../utils/copyToClipboard';
 import { isValidJson } from '../utils/isValidJson';
 import { getUIValueAsJSON } from '../utils/getUIValueAsJson';
+import { createNodesFromJson } from '../utils/createNodesFromJson';
+import { buildJsonFromNodes } from '../utils/buildJsonFromNodes';
 import { Textarea } from '@/components/ui/textarea';
 import { hasUnsavedChanges$, nodes$, selectedNode$ } from '../store';
 import { use$ } from '@legendapp/state/react';
+import { TranslationNode } from '../types';
 
 export default function SelectedNodeEditArea() {
-    const [originalValue, setOriginalValue] = useState('');
     const [editValue, setEditValue] = useState('');
     const [editMode, setEditMode] = useState<'ui' | 'json'>('json');
     const [editUIValueType, setEditUIValueType] = useState<'string' | 'number' | 'boolean' | 'array' | 'object'>(
@@ -27,32 +29,184 @@ export default function SelectedNodeEditArea() {
     const [editUIObjectKeys, setEditUIObjectKeys] = useState<
         { key: string; value: string; type: 'string' | 'number' | 'boolean' | 'object' | 'array' }[]
     >([{ key: '', value: '', type: 'string' }]);
+    const [isChanged, setIsChanged] = useState(false);
 
     const selectedNode = use$(selectedNode$);
 
+    // Wrapper functions to track changes when UI arrays/objects are modified
+    const setEditUIArrayItemsWithChange = (items: typeof editUIArrayItems) => {
+        setEditUIArrayItems(items);
+        setIsChanged(true);
+    };
+
+    const setEditUIObjectKeysWithChange = (keys: typeof editUIObjectKeys) => {
+        setEditUIObjectKeys(keys);
+        setIsChanged(true);
+    };
+
+    // Validation function to check if all object keys are filled
+    const hasValidObjectKeys = () => {
+        // Check UI mode object keys
+        if (editUIValueType === 'object') {
+            return editUIObjectKeys.every(entry => entry.key.trim() !== '');
+        }
+
+        // Check JSON mode for empty object keys
+        if (editValue && isValidJson(editValue)) {
+            try {
+                const parsed = JSON.parse(editValue);
+                if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+                    return Object.keys(parsed).every(key => key.trim() !== '');
+                }
+            } catch {
+                // Invalid JSON, will be caught by other validation
+            }
+        }
+
+        return true;
+    };
+
     // Apply current edit changes
     const applyEdit = () => {
-        if (!selectedNode || !editValue.trim()) return;
+        if (!selectedNode) return;
 
         try {
-            const newValue = JSON.parse(editValue);
+            let newValue: any;
+
+            // Get the value based on the current edit mode
+            if (editMode === 'ui') {
+                // Use UI values to construct the new value
+                const jsonValue = getUIValueAsJSON({
+                    uiValueType: editUIValueType,
+                    uiStringValue: editUIStringValue,
+                    uiNumberValue: editUINumberValue,
+                    uiBooleanValue: editUIBooleanValue,
+                    uiArrayItems: editUIArrayItems,
+                    uiObjectKeys: editUIObjectKeys,
+                });
+                newValue = JSON.parse(jsonValue);
+            } else {
+                // Use JSON mode value
+                if (!editValue.trim()) return;
+                newValue = JSON.parse(editValue);
+            }
+
             const nodes = nodes$.get();
 
-            const newNodes = nodes.map(node => (node.id === selectedNode.id ? { ...node, value: newValue } : node));
-            console.log(editValue);
-            console.log(selectedNode.id);
-            console.log(newNodes);
-            nodes$.set(newNodes);
+            // Update the selected node's value
+            const updatedNodes = nodes.map(node => (node.id === selectedNode.id ? { ...node, value: newValue } : node));
+
+            // If the node has children, we need to update or recreate them based on the new value
+            let finalNodes: TranslationNode[];
+
+            if (selectedNode.children.length > 0) {
+                // Remove existing children of this node
+                const filteredNodes = updatedNodes.filter(
+                    node => !isDescendantOf(node.id, selectedNode.id, updatedNodes)
+                );
+
+                // Create new child nodes from the new value
+                if (
+                    selectedNode.type === 'object' &&
+                    typeof newValue === 'object' &&
+                    newValue !== null &&
+                    !Array.isArray(newValue)
+                ) {
+                    const childNodes = createNodesFromJson(newValue, selectedNode.key, selectedNode.id);
+                    const directChildren = Object.keys(newValue).map(
+                        childKey => `node-${selectedNode.key}.${childKey}`
+                    );
+
+                    // Update the parent node's children array
+                    const parentNodeIndex = filteredNodes.findIndex(node => node.id === selectedNode.id);
+                    if (parentNodeIndex !== -1 && filteredNodes[parentNodeIndex]) {
+                        filteredNodes[parentNodeIndex].children = directChildren;
+                    }
+
+                    filteredNodes.push(...childNodes);
+                } else if (selectedNode.type === 'array' && Array.isArray(newValue)) {
+                    const childNodes = createNodesFromJson({ temp: newValue }, selectedNode.key, selectedNode.id);
+                    // Filter out the temporary parent node and adjust the children
+                    const arrayChildNodes = childNodes.filter(node => node.id !== `node-${selectedNode.key}.temp`);
+                    const directChildren = arrayChildNodes
+                        .filter(node => node.parent === selectedNode.id)
+                        .map(node => node.id);
+
+                    // Update the parent node's children array
+                    const parentNodeIndex = filteredNodes.findIndex(node => node.id === selectedNode.id);
+                    if (parentNodeIndex !== -1 && filteredNodes[parentNodeIndex]) {
+                        filteredNodes[parentNodeIndex].children = directChildren;
+                    }
+
+                    filteredNodes.push(...arrayChildNodes);
+                }
+
+                finalNodes = filteredNodes;
+            } else {
+                finalNodes = updatedNodes;
+            }
+
+            // Update ancestor nodes to reflect the changes
+            const finalNodesWithUpdatedAncestors = updateAncestorNodes(selectedNode.id, finalNodes);
+
+            nodes$.set(finalNodesWithUpdatedAncestors);
+
+            // Update selectedNode$ with the updated node to trigger useEffect
+            const updatedSelectedNode = finalNodesWithUpdatedAncestors.find(node => node.id === selectedNode.id);
+            if (updatedSelectedNode) {
+                selectedNode$.set(updatedSelectedNode);
+            }
+
             hasUnsavedChanges$.set(true);
+            setIsChanged(false);
         } catch (error) {
             console.error('Failed to apply edit:', error);
             alert('Invalid JSON format. Please fix the syntax before applying.');
         }
     };
 
+    // Helper function to check if a node is a descendant of another node
+    const isDescendantOf = (nodeId: string, ancestorId: string, nodes: TranslationNode[]): boolean => {
+        const node = nodes.find(n => n.id === nodeId);
+        if (!node || !node.parent) return false;
+        if (node.parent === ancestorId) return true;
+        return isDescendantOf(node.parent, ancestorId, nodes);
+    };
+
+    // Function to update all ancestor nodes with their rebuilt values
+    const updateAncestorNodes = (nodeId: string, nodes: TranslationNode[]): TranslationNode[] => {
+        const updatedNodes = [...nodes];
+        const node = updatedNodes.find(n => n.id === nodeId);
+
+        if (!node || !node.parent) return updatedNodes;
+
+        // Find the parent node
+        const parentNode = updatedNodes.find(n => n.id === node.parent);
+        if (!parentNode) return updatedNodes;
+
+        // Rebuild the parent's value from its children
+        const rebuiltValue = buildJsonFromNodes({
+            nodes: updatedNodes,
+            nodeId: parentNode.id,
+            action: '',
+        });
+
+        // Update the parent node's value
+        const parentIndex = updatedNodes.findIndex(n => n.id === parentNode.id);
+        if (parentIndex !== -1) {
+            updatedNodes[parentIndex] = { ...parentNode, value: rebuiltValue };
+        }
+
+        // Recursively update grandparents
+        return updateAncestorNodes(parentNode.id, updatedNodes);
+    };
+
     // Real-time JSON editing with validation and visual feedback
-    const handleJsonValueChange = (newJsonValue: string) => {
+    const handleJsonValueChange = (newJsonValue: string, isUserEdit = true) => {
         setEditValue(newJsonValue);
+        if (isUserEdit) {
+            setIsChanged(true);
+        }
 
         // Sync with edit UI values when in JSON mode
         if (editMode === 'json') {
@@ -106,7 +260,10 @@ export default function SelectedNodeEditArea() {
                 setEditUIArrayItems(
                     parsed.length > 0
                         ? parsed.map(item => ({
-                              value: JSON.stringify(item),
+                              value:
+                                  Array.isArray(item) || (typeof item === 'object' && item !== null)
+                                      ? JSON.stringify(item, null, 2)
+                                      : String(item),
                               type: Array.isArray(item)
                                   ? 'array'
                                   : typeof item === 'object' && item !== null
@@ -122,7 +279,10 @@ export default function SelectedNodeEditArea() {
                     entries.length > 0
                         ? entries.map(([key, value]) => ({
                               key,
-                              value: JSON.stringify(value),
+                              value:
+                                  Array.isArray(value) || (typeof value === 'object' && value !== null)
+                                      ? JSON.stringify(value, null, 2)
+                                      : String(value),
                               type: Array.isArray(value)
                                   ? 'array'
                                   : typeof value === 'object' && value !== null
@@ -152,7 +312,7 @@ export default function SelectedNodeEditArea() {
                 uiObjectKeys: editUIObjectKeys,
             });
             setEditValue(jsonValue);
-            handleJsonValueChange(jsonValue);
+            handleJsonValueChange(jsonValue, false); // false because this is internal sync, not user edit
         }
     };
 
@@ -168,23 +328,24 @@ export default function SelectedNodeEditArea() {
                 uiObjectKeys: editUIObjectKeys,
             });
             setEditValue(jsonValue);
+            setIsChanged(true);
         }
     };
 
     useEffect(() => {
         if (selectedNode) {
             // Initialize editValue with the current node's value for JSON editing
-            const jsonValue = JSON.stringify(selectedNode.value);
-            setOriginalValue(jsonValue);
+            const jsonValue = JSON.stringify(selectedNode.value, null, 2);
             setEditValue(jsonValue);
             // Initialize edit UI values
             setEditUIValuesFromJSON(jsonValue);
-            // Reset to JSON mode by default for existing nodes
-            setEditMode('json');
+            // Reset change tracking
+            setIsChanged(false);
         }
 
         return () => {
             setEditValue('');
+            setIsChanged(false);
         };
     }, [selectedNode]);
 
@@ -242,14 +403,6 @@ export default function SelectedNodeEditArea() {
 
                 {editMode === 'ui' ? (
                     <div className='mb-2'>
-                        {/* Type Display (non-editable for existing nodes) */}
-                        <div>
-                            <label className='text-xs text-gray-500 mb-1 block'>Type (fixed)</label>
-                            <div className='px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm text-gray-400'>
-                                {editUIValueType}
-                            </div>
-                        </div>
-
                         {/* Value Input Based on Type */}
                         {editUIValueType === 'string' && (
                             <input
@@ -311,7 +464,7 @@ export default function SelectedNodeEditArea() {
                                                         type: value as typeof item.type,
                                                         value: '',
                                                     };
-                                                    setEditUIArrayItems(newItems);
+                                                    setEditUIArrayItemsWithChange(newItems);
                                                     setTimeout(handleEditUIValueChange, 0);
                                                 }}>
                                                 <SelectTrigger className='flex-1 bg-gray-800 border-gray-700 text-white h-6 text-xs'>
@@ -332,14 +485,14 @@ export default function SelectedNodeEditArea() {
                                                 onClick={() => {
                                                     if (editUIArrayItems.length > 1) {
                                                         const newItems = editUIArrayItems.filter((_, i) => i !== index);
-                                                        setEditUIArrayItems(newItems);
+                                                        setEditUIArrayItemsWithChange(newItems);
                                                     } else {
                                                         const newItems = [...editUIArrayItems];
                                                         newItems[index] = {
                                                             value: '',
                                                             type: 'string',
                                                         };
-                                                        setEditUIArrayItems(newItems);
+                                                        setEditUIArrayItemsWithChange(newItems);
                                                     }
                                                     setTimeout(handleEditUIValueChange, 0);
                                                 }}
@@ -359,7 +512,7 @@ export default function SelectedNodeEditArea() {
                                                             ...item,
                                                             value,
                                                         };
-                                                        setEditUIArrayItems(newItems);
+                                                        setEditUIArrayItemsWithChange(newItems);
                                                         setTimeout(handleEditUIValueChange, 0);
                                                     }}>
                                                     <SelectTrigger className='flex-1 bg-gray-800 border-gray-700 text-white h-6 text-xs'>
@@ -380,7 +533,7 @@ export default function SelectedNodeEditArea() {
                                                             ...item,
                                                             value: e.target.value,
                                                         };
-                                                        setEditUIArrayItems(newItems);
+                                                        setEditUIArrayItemsWithChange(newItems);
                                                         setTimeout(handleEditUIValueChange, 0);
                                                     }}
                                                     className='flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500'
@@ -409,7 +562,10 @@ export default function SelectedNodeEditArea() {
                                     size='sm'
                                     variant='outline'
                                     onClick={() => {
-                                        setEditUIArrayItems([...editUIArrayItems, { value: '', type: 'string' }]);
+                                        setEditUIArrayItemsWithChange([
+                                            ...editUIArrayItems,
+                                            { value: '', type: 'string' },
+                                        ]);
                                     }}
                                     className='w-full text-green-400 hover:text-green-300 hover:border-green-400 h-6 text-xs cursor-pointer'>
                                     + Add Item
@@ -432,7 +588,7 @@ export default function SelectedNodeEditArea() {
                                                     const newEntries = [...editUIObjectKeys];
                                                     if (newEntries[index]) {
                                                         newEntries[index].key = e.target.value;
-                                                        setEditUIObjectKeys(newEntries);
+                                                        setEditUIObjectKeysWithChange(newEntries);
                                                         setTimeout(handleEditUIValueChange, 0);
                                                     }
                                                 }}
@@ -448,7 +604,7 @@ export default function SelectedNodeEditArea() {
                                                         const newEntries = editUIObjectKeys.filter(
                                                             (_, i) => i !== index
                                                         );
-                                                        setEditUIObjectKeys(newEntries);
+                                                        setEditUIObjectKeysWithChange(newEntries);
                                                     } else {
                                                         const newEntries = [...editUIObjectKeys];
                                                         newEntries[index] = {
@@ -456,7 +612,7 @@ export default function SelectedNodeEditArea() {
                                                             value: '',
                                                             type: 'string',
                                                         };
-                                                        setEditUIObjectKeys(newEntries);
+                                                        setEditUIObjectKeysWithChange(newEntries);
                                                     }
                                                     setTimeout(handleEditUIValueChange, 0);
                                                 }}
@@ -476,7 +632,7 @@ export default function SelectedNodeEditArea() {
                                                         type: value as typeof entry.type,
                                                         value: '',
                                                     };
-                                                    setEditUIObjectKeys(newEntries);
+                                                    setEditUIObjectKeysWithChange(newEntries);
                                                     setTimeout(handleEditUIValueChange, 0);
                                                 }}>
                                                 <SelectTrigger className='flex-1 bg-gray-800 border-gray-700 text-white h-6 text-xs'>
@@ -501,7 +657,7 @@ export default function SelectedNodeEditArea() {
                                                         const newEntries = [...editUIObjectKeys];
                                                         if (newEntries[index]) {
                                                             newEntries[index].value = value;
-                                                            setEditUIObjectKeys(newEntries);
+                                                            setEditUIObjectKeysWithChange(newEntries);
                                                             setTimeout(handleEditUIValueChange, 0);
                                                         }
                                                     }}>
@@ -521,7 +677,7 @@ export default function SelectedNodeEditArea() {
                                                         const newEntries = [...editUIObjectKeys];
                                                         if (newEntries[index]) {
                                                             newEntries[index].value = e.target.value;
-                                                            setEditUIObjectKeys(newEntries);
+                                                            setEditUIObjectKeysWithChange(newEntries);
                                                             setTimeout(handleEditUIValueChange, 0);
                                                         }
                                                     }}
@@ -551,7 +707,7 @@ export default function SelectedNodeEditArea() {
                                     size='sm'
                                     variant='outline'
                                     onClick={() => {
-                                        setEditUIObjectKeys([
+                                        setEditUIObjectKeysWithChange([
                                             ...editUIObjectKeys,
                                             {
                                                 key: '',
@@ -599,9 +755,10 @@ export default function SelectedNodeEditArea() {
                         size='sm'
                         onClick={applyEdit}
                         disabled={
+                            !isChanged ||
                             !editValue?.trim() ||
-                            originalValue === editValue?.trim() ||
-                            !!(editValue && !isValidJson(editValue))
+                            !!(editValue && !isValidJson(editValue)) ||
+                            !hasValidObjectKeys()
                         }
                         className={`ml-2 ${
                             editValue?.trim() && isValidJson(editValue || '{}')

@@ -23,7 +23,7 @@ export const getUIValueAsJSON = ({
     try {
         switch (uiValueType) {
             case 'string':
-                return JSON.stringify(uiStringValue);
+                return JSON.stringify(uiStringValue, null, 2);
             case 'number':
                 value = parseFloat(uiNumberValue);
                 return isNaN(value) ? '""' : value.toString();
@@ -33,16 +33,16 @@ export const getUIValueAsJSON = ({
                 value = uiArrayItems
                     .filter(item => item.value.trim() !== '')
                     .map(item => convertTypedValueToJson(item.value, item.type));
-                return `[${value.join(', ')}]`;
+                return JSON.stringify(JSON.parse(`[${value.join(', ')}]`), null, 2);
             case 'object':
                 value = uiObjectKeys
                     .filter(entry => entry.key.trim() !== '')
                     .map(entry => {
-                        const key = JSON.stringify(entry.key);
+                        const key = JSON.stringify(entry.key, null, 2);
                         const value = convertTypedValueToJson(entry.value, entry.type);
                         return `${key}: ${value}`;
                     });
-                return `{${value.join(', ')}}`;
+                return JSON.stringify(JSON.parse(`{${value.join(', ')}}`), null, 2);
             default:
                 return '""';
         }

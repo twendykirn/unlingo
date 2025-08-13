@@ -1,54 +1,49 @@
 'use client';
 
 import { ChevronRight } from 'lucide-react';
-import { TranslationNode } from '../types';
 import { isEmptyValue } from '../utils/isEmptyValue';
-import { expandedKeys$, selectedNode$ } from '../store';
+import { expandedKeys$, filteredNodes$, selectedNode$ } from '../store';
 import { use$ } from '@legendapp/state/react';
 
 interface Props {
     id: string;
-    nodeKey: string;
-    value: any;
-    type: 'object' | 'string' | 'array';
-    parent?: string;
-    nodeChildren: TranslationNode[];
     level: number;
     toggleExpanded: (id: string, isExpanded: boolean) => void;
 }
 
-export default function TreeViewNode({ id, nodeKey, value, type, parent, nodeChildren, level, toggleExpanded }: Props) {
+export default function TreeViewNode({ id, level, toggleExpanded }: Props) {
+    const node = use$(() => filteredNodes$.get().find(node => node.id === id));
     const isSelected = use$(() => selectedNode$.get()?.id === id);
     const isExpanded = use$(() => expandedKeys$.get().has(id));
-    const hasChildren = nodeChildren.length > 0;
+    const hasChildren = (node?.children?.length ?? 0) > 0;
 
     const handleNodeClick = () => {
-        toggleExpanded(id, isExpanded);
-        selectedNode$.set({
-            id,
-            key: nodeKey,
-            value,
-            type,
-            parent,
-            children: nodeChildren,
-        });
+        if (!node) return;
+
+        if (!isExpanded) {
+            toggleExpanded(id, isExpanded);
+        }
+        selectedNode$.set(node);
     };
 
     const getDisplayValue = () => {
-        if (type === 'object') {
+        if (!node) return;
+
+        if (node.type === 'object') {
             // Count actual child nodes instead of relying on node.value
-            const childCount = nodeChildren.length;
+            const childCount = node.children.length;
             return `{${childCount} keys}`;
-        } else if (type === 'array') {
-            const arr = Array.isArray(value) ? value : [];
+        } else if (node.type === 'array') {
+            const arr = Array.isArray(node.value) ? node.value : [];
             return `[${arr.length} items]`;
         }
-        return String(value || '');
+        return String(node.value || '');
     };
 
     // Helper function to get display key (handles array indices)
     const getDisplayKey = () => {
-        const keyParts = nodeKey.split('.');
+        if (!node) return;
+        const keyParts = node.key.split('.');
         const lastPart = keyParts[keyParts.length - 1];
 
         // Check if this is an array item (contains [index])
@@ -59,11 +54,13 @@ export default function TreeViewNode({ id, nodeKey, value, type, parent, nodeChi
             }
         }
 
-        return lastPart || nodeKey;
+        return lastPart || node.key;
     };
 
     // Check if this node has empty values for highlighting
-    const hasEmptyValue = type === 'string' && isEmptyValue(value);
+    const hasEmptyValue = node ? node.type === 'string' && isEmptyValue(node.value) : false;
+
+    if (!node) return null;
 
     return (
         <div key={id} className='select-none' data-node-id={id}>
@@ -91,7 +88,7 @@ export default function TreeViewNode({ id, nodeKey, value, type, parent, nodeChi
                     <div className='flex items-center justify-between'>
                         <div className='flex items-center space-x-2 min-w-0'>
                             <span className='font-medium text-blue-400 truncate'>{getDisplayKey()}</span>
-                            <span className='text-xs text-gray-500 px-2 py-1 bg-gray-800 rounded'>{type}</span>
+                            <span className='text-xs text-gray-500 px-2 py-1 bg-gray-800 rounded'>{node.type}</span>
                         </div>
                         <div className='text-sm text-gray-300 truncate ml-2 max-w-48'>{getDisplayValue()}</div>
                     </div>
@@ -100,16 +97,11 @@ export default function TreeViewNode({ id, nodeKey, value, type, parent, nodeChi
 
             {hasChildren && isExpanded && (
                 <div>
-                    {nodeChildren.map(childNode => (
+                    {node.children.map(childNode => (
                         <TreeViewNode
-                            key={childNode.id}
+                            key={childNode}
                             level={level + 1}
-                            id={childNode.id}
-                            nodeKey={childNode.key}
-                            value={childNode.value}
-                            type={childNode.type}
-                            parent={childNode.parent}
-                            nodeChildren={childNode.children}
+                            id={childNode}
                             toggleExpanded={toggleExpanded}
                         />
                     ))}

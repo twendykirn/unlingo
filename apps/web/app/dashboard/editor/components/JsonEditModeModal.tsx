@@ -8,6 +8,7 @@ import { convertNodesToJson } from '../utils/convertNodesToJson';
 import { createNodesFromJson } from '../utils/createNodesFromJson';
 import { Textarea } from '@/components/ui/textarea';
 import { hasUnsavedChanges$, nodes$ } from '../store';
+import { isValidJson } from '../utils/isValidJson';
 
 interface Props {
     isPrimaryLanguage: boolean;
@@ -17,10 +18,43 @@ interface Props {
 export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSchema }: Props) {
     const [jsonEditMode, setJsonEditMode] = useState(false);
     const [rawJsonEdit, setRawJsonEdit] = useState('');
+    const [hasEmptyKeys, setHasEmptyKeys] = useState(false);
+
+    // Function to check for empty keys in JSON object recursively
+    const checkForEmptyKeys = (obj: any): boolean => {
+        if (typeof obj !== 'object' || obj === null) return false;
+        
+        if (Array.isArray(obj)) {
+            return obj.some(item => checkForEmptyKeys(item));
+        }
+        
+        return Object.keys(obj).some(key => {
+            if (key.trim() === '') return true;
+            return checkForEmptyKeys(obj[key]);
+        });
+    };
+
+    // Handle JSON text changes with validation
+    const handleJsonChange = (value: string) => {
+        setRawJsonEdit(value);
+        
+        if (isValidJson(value)) {
+            try {
+                const parsed = JSON.parse(value);
+                setHasEmptyKeys(checkForEmptyKeys(parsed));
+            } catch {
+                setHasEmptyKeys(false);
+            }
+        } else {
+            setHasEmptyKeys(false);
+        }
+    };
 
     const enterJsonEditMode = () => {
         const jsonStructure = convertNodesToJson(nodes$.get());
-        setRawJsonEdit(JSON.stringify(jsonStructure, null, 2));
+        const jsonString = JSON.stringify(jsonStructure, null, 2);
+        setRawJsonEdit(jsonString);
+        setHasEmptyKeys(checkForEmptyKeys(jsonStructure));
         setJsonEditMode(true);
     };
 
@@ -95,10 +129,17 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
 
                             <Textarea
                                 value={rawJsonEdit}
-                                onChange={e => setRawJsonEdit(e.target.value)}
+                                onChange={e => handleJsonChange(e.target.value)}
                                 className='flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-md text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-y-auto'
                                 placeholder='Paste your JSON here...'
                             />
+
+                            {/* Error message for empty keys */}
+                            {hasEmptyKeys && (
+                                <div className='mt-2 text-sm text-red-400'>
+                                    ⚠️ Error: Object keys cannot be empty strings. Please provide valid keys for all properties.
+                                </div>
+                            )}
 
                             <div className='flex justify-end space-x-2 mt-4'>
                                 <Button
@@ -107,7 +148,14 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
                                     className='cursor-pointer'>
                                     Cancel
                                 </Button>
-                                <Button onClick={saveJsonEdit} className='cursor-pointer'>
+                                <Button 
+                                    onClick={saveJsonEdit} 
+                                    disabled={!isValidJson(rawJsonEdit) || hasEmptyKeys}
+                                    className={`${
+                                        !isValidJson(rawJsonEdit) || hasEmptyKeys
+                                            ? 'bg-gray-600 cursor-not-allowed'
+                                            : 'cursor-pointer'
+                                    }`}>
                                     Apply Changes
                                 </Button>
                             </div>

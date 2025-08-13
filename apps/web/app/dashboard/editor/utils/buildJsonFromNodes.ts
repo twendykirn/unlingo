@@ -20,16 +20,16 @@ export const buildJsonFromNodes = (params: Params): any => {
         return node.value;
     } else if (node.type === 'object') {
         const obj: any = {};
-        node.children.forEach(child => {
+        node.children.forEach(childId => {
             // Skip deleted child
-            if (action !== 'delete' || (action === 'delete' && child.id !== selectedNodeId)) {
-                const childNode = nodes.find(n => n.id === child.id);
+            if (action !== 'delete' || (action === 'delete' && childId !== selectedNodeId)) {
+                const childNode = nodes.find(n => n.id === childId);
                 if (childNode) {
                     let key = childNode.key.split('.').pop() || childNode.key;
                     if (action === 'rename' && childNode.id === selectedNodeId && newKeyName) {
                         key = newKeyName.trim();
                     }
-                    obj[key] = buildJsonFromNodes({ ...params, nodeId: child.id });
+                    obj[key] = buildJsonFromNodes({ ...params, nodeId: childId });
                 }
             }
         });
@@ -38,14 +38,14 @@ export const buildJsonFromNodes = (params: Params): any => {
         const arr: any[] = [];
         // Sort children by index to maintain array order
         const sortedChildren = node.children
-            .map(child => {
-                if (action === 'delete' && child.id === selectedNodeId) return null; // Skip deleted child
-                const childNode = nodes.find(n => n.id === child.id);
+            .map(childId => {
+                if (action === 'delete' && childId === selectedNodeId) return null; // Skip deleted child
+                const childNode = nodes.find(n => n.id === childId);
                 if (!childNode) return null;
                 const key = childNode.key;
                 const match = key.match(/\[(\d+)\]$/);
                 const index = match ? parseInt(match[1] ?? '0') : 0;
-                return { childId: child.id, index, node: childNode };
+                return { childId, index, node: childNode };
             })
             .filter(item => item !== null)
             .sort((a, b) => a!.index - b!.index);

@@ -22,19 +22,7 @@ export default function TreeView() {
         <div className='p-4'>
             {rootNodes.length > 0 ? (
                 rootNodes.map(node => {
-                    return (
-                        <TreeViewNode
-                            key={node.id}
-                            id={node.id}
-                            nodeKey={node.key}
-                            value={node.value}
-                            type={node.type}
-                            parent={node.parent}
-                            nodeChildren={node.children}
-                            level={0}
-                            toggleExpanded={toggleExpanded}
-                        />
-                    );
+                    return <TreeViewNode key={node.id} id={node.id} level={0} toggleExpanded={toggleExpanded} />;
                 })
             ) : (
                 <div className='text-center py-12'>

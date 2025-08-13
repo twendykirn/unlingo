@@ -38,10 +38,7 @@ export const createNodesFromJson = (obj: any, parentKey = '', parentId?: string)
 
             // Only add direct children to the children array
             const directChildren = childEntries.map(([childKey]) => `node-${fullKey}.${childKey}`);
-            const newChildItems = childNodes.filter(child =>
-                directChildren.some(directChild => directChild === child.id)
-            );
-            node.children = newChildItems;
+            node.children = directChildren;
         }
 
         // Handle array children
@@ -79,10 +76,7 @@ export const createNodesFromJson = (obj: any, parentKey = '', parentId?: string)
                     nodes.push(...itemChildNodes);
 
                     const directChildren = Object.keys(item).map(childKey => `node-${arrayItemKey}.${childKey}`);
-                    const newChildItems = itemChildNodes.filter(child =>
-                        directChildren.some(directChild => directChild === child.id)
-                    );
-                    arrayItemNode.children = newChildItems;
+                    arrayItemNode.children = directChildren;
                 } else if (itemIsArray) {
                     // For nested arrays, create a temporary object to process recursively
                     const tempArrayObj: Record<string, any> = {};
@@ -92,11 +86,11 @@ export const createNodesFromJson = (obj: any, parentKey = '', parentId?: string)
                     const itemChildNodes = createNodesFromJson(tempArrayObj, arrayItemKey, arrayItemId);
                     nodes.push(...itemChildNodes);
 
-                    arrayItemNode.children = itemChildNodes;
+                    arrayItemNode.children = itemChildNodes.map(child => child.id);
                 }
             });
 
-            node.children = arrayChildren;
+            node.children = arrayChildren.map(child => child.id);
         }
     });
 

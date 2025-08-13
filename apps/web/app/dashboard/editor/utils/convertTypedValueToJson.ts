@@ -9,7 +9,7 @@ export const convertTypedValueToJson = (
 
     switch (type) {
         case 'string':
-            return JSON.stringify(value);
+            return JSON.stringify(value, null, 2);
         case 'number':
             num = parseFloat(value);
             return isNaN(num) ? '"0"' : num.toString();
@@ -21,9 +21,9 @@ export const convertTypedValueToJson = (
                 JSON.parse(value);
                 return value;
             } catch {
-                return JSON.stringify(value);
+                return JSON.stringify(value, null, 2);
             }
         default:
-            return JSON.stringify(value);
+            return JSON.stringify(value, null, 2);
     }
 };

@@ -4,7 +4,7 @@ export interface TranslationNode {
     value: any;
     type: 'object' | 'string' | 'array';
     parent?: string;
-    children: TranslationNode[];
+    children: string[];
 }
 
 export interface StructuredChange {

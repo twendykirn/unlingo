@@ -333,7 +333,7 @@ export default function TranslationEditor() {
                 setUiArrayItems(
                     parsed.length > 0
                         ? parsed.map(item => ({
-                              value: JSON.stringify(item),
+                              value: JSON.stringify(item, null, 2),
                               type: Array.isArray(item)
                                   ? 'array'
                                   : typeof item === 'object' && item !== null
@@ -349,7 +349,7 @@ export default function TranslationEditor() {
                     entries.length > 0
                         ? entries.map(([key, value]) => ({
                               key,
-                              value: JSON.stringify(value),
+                              value: JSON.stringify(value, null, 2),
                               type: Array.isArray(value)
                                   ? 'array'
                                   : typeof value === 'object' && value !== null
@@ -484,13 +484,13 @@ export default function TranslationEditor() {
                         parent: newNodeId,
                     }));
                     newNodes.push(...updatedChildNodes);
-                    newNode.children = updatedChildNodes;
+                    newNode.children = updatedChildNodes.map(child => child.id);
                 }
 
                 // Update the parent's children array
                 nodes$.set(prev => [
                     ...prev.map(node =>
-                        node.id === addKeyParent ? { ...node, children: [...node.children, newNode] } : node
+                        node.id === addKeyParent ? { ...node, children: [...node.children, newNodeId] } : node
                     ),
                     ...newNodes,
                 ]);
@@ -575,16 +575,16 @@ export default function TranslationEditor() {
                 }
 
                 // Include all children
-                const addChildren = (child: TranslationNode) => {
-                    const node = nodes.find(n => n.id === child.id);
+                const addChildren = (childId: string) => {
+                    const node = nodes.find(n => n.id === childId);
                     if (node) {
                         node.children.forEach(child => {
-                            matchingNodes.add(child.id);
+                            matchingNodes.add(childId);
                             addChildren(child);
                         });
                     }
                 };
-                addChildren(node);
+                addChildren(node.id);
             }
         });
 
@@ -601,7 +601,9 @@ export default function TranslationEditor() {
 
     useObserve(nodes$, ({ value }) => {
         if (value !== undefined) {
-            filteredNodes$.set(value);
+            const searchQuery = searchQuery$.get();
+            const filtered = filterNodes(searchQuery);
+            filteredNodes$.set(filtered);
             setEmptyValueNodes(collectEmptyValueNodes(value));
             const objectNodes = value
                 .filter(node => node.type === 'object')
