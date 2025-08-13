@@ -12,11 +12,16 @@ import {
     ChevronDown,
     GitBranch,
     Calendar,
+    Copy,
+    Play,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Gradient } from '@/components/ui/gradient';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import SpotlightCard from '@/components/ui/spotlight-card';
+import Link from 'next/link';
 
 const features = [
     {
@@ -61,10 +66,171 @@ const pricingOptions = [
     { requests: '100M', price: 1000 },
 ];
 
+const getCodeExample = (library: string) => {
+    switch (library) {
+        case 'i18next':
+            return `import i18next from 'i18next';
+import { initReactI18next } from 'react-i18next';
+
+class UnlingoBackend {
+    constructor() {
+        this.type = 'backend';
+    }
+
+    async read(language, namespace, callback) {
+        try {
+            const url = new URL('/api/v1/translations', 'https://api.unlingo.com');
+            url.searchParams.set('version', 'YOUR_RELEASE_VERSION');
+            url.searchParams.set('namespace', namespace);
+            url.searchParams.set('lang', language);
+
+            const response = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'x-api-key': 'YOUR_API_KEY',
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return callback(new Error(errorData.error), null);
+            }
+
+            const data = await response.json();
+            callback(null, data);
+        } catch (error) {
+            callback(error as Error, null);
+        }
+    }
+}
+
+const module = new UnlingoBackend();
+
+i18next
+  .use(module) 
+  .use(initReactI18next)
+  .init({
+    ...
+  });
+
+export default i18next;`;
+
+        case 'next-intl':
+            return `import {getRequestConfig} from 'next-intl/server';
+import {hasLocale} from 'next-intl';
+import {routing} from './routing';
+ 
+export default getRequestConfig(async ({requestLocale}) => {
+  const requested = await requestLocale;
+  const locale = hasLocale(routing.locales, requested)
+    ? requested
+    : routing.defaultLocale;
+
+    const url = new URL('/api/v1/translations', 'https://api.unlingo.com');
+    url.searchParams.set('version', 'YOUR_RELEASE_VERSION');
+    url.searchParams.set('namespace', 'YOUR_NAMESPACE');
+    url.searchParams.set('lang', locale);
+
+    const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+            'x-api-key': 'YOUR_API_KEY',
+            'Content-Type': 'application/json',
+        },
+    });
+    const data = await response.json();
+ 
+  return {
+    locale,
+    messages: data,
+  };
+});`;
+
+        case 'Lingui':
+            return `import { i18n } from "@lingui/core"
+
+export async function dynamicActivate(locale: string) {
+    const url = new URL('/api/v1/translations', 'https://api.unlingo.com');
+    url.searchParams.set('version', 'YOUR_RELEASE_VERSION');
+    url.searchParams.set('namespace', 'YOUR_NAMESPACE');
+    url.searchParams.set('lang', locale);
+
+    const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+            'x-api-key': 'YOUR_API_KEY',
+            'Content-Type': 'application/json',
+        },
+    });
+    const messages = await response.json();
+
+    i18n.load(locale, messages)
+    i18n.activate(locale)
+}`;
+
+        case 'formatjs':
+            return `import * as React from 'react'
+import * as ReactDOM from 'react-dom'
+import {IntlProvider} from 'react-intl'
+
+async function loadLocaleData(locale: string) {
+    const url = new URL('/api/v1/translations', 'https://api.unlingo.com');
+    url.searchParams.set('version', 'YOUR_RELEASE_VERSION');
+    url.searchParams.set('namespace', 'YOUR_NAMESPACE');
+    url.searchParams.set('lang', locale);
+
+    const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+            'x-api-key': 'YOUR_API_KEY',
+            'Content-Type': 'application/json',
+        },
+    });
+    const messages = await response.json();
+    return messages;
+}
+
+function App(props) {
+  return (
+    <IntlProvider
+      locale={props.locale}
+      defaultLocale="en"
+      messages={props.messages}
+    >
+      <MainApp />
+    </IntlProvider>
+  )
+}
+
+async function bootstrapApplication(locale, mainDiv) {
+  const messages = await loadLocaleData(locale)
+  ReactDOM.render(<App locale={locale} messages={messages} />, mainDiv)
+}}`;
+
+        case 'rest api':
+            return `const response = await fetch(
+  'https://api.unlingo.com/v1/translations?version=YOUR_RELEASE_VERSION&namespace=YOUR_NAMESPACE&lang=YOUR_LANGUAGE', {
+  headers: {
+    'Authorization': 'Bearer your-api-key',
+  }
+});
+
+const translations = await response.json();
+
+// Use translations in your app
+console.log(translations.welcome);`;
+
+        default:
+            return 'Select a library to see the integration example';
+    }
+};
+
 export default function Page() {
     const [selectedPricing, setSelectedPricing] = useState(pricingOptions[0]);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [activeCodeTab, setActiveCodeTab] = useState<'i18next' | 'rest'>('i18next');
+    const [activeLibrary, setActiveLibrary] = useState('i18next');
+    const [isCopied, setIsCopied] = useState(false);
     const router = useRouter();
 
     const scrollToSection = (sectionId: string) => {
@@ -75,7 +241,7 @@ export default function Page() {
     };
 
     return (
-        <main className='min-h-screen bg-black text-white overflow-hidden'>
+        <main className='min-h-screen bg-black text-white overflow-hidden relative'>
             {/* Navigation Header */}
             <nav className='fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-gray-800'>
                 <div className='max-w-7xl mx-auto px-6 py-4'>
@@ -100,6 +266,11 @@ export default function Page() {
                                 onClick={() => scrollToSection('features')}
                                 className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
                                 Features
+                            </button>
+                            <button
+                                onClick={() => scrollToSection('examples')}
+                                className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
+                                Examples
                             </button>
                             <button
                                 onClick={() => scrollToSection('pricing')}
@@ -186,67 +357,106 @@ export default function Page() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.4 }}
                         className='pt-12'>
-                        <div className='bg-gray-900/50 border border-gray-800 rounded-lg p-6 max-w-2xl mx-auto'>
-                            <div className='flex items-center justify-between mb-4'>
+                        <div className='bg-gray-900/50 border border-gray-800 rounded-lg max-w-3xl mx-auto relative overflow-hidden'>
+                            <div className='aspect-video bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center'>
+                                <div className='text-center space-y-4'>
+                                    <div className='w-20 h-20 mx-auto bg-white/10 rounded-full flex items-center justify-center'>
+                                        <Play className='h-8 w-8 text-white ml-1' />
+                                    </div>
+                                    <div className='space-y-2'>
+                                        <h3 className='text-xl font-semibold text-white'>Platform Demo</h3>
+                                        <p className='text-gray-400 text-sm'>
+                                            See how Unlingo transforms your workflow
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+            </section>
+
+            {/* Code Examples Section */}
+            <section id='examples' className='relative py-32 px-6'>
+                <div className='max-w-6xl mx-auto'>
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8 }}
+                        viewport={{ once: true }}
+                        className='text-center mb-12'>
+                        <h2 className='text-4xl md:text-6xl font-bold mb-6'>
+                            Works with{' '}
+                            <span className='bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent'>
+                                every library
+                            </span>
+                        </h2>
+                        <p className='text-xl text-gray-400 max-w-3xl mx-auto'>
+                            Our platform seamlessly integrates with your favorite internationalization libraries and
+                            frameworks. Choose your stack and get started in minutes.
+                        </p>
+                    </motion.div>
+
+                    {/* Library Buttons */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        viewport={{ once: true }}
+                        className='flex flex-wrap justify-center gap-4 mb-12'>
+                        {['i18next', 'next-intl', 'Lingui', 'formatjs', 'rest api'].map(library => (
+                            <button
+                                key={library}
+                                onClick={() => setActiveLibrary(library)}
+                                className={`px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-300 cursor-pointer ${
+                                    activeLibrary === library
+                                        ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg scale-105'
+                                        : 'bg-gray-900/50 border border-gray-800 text-gray-300 hover:border-gray-600 hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-600/20 hover:scale-105'
+                                }`}>
+                                {library}
+                            </button>
+                        ))}
+                    </motion.div>
+
+                    {/* Code Example Card */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.4 }}
+                        viewport={{ once: true }}
+                        className='max-w-5xl mx-auto'>
+                        <div className='bg-gray-900/50 border border-gray-800 rounded-lg overflow-hidden'>
+                            <div className='flex items-center justify-between px-6 py-4 border-b border-gray-800'>
                                 <div className='flex space-x-2'>
                                     <div className='w-3 h-3 bg-red-500 rounded-full' />
                                     <div className='w-3 h-3 bg-yellow-500 rounded-full' />
                                     <div className='w-3 h-3 bg-green-500 rounded-full' />
                                 </div>
-                                <div className='flex space-x-2'>
+                                <div className='flex items-center space-x-3'>
+                                    <span className='text-sm text-gray-400'>{activeLibrary}</span>
                                     <button
-                                        onClick={() => setActiveCodeTab('i18next')}
-                                        className={`px-3 py-1 text-xs rounded-md transition-colors cursor-pointer ${
-                                            activeCodeTab === 'i18next'
-                                                ? 'bg-blue-500 text-white'
-                                                : 'bg-gray-800 text-gray-400 hover:text-white'
-                                        }`}>
-                                        i18next
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveCodeTab('rest')}
-                                        className={`px-3 py-1 text-xs rounded-md transition-colors cursor-pointer ${
-                                            activeCodeTab === 'rest'
-                                                ? 'bg-blue-500 text-white'
-                                                : 'bg-gray-800 text-gray-400 hover:text-white'
-                                        }`}>
-                                        REST API
+                                        onClick={() => {
+                                            const codeElement = document.querySelector('.code-content');
+                                            if (codeElement) {
+                                                navigator.clipboard.writeText(codeElement.textContent || '');
+                                                setIsCopied(true);
+                                                setTimeout(() => setIsCopied(false), 600);
+                                            }
+                                        }}
+                                        className='p-2 hover:bg-gray-800 rounded-md transition-colors cursor-pointer group'>
+                                        {isCopied ? (
+                                            <Check className='h-4 w-4 text-green-400' />
+                                        ) : (
+                                            <Copy className='h-4 w-4 text-gray-400 group-hover:text-white' />
+                                        )}
                                     </button>
                                 </div>
                             </div>
-                            <pre className='text-left text-sm text-gray-300 font-mono'>
-                                <code>
-                                    {activeCodeTab === 'i18next'
-                                        ? `import i18next from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import UnlingoBackend from '@unlingo/i18next';
-
-i18next
-  .use(UnlingoBackend) 
-  .use(initReactI18next)
-  .init({
-    backend: {
-      apiKey: '...',
-      version: '1.5.0', 
-    }
-  });
-
-export default i18next;`
-                                        : `// Fetch translations from Unlingo API
-const response = await fetch(
-  'https://api.unlingo.com/v1/translations', {
-  headers: {
-    'Authorization': 'Bearer your-api-key',
-    'X-Unlingo-Version': '1.5.0'
-  }
-});
-
-const translations = await response.json();
-
-// Use translations in your app
-console.log(translations.en.welcome);`}
-                                </code>
-                            </pre>
+                            <ScrollArea className='h-96 p-6'>
+                                <pre className='text-left text-sm text-gray-300 font-mono'>
+                                    <code className='code-content'>{getCodeExample(activeLibrary)}</code>
+                                </pre>
+                            </ScrollArea>
                         </div>
                     </motion.div>
                 </div>
@@ -293,6 +503,100 @@ console.log(translations.en.welcome);`}
                             </motion.div>
                         ))}
                     </div>
+                </div>
+            </section>
+
+            {/* Powered By Section */}
+            <section className='relative py-20 px-6'>
+                <div className='max-w-6xl mx-auto'>
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8 }}
+                        viewport={{ once: true }}
+                        className='text-center mb-16'>
+                        <h2 className='text-3xl md:text-4xl font-bold mb-4 text-gray-300'>Powered by</h2>
+                        <p className='text-lg text-gray-500 max-w-2xl mx-auto'>
+                            Built with industry-leading technologies and services
+                        </p>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        viewport={{ once: true }}
+                        className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 items-center justify-items-center'>
+                        {/* Convex */}
+                        <Link className='w-full h-24 cursor-pointer group' href='https://convex.dev' target='_blank'>
+                            <SpotlightCard
+                                className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-orange-500/30 transition-all duration-300'
+                                spotlightColor='rgba(255, 165, 0, 0.15)'>
+                                <div className='text-center'>
+                                    <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-orange-400 transition-colors'>
+                                        Convex
+                                    </div>
+                                    <div className='text-xs text-gray-500'>Backend Platform</div>
+                                </div>
+                            </SpotlightCard>
+                        </Link>
+
+                        {/* Clerk */}
+                        <Link className='w-full h-24 cursor-pointer group' href='https://clerk.com' target='_blank'>
+                            <SpotlightCard
+                                className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-indigo-500/30 transition-all duration-300'
+                                spotlightColor='rgba(99, 102, 241, 0.15)'>
+                                <div className='text-center'>
+                                    <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-indigo-400 transition-colors'>
+                                        Clerk
+                                    </div>
+                                    <div className='text-xs text-gray-500'>Authentication</div>
+                                </div>
+                            </SpotlightCard>
+                        </Link>
+
+                        {/* Polar */}
+                        <Link className='w-full h-24 cursor-pointer group' href='https://polar.sh' target='_blank'>
+                            <SpotlightCard
+                                className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-blue-500/30 transition-all duration-300'
+                                spotlightColor='rgba(59, 130, 246, 0.15)'>
+                                <div className='text-center'>
+                                    <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-blue-400 transition-colors'>
+                                        Polar
+                                    </div>
+                                    <div className='text-xs text-gray-500'>Payments</div>
+                                </div>
+                            </SpotlightCard>
+                        </Link>
+
+                        {/* TinyBird */}
+                        <Link className='w-full h-24 cursor-pointer group' href='https://tinybird.co' target='_blank'>
+                            <SpotlightCard
+                                className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-emerald-500/30 transition-all duration-300'
+                                spotlightColor='rgba(16, 185, 129, 0.15)'>
+                                <div className='text-center'>
+                                    <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-emerald-400 transition-colors'>
+                                        TinyBird
+                                    </div>
+                                    <div className='text-xs text-gray-500'>Analytics</div>
+                                </div>
+                            </SpotlightCard>
+                        </Link>
+
+                        {/* Resend */}
+                        <Link className='w-full h-24 cursor-pointer group' href='https://resend.com' target='_blank'>
+                            <SpotlightCard
+                                className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-violet-500/30 transition-all duration-300'
+                                spotlightColor='rgba(139, 92, 246, 0.15)'>
+                                <div className='text-center'>
+                                    <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-violet-400 transition-colors'>
+                                        Resend
+                                    </div>
+                                    <div className='text-xs text-gray-500'>Email API</div>
+                                </div>
+                            </SpotlightCard>
+                        </Link>
+                    </motion.div>
                 </div>
             </section>
 
@@ -533,7 +837,9 @@ console.log(translations.en.welcome);`}
                             <p className='text-gray-400 text-sm'>
                                 Simplifying global translation management for developers worldwide.
                             </p>
-                            <p className='text-gray-500 text-xs'>© 2024 Unlingo Inc.</p>
+                            <p className='text-gray-500 text-xs'>
+                                © {new Date().getFullYear()} Igor Kirnosov s.p. All rights reserved.
+                            </p>
                         </div>
 
                         {/* Sections */}
@@ -549,6 +855,11 @@ console.log(translations.en.welcome);`}
                                     onClick={() => scrollToSection('features')}
                                     className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Features
+                                </button>
+                                <button
+                                    onClick={() => scrollToSection('examples')}
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                    Examples
                                 </button>
                                 <button
                                     onClick={() => scrollToSection('pricing')}

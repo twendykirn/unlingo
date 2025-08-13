@@ -66,7 +66,7 @@ http.route({
 
 // Language file retrieval API endpoint
 http.route({
-    path: '/api/v1/languages',
+    path: '/api/v1/translations',
     method: 'GET',
     handler: httpAction(async (ctx, request) => {
         // Extract API key from header
@@ -88,7 +88,7 @@ http.route({
             return new Response(
                 JSON.stringify({
                     error: 'Missing required parameters: version, namespace, and lang are required',
-                    example: '/api/v1/languages?version=1.0.0&namespace=common&lang=en',
+                    example: '/api/v1/translations?version=1.0.0&namespace=common&lang=en',
                 }),
                 {
                     status: 400,
