@@ -265,18 +265,7 @@ export default function TranslationEditor() {
             const result = await applyChangeOperations({
                 languageId,
                 workspaceId: currentWorkspace._id,
-                changeSet: {
-                    operations: [], // Legacy field, can be empty
-                    affectedPaths: [],
-                    hasStructuralChanges: isPrimaryLanguage ? languageChanges.changes !== undefined : false,
-                    metadata: {
-                        timestamp: languageChanges.timestamp,
-                        languageId: languageChanges.languageId,
-                        isPrimaryLanguage: languageChanges.isPrimaryLanguage,
-                    },
-                },
-                // Only pass changes for primary language and when there are actual changes
-                ...(isPrimaryLanguage && languageChanges.changes !== undefined ? { languageChanges } : {}),
+                ...(languageChanges.changes !== undefined ? { languageChanges } : {}),
             });
 
             // Update original content for next time
