@@ -1,5 +1,5 @@
 import { v } from 'convex/values';
-import { mutation, query } from './_generated/server';
+import { internalQuery, mutation, query } from './_generated/server';
 import { paginationOptsValidator } from 'convex/server';
 
 // Get paginated API keys for a project
@@ -128,7 +128,7 @@ export const deleteApiKey = mutation({
 });
 
 // Function to verify API key (for API authentication)
-export const verifyApiKey = query({
+export const verifyApiKey = internalQuery({
     args: {
         key: v.string(),
     },

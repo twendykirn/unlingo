@@ -1,5 +1,5 @@
 import { paginationOptsValidator } from 'convex/server';
-import { mutation, query } from './_generated/server';
+import { mutation, query, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
 
 // Query to get releases for a project with pagination
@@ -73,6 +73,36 @@ export const getRelease = query({
         if (!project || project.workspaceId !== args.workspaceId) {
             return null;
         }
+
+        return release;
+    },
+});
+
+// Internal query to get a release by project and version (for API access)
+export const getReleaseByVersion = internalQuery({
+    args: {
+        projectId: v.id('projects'),
+        workspaceId: v.id('workspaces'),
+        version: v.string(),
+    },
+    handler: async (ctx, args) => {
+        // Verify workspace exists
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        // Verify project belongs to workspace
+        const project = await ctx.db.get(args.projectId);
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
+        }
+
+        // Use the index to find release by project and version
+        const release = await ctx.db
+            .query('releases')
+            .withIndex('by_project_version', q => q.eq('projectId', args.projectId).eq('version', args.version))
+            .first();
 
         return release;
     },

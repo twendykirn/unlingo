@@ -64,6 +64,201 @@ http.route({
     }),
 });
 
+// Language file retrieval API endpoint
+http.route({
+    path: '/api/v1/languages',
+    method: 'GET',
+    handler: httpAction(async (ctx, request) => {
+        // Extract API key from header
+        const apiKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '');
+        if (!apiKey) {
+            return new Response(JSON.stringify({ error: 'API key required' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        // Extract query parameters
+        const url = new URL(request.url);
+        const version = url.searchParams.get('version'); // Release version
+        const namespace = url.searchParams.get('namespace'); // Namespace name
+        const lang = url.searchParams.get('lang'); // Language code
+
+        if (!version || !namespace || !lang) {
+            return new Response(
+                JSON.stringify({
+                    error: 'Missing required parameters: version, namespace, and lang are required',
+                    example: '/api/v1/languages?version=1.0.0&namespace=common&lang=en',
+                }),
+                {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                }
+            );
+        }
+
+        try {
+            // Verify API key and get workspace info
+            const apiKeyInfo = await ctx.runQuery(internal.apiKeys.verifyApiKey, { key: apiKey });
+            if (!apiKeyInfo) {
+                return new Response(JSON.stringify({ error: 'Invalid API key' }), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            }
+
+            // Check rate limits BEFORE processing the request
+            const limitCheck = await ctx.runQuery(internal.internalWorkspaces.checkRequestLimits, {
+                workspaceId: apiKeyInfo.workspaceId,
+            });
+
+            if (limitCheck.exceedsLimit) {
+                // TODO: Send email notification for exceeded limits
+                // TODO: Include limit details in response for better user experience
+                return new Response(
+                    JSON.stringify({
+                        error: 'Request limit exceeded. Please upgrade your plan or wait for the monthly reset.',
+                        currentUsage: limitCheck.currentRequests,
+                        limit: limitCheck.limit,
+                        resetPeriod: 'monthly',
+                    }),
+                    {
+                        status: 429,
+                        headers: { 'Content-Type': 'application/json' },
+                    }
+                );
+            }
+
+            // Find the release by version and project using the efficient index query
+            const release = await ctx.runQuery(internal.releases.getReleaseByVersion, {
+                projectId: apiKeyInfo.projectId,
+                workspaceId: apiKeyInfo.workspaceId,
+                version: version,
+            });
+
+            if (!release) {
+                return new Response(
+                    JSON.stringify({
+                        error: `Release version '${version}' not found`,
+                    }),
+                    {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' },
+                    }
+                );
+            }
+
+            // Find the namespace in the release by checking each namespace version
+            let targetNamespaceVersion = null;
+            for (const nv of release.namespaceVersions || []) {
+                const namespaceDoc = await ctx.runQuery(internal.namespaces.getNamespaceInternal, {
+                    namespaceId: nv.namespaceId,
+                    projectId: apiKeyInfo.projectId,
+                    workspaceId: apiKeyInfo.workspaceId,
+                });
+
+                if (namespaceDoc && namespaceDoc.name === namespace) {
+                    targetNamespaceVersion = nv;
+                    break;
+                }
+            }
+
+            if (!targetNamespaceVersion) {
+                return new Response(
+                    JSON.stringify({
+                        error: `Namespace '${namespace}' not found in release '${version}'`,
+                    }),
+                    {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' },
+                    }
+                );
+            }
+
+            // Get the specific language using the efficient index query
+            const language = await ctx.runQuery(internal.languages.getLanguageByCode, {
+                namespaceVersionId: targetNamespaceVersion.versionId,
+                languageCode: lang,
+                workspaceId: apiKeyInfo.workspaceId,
+            });
+
+            if (!language || !language.fileId) {
+                return new Response(
+                    JSON.stringify({
+                        error: `Language '${lang}' not found for namespace '${namespace}' in version '${version}'`,
+                    }),
+                    {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' },
+                    }
+                );
+            }
+
+            // Get the file content from Convex storage
+            const blob = await ctx.storage.get(language.fileId);
+            if (!blob) {
+                return new Response(
+                    JSON.stringify({
+                        error: 'Failed to retrieve language file',
+                    }),
+                    {
+                        status: 500,
+                        headers: { 'Content-Type': 'application/json' },
+                    }
+                );
+            }
+
+            // Track usage AFTER successful request
+            const usageUpdate = await ctx.runMutation(internal.internalWorkspaces.incrementRequestUsage, {
+                workspaceId: apiKeyInfo.workspaceId,
+            });
+
+            // Check if we should send notifications after usage increment
+            if (usageUpdate.nearLimit && !usageUpdate.exceedsHardLimit) {
+                // TODO: Send email notification for approaching limits (80% of plan)
+                console.log(
+                    `Workspace ${apiKeyInfo.workspaceId} is near request limit: ${usageUpdate.currentRequests}/${usageUpdate.limit}`
+                );
+            }
+
+            if (usageUpdate.exceedsHardLimit && !usageUpdate.exceedsLimit) {
+                // TODO: Send email notification for exceeding plan limits but still in buffer zone
+                console.log(
+                    `Workspace ${apiKeyInfo.workspaceId} has exceeded plan limit but is in buffer zone: ${usageUpdate.currentRequests}/${usageUpdate.limit}`
+                );
+            }
+
+            const fileContent = await blob.text();
+
+            // Parse JSON to validate it before returning
+            let parsedContent;
+            try {
+                parsedContent = JSON.parse(fileContent);
+            } catch {
+                // Return raw content if not valid JSON
+                parsedContent = fileContent;
+            }
+
+            return new Response(JSON.stringify(parsedContent), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        } catch (error: any) {
+            console.error('API Error:', error);
+            return new Response(
+                JSON.stringify({
+                    error: 'Internal server error',
+                    message: error.message,
+                }),
+                {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json' },
+                }
+            );
+        }
+    }),
+});
+
 polar.registerRoutes(http, {
     // Optional custom path, default is "/polar/events"
     path: '/polar/events',

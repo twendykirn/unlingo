@@ -1,5 +1,5 @@
 import { paginationOptsValidator } from 'convex/server';
-import { action, ActionCtx, mutation, query } from './_generated/server';
+import { action, ActionCtx, mutation, query, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
 import { generateSchemas } from '../lib/zodSchemaGenerator';
 import { internal } from './_generated/api';
@@ -752,5 +752,49 @@ export const applyChangeOperations = action({
             console.error('Failed to apply change operations:', error);
             throw error;
         }
+    },
+});
+
+// Internal query to get a specific language by namespace version and language code (for API access)
+export const getLanguageByCode = internalQuery({
+    args: {
+        namespaceVersionId: v.id('namespaceVersions'),
+        languageCode: v.string(),
+        workspaceId: v.id('workspaces'),
+    },
+    handler: async (ctx, args) => {
+        // Verify workspace exists
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        // Get the namespace version to verify access
+        const namespaceVersion = await ctx.db.get(args.namespaceVersionId);
+        if (!namespaceVersion) {
+            throw new Error('Namespace version not found');
+        }
+
+        // Get the namespace to verify project access
+        const namespace = await ctx.db.get(namespaceVersion.namespaceId);
+        if (!namespace) {
+            throw new Error('Namespace not found');
+        }
+
+        // Get the project to verify workspace access
+        const project = await ctx.db.get(namespace.projectId);
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
+        }
+
+        // Use the index to find language by namespace version and language code
+        const language = await ctx.db
+            .query('languages')
+            .withIndex('by_namespace_version_language', q => 
+                q.eq('namespaceVersionId', args.namespaceVersionId).eq('languageCode', args.languageCode)
+            )
+            .first();
+
+        return language;
     },
 });

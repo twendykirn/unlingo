@@ -12,6 +12,7 @@ import type * as apiKeys from "../apiKeys.js";
 import type * as http from "../http.js";
 import type * as internalLang from "../internalLang.js";
 import type * as internalNamespaces from "../internalNamespaces.js";
+import type * as internalWorkspaces from "../internalWorkspaces.js";
 import type * as languages from "../languages.js";
 import type * as namespaceVersions from "../namespaceVersions.js";
 import type * as namespaces from "../namespaces.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   internalLang: typeof internalLang;
   internalNamespaces: typeof internalNamespaces;
+  internalWorkspaces: typeof internalWorkspaces;
   languages: typeof languages;
   namespaceVersions: typeof namespaceVersions;
   namespaces: typeof namespaces;

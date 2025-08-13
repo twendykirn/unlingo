@@ -1,5 +1,5 @@
 import { paginationOptsValidator } from 'convex/server';
-import { mutation, query } from './_generated/server';
+import { mutation, query, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
 
 // Query to get namespaces for a project with pagination
@@ -432,5 +432,36 @@ export const setPrimaryLanguage = mutation({
         });
 
         return args.namespaceId;
+    },
+});
+
+// Internal query to get a single namespace by ID (for API access)
+export const getNamespaceInternal = internalQuery({
+    args: {
+        namespaceId: v.id('namespaces'),
+        projectId: v.id('projects'),
+        workspaceId: v.id('workspaces'),
+    },
+    handler: async (ctx, args) => {
+        // Verify workspace exists
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        // Verify project belongs to workspace
+        const project = await ctx.db.get(args.projectId);
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
+        }
+
+        const namespace = await ctx.db.get(args.namespaceId);
+
+        // Verify the namespace belongs to the project
+        if (!namespace || namespace.projectId !== args.projectId) {
+            return null;
+        }
+
+        return namespace;
     },
 });
