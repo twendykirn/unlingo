@@ -1,7 +1,7 @@
 'use client';
 
 import { Key, GitBranch, Globe, Settings, ArrowLeft } from 'lucide-react';
-import { use, useState } from 'react';
+import React, { use, useState } from 'react';
 import { UserButton, useUser, useOrganization } from '@clerk/nextjs';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
@@ -114,10 +114,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     <p className='text-gray-400 mb-6'>
                         Please complete your workspace setup by providing a contact email.
                     </p>
-                    <Link href="/dashboard/settings">
-                        <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
-                            Complete Setup
-                        </Button>
+                    <Link href='/dashboard/settings'>
+                        <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer'>Complete Setup</Button>
                     </Link>
                 </div>
             </div>
@@ -145,69 +143,89 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
     return (
         <div className='min-h-screen bg-black text-white flex'>
-            {/* Sidebar */}
-            <div className='w-64 bg-gray-950 border-r border-gray-800 flex flex-col'>
-                {/* Header */}
-                <div className='p-6 border-b border-gray-800'>
-                    <Link
-                        href='/dashboard'
-                        className='flex items-center space-x-2 text-gray-400 hover:text-white transition-colors mb-4'>
-                        <ArrowLeft className='h-4 w-4' />
-                        <span className='text-sm'>Back to Projects</span>
-                    </Link>
-
-                    <h1 className='text-xl font-bold truncate' title={project.name}>
-                        {project.name}
-                    </h1>
+            {/* Elegant Sidebar */}
+            <div className='w-72 bg-gray-950/50 border-r border-gray-800/50 flex flex-col backdrop-blur-sm'>
+                {/* Project Header */}
+                <div className='p-6 border-b border-gray-800/50'>
+                    <div className='flex items-center space-x-4 mb-4'>
+                        <div className='w-12 h-12 bg-gradient-to-br from-pink-500/20 to-purple-600/20 rounded-xl flex items-center justify-center border border-pink-500/30'>
+                            <Globe className='h-6 w-6 text-pink-400' />
+                        </div>
+                        <div className='flex-1'>
+                            <h1 className='text-lg font-semibold text-white truncate' title={project.name}>
+                                {project.name}
+                            </h1>
+                            <p className='text-xs text-gray-400 font-medium'>Translation Project</p>
+                        </div>
+                    </div>
                     {project.description && (
-                        <p className='text-sm text-gray-400 mt-1 line-clamp-2'>{project.description}</p>
+                        <p className='text-sm text-gray-400 leading-relaxed line-clamp-2'>{project.description}</p>
                     )}
                 </div>
 
                 {/* Navigation */}
                 <nav className='flex-1 p-4'>
-                    <ul className='space-y-2'>
+                    <div className='space-y-2'>
                         {sidebarItems.map(item => (
-                            <li key={item.label}>
-                                <button
-                                    onClick={() => setActiveTab(item.label.toLowerCase())}
-                                    className={`w-full flex items-start space-x-3 px-4 py-3 rounded-lg transition-colors cursor-pointer text-left ${
+                            <button
+                                key={item.label}
+                                onClick={() => setActiveTab(item.label.toLowerCase())}
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all cursor-pointer text-left group ${
+                                    activeTab === item.label.toLowerCase()
+                                        ? 'bg-gray-800/50 text-white border border-gray-700/50'
+                                        : 'text-gray-400 hover:text-white hover:bg-gray-800/30 border border-transparent'
+                                }`}>
+                                <div
+                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
                                         activeTab === item.label.toLowerCase()
-                                            ? 'bg-gray-800 text-white'
-                                            : 'text-gray-400 hover:text-white hover:bg-gray-900'
+                                            ? 'bg-gradient-to-br from-pink-500/20 to-purple-600/20 border border-pink-500/30'
+                                            : 'bg-gray-700/30 border border-gray-600/30 group-hover:bg-gray-600/40'
                                     }`}>
-                                    <item.icon className='h-5 w-5 mt-0.5 flex-shrink-0' />
-                                    <div>
-                                        <span className='block font-medium'>{item.label}</span>
-                                        <span className='text-xs text-gray-500 block'>{item.description}</span>
-                                    </div>
-                                </button>
-                            </li>
+                                    <item.icon
+                                        className={`h-4 w-4 ${
+                                            activeTab === item.label.toLowerCase()
+                                                ? 'text-pink-400'
+                                                : 'text-gray-400 group-hover:text-gray-300'
+                                        }`}
+                                    />
+                                </div>
+                                <div className='flex-1'>
+                                    <span
+                                        className={`block font-medium text-sm ${
+                                            activeTab === item.label.toLowerCase()
+                                                ? 'text-white'
+                                                : 'text-gray-300 group-hover:text-white'
+                                        }`}>
+                                        {item.label}
+                                    </span>
+                                    <span className='text-xs text-gray-500 block'>{item.description}</span>
+                                </div>
+                            </button>
                         ))}
-                    </ul>
+                    </div>
                 </nav>
+
+                {/* Footer Stats */}
+                <div className='p-4 border-t border-gray-800/50'>
+                    <div className='bg-gray-800/30 rounded-lg p-3'>
+                        <div className='flex items-center space-x-2 mb-2'>
+                            <div className='w-2 h-2 bg-emerald-400 rounded-full'></div>
+                            <span className='text-xs text-emerald-400 font-medium'>Project Active</span>
+                        </div>
+                        <div className='text-xs text-gray-400'>
+                            Created {new Date(project._creationTime).toLocaleDateString()}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Main Content */}
-            <div className='flex-1 flex flex-col'>
-                {/* Header */}
-                <header className='bg-gray-950 border-b border-gray-800 px-8 py-6'>
-                    <div>
-                        <h2 className='text-3xl font-bold capitalize'>{activeTab}</h2>
-                        <p className='text-gray-400 mt-1'>
-                            {sidebarItems.find(item => item.label.toLowerCase() === activeTab)?.description}
-                        </p>
-                    </div>
-                </header>
-
-                {/* Content */}
-                <main className='flex-1 p-8'>
-                    {activeTab === 'namespaces' && <NamespacesTab project={project} workspace={workspace} />}
-                    {activeTab === 'releases' && <ReleasesTab />}
-                    {activeTab === 'api keys' && <ApiKeysTab project={project} workspace={workspace} />}
-                    {activeTab === 'settings' && <SettingsTab project={project} workspace={workspace} />}
-                </main>
-            </div>
+            <main className='flex-1 flex flex-col p-4'>
+                {activeTab === 'namespaces' && <NamespacesTab project={project} workspace={workspace} />}
+                {activeTab === 'releases' && <ReleasesTab />}
+                {activeTab === 'api keys' && <ApiKeysTab project={project} workspace={workspace} />}
+                {activeTab === 'settings' && <SettingsTab project={project} workspace={workspace} />}
+            </main>
         </div>
     );
 }

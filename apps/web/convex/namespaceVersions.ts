@@ -100,7 +100,7 @@ export const createNamespaceVersion = action({
         copyFromVersionId: v.optional(v.id('namespaceVersions')),
     },
     handler: async (ctx, args): Promise<Id<'namespaceVersions'>> => {
-        const { versionId, sourceLanguages, namespace } = await ctx.runMutation(
+        const { versionId, sourceLanguages } = await ctx.runMutation(
             internal.internalNamespaces.createNamespaceVersionContext,
             {
                 namespaceId: args.namespaceId,
@@ -154,13 +154,11 @@ export const createNamespaceVersion = action({
                     });
                 }
 
-                // Update language count if we copied languages
+                // Update language count for this version if we copied languages
                 if (sourceLanguages.length > 0) {
-                    const currentLanguageCount = namespace.usage?.languages ?? 0;
-                    await ctx.runMutation(internal.internalNamespaces.internalUpdateNamespaceUsage, {
-                        namespaceId: args.namespaceId,
-                        languageCount: currentLanguageCount + sourceLanguages.length,
-                        versionCount: namespace.usage?.versions ?? 0,
+                    await ctx.runMutation(internal.internalNamespaces.internalUpdateVersionUsage, {
+                        versionId: versionId,
+                        languageCount: sourceLanguages.length,
                     });
                 }
             } catch (error) {
@@ -169,6 +167,65 @@ export const createNamespaceVersion = action({
         }
 
         return versionId;
+    },
+});
+
+// Mutation to update a namespace version
+export const updateNamespaceVersion = mutation({
+    args: {
+        versionId: v.id('namespaceVersions'),
+        workspaceId: v.id('workspaces'),
+        version: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error('Not authenticated');
+        }
+
+        // Verify user has access to this workspace
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace) {
+            throw new Error('Workspace not found');
+        }
+
+        if (identity.org !== workspace.clerkId) {
+            throw new Error('Unauthorized: Can only update versions from organization workspaces');
+        }
+
+        const namespaceVersion = await ctx.db.get(args.versionId);
+        if (!namespaceVersion) {
+            throw new Error('Namespace version not found');
+        }
+
+        // Verify access through the hierarchy
+        const namespace = await ctx.db.get(namespaceVersion.namespaceId);
+        if (!namespace) {
+            throw new Error('Namespace not found');
+        }
+
+        const project = await ctx.db.get(namespace.projectId);
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Access denied: Project does not belong to workspace');
+        }
+
+        // Check if the new version name already exists for this namespace
+        const existingVersion = await ctx.db
+            .query('namespaceVersions')
+            .withIndex('by_namespace', q => q.eq('namespaceId', namespaceVersion.namespaceId))
+            .filter(q => q.and(q.eq(q.field('version'), args.version), q.neq(q.field('_id'), args.versionId)))
+            .first();
+
+        if (existingVersion) {
+            throw new Error(`Version "${args.version}" already exists for this namespace`);
+        }
+
+        // Update the namespace version
+        await ctx.db.patch(args.versionId, {
+            version: args.version,
+        });
+
+        return args.versionId;
     },
 });
 
@@ -231,13 +288,11 @@ export const deleteNamespaceVersion = mutation({
         // Delete the namespace version
         await ctx.db.delete(args.versionId);
 
-        // Update namespace usage counters
+        // Update namespace version usage counter
         const currentVersionCount = namespace.usage?.versions ?? 1;
-        const currentLanguageCount = namespace.usage?.languages ?? languages.length;
 
         await ctx.db.patch(namespace._id, {
             usage: {
-                languages: Math.max(0, currentLanguageCount - languages.length),
                 versions: Math.max(0, currentVersionCount - 1),
             },
         });

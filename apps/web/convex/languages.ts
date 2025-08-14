@@ -155,7 +155,7 @@ export const getLanguageWithContext = query({
             projectId: project._id,
             namespaceId: namespace._id,
             namespaceVersionId: namespaceVersion._id,
-            isPrimary: namespace.primaryLanguageId === language._id,
+            isPrimary: namespaceVersion.primaryLanguageId === language._id,
         };
     },
 });
@@ -211,7 +211,7 @@ export const createLanguage = action({
                     console.error('Failed to copy from specified language:', error);
                 }
             }
-        } else if (!isFirstLanguage && namespace.primaryLanguageId) {
+        } else if (!isFirstLanguage && namespaceVersion.primaryLanguageId) {
             if (primaryFileId) {
                 try {
                     const sourceFileUrl = await ctx.storage.getUrl(primaryFileId);
@@ -377,12 +377,11 @@ export const deleteLanguage = mutation({
         // Delete the language record
         await ctx.db.delete(args.languageId);
 
-        // Update namespace usage counter
-        const currentLanguageCount = namespace.usage?.languages ?? 1;
-        await ctx.db.patch(namespace._id, {
+        // Update namespace version usage counter
+        const currentLanguageCount = namespaceVersion.usage?.languages ?? 1;
+        await ctx.db.patch(namespaceVersion._id, {
             usage: {
                 languages: Math.max(0, currentLanguageCount - 1),
-                versions: namespace.usage?.versions ?? 0,
             },
         });
 
@@ -431,13 +430,13 @@ export const getLanguageCount = query({
             throw new Error('Access denied: Project does not belong to workspace');
         }
 
-        // Get language count from namespace usage
-        const currentCount = namespace.usage?.languages ?? 0;
+        // Get language count from namespace version usage
+        const currentCount = namespaceVersion.usage?.languages ?? 0;
 
         return {
             count: currentCount,
-            limit: workspace.limits.languagesPerNamespace,
-            canCreateMore: currentCount < workspace.limits.languagesPerNamespace,
+            limit: workspace.limits.languagesPerVersion,
+            canCreateMore: currentCount < workspace.limits.languagesPerVersion,
         };
     },
 });
@@ -463,19 +462,6 @@ export const getLanguageContent = action({
                 schemaUpdatedAt?: number | undefined;
                 version: string;
                 namespaceId: Id<'namespaces'>;
-            };
-            namespace: {
-                _id: Id<'namespaces'>;
-                _creationTime: number;
-                usage?:
-                    | {
-                          languages: number;
-                          versions: number;
-                      }
-                    | undefined;
-                primaryLanguageId?: Id<'languages'> | undefined;
-                name: string;
-                projectId: Id<'projects'>;
             };
             language: {
                 _id: Id<'languages'>;
@@ -641,15 +627,12 @@ export const applyChangeOperations = action({
             throw new Error('Not authenticated');
         }
 
-        const { namespaceVersion, namespace, language } = await ctx.runQuery(
-            internal.internalLang.languageChangesContext,
-            {
-                languageId: args.languageId,
-                workspaceId: args.workspaceId,
-            }
-        );
+        const { namespaceVersion, language } = await ctx.runQuery(internal.internalLang.languageChangesContext, {
+            languageId: args.languageId,
+            workspaceId: args.workspaceId,
+        });
 
-        const isPrimaryLanguage = namespace.primaryLanguageId === args.languageId;
+        const isPrimaryLanguage = namespaceVersion.primaryLanguageId === args.languageId;
 
         try {
             // Get current language content
@@ -790,7 +773,7 @@ export const getLanguageByCode = internalQuery({
         // Use the index to find language by namespace version and language code
         const language = await ctx.db
             .query('languages')
-            .withIndex('by_namespace_version_language', q => 
+            .withIndex('by_namespace_version_language', q =>
                 q.eq('namespaceVersionId', args.namespaceVersionId).eq('languageCode', args.languageCode)
             )
             .first();

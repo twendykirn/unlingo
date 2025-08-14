@@ -1,0 +1,883 @@
+---
+title: 'Basic Setup Example'
+description: 'Complete example of setting up Unlingo in a React application from scratch'
+---
+
+## Overview
+
+This example demonstrates how to set up Unlingo in a React application from the ground up. We'll create a simple e-commerce app with multiple languages and show best practices for organization and implementation.
+
+## Project Structure
+
+We'll build an e-commerce app with the following translation structure:
+
+```
+Project: E-commerce Demo
+├── common/          # Shared translations
+│   ├── buttons
+│   ├── navigation
+│   └── forms
+├── products/        # Product-related translations
+│   ├── catalog
+│   ├── details
+│   └── search
+└── checkout/        # Purchase flow translations
+    ├── cart
+    ├── payment
+    └── confirmation
+```
+
+## Step 1: Project Setup
+
+### Create React App
+
+```bash
+npx create-react-app unlingo-demo
+cd unlingo-demo
+npm install i18next react-i18next
+```
+
+### Install Dependencies
+
+```json package.json
+{
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "i18next": "^23.7.0",
+    "react-i18next": "^13.5.0",
+    "react-router-dom": "^6.8.0"
+  }
+}
+```
+
+## Step 2: Create Unlingo Backend
+
+Create a custom i18next backend for Unlingo:
+
+```javascript src/i18n/unlingo-backend.js
+class UnlingoBackend {
+  constructor(services, backendOptions = {}) {
+    this.type = 'backend';
+    this.options = {
+      apiKey: '',
+      version: 'latest',
+      baseUrl: 'https://api.unlingo.com/v1',
+      projectId: '',
+      ...backendOptions
+    };
+    
+    // Simple cache to avoid duplicate requests
+    this.cache = new Map();
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+  }
+
+  init(services, backendOptions = {}) {
+    this.services = services;
+    this.options = { ...this.options, ...backendOptions };
+  }
+
+  async read(language, namespace, callback) {
+    const cacheKey = `${language}-${namespace}-${this.options.version}`;
+    const cached = this.cache.get(cacheKey);
+
+    // Return cached data if available and not expired
+    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+      return callback(null, cached.data);
+    }
+
+    try {
+      const url = new URL('/translations', this.options.baseUrl);
+      url.searchParams.set('version', this.options.version);
+      url.searchParams.set('namespace', namespace);
+      url.searchParams.set('lang', language);
+
+      console.log(`Fetching translations: ${language}/${namespace}/${this.options.version}`);
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.options.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const error = new Error(`HTTP ${response.status}: ${errorData.error?.message || response.statusText}`);
+        error.status = response.status;
+        return callback(error, null);
+      }
+
+      const result = await response.json();
+      const data = result.data || result;
+
+      // Cache the successful response
+      this.cache.set(cacheKey, {
+        data,
+        timestamp: Date.now()
+      });
+
+      callback(null, data);
+    } catch (error) {
+      console.error('Unlingo Backend Error:', error);
+      callback(error, null);
+    }
+  }
+
+  // Optional: Implement create method for development
+  create(languages, namespace, key, fallbackValue, callback) {
+    // In a real implementation, this could create missing keys
+    console.warn(`Missing translation key: ${namespace}.${key}`);
+    callback(null, { [key]: fallbackValue || key });
+  }
+}
+
+export default UnlingoBackend;
+```
+
+## Step 3: Configure i18next
+
+Set up i18next with the Unlingo backend:
+
+```javascript src/i18n/index.js
+import i18next from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import UnlingoBackend from './unlingo-backend';
+
+// Configuration
+const API_KEY = process.env.REACT_APP_UNLINGO_API_KEY;
+const VERSION = process.env.REACT_APP_UNLINGO_VERSION || 'latest';
+
+if (!API_KEY) {
+  console.error('REACT_APP_UNLINGO_API_KEY environment variable is required');
+}
+
+i18next
+  .use(UnlingoBackend)
+  .use(initReactI18next)
+  .init({
+    // Language settings
+    lng: 'en',
+    fallbackLng: 'en',
+    
+    // Namespace configuration
+    defaultNS: 'common',
+    ns: ['common', 'products', 'checkout'],
+    
+    // Backend configuration
+    backend: {
+      apiKey: API_KEY,
+      version: VERSION,
+    },
+    
+    // Loading behavior
+    load: 'languageOnly', // Don't load region-specific variants
+    preload: ['en'], // Preload default language
+    
+    // React-specific options
+    react: {
+      bindI18n: 'languageChanged',
+      bindI18nStore: '',
+      transEmptyNodeValue: '',
+      transSupportBasicHtmlNodes: true,
+      transKeepBasicHtmlNodesFor: ['br', 'strong', 'i', 'em'],
+      useSuspense: true,
+    },
+    
+    // Interpolation settings
+    interpolation: {
+      escapeValue: false, // React already escapes
+    },
+    
+    // Development settings
+    debug: process.env.NODE_ENV === 'development',
+    
+    // Performance options
+    cleanCode: true,
+    compatibilityJSON: 'v3',
+  });
+
+export default i18next;
+```
+
+## Step 4: Environment Configuration
+
+Create environment variables:
+
+```env .env.local
+REACT_APP_UNLINGO_API_KEY=ul_your_api_key_here
+REACT_APP_UNLINGO_VERSION=1.0.0
+```
+
+```env .env.development
+REACT_APP_UNLINGO_API_KEY=ul_your_dev_api_key_here
+REACT_APP_UNLINGO_VERSION=staging
+```
+
+```env .env.production
+REACT_APP_UNLINGO_API_KEY=ul_your_prod_api_key_here
+REACT_APP_UNLINGO_VERSION=latest
+```
+
+## Step 5: Create Translation Hook
+
+Create a custom hook for easier translation management:
+
+```javascript src/hooks/useTranslations.js
+import { useTranslation } from 'react-i18next';
+import { useCallback } from 'react';
+
+export function useTranslations(namespace = 'common') {
+  const { t, i18n, ready } = useTranslation(namespace);
+
+  const translate = useCallback(
+    (key, options = {}) => {
+      if (!ready) return key; // Return key as fallback if not ready
+      return t(key, options);
+    },
+    [t, ready]
+  );
+
+  const changeLanguage = useCallback(
+    (language) => {
+      return i18n.changeLanguage(language);
+    },
+    [i18n]
+  );
+
+  return {
+    t: translate,
+    changeLanguage,
+    currentLanguage: i18n.language,
+    isReady: ready,
+    isLoading: !ready,
+  };
+}
+
+// Specialized hooks for different namespaces
+export function useCommonTranslations() {
+  return useTranslations('common');
+}
+
+export function useProductTranslations() {
+  return useTranslations('products');
+}
+
+export function useCheckoutTranslations() {
+  return useTranslations('checkout');
+}
+```
+
+## Step 6: Create Components
+
+### Language Switcher Component
+
+```javascript src/components/LanguageSwitcher.js
+import React from 'react';
+import { useCommonTranslations } from '../hooks/useTranslations';
+
+const LANGUAGES = [
+  { code: 'en', name: 'English', flag: '🇺🇸' },
+  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+];
+
+function LanguageSwitcher() {
+  const { t, changeLanguage, currentLanguage } = useCommonTranslations();
+
+  const handleLanguageChange = async (languageCode) => {
+    try {
+      await changeLanguage(languageCode);
+      // Optionally store preference in localStorage
+      localStorage.setItem('preferredLanguage', languageCode);
+    } catch (error) {
+      console.error('Failed to change language:', error);
+    }
+  };
+
+  return (
+    <div className="language-switcher">
+      <label htmlFor="language-select">
+        {t('selectLanguage', 'Select Language')}
+      </label>
+      <select
+        id="language-select"
+        value={currentLanguage}
+        onChange={(e) => handleLanguageChange(e.target.value)}
+        className="language-select"
+      >
+        {LANGUAGES.map((lang) => (
+          <option key={lang.code} value={lang.code}>
+            {lang.flag} {lang.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+export default LanguageSwitcher;
+```
+
+### Navigation Component
+
+```javascript src/components/Navigation.js
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useCommonTranslations } from '../hooks/useTranslations';
+import LanguageSwitcher from './LanguageSwitcher';
+
+function Navigation() {
+  const { t } = useCommonTranslations();
+
+  return (
+    <nav className="navbar">
+      <div className="nav-brand">
+        <Link to="/">
+          {t('brand.name', 'Unlingo Store')}
+        </Link>
+      </div>
+      
+      <ul className="nav-links">
+        <li>
+          <Link to="/">
+            {t('navigation.home', 'Home')}
+          </Link>
+        </li>
+        <li>
+          <Link to="/products">
+            {t('navigation.products', 'Products')}
+          </Link>
+        </li>
+        <li>
+          <Link to="/cart">
+            {t('navigation.cart', 'Cart')}
+          </Link>
+        </li>
+        <li>
+          <Link to="/account">
+            {t('navigation.account', 'Account')}
+          </Link>
+        </li>
+      </ul>
+      
+      <div className="nav-actions">
+        <LanguageSwitcher />
+      </div>
+    </nav>
+  );
+}
+
+export default Navigation;
+```
+
+### Product Card Component
+
+```javascript src/components/ProductCard.js
+import React from 'react';
+import { useProductTranslations } from '../hooks/useTranslations';
+
+function ProductCard({ product, onAddToCart }) {
+  const { t } = useProductTranslations();
+
+  const handleAddToCart = () => {
+    onAddToCart(product);
+  };
+
+  return (
+    <div className="product-card">
+      <img 
+        src={product.image} 
+        alt={product.name}
+        className="product-image"
+      />
+      
+      <div className="product-info">
+        <h3 className="product-name">{product.name}</h3>
+        <p className="product-description">{product.description}</p>
+        
+        <div className="product-price">
+          {product.onSale ? (
+            <>
+              <span className="sale-price">
+                {t('price.sale', { 
+                  price: product.salePrice, 
+                  currency: product.currency 
+                })}
+              </span>
+              <span className="original-price">
+                {t('price.original', { 
+                  price: product.originalPrice, 
+                  currency: product.currency 
+                })}
+              </span>
+            </>
+          ) : (
+            <span className="regular-price">
+              {t('price.regular', { 
+                price: product.price, 
+                currency: product.currency 
+              })}
+            </span>
+          )}
+        </div>
+        
+        <div className="product-actions">
+          <button 
+            onClick={handleAddToCart}
+            className="btn btn-primary"
+          >
+            {t('actions.addToCart', 'Add to Cart')}
+          </button>
+          
+          <button className="btn btn-secondary">
+            {t('actions.viewDetails', 'View Details')}
+          </button>
+        </div>
+        
+        {product.inStock ? (
+          <div className="stock-status in-stock">
+            {t('stock.inStock', 'In Stock')}
+          </div>
+        ) : (
+          <div className="stock-status out-of-stock">
+            {t('stock.outOfStock', 'Out of Stock')}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default ProductCard;
+```
+
+### Shopping Cart Component
+
+```javascript src/components/ShoppingCart.js
+import React from 'react';
+import { useCheckoutTranslations } from '../hooks/useTranslations';
+
+function ShoppingCart({ items, onUpdateQuantity, onRemoveItem, onCheckout }) {
+  const { t } = useCheckoutTranslations();
+
+  const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  if (items.length === 0) {
+    return (
+      <div className="cart-empty">
+        <h2>{t('cart.empty.title', 'Your cart is empty')}</h2>
+        <p>{t('cart.empty.message', 'Add some products to get started!')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="shopping-cart">
+      <h2>
+        {t('cart.title', 'Shopping Cart')} 
+        ({t('cart.itemCount', { count: itemCount }, '{{count}} items')})
+      </h2>
+      
+      <div className="cart-items">
+        {items.map((item) => (
+          <div key={item.id} className="cart-item">
+            <img src={item.image} alt={item.name} />
+            
+            <div className="item-details">
+              <h4>{item.name}</h4>
+              <p>{t('cart.price', { price: item.price, currency: item.currency })}</p>
+            </div>
+            
+            <div className="quantity-controls">
+              <button 
+                onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                disabled={item.quantity <= 1}
+              >
+                -
+              </button>
+              <span>{item.quantity}</span>
+              <button onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}>
+                +
+              </button>
+            </div>
+            
+            <div className="item-total">
+              {t('cart.itemTotal', { 
+                total: item.price * item.quantity, 
+                currency: item.currency 
+              })}
+            </div>
+            
+            <button 
+              onClick={() => onRemoveItem(item.id)}
+              className="remove-item"
+            >
+              {t('cart.removeItem', 'Remove')}
+            </button>
+          </div>
+        ))}
+      </div>
+      
+      <div className="cart-summary">
+        <div className="subtotal">
+          {t('cart.subtotal', { total, currency: 'USD' })}
+        </div>
+        
+        <div className="cart-actions">
+          <button onClick={onCheckout} className="btn btn-primary btn-large">
+            {t('cart.proceedToCheckout', 'Proceed to Checkout')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default ShoppingCart;
+```
+
+## Step 7: Main App Component
+
+```javascript src/App.js
+import React, { Suspense, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+
+// Import i18n configuration
+import './i18n';
+
+// Components
+import Navigation from './components/Navigation';
+import HomePage from './pages/HomePage';
+import ProductsPage from './pages/ProductsPage';
+import CartPage from './pages/CartPage';
+import LoadingSpinner from './components/LoadingSpinner';
+
+// Styles
+import './styles/App.css';
+
+function AppContent() {
+  const { i18n } = useTranslation();
+
+  useEffect(() => {
+    // Load preferred language from localStorage
+    const savedLanguage = localStorage.getItem('preferredLanguage');
+    if (savedLanguage && savedLanguage !== i18n.language) {
+      i18n.changeLanguage(savedLanguage);
+    }
+  }, [i18n]);
+
+  return (
+    <Router>
+      <div className="app">
+        <Navigation />
+        
+        <main className="main-content">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/products" element={<ProductsPage />} />
+            <Route path="/cart" element={<CartPage />} />
+          </Routes>
+        </main>
+        
+        <footer className="footer">
+          <p>&copy; 2024 Unlingo Demo Store</p>
+        </footer>
+      </div>
+    </Router>
+  );
+}
+
+function App() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <AppContent />
+    </Suspense>
+  );
+}
+
+export default App;
+```
+
+## Step 8: Translation Structure in Unlingo
+
+### Common Namespace
+
+```json common.json
+{
+  "brand": {
+    "name": "Unlingo Store",
+    "tagline": "Global shopping made simple"
+  },
+  "navigation": {
+    "home": "Home",
+    "products": "Products",
+    "cart": "Cart",
+    "account": "Account"
+  },
+  "buttons": {
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirm": "Confirm"
+  },
+  "forms": {
+    "email": "Email Address",
+    "password": "Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone Number"
+  },
+  "selectLanguage": "Select Language",
+  "loading": "Loading...",
+  "error": {
+    "general": "Something went wrong. Please try again.",
+    "network": "Network error. Please check your connection.",
+    "notFound": "The requested item was not found."
+  }
+}
+```
+
+### Products Namespace
+
+```json products.json
+{
+  "title": "Our Products",
+  "search": {
+    "placeholder": "Search products...",
+    "noResults": "No products found",
+    "filters": "Filters"
+  },
+  "price": {
+    "regular": "{{price}} {{currency}}",
+    "sale": "{{price}} {{currency}}",
+    "original": "{{price}} {{currency}}"
+  },
+  "actions": {
+    "addToCart": "Add to Cart",
+    "viewDetails": "View Details",
+    "compare": "Compare",
+    "wishlist": "Add to Wishlist"
+  },
+  "stock": {
+    "inStock": "In Stock",
+    "outOfStock": "Out of Stock",
+    "lowStock": "Only {{count}} left"
+  },
+  "categories": {
+    "electronics": "Electronics",
+    "clothing": "Clothing",
+    "books": "Books",
+    "home": "Home & Garden"
+  }
+}
+```
+
+### Checkout Namespace
+
+```json checkout.json
+{
+  "cart": {
+    "title": "Shopping Cart",
+    "empty": {
+      "title": "Your cart is empty",
+      "message": "Add some products to get started!"
+    },
+    "itemCount": "{{count}} item",
+    "itemCount_plural": "{{count}} items",
+    "price": "{{price}} {{currency}}",
+    "itemTotal": "{{total}} {{currency}}",
+    "subtotal": "Subtotal: {{total}} {{currency}}",
+    "removeItem": "Remove",
+    "proceedToCheckout": "Proceed to Checkout"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "steps": {
+      "shipping": "Shipping Information",
+      "payment": "Payment",
+      "review": "Review Order"
+    },
+    "success": {
+      "title": "Order Confirmed!",
+      "message": "Thank you for your purchase. Your order #{{orderNumber}} has been confirmed."
+    }
+  }
+}
+```
+
+## Step 9: Error Handling and Loading States
+
+```javascript src/components/TranslationErrorBoundary.js
+import React from 'react';
+
+class TranslationErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Translation error:', error, errorInfo);
+    
+    // Log to monitoring service
+    if (process.env.NODE_ENV === 'production') {
+      // Example: Sentry.captureException(error);
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="translation-error">
+          <h2>Oops! Something went wrong with translations.</h2>
+          <p>Please refresh the page or try again later.</p>
+          <button onClick={() => window.location.reload()}>
+            Refresh Page
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default TranslationErrorBoundary;
+```
+
+## Step 10: Performance Optimization
+
+### Lazy Loading Namespaces
+
+```javascript src/hooks/useLazyNamespace.js
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+
+export function useLazyNamespace(namespace) {
+  const { i18n } = useTranslation();
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const loadNamespace = async () => {
+      try {
+        if (!i18n.hasResourceBundle(i18n.language, namespace)) {
+          await i18n.loadNamespaces(namespace);
+        }
+        setIsLoaded(true);
+      } catch (err) {
+        setError(err);
+      }
+    };
+
+    loadNamespace();
+  }, [namespace, i18n]);
+
+  return { isLoaded, error };
+}
+```
+
+### Preloading Critical Namespaces
+
+```javascript src/utils/preloadTranslations.js
+export async function preloadCriticalNamespaces(i18n, language = 'en') {
+  const criticalNamespaces = ['common', 'navigation'];
+  
+  try {
+    await i18n.loadNamespaces(criticalNamespaces);
+    console.log('Critical namespaces preloaded');
+  } catch (error) {
+    console.error('Failed to preload critical namespaces:', error);
+  }
+}
+```
+
+## Step 11: Testing
+
+```javascript src/utils/testUtils.js
+import React from 'react';
+import { render } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import i18n from 'i18next';
+
+// Test i18n instance
+const testI18n = i18n.createInstance();
+testI18n.init({
+  lng: 'en',
+  fallbackLng: 'en',
+  interpolation: { escapeValue: false },
+  resources: {
+    en: {
+      common: {
+        'buttons.submit': 'Submit',
+        'navigation.home': 'Home',
+      },
+    },
+  },
+});
+
+export function renderWithTranslation(component, options = {}) {
+  return render(
+    <I18nextProvider i18n={testI18n}>
+      {component}
+    </I18nextProvider>,
+    options
+  );
+}
+```
+
+## Running the Application
+
+1. **Start the development server**:
+   ```bash
+   npm start
+   ```
+
+2. **Environment setup**: Make sure your `.env.local` file contains your Unlingo API key
+
+3. **Translation setup**: Ensure your Unlingo project has the necessary namespaces and translations
+
+4. **Testing**: The app will load translations dynamically from Unlingo as you navigate
+
+## Key Features Demonstrated
+
+- ✅ **Multi-namespace organization** (common, products, checkout)
+- ✅ **Dynamic language switching** with persistence
+- ✅ **Custom translation hooks** for different contexts
+- ✅ **Error handling** and loading states
+- ✅ **Caching** for improved performance
+- ✅ **Interpolation** for dynamic content
+- ✅ **Fallback handling** for missing translations
+- ✅ **Environment-based configuration**
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Advanced Caching"
+    icon="database"
+    href="/advanced/caching"
+  >
+    Implement sophisticated caching strategies
+  </Card>
+  <Card
+    title="Production Deployment"
+    icon="rocket"
+    href="/advanced/deployment"
+  >
+    Deploy your internationalized app to production
+  </Card>
+</CardGroup>
+
+This example provides a solid foundation for building internationalized React applications with Unlingo. You can extend it by adding more features like pluralization, context-based translations, and advanced error handling.

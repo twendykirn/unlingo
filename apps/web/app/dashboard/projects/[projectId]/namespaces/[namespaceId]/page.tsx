@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, usePaginatedQuery, useAction } from 'convex/react';
 import { useUser, useOrganization } from '@clerk/nextjs';
-import { ArrowLeft, Plus, MoreVertical, GitBranch, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, MoreVertical, GitBranch, Tag, Trash2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,9 +40,11 @@ export default function NamespaceVersionsPage() {
     const [isEditVersionOpen, setIsEditVersionOpen] = useState(false);
     const [isDeleteVersionOpen, setIsDeleteVersionOpen] = useState(false);
     const [editVersionNumber, setEditVersionNumber] = useState('');
+    const [selectedVersionName, setSelectedVersionName] = useState('');
 
     // Mutations
     const createVersion = useAction(api.namespaceVersions.createNamespaceVersion);
+    const updateVersion = useMutation(api.namespaceVersions.updateNamespaceVersion);
     const deleteVersion = useMutation(api.namespaceVersions.deleteNamespaceVersion);
 
     // Queries
@@ -116,6 +118,24 @@ export default function NamespaceVersionsPage() {
         }
     };
 
+    const handleUpdateVersion = async () => {
+        if (!selectedVersion || !workspaceQuery || !editVersionNumber.trim()) return;
+
+        try {
+            await updateVersion({
+                versionId: selectedVersion as Id<'namespaceVersions'>,
+                workspaceId: workspaceQuery._id,
+                version: editVersionNumber.trim(),
+            });
+            setSelectedVersion(null);
+            setEditVersionNumber('');
+            setSelectedVersionName('');
+            setIsEditVersionOpen(false);
+        } catch (error) {
+            console.error('Failed to update version:', error);
+        }
+    };
+
     const handleDeleteVersion = async () => {
         if (!selectedVersion || !workspaceQuery) return;
 
@@ -139,100 +159,119 @@ export default function NamespaceVersionsPage() {
         e.stopPropagation();
         setSelectedVersion(version._id);
         setEditVersionNumber(version.version);
+        setSelectedVersionName(version.version);
         setIsEditVersionOpen(true);
     };
 
     return (
         <div className='p-6 space-y-6'>
-            {/* Header */}
-            <div className='flex items-center space-x-4'>
-                <Button
-                    variant='ghost'
-                    size='sm'
-                    onClick={() => {
-                        router.push(`/dashboard/projects/${projectId}`);
-                    }}
-                    className='text-gray-400 hover:text-white cursor-pointer'>
-                    <ArrowLeft className='h-4 w-4 mr-2' />
-                    Back
-                </Button>
-                <div>
-                    <h1 className='text-2xl font-bold text-white'>{namespaceQuery.name}</h1>
-                    <p className='text-gray-400'>Manage versions and languages for this namespace</p>
+            {/* Elegant Header with Combined Actions */}
+            <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
+                <div className='flex items-center justify-between'>
+                    <div className='flex items-center space-x-4'>
+                        <Button
+                            variant='ghost'
+                            size='sm'
+                            onClick={() => {
+                                router.push(`/dashboard/projects/${projectId}`);
+                            }}
+                            className='w-10 h-10 p-0 text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer rounded-lg'>
+                            <ArrowLeft className='h-4 w-4' />
+                        </Button>
+                        <div className='flex items-center space-x-3'>
+                            <div className='w-12 h-12 bg-gradient-to-br from-pink-500/10 to-purple-600/10 rounded-xl flex items-center justify-center border border-gray-700/30'>
+                                <GitBranch className='h-6 w-6 text-pink-400' />
+                            </div>
+                            <div>
+                                <h1 className='text-2xl font-semibold text-white'>{namespaceQuery.name}</h1>
+                                <p className='text-gray-400 text-sm'>
+                                    Manage versions and languages for this namespace
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className='flex items-center space-x-3'>
+                        <div className='flex items-center space-x-2 text-xs text-gray-400'>
+                            <span>
+                                {versions?.length || 0} / {workspaceQuery.limits.versionsPerNamespace}
+                            </span>
+                            <span>versions</span>
+                        </div>
+                        <Dialog open={isCreateVersionOpen} onOpenChange={setIsCreateVersionOpen}>
+                            <DialogTrigger asChild>
+                                <Button
+                                    className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'
+                                    disabled={versions.length >= workspaceQuery.limits.versionsPerNamespace}>
+                                    <Plus className='h-4 w-4 mr-2' />
+                                    Create Version
+                                </Button>
+                            </DialogTrigger>
+                        </Dialog>
+                    </div>
                 </div>
             </div>
 
-            {/* Create Version Button */}
-            <div className='flex justify-end'>
-                <Dialog open={isCreateVersionOpen} onOpenChange={setIsCreateVersionOpen}>
-                    <DialogTrigger asChild>
-                        <Button
-                            className='bg-blue-500 text-white hover:bg-blue-600 cursor-pointer'
-                            disabled={versions.length >= workspaceQuery.limits.versionsPerNamespace}>
-                            <Plus className='h-4 w-4 mr-2' />
-                            Create Version
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className='bg-gray-950 border-gray-800 text-white'>
-                        <DialogHeader>
-                            <DialogTitle>Create New Version</DialogTitle>
-                            <DialogDescription className='text-gray-400'>
-                                Create a new version for this namespace. Use semantic versioning (e.g., 1.0.0).
-                            </DialogDescription>
-                        </DialogHeader>
+            {/* Hidden Create Version Dialog */}
+            <Dialog open={isCreateVersionOpen} onOpenChange={setIsCreateVersionOpen}>
+                <DialogContent className='bg-gray-950 border-gray-800 text-white'>
+                    <DialogHeader>
+                        <DialogTitle>Create New Version</DialogTitle>
+                        <DialogDescription className='text-gray-400'>
+                            Create a new version for this namespace. Use semantic versioning (e.g., 1.0.0).
+                        </DialogDescription>
+                    </DialogHeader>
 
-                        <div className='space-y-4'>
-                            <div>
-                                <Label htmlFor='version-number'>Version Number</Label>
-                                <Input
-                                    id='version-number'
-                                    placeholder='e.g., 1.0.0, 1.2.3-beta'
-                                    value={newVersionNumber}
-                                    onChange={e => setNewVersionNumber(e.target.value)}
-                                    className='bg-gray-900 border-gray-700 text-white mt-2'
-                                />
-                            </div>
-
-                            {versions && versions.length > 0 && (
-                                <div>
-                                    <Label htmlFor='copy-from'>Copy from existing version (optional)</Label>
-                                    <Select value={copyFromVersion} onValueChange={setCopyFromVersion}>
-                                        <SelectTrigger className='bg-gray-900 border-gray-700 text-white'>
-                                            <SelectValue placeholder='Select version to copy from' />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {versions.map((version: any) => (
-                                                <SelectItem key={version._id} value={version._id}>
-                                                    {version.version}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
+                    <div className='space-y-4'>
+                        <div>
+                            <Label htmlFor='version-number'>Version Number</Label>
+                            <Input
+                                id='version-number'
+                                placeholder='e.g., 1.0.0, 1.2.3-beta'
+                                value={newVersionNumber}
+                                onChange={e => setNewVersionNumber(e.target.value)}
+                                className='bg-gray-900 border-gray-700 text-white mt-2'
+                            />
                         </div>
 
-                        <DialogFooter>
-                            <Button
-                                variant='outline'
-                                onClick={() => {
-                                    setIsCreateVersionOpen(false);
-                                    setNewVersionNumber('');
-                                    setCopyFromVersion('');
-                                }}
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={handleCreateVersion}
-                                disabled={!newVersionNumber.trim()}
-                                className='bg-blue-500 text-white hover:bg-blue-600 cursor-pointer'>
-                                Create Version
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </div>
+                        {versions && versions.length > 0 && (
+                            <div>
+                                <Label htmlFor='copy-from'>Copy from existing version (optional)</Label>
+                                <Select value={copyFromVersion} onValueChange={setCopyFromVersion}>
+                                    <SelectTrigger className='bg-gray-900 border-gray-700 text-white'>
+                                        <SelectValue placeholder='Select version to copy from' />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {versions.map((version: any) => (
+                                            <SelectItem key={version._id} value={version._id}>
+                                                {version.version}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant='outline'
+                            onClick={() => {
+                                setIsCreateVersionOpen(false);
+                                setNewVersionNumber('');
+                                setCopyFromVersion('');
+                            }}
+                            className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleCreateVersion}
+                            disabled={!newVersionNumber.trim()}
+                            className='bg-blue-500 text-white hover:bg-blue-600 cursor-pointer'>
+                            Create Version
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Versions List */}
             {versions && versions.length > 0 ? (
@@ -241,18 +280,53 @@ export default function NamespaceVersionsPage() {
                         {versions.map(version => (
                             <div
                                 key={version._id}
-                                className='bg-gray-900 border border-gray-800 rounded-lg p-6 cursor-pointer transition-all hover:border-gray-700'
+                                className='group bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 cursor-pointer transition-all duration-300 hover:border-gray-600/50 hover:bg-gray-900/70 backdrop-blur-sm'
                                 onClick={() => handleVersionCardClick(version)}>
-                                <div className='flex items-center justify-between'>
+                                {/* Header Section */}
+                                <div className='flex items-center justify-between mb-4'>
                                     <div className='flex items-center space-x-3'>
-                                        <div className='w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center'>
-                                            <GitBranch className='h-5 w-5 text-white' />
+                                        <div className='w-12 h-12 bg-gradient-to-br from-pink-500/20 to-purple-600/20 rounded-xl flex items-center justify-center border border-pink-500/30 group-hover:border-pink-500/50 transition-all'>
+                                            <GitBranch className='h-6 w-6 text-pink-400' />
                                         </div>
-                                        <h4 className='font-semibold text-white'>{version.version}</h4>
+                                        <div>
+                                            <h4 className='text-lg font-semibold text-white group-hover:text-pink-400 transition-colors mb-1'>
+                                                {version.version}
+                                            </h4>
+                                            <p className='text-xs text-gray-400 font-medium'>Version</p>
+                                        </div>
                                     </div>
+                                </div>
+
+                                {/* Stats Section */}
+                                <div className='space-y-3 mb-4'>
+                                    <div className='flex items-center justify-between text-xs'>
+                                        <span className='text-gray-400'>Languages</span>
+                                        <div className='flex items-center space-x-1'>
+                                            <div className='w-2 h-2 bg-green-400 rounded-full'></div>
+                                            <span className='text-gray-300 font-medium'>
+                                                {version.usage?.languages || 0}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className='flex items-center justify-between text-xs'>
+                                        <span className='text-gray-400'>Created</span>
+                                        <span className='text-gray-300 font-medium'>
+                                            {new Date(version._creationTime).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                    <div className='flex items-center justify-between text-xs'>
+                                        <span className='text-gray-400'>Status</span>
+                                        <span className='text-emerald-400 font-medium'>Active</span>
+                                    </div>
+                                </div>
+
+                                {/* Actions Section */}
+                                <div className='flex items-center justify-between pt-4 border-t border-gray-800/50'>
+                                    <div className='text-xs text-gray-400'>Click to manage</div>
                                     <Button
-                                        variant='outline'
-                                        className='text-gray-400 hover:text-white cursor-pointer'
+                                        size='sm'
+                                        variant='ghost'
+                                        className='p-2 text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'
                                         onClick={e => handleMoreVerticalClick(e, version)}>
                                         <MoreVertical className='h-4 w-4' />
                                     </Button>
@@ -281,83 +355,169 @@ export default function NamespaceVersionsPage() {
                     )}
                 </div>
             ) : (
-                <div className='text-center py-12 border border-gray-800 rounded-lg'>
-                    <Tag className='h-12 w-12 text-gray-600 mx-auto mb-4' />
-                    <h3 className='text-xl font-medium text-gray-400 mb-2'>No versions yet</h3>
-                    <p className='text-gray-500 mb-6'>Create your first version to start managing translations.</p>
+                <div className='text-center py-16 bg-gray-900/30 border border-gray-800/50 rounded-xl backdrop-blur-sm'>
+                    <div className='w-16 h-16 bg-gradient-to-br from-pink-500/10 to-purple-600/10 rounded-xl flex items-center justify-center border border-gray-700/30 mx-auto mb-6'>
+                        <GitBranch className='h-8 w-8 text-pink-400' />
+                    </div>
+                    <h3 className='text-xl font-semibold text-white mb-2'>No versions yet</h3>
+                    <p className='text-gray-400 mb-6'>
+                        Create your first version to start managing translations for this namespace.
+                    </p>
                 </div>
             )}
 
-            {/* Edit Version Dialog */}
+            {/* Elegant Edit Version Dialog */}
             <Dialog open={isEditVersionOpen} onOpenChange={setIsEditVersionOpen}>
-                <DialogContent className='bg-gray-950 border-gray-800 text-white'>
-                    <DialogHeader>
-                        <DialogTitle>Edit Version</DialogTitle>
-                        <DialogDescription className='text-gray-400'>Update the version number.</DialogDescription>
-                    </DialogHeader>
-
-                    <div className='space-y-4'>
+                <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
+                    {/* Header with Icon */}
+                    <div className='flex items-center space-x-4 pb-6 border-b border-gray-800/50'>
+                        <div className='w-12 h-12 bg-gradient-to-br from-pink-500/20 to-purple-600/20 rounded-xl flex items-center justify-center border border-pink-500/30'>
+                            <GitBranch className='h-6 w-6 text-pink-400' />
+                        </div>
                         <div>
-                            <Label htmlFor='edit-version-number'>Version Number</Label>
-                            <Input
-                                id='edit-version-number'
-                                placeholder='e.g., 1.0.0, 1.2.3-beta'
-                                value={editVersionNumber}
-                                onChange={e => setEditVersionNumber(e.target.value)}
-                                className='bg-gray-900 border-gray-700 text-white mt-2'
-                            />
+                            <DialogTitle className='text-xl font-semibold text-white mb-1'>Edit Version</DialogTitle>
+                            <DialogDescription className='text-gray-400 text-sm'>
+                                Update the version name for {namespaceQuery.name}
+                            </DialogDescription>
                         </div>
                     </div>
 
-                    <DialogFooter className='flex justify-between'>
+                    <div className='space-y-6 py-6'>
+                        {/* Version Name Input */}
+                        <div className='space-y-3'>
+                            <Label htmlFor='edit-version-number' className='text-sm font-medium text-gray-300'>
+                                Version Name
+                            </Label>
+                            <div className='relative'>
+                                <Input
+                                    id='edit-version-number'
+                                    placeholder='e.g., 1.0.0, 1.2.3-beta'
+                                    value={editVersionNumber}
+                                    onChange={e => setEditVersionNumber(e.target.value)}
+                                    className='bg-black/30 border-gray-700/50 text-white h-12 px-4 text-lg focus:ring-2 focus:ring-pink-500/30 focus:border-pink-500/50 transition-all'
+                                />
+                                <div className='absolute right-3 top-1/2 -translate-y-1/2'>
+                                    <GitBranch className='h-4 w-4 text-gray-500' />
+                                </div>
+                            </div>
+                            <div className='bg-gray-900/30 border border-gray-700/30 rounded-lg p-3'>
+                                <p className='text-xs text-gray-400 font-medium mb-1'>📝 Versioning Examples:</p>
+                                <div className='flex flex-wrap gap-2 mt-2'>
+                                    {['main', 'develop', '1.0.0', '1.2.3', '2.0.0-beta', '1.0.1-alpha', '3.1.4'].map(
+                                        version => (
+                                            <button
+                                                key={version}
+                                                onClick={() => setEditVersionNumber(version)}
+                                                className='px-2 py-1 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/30 rounded text-xs text-gray-300 hover:text-white transition-all cursor-pointer'>
+                                                {version}
+                                            </button>
+                                        )
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Warning Notice */}
+                        <div className='bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-4'>
+                            <div className='flex items-center space-x-1 mb-2'>
+                                <div className='w-5 h-5 flex items-center justify-center'>
+                                    <span className='text-amber-400 text-xs'>⚠️</span>
+                                </div>
+                                <p className='text-sm font-medium text-amber-400'>Version Update</p>
+                            </div>
+                            <p className='text-xs text-gray-400 leading-relaxed'>
+                                Changing the version number will not affect existing languages or translations in this
+                                version. But it might break your releases.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className='flex items-center justify-between pt-6 border-t border-gray-800/50'>
                         <Button
                             variant='outline'
                             onClick={() => {
                                 setIsDeleteVersionOpen(true);
                                 setIsEditVersionOpen(false);
                             }}
-                            className='border-red-700 text-red-400 hover:bg-red-900/20 cursor-pointer'>
+                            className='border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 cursor-pointer transition-all'>
                             <Trash2 className='h-4 w-4 mr-2' />
-                            Delete
+                            Delete Version
                         </Button>
-                        <div className='flex gap-2'>
+                        <div className='flex space-x-3'>
                             <Button
-                                onClick={() => {
-                                    /* TODO: Add update version handler */
-                                }}
-                                disabled={!editVersionNumber.trim()}
-                                className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
+                                variant='ghost'
+                                onClick={() => setIsEditVersionOpen(false)}
+                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleUpdateVersion}
+                                disabled={!editVersionNumber.trim() || selectedVersionName === editVersionNumber.trim()}
+                                className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                <Save className='h-4 w-4 mr-2' />
                                 Save Changes
                             </Button>
                         </div>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Version Confirmation Dialog */}
+            {/* Elegant Delete Version Confirmation Dialog */}
             <Dialog open={isDeleteVersionOpen} onOpenChange={setIsDeleteVersionOpen}>
-                <DialogContent className='bg-gray-950 border-gray-800 text-white'>
-                    <DialogHeader>
-                        <DialogTitle>Delete Version</DialogTitle>
-                        <DialogDescription className='text-gray-400'>
-                            Are you sure you want to delete this version? This will permanently delete all languages and
-                            translation data for this version. This action cannot be undone.
-                        </DialogDescription>
-                    </DialogHeader>
+                <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
+                    {/* Header with Warning Icon */}
+                    <div className='flex items-center space-x-4 pb-6 border-b border-gray-800/50'>
+                        <div className='w-12 h-12 bg-gradient-to-br from-red-500/20 to-red-600/20 rounded-xl flex items-center justify-center border border-red-500/30'>
+                            <Trash2 className='h-6 w-6 text-red-400' />
+                        </div>
+                        <div>
+                            <DialogTitle className='text-xl font-semibold text-white mb-1'>Delete Version</DialogTitle>
+                            <DialogDescription className='text-gray-400 text-sm'>
+                                This action cannot be undone
+                            </DialogDescription>
+                        </div>
+                    </div>
 
-                    <DialogFooter>
+                    {/* Warning Content */}
+                    <div className='py-6 space-y-4'>
+                        <div className='bg-gradient-to-r from-red-500/10 to-red-600/10 border border-red-500/20 rounded-xl p-4'>
+                            <div className='flex items-center space-x-2 mb-3'>
+                                <div className='w-5 h-5 bg-red-400/20 rounded-full flex items-center justify-center'>
+                                    <span className='text-red-400 text-xs'>⚠️</span>
+                                </div>
+                                <p className='text-sm font-medium text-red-400'>Permanent Deletion</p>
+                            </div>
+                            <div className='space-y-2'>
+                                <p className='text-sm text-gray-300'>
+                                    Are you sure you want to delete version{' '}
+                                    <span className='font-semibold text-white'>{selectedVersionName}</span>?
+                                </p>
+                                <p className='text-xs text-gray-400 leading-relaxed'>This will permanently delete:</p>
+                                <ul className='text-xs text-gray-400 space-y-1 ml-4'>
+                                    <li>• All languages in this version</li>
+                                    <li>• All translation data</li>
+                                    <li>• Version history and metadata</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className='flex items-center justify-end space-x-3 pt-6 border-t border-gray-800/50'>
                         <Button
-                            variant='outline'
+                            variant='ghost'
                             onClick={() => setIsDeleteVersionOpen(false)}
-                            className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
+                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
                             Cancel
                         </Button>
                         <Button
                             onClick={handleDeleteVersion}
-                            className='bg-red-600 text-white hover:bg-red-700 cursor-pointer'>
+                            className='bg-red-600 text-white hover:bg-red-700 cursor-pointer transition-all px-6'>
+                            <Trash2 className='h-4 w-4 mr-2' />
                             Delete Version
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

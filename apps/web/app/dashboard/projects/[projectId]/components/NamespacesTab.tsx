@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, usePaginatedQuery } from 'convex/react';
 import { useUser, useOrganization } from '@clerk/nextjs';
-import { Globe, Plus, MoreVertical, Trash2 } from 'lucide-react';
+import { Globe, Plus, MoreVertical, Trash2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +32,7 @@ interface NamespacesTabProps {
         limits: {
             namespacesPerProject: number;
             versionsPerNamespace: number;
-            languagesPerNamespace: number;
+            languagesPerVersion: number;
         };
     };
 }
@@ -54,8 +54,7 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
     const [isEditNamespaceOpen, setIsEditNamespaceOpen] = useState(false);
     const [isDeleteNamespaceOpen, setIsDeleteNamespaceOpen] = useState(false);
     const [editNamespaceName, setEditNamespaceName] = useState('');
-    // Removed newLanguageFile state as we no longer upload files initially
-    // Removed primaryLanguage state - now managed automatically
+    const [selectedNamespaceName, setSelectedNamespaceName] = useState('');
 
     // Mutations
     const createNamespace = useMutation(api.namespaces.createNamespace);
@@ -137,6 +136,7 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                 name: editNamespaceName.trim(),
             });
             setEditNamespaceName('');
+            setSelectedNamespaceName('');
             setIsEditNamespaceOpen(false);
         } catch (error) {
             console.error('Failed to update namespace:', error);
@@ -167,59 +167,125 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
         e.stopPropagation();
         setSelectedNamespace(namespace._id);
         setEditNamespaceName(namespace.name);
+        setSelectedNamespaceName(namespace.name);
         setIsEditNamespaceOpen(true);
     };
 
-    // If no namespaces exist, show the empty state
+    // If no namespaces exist, show the elegant empty state
     if (!namespaces || namespaces.length === 0) {
         return (
-            <div className='text-center py-12'>
-                <Globe className='h-12 w-12 text-gray-600 mx-auto mb-4' />
-                <h3 className='text-xl font-medium text-gray-400 mb-2'>No namespaces yet</h3>
-                <p className='text-gray-500 mb-6'>Create your first namespace to organize your translations.</p>
-
-                <Dialog open={isCreateNamespaceOpen} onOpenChange={setIsCreateNamespaceOpen}>
-                    <DialogTrigger asChild>
-                        <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
-                            <Plus className='h-4 w-4 mr-2' />
-                            Create Namespace
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className='bg-gray-950 border-gray-800 text-white'>
-                        <DialogHeader>
-                            <DialogTitle>Create New Namespace</DialogTitle>
-                            <DialogDescription className='text-gray-400'>
-                                Namespaces help organize your translations by feature or section.
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        <div className='space-y-4'>
+            <div className='space-y-6'>
+                {/* Elegant Header */}
+                <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
+                    <div className='flex items-center justify-between'>
+                        <div className='flex items-center space-x-4'>
+                            <div className='w-12 h-12 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-xl flex items-center justify-center border border-gray-700/30'>
+                                <Globe className='h-6 w-6 text-cyan-400' />
+                            </div>
                             <div>
-                                <Label htmlFor='namespace-name'>Namespace Name</Label>
-                                <Input
-                                    id='namespace-name'
-                                    placeholder='e.g., common, auth, dashboard'
-                                    value={newNamespaceName}
-                                    onChange={e => setNewNamespaceName(e.target.value)}
-                                    className='bg-gray-900 border-gray-700 text-white mt-2'
-                                />
+                                <h3 className='text-2xl font-semibold text-white'>Namespaces</h3>
+                                <p className='text-gray-400 text-sm'>Organize translations by feature or section</p>
+                            </div>
+                        </div>
+                        <div className='flex items-center space-x-3'>
+                            <div className='flex items-center space-x-2 text-xs text-gray-400'>
+                                <span>0 / {currentWorkspace.limits.namespacesPerProject}</span>
+                                <span>namespaces</span>
+                            </div>
+                            <Dialog open={isCreateNamespaceOpen} onOpenChange={setIsCreateNamespaceOpen}>
+                                <DialogTrigger asChild>
+                                    <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'>
+                                        <Plus className='h-4 w-4 mr-2' />
+                                        Create Namespace
+                                    </Button>
+                                </DialogTrigger>
+                            </Dialog>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Elegant Empty State */}
+                <div className='text-center py-16 bg-gray-900/30 border border-gray-800/50 rounded-xl backdrop-blur-sm'>
+                    <div className='w-16 h-16 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-xl flex items-center justify-center border border-gray-700/30 mx-auto mb-6'>
+                        <Globe className='h-8 w-8 text-cyan-400' />
+                    </div>
+                    <h3 className='text-xl font-semibold text-white mb-2'>No namespaces yet</h3>
+                    <p className='text-gray-400 mb-6'>
+                        Create your first namespace to organize translations for {currentProject.name}.
+                    </p>
+                </div>
+
+                {/* Hidden Create Namespace Dialog */}
+                <Dialog open={isCreateNamespaceOpen} onOpenChange={setIsCreateNamespaceOpen}>
+                    <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
+                        {/* Header with Icon */}
+                        <div className='flex items-center space-x-4 pb-6 border-b border-gray-800/50'>
+                            <div className='w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/30'>
+                                <Globe className='h-6 w-6 text-cyan-400' />
+                            </div>
+                            <div>
+                                <DialogTitle className='text-xl font-semibold text-white mb-1'>
+                                    Create New Namespace
+                                </DialogTitle>
+                                <DialogDescription className='text-gray-400 text-sm'>
+                                    Organize translations for {currentProject.name}
+                                </DialogDescription>
                             </div>
                         </div>
 
-                        <DialogFooter>
-                            <Button
-                                variant='outline'
-                                onClick={() => setIsCreateNamespaceOpen(false)}
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={handleCreateNamespace}
-                                disabled={!newNamespaceName.trim()}
-                                className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
-                                Create Namespace
-                            </Button>
-                        </DialogFooter>
+                        <div className='space-y-6 py-6'>
+                            <div className='space-y-3'>
+                                <Label htmlFor='namespace-name' className='text-sm font-medium text-gray-300'>
+                                    Namespace Name
+                                </Label>
+                                <div className='relative'>
+                                    <Input
+                                        id='namespace-name'
+                                        placeholder='e.g., common, auth, dashboard'
+                                        value={newNamespaceName}
+                                        onChange={e => setNewNamespaceName(e.target.value)}
+                                        className='bg-black/30 border-gray-700/50 text-white h-12 px-4 text-lg focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 transition-all'
+                                    />
+                                    <div className='absolute right-3 top-1/2 -translate-y-1/2'>
+                                        <Globe className='h-4 w-4 text-gray-500' />
+                                    </div>
+                                </div>
+                                <div className='bg-gray-900/30 border border-gray-700/30 rounded-lg p-3'>
+                                    <p className='text-xs text-gray-400 font-medium mb-1'>💡 Naming Examples:</p>
+                                    <div className='flex flex-wrap gap-2 mt-2'>
+                                        {['common', 'auth', 'dashboard', 'components', 'pages', 'errors'].map(name => (
+                                            <button
+                                                key={name}
+                                                onClick={() => setNewNamespaceName(name)}
+                                                className='px-2 py-1 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/30 rounded text-xs text-gray-300 hover:text-white transition-all cursor-pointer'>
+                                                {name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className='flex items-center justify-between pt-6 border-t border-gray-800/50'>
+                            <div className='text-xs text-gray-500'>
+                                0 / {currentWorkspace.limits.namespacesPerProject} namespaces
+                            </div>
+                            <div className='flex space-x-3'>
+                                <Button
+                                    variant='ghost'
+                                    onClick={() => setIsCreateNamespaceOpen(false)}
+                                    className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={handleCreateNamespace}
+                                    disabled={!newNamespaceName.trim()}
+                                    className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                    <Plus className='h-4 w-4 mr-2' />
+                                    Create Namespace
+                                </Button>
+                            </div>
+                        </div>
                     </DialogContent>
                 </Dialog>
             </div>
@@ -228,62 +294,128 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
 
     return (
         <div className='space-y-6'>
-            {/* Header with Create Namespace Button */}
-            <div className='flex items-center justify-between'>
-                <div>
-                    <h3 className='text-lg font-semibold text-white'>Namespaces ({namespaces.length})</h3>
-                    <p className='text-sm text-gray-400'>
-                        Limit: {namespaces.length}/{currentWorkspace.limits.namespacesPerProject}
-                    </p>
+            {/* Elegant Header with Combined Actions */}
+            <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
+                <div className='flex items-center justify-between'>
+                    <div className='flex items-center space-x-4'>
+                        <div className='w-12 h-12 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-xl flex items-center justify-center border border-gray-700/30'>
+                            <Globe className='h-6 w-6 text-cyan-400' />
+                        </div>
+                        <div>
+                            <h3 className='text-2xl font-semibold text-white'>Namespaces</h3>
+                            <p className='text-gray-400 text-sm'>Organize translations by feature or section</p>
+                        </div>
+                    </div>
+                    <div className='flex items-center space-x-3'>
+                        <div className='flex items-center space-x-2 text-xs text-gray-400'>
+                            <span>
+                                {namespaces.length} / {currentWorkspace.limits.namespacesPerProject}
+                            </span>
+                            <span>namespaces</span>
+                        </div>
+                        <Dialog open={isCreateNamespaceOpen} onOpenChange={setIsCreateNamespaceOpen}>
+                            <DialogTrigger asChild>
+                                <Button
+                                    className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'
+                                    disabled={namespaces.length >= currentWorkspace.limits.namespacesPerProject}>
+                                    <Plus className='h-4 w-4 mr-2' />
+                                    Create Namespace
+                                </Button>
+                            </DialogTrigger>
+                        </Dialog>
+                    </div>
                 </div>
+            </div>
 
-                <Dialog open={isCreateNamespaceOpen} onOpenChange={setIsCreateNamespaceOpen}>
-                    <DialogTrigger asChild>
-                        <Button
-                            className='bg-white text-black hover:bg-gray-200 cursor-pointer'
-                            disabled={namespaces.length >= currentWorkspace.limits.namespacesPerProject}>
-                            <Plus className='h-4 w-4 mr-2' />
-                            Create Namespace
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className='bg-gray-950 border-gray-800 text-white'>
-                        <DialogHeader>
-                            <DialogTitle>Create New Namespace</DialogTitle>
-                            <DialogDescription className='text-gray-400'>
-                                Namespaces help organize your translations by feature or section.
+            {/* Elegant Create Namespace Dialog */}
+            <Dialog open={isCreateNamespaceOpen} onOpenChange={setIsCreateNamespaceOpen}>
+                <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
+                    {/* Header with Icon */}
+                    <div className='flex items-center space-x-4 pb-6 border-b border-gray-800/50'>
+                        <div className='w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/30'>
+                            <Globe className='h-6 w-6 text-cyan-400' />
+                        </div>
+                        <div>
+                            <DialogTitle className='text-xl font-semibold text-white mb-1'>
+                                Create New Namespace
+                            </DialogTitle>
+                            <DialogDescription className='text-gray-400 text-sm'>
+                                Organize translations for {currentProject.name}
                             </DialogDescription>
-                        </DialogHeader>
+                        </div>
+                    </div>
 
-                        <div className='space-y-4'>
-                            <div>
-                                <Label htmlFor='namespace-name'>Namespace Name</Label>
+                    <div className='space-y-6 py-6'>
+                        {/* Namespace Name Input */}
+                        <div className='space-y-3'>
+                            <Label htmlFor='namespace-name' className='text-sm font-medium text-gray-300'>
+                                Namespace Name
+                            </Label>
+                            <div className='relative'>
                                 <Input
                                     id='namespace-name'
                                     placeholder='e.g., common, auth, dashboard'
                                     value={newNamespaceName}
                                     onChange={e => setNewNamespaceName(e.target.value)}
-                                    className='bg-gray-900 border-gray-700 text-white mt-2'
+                                    className='bg-black/30 border-gray-700/50 text-white h-12 px-4 text-lg focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 transition-all'
                                 />
+                                <div className='absolute right-3 top-1/2 -translate-y-1/2'>
+                                    <Globe className='h-4 w-4 text-gray-500' />
+                                </div>
+                            </div>
+                            <div className='bg-gray-900/30 border border-gray-700/30 rounded-lg p-3'>
+                                <p className='text-xs text-gray-400 font-medium mb-1'>💡 Naming Examples:</p>
+                                <div className='flex flex-wrap gap-2 mt-2'>
+                                    {['common', 'auth', 'dashboard', 'components', 'pages', 'errors'].map(name => (
+                                        <button
+                                            key={name}
+                                            onClick={() => setNewNamespaceName(name)}
+                                            className='px-2 py-1 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/30 rounded text-xs text-gray-300 hover:text-white transition-all cursor-pointer'>
+                                            {name}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
-                        <DialogFooter>
+                        {/* Info Notice */}
+                        <div className='bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-xl p-4'>
+                            <div className='flex items-center space-x-2 mb-2'>
+                                <div className='w-6 h-6 flex items-center justify-center'>
+                                    <span className='text-cyan-400 text-sm'>ℹ️</span>
+                                </div>
+                                <p className='text-sm font-medium text-cyan-400'>Organization</p>
+                            </div>
+                            <p className='text-xs text-gray-400 leading-relaxed'>
+                                Namespaces help organize your translations by feature, section, or component. You can
+                                create versions and languages within each namespace.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className='flex items-center justify-between pt-6 border-t border-gray-800/50'>
+                        <div className='text-xs text-gray-500'>
+                            {namespaces?.length || 0} / {currentWorkspace.limits.namespacesPerProject} namespaces
+                        </div>
+                        <div className='flex space-x-3'>
                             <Button
-                                variant='outline'
+                                variant='ghost'
                                 onClick={() => setIsCreateNamespaceOpen(false)}
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
+                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleCreateNamespace}
                                 disabled={!newNamespaceName.trim()}
-                                className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
+                                className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                <Plus className='h-4 w-4 mr-2' />
                                 Create Namespace
                             </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Namespaces Grid */}
             <div className='space-y-6'>
@@ -291,32 +423,52 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                     {namespaces.map((namespace: any) => (
                         <div
                             key={namespace._id}
-                            className='bg-gray-900 border border-gray-800 rounded-lg p-6 cursor-pointer transition-all hover:border-gray-700'
+                            className='group bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 cursor-pointer transition-all duration-300 hover:border-gray-600/50 hover:bg-gray-900/70 backdrop-blur-sm'
                             onClick={() => handleNamespaceCardClick(namespace)}>
-                            <div className='flex items-center justify-between mb-4'>
+                            {/* Header Section */}
+                            <div className='flex items-center justify-between mb-6'>
                                 <div className='flex items-center space-x-3'>
-                                    <div className='w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center'>
-                                        <Globe className='h-5 w-5 text-white' />
+                                    <div className='w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/30 group-hover:border-cyan-500/50 transition-all'>
+                                        <Globe className='h-6 w-6 text-cyan-400' />
                                     </div>
-                                    <h4 className='font-semibold text-white'>{namespace.name}</h4>
+                                    <div>
+                                        <h4 className='text-lg font-semibold text-white transition-colors mb-1'>
+                                            {namespace.name}
+                                        </h4>
+                                        <p className='text-xs text-gray-400 font-medium'>Namespace</p>
+                                    </div>
                                 </div>
+                            </div>
+
+                            {/* Stats Section */}
+                            <div className='space-y-3 mb-4'>
+                                <div className='flex items-center justify-between text-xs'>
+                                    <span className='text-gray-400'>Versions</span>
+                                    <div className='flex items-center space-x-1'>
+                                        <div className='w-2 h-2 bg-pink-400 rounded-full'></div>
+                                        <span className='text-gray-300 font-medium'>
+                                            {namespace.usage?.versions || 0}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className='flex items-center justify-between text-xs'>
+                                    <span className='text-gray-400'>Created</span>
+                                    <span className='text-gray-300 font-medium'>
+                                        {new Date(namespace._creationTime).toLocaleDateString()}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Actions Section */}
+                            <div className='flex items-center justify-between pt-4 border-t border-gray-800/50'>
+                                <div className='text-xs text-gray-400'>Click to manage</div>
                                 <Button
-                                    variant='outline'
-                                    className='text-gray-400 hover:text-white cursor-pointer'
+                                    size='sm'
+                                    variant='ghost'
+                                    className='p-2 text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'
                                     onClick={e => handleMoreVerticalClick(e, namespace)}>
                                     <MoreVertical className='h-4 w-4' />
                                 </Button>
-                            </div>
-
-                            <div className='space-y-2 text-sm text-gray-400'>
-                                <div className='flex items-center justify-between'>
-                                    <span>Versions:</span>
-                                    <span>{namespace.usage?.versions || 0}</span>
-                                </div>
-                                <div className='flex items-center justify-between'>
-                                    <span>Languages:</span>
-                                    <span>{namespace.usage?.languages || 0}</span>
-                                </div>
                             </div>
                         </div>
                     ))}
@@ -342,74 +494,147 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                 )}
             </div>
 
-            {/* Edit Namespace Dialog */}
+            {/* Elegant Edit Namespace Dialog */}
             <Dialog open={isEditNamespaceOpen} onOpenChange={setIsEditNamespaceOpen}>
-                <DialogContent className='bg-gray-950 border-gray-800 text-white'>
-                    <DialogHeader>
-                        <DialogTitle>Edit Namespace</DialogTitle>
-                        <DialogDescription className='text-gray-400'>Update the namespace name.</DialogDescription>
-                    </DialogHeader>
-
-                    <div className='space-y-4'>
+                <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
+                    {/* Header with Icon */}
+                    <div className='flex items-center space-x-4 pb-6 border-b border-gray-800/50'>
+                        <div className='w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/30'>
+                            <Globe className='h-6 w-6 text-cyan-400' />
+                        </div>
                         <div>
-                            <Label htmlFor='edit-namespace-name'>Namespace Name</Label>
-                            <Input
-                                id='edit-namespace-name'
-                                placeholder='e.g., common, auth, dashboard'
-                                value={editNamespaceName}
-                                onChange={e => setEditNamespaceName(e.target.value)}
-                                className='bg-gray-900 border-gray-700 text-white mt-2'
-                            />
+                            <DialogTitle className='text-xl font-semibold text-white mb-1'>Edit Namespace</DialogTitle>
+                            <DialogDescription className='text-gray-400 text-sm'>
+                                Update the namespace name for {currentProject.name}
+                            </DialogDescription>
                         </div>
                     </div>
 
-                    <DialogFooter className='flex justify-between'>
+                    <div className='space-y-6 py-6'>
+                        {/* Namespace Name Input */}
+                        <div className='space-y-3'>
+                            <Label htmlFor='edit-namespace-name' className='text-sm font-medium text-gray-300'>
+                                Namespace Name
+                            </Label>
+                            <div className='relative'>
+                                <Input
+                                    id='edit-namespace-name'
+                                    placeholder='e.g., common, auth, dashboard'
+                                    value={editNamespaceName}
+                                    onChange={e => setEditNamespaceName(e.target.value)}
+                                    className='bg-black/30 border-gray-700/50 text-white h-12 px-4 text-lg focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 transition-all'
+                                />
+                                <div className='absolute right-3 top-1/2 -translate-y-1/2'>
+                                    <Globe className='h-4 w-4 text-gray-500' />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Warning Notice */}
+                        <div className='bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-4'>
+                            <div className='flex items-center space-x-2 mb-2'>
+                                <div className='w-5 h-5 flex items-center justify-center'>
+                                    <span className='text-amber-400 text-xs'>⚠️</span>
+                                </div>
+                                <p className='text-sm font-medium text-amber-400'>Namespace Update</p>
+                            </div>
+                            <p className='text-xs text-gray-400 leading-relaxed'>
+                                Changing the namespace name will not affect existing versions, languages, or
+                                translations.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className='flex items-center justify-between pt-6 border-t border-gray-800/50'>
                         <Button
                             variant='outline'
                             onClick={() => {
                                 setIsDeleteNamespaceOpen(true);
                                 setIsEditNamespaceOpen(false);
                             }}
-                            className='border-red-700 text-red-400 hover:bg-red-900/20 cursor-pointer'>
+                            className='border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 cursor-pointer transition-all'>
                             <Trash2 className='h-4 w-4 mr-2' />
-                            Delete
+                            Delete Namespace
                         </Button>
-                        <div className='flex gap-2'>
+                        <div className='flex space-x-3'>
+                            <Button
+                                variant='ghost'
+                                onClick={() => setIsEditNamespaceOpen(false)}
+                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                Cancel
+                            </Button>
                             <Button
                                 onClick={handleEditNamespace}
-                                disabled={!editNamespaceName.trim()}
-                                className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
+                                disabled={
+                                    !editNamespaceName.trim() || selectedNamespaceName === editNamespaceName.trim()
+                                }
+                                className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                <Save className='h-4 w-4 mr-2' />
                                 Save Changes
                             </Button>
                         </div>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Namespace Confirmation Dialog */}
+            {/* Elegant Delete Namespace Confirmation Dialog */}
             <Dialog open={isDeleteNamespaceOpen} onOpenChange={setIsDeleteNamespaceOpen}>
-                <DialogContent className='bg-gray-950 border-gray-800 text-white'>
-                    <DialogHeader>
-                        <DialogTitle>Delete Namespace</DialogTitle>
-                        <DialogDescription className='text-gray-400'>
-                            Are you sure you want to delete this namespace? This will permanently delete all versions,
-                            languages, and translation data. This action cannot be undone.
-                        </DialogDescription>
-                    </DialogHeader>
+                <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
+                    {/* Header with Warning Icon */}
+                    <div className='flex items-center space-x-4 pb-6 border-b border-gray-800/50'>
+                        <div className='w-12 h-12 bg-gradient-to-br from-red-500/20 to-red-600/20 rounded-xl flex items-center justify-center border border-red-500/30'>
+                            <Trash2 className='h-6 w-6 text-red-400' />
+                        </div>
+                        <div>
+                            <DialogTitle className='text-xl font-semibold text-white mb-1'>
+                                Delete Namespace
+                            </DialogTitle>
+                            <DialogDescription className='text-gray-400 text-sm'>
+                                This action cannot be undone
+                            </DialogDescription>
+                        </div>
+                    </div>
 
-                    <DialogFooter>
+                    {/* Warning Content */}
+                    <div className='py-6 space-y-4'>
+                        <div className='bg-gradient-to-r from-red-500/10 to-red-600/10 border border-red-500/20 rounded-xl p-4'>
+                            <div className='flex items-center space-x-2 mb-3'>
+                                <div className='w-5 h-5 flex items-center justify-center'>
+                                    <span className='text-red-400 text-xs'>⚠️</span>
+                                </div>
+                                <p className='text-sm font-medium text-red-400'>Permanent Deletion</p>
+                            </div>
+                            <div className='space-y-2'>
+                                <p className='text-sm text-gray-300'>
+                                    Are you sure you want to delete namespace{' '}
+                                    <span className='font-semibold text-white'>{selectedNamespaceName}</span>?
+                                </p>
+                                <p className='text-xs text-gray-400 leading-relaxed'>This will permanently delete:</p>
+                                <ul className='text-xs text-gray-400 space-y-1 ml-4'>
+                                    <li>• All versions in this namespace</li>
+                                    <li>• All languages and translations</li>
+                                    <li>• All associated files and metadata</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className='flex items-center justify-end space-x-3 pt-6 border-t border-gray-800/50'>
                         <Button
-                            variant='outline'
+                            variant='ghost'
                             onClick={() => setIsDeleteNamespaceOpen(false)}
-                            className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
+                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
                             Cancel
                         </Button>
                         <Button
                             onClick={handleDeleteNamespace}
-                            className='bg-red-600 text-white hover:bg-red-700 cursor-pointer'>
+                            className='bg-red-600 text-white hover:bg-red-700 cursor-pointer transition-all px-6'>
+                            <Trash2 className='h-4 w-4 mr-2' />
                             Delete Namespace
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

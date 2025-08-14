@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { ArrowLeft, Plus, Loader2 } from 'lucide-react';
 import { UserButton, OrganizationSwitcher, useUser, useOrganization } from '@clerk/nextjs';
 import { useQuery, useMutation } from 'convex/react';

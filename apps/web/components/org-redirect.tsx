@@ -3,7 +3,7 @@
 import { useUser, useOrganizationList } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Building2, ArrowRight } from 'lucide-react';
 

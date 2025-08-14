@@ -6,7 +6,7 @@ import { useOrganizationList } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Building2, ArrowRight } from 'lucide-react';
 
 export default function NewOrganizationPage() {
@@ -135,7 +135,7 @@ export default function NewOrganizationPage() {
                     <Button
                         type='submit'
                         disabled={!isOrgFormValid || isCreating}
-                        className='w-full bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed py-3'>
+                        className='w-full bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed py-3 cursor-pointer'>
                         {isCreating ? (
                             <div className='flex items-center justify-center space-x-2'>
                                 <div className='w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin'></div>

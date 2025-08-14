@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import {
     ArrowRight,
     Globe2,
@@ -17,10 +17,18 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser, SignOutButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Gradient } from '@/components/ui/gradient';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import SpotlightCard from '@/components/ui/spotlight-card';
+import Galaxy from '@/components/ui/galaxy';
+import { BorderBeam } from '@/components/magicui/border-beam';
+import { MagicCard } from '@/components/magicui/magic-card';
+import { Meteors } from '@/components/magicui/meteors';
+import { ShineBorder } from '@/components/magicui/shine-border';
+import { AnimatedGradientText } from '@/components/magicui/animated-gradient-text';
+import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
 const features = [
@@ -232,6 +240,7 @@ export default function Page() {
     const [activeLibrary, setActiveLibrary] = useState('i18next');
     const [isCopied, setIsCopied] = useState(false);
     const router = useRouter();
+    const { isSignedIn } = useUser();
 
     const scrollToSection = (sectionId: string) => {
         const element = document.getElementById(sectionId);
@@ -277,25 +286,48 @@ export default function Page() {
                                 className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
                                 Pricing
                             </button>
-                            <button className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
+                            <Link
+                                href='https://docs.unlingo.com'
+                                target='_blank'
+                                className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
                                 Documentation
-                            </button>
+                            </Link>
                         </div>
 
                         {/* Auth Buttons */}
                         <div className='flex items-center space-x-4'>
-                            <Button
-                                variant='ghost'
-                                className='text-gray-300 hover:text-white cursor-pointer'
-                                onClick={() => router.push('/sign-in')}>
-                                Sign in
-                            </Button>
-                            <Button
-                                size='sm'
-                                className='bg-white text-black hover:bg-gray-200 cursor-pointer'
-                                onClick={() => router.push('/sign-up')}>
-                                Get Started
-                            </Button>
+                            {isSignedIn ? (
+                                <>
+                                    <SignOutButton>
+                                        <Button
+                                            variant='ghost'
+                                            className='text-gray-300 hover:text-white cursor-pointer'>
+                                            Sign Out
+                                        </Button>
+                                    </SignOutButton>
+                                    <Button
+                                        size='sm'
+                                        className='bg-white text-black hover:bg-gray-200 cursor-pointer'
+                                        onClick={() => router.push('/dashboard')}>
+                                        Dashboard
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button
+                                        variant='ghost'
+                                        className='text-gray-300 hover:text-white cursor-pointer'
+                                        onClick={() => router.push('/sign-in')}>
+                                        Sign in
+                                    </Button>
+                                    <Button
+                                        size='sm'
+                                        className='bg-white text-black hover:bg-gray-200 cursor-pointer'
+                                        onClick={() => router.push('/sign-up')}>
+                                        Get Started
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -309,24 +341,30 @@ export default function Page() {
 
             {/* Hero Section */}
             <section id='hero' className='relative min-h-screen flex items-center justify-center px-6 pt-20'>
-                <div className='max-w-6xl mx-auto text-center space-y-8'>
+                {/* Galaxy Background - Full Hero Section */}
+                <Galaxy />
+                <div className='max-w-6xl mx-auto text-center space-y-8 z-10'>
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8 }}
                         className='space-y-6'>
-                        <div className='inline-flex items-center space-x-2 bg-gray-900/50 border border-gray-800 rounded-full px-4 py-2 text-sm'>
-                            <div className='w-2 h-2 bg-green-400 rounded-full animate-pulse' />
-                            <span className='text-gray-300'>Translations made simple</span>
+                        <div className='relative inline-flex items-center space-x-2 bg-gray-900/50 rounded-full px-4 py-2 text-sm overflow-hidden'>
+                            <ShineBorder 
+                                shineColor={["#ec4899", "#7c3aed", "#3b82f6"]} 
+                                className="absolute inset-0"
+                            />
+                            <div className='w-2 h-2 bg-green-400 rounded-full animate-pulse relative z-10' />
+                            <span className='text-gray-300 relative z-10'>Translations made simple</span>
                         </div>
 
-                        <h1 className='text-6xl md:text-8xl font-bold tracking-tight'>
+                        <h1 className='text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight'>
                             <span className='bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent'>
                                 Unlingo
                             </span>
                         </h1>
 
-                        <p className='text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto leading-relaxed'>
+                        <p className='text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed'>
                             The developer platform for modern internationalization. Host, manage, and deliver
                             translations with zero complexity.
                         </p>
@@ -339,17 +377,19 @@ export default function Page() {
                         className='flex flex-col sm:flex-row gap-4 justify-center items-center'>
                         <Button
                             size='lg'
-                            className='bg-white text-black hover:bg-gray-200 font-semibold px-8 py-4 text-lg group cursor-pointer'
+                            className='bg-white hover:bg-gray-200 font-semibold px-8 py-4 text-lg group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300'
                             onClick={() => router.push('/sign-up')}>
                             Get Started Free
                             <ArrowRight className='ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform' />
                         </Button>
-                        <Button
-                            variant='outline'
-                            size='lg'
-                            className='border-gray-800 hover:bg-gray-900 px-8 py-4 text-lg cursor-pointer'>
-                            View Documentation
-                        </Button>
+                        <Link href='https://docs.unlingo.com' target='_blank'>
+                            <Button
+                                variant='outline'
+                                size='lg'
+                                className='border-2 border-white/30 hover:border-white/50 bg-black/40 backdrop-blur-sm hover:bg-white/10 px-8 py-4 text-lg cursor-pointer text-white hover:text-white shadow-lg hover:shadow-xl transition-all duration-300'>
+                                View Documentation
+                            </Button>
+                        </Link>
                     </motion.div>
 
                     <motion.div
@@ -425,7 +465,7 @@ export default function Page() {
                         transition={{ duration: 0.6, delay: 0.4 }}
                         viewport={{ once: true }}
                         className='max-w-5xl mx-auto'>
-                        <div className='bg-gray-900/50 border border-gray-800 rounded-lg overflow-hidden'>
+                        <div className='bg-gray-900/50 border border-gray-800 rounded-lg overflow-hidden relative'>
                             <div className='flex items-center justify-between px-6 py-4 border-b border-gray-800'>
                                 <div className='flex space-x-2'>
                                     <div className='w-3 h-3 bg-red-500 rounded-full' />
@@ -457,6 +497,18 @@ export default function Page() {
                                     <code className='code-content'>{getCodeExample(activeLibrary)}</code>
                                 </pre>
                             </ScrollArea>
+                            <BorderBeam
+                                duration={8}
+                                size={600}
+                                className='from-transparent via-pink-600 to-transparent'
+                            />
+                            <BorderBeam
+                                duration={8}
+                                delay={4}
+                                size={600}
+                                borderWidth={2}
+                                className='from-transparent via-purple-600 to-transparent'
+                            />
                         </div>
                     </motion.div>
                 </div>
@@ -490,8 +542,10 @@ export default function Page() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.5, delay: index * 0.1 }}
                                 viewport={{ once: true }}
-                                className='group'>
-                                <div className='bg-gray-900/50 border border-gray-800 rounded-lg p-8 h-full hover:border-gray-700 transition-colors'>
+                                className='group h-full'>
+                                <MagicCard
+                                    gradientColor='#262626'
+                                    className='bg-gray-900/50 border border-gray-800 rounded-lg p-8 h-full hover:border-gray-700 transition-colors'>
                                     <div className='flex items-center space-x-4 mb-4'>
                                         <div className='p-3 bg-gray-800 rounded-lg group-hover:bg-gray-700 transition-colors'>
                                             <feature.icon className='h-6 w-6 text-white' />
@@ -499,7 +553,7 @@ export default function Page() {
                                         <h3 className='text-xl font-semibold'>{feature.title}</h3>
                                     </div>
                                     <p className='text-gray-400 leading-relaxed'>{feature.description}</p>
-                                </div>
+                                </MagicCard>
                             </motion.div>
                         ))}
                     </div>
@@ -644,7 +698,7 @@ export default function Page() {
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>5 languages per namespace</span>
+                                    <span>5 languages per version</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
@@ -660,97 +714,106 @@ export default function Page() {
                                 </li>
                             </ul>
                             <Button
-                                variant='outline'
-                                className='w-full border-gray-700 hover:bg-gray-800 cursor-pointer'
+                                className='w-full bg-white text-black hover:bg-gray-200 cursor-pointer'
                                 onClick={() => router.push('/sign-up')}>
                                 Get Started Free
                             </Button>
                         </motion.div>
 
                         {/* Pro Tier */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5, delay: 0.1 }}
-                            viewport={{ once: true }}
-                            className='bg-gray-900/50 border-2 border-blue-500 rounded-lg p-8 relative'>
-                            <div className='absolute -top-4 left-1/2 transform -translate-x-1/2'>
-                                <span className='bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-semibold'>
+                        <div className='relative'>
+                            <div className='absolute -top-4 left-1/2 transform -translate-x-1/2 z-20'>
+                                <span className='bg-gradient-to-r from-pink-500 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-semibold'>
                                     Most Popular
                                 </span>
                             </div>
-                            <h3 className='text-2xl font-bold mb-2'>Pro</h3>
-                            <div className='mb-6'>
-                                <span className='text-4xl font-bold'>${selectedPricing?.price}</span>
-                                <span className='text-gray-400'>/month</span>
-                            </div>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, delay: 0.1 }}
+                                viewport={{ once: true }}
+                                className='bg-gray-900/50 rounded-lg p-8 pt-12 relative overflow-hidden'>
+                                <ShineBorder
+                                    shineColor={['#ec4899', '#7c3aed', '#3b82f6']}
+                                    className='absolute inset-0'
+                                />
+                                <div className='relative z-10'>
+                                    <h3 className='text-2xl font-bold mb-2'>Pro</h3>
+                                    <div className='mb-6'>
+                                        <span className='text-4xl font-bold'>${selectedPricing?.price}</span>
+                                        <span className='text-gray-400'>/month</span>
+                                    </div>
 
-                            {/* Dropdown for request amounts */}
-                            <div className='mb-6'>
-                                <label className='block text-sm font-medium text-gray-300 mb-2'>Monthly requests</label>
-                                <div className='relative'>
-                                    <button
-                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                        className='w-full bg-gray-800 border border-gray-700 rounded-md px-4 py-2 flex items-center justify-between hover:bg-gray-750 transition-colors cursor-pointer'>
-                                        <span>{selectedPricing?.requests}</span>
-                                        <ChevronDown
-                                            className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
-                                        />
-                                    </button>
-                                    {isDropdownOpen && (
-                                        <div className='absolute top-full mt-1 w-full bg-gray-800 border border-gray-700 rounded-md shadow-lg z-10'>
-                                            {pricingOptions.map(option => (
-                                                <button
-                                                    key={option.requests}
-                                                    onClick={() => {
-                                                        setSelectedPricing(option);
-                                                        setIsDropdownOpen(false);
-                                                    }}
-                                                    className='w-full px-4 py-2 text-left hover:bg-gray-700 transition-colors first:rounded-t-md last:rounded-b-md cursor-pointer'>
-                                                    {option.requests}
-                                                </button>
-                                            ))}
+                                    {/* Dropdown for request amounts */}
+                                    <div className='mb-6'>
+                                        <label className='block text-sm font-medium text-gray-300 mb-2'>
+                                            Monthly requests
+                                        </label>
+                                        <div className='relative'>
+                                            <button
+                                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                                className='w-full bg-gray-800 border border-gray-700 rounded-md px-4 py-2 flex items-center justify-between hover:bg-gray-750 transition-colors cursor-pointer'>
+                                                <span>{selectedPricing?.requests}</span>
+                                                <ChevronDown
+                                                    className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                                                />
+                                            </button>
+                                            {isDropdownOpen && (
+                                                <div className='absolute top-full mt-1 w-full bg-gray-800 border border-gray-700 rounded-md shadow-lg z-10'>
+                                                    {pricingOptions.map(option => (
+                                                        <button
+                                                            key={option.requests}
+                                                            onClick={() => {
+                                                                setSelectedPricing(option);
+                                                                setIsDropdownOpen(false);
+                                                            }}
+                                                            className='w-full px-4 py-2 text-left hover:bg-gray-700 transition-colors first:rounded-t-md last:rounded-b-md cursor-pointer'>
+                                                            {option.requests}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-                            </div>
+                                    </div>
 
-                            <ul className='space-y-3 mb-8'>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>30 projects</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>40 namespaces per project</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>35 languages per namespace</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>20 versions per namespace</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>{selectedPricing?.requests} requests/month</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>AI translations</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>Priority support</span>
-                                </li>
-                            </ul>
-                            <Button
-                                className='w-full bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
-                                onClick={() => router.push('/sign-up')}>
-                                Upgrade to Pro
-                            </Button>
-                        </motion.div>
+                                    <ul className='space-y-3 mb-8'>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>30 projects</span>
+                                        </li>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>40 namespaces per project</span>
+                                        </li>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>35 languages per version</span>
+                                        </li>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>20 versions per namespace</span>
+                                        </li>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>{selectedPricing?.requests} requests/month</span>
+                                        </li>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>AI translations</span>
+                                        </li>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>Priority support</span>
+                                        </li>
+                                    </ul>
+                                    <Button
+                                        className='w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white cursor-pointer'
+                                        onClick={() => router.push('/sign-up')}>
+                                        Upgrade to Pro
+                                    </Button>
+                                </div>
+                            </motion.div>
+                        </div>
 
                         {/* Enterprise Tier */}
                         <motion.div
@@ -774,9 +837,7 @@ export default function Page() {
                                     <span>Dedicated support</span>
                                 </li>
                             </ul>
-                            <Button
-                                variant='outline'
-                                className='w-full border-gray-700 hover:bg-gray-800 cursor-pointer'>
+                            <Button className='w-full bg-white text-black hover:bg-gray-200 cursor-pointer'>
                                 Contact Us
                             </Button>
                         </motion.div>
@@ -785,8 +846,9 @@ export default function Page() {
             </section>
 
             {/* CTA Section */}
-            <section className='relative py-32 px-6'>
-                <div className='max-w-4xl mx-auto text-center'>
+            <section className='relative py-32 px-6 overflow-hidden'>
+                <Meteors number={25} />
+                <div className='max-w-4xl mx-auto text-center relative z-10'>
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -804,20 +866,23 @@ export default function Page() {
                             translation management tools.
                         </p>
                         <div className='flex flex-col sm:flex-row gap-4 justify-center items-center'>
-                            <Button
-                                size='lg'
-                                className='bg-white text-black hover:bg-gray-200 font-semibold px-8 py-4 text-lg group cursor-pointer'
-                                onClick={() => router.push('/sign-up')}>
-                                Start Now
-                                <ArrowRight className='ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform' />
-                            </Button>
-                            <Button
-                                variant='ghost'
-                                size='lg'
-                                className='text-gray-400 hover:text-white px-8 py-4 text-lg cursor-pointer'>
-                                <Calendar className='mr-2 h-5 w-5' />
-                                Contact Us
-                            </Button>
+                            <Link href='/sign-up'>
+                                <Button
+                                    size='lg'
+                                    className='bg-white text-black hover:bg-gray-200 font-semibold text-lg group cursor-pointer'>
+                                    Start Now
+                                    <ArrowRight className='ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform' />
+                                </Button>
+                            </Link>
+                            <Link href='mailto:support@unlingo.com'>
+                                <Button
+                                    variant='ghost'
+                                    size='lg'
+                                    className='text-gray-400 hover:text-white text-lg cursor-pointer'>
+                                    <Calendar className='mr-2 h-5 w-5' />
+                                    Contact Us
+                                </Button>
+                            </Link>
                         </div>
                     </motion.div>
                 </div>
@@ -866,32 +931,34 @@ export default function Page() {
                                     className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Pricing
                                 </button>
+                                <Link
+                                    href='https://docs.unlingo.com'
+                                    target='_blank'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                    Documentation
+                                </Link>
                             </div>
                         </div>
 
                         {/* Documentation & Social */}
                         <div className='space-y-4'>
-                            <h3 className='text-white font-semibold'>Resources</h3>
+                            <h3 className='text-white font-semibold'>Community</h3>
                             <div className='space-y-2'>
-                                <button className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
-                                    Documentation
-                                </button>
-                                <button className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
-                                    API Reference
-                                </button>
-                            </div>
-
-                            <h3 className='text-white font-semibold pt-4'>Community</h3>
-                            <div className='space-y-2'>
-                                <button className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                <Link
+                                    href='https://x.com/twendykirn'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     X
-                                </button>
-                                <button className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                </Link>
+                                <Link
+                                    href='https://discord.gg/TdDYte7KjG'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Discord
-                                </button>
-                                <button className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                </Link>
+                                <Link
+                                    href='mailto:support@unlingo.com'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Contact Us
-                                </button>
+                                </Link>
                             </div>
                         </div>
 
@@ -899,12 +966,16 @@ export default function Page() {
                         <div className='space-y-4'>
                             <h3 className='text-white font-semibold'>Legal</h3>
                             <div className='space-y-2'>
-                                <button className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                <Link
+                                    href='/legal/terms-of-service'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Terms of Service
-                                </button>
-                                <button className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                </Link>
+                                <Link
+                                    href='/legal/privacy-policy'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Privacy Policy
-                                </button>
+                                </Link>
                             </div>
                         </div>
                     </div>

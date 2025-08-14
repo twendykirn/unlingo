@@ -36,7 +36,7 @@ export const createOrganizationWorkspace = internalMutation({
                 requests: 100000, // Free tier limits
                 projects: 1,
                 namespacesPerProject: 5,
-                languagesPerNamespace: 5,
+                languagesPerVersion: 5,
                 versionsPerNamespace: 1, // Allow 1 version (main) for free tier
             },
         });
@@ -323,7 +323,7 @@ export const updateWorkspaceLimits = internalMutation({
                   projects: 30,
                   namespacesPerProject: 40,
                   versionsPerNamespace: 20,
-                  languagesPerNamespace: 35,
+                  languagesPerVersion: 35,
               }
             : {
                   // Free tier limits
@@ -331,7 +331,7 @@ export const updateWorkspaceLimits = internalMutation({
                   projects: 1,
                   namespacesPerProject: 5,
                   versionsPerNamespace: 1, // Allow 1 version (main) for free tier
-                  languagesPerNamespace: 5,
+                  languagesPerVersion: 5,
               };
 
         await ctx.db.patch(workspace._id, { limits });

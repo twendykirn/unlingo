@@ -16,7 +16,7 @@ export default defineSchema({
             projects: v.number(), // max projects
             namespacesPerProject: v.number(), // max namespaces per project
             versionsPerNamespace: v.number(), // max versions per namespace
-            languagesPerNamespace: v.number(), // max languages per namespace
+            languagesPerVersion: v.number(), // max languages per version
         }),
     }).index('by_clerk_id', ['clerkId']),
     // Projects within workspaces
@@ -53,11 +53,9 @@ export default defineSchema({
     namespaces: defineTable({
         projectId: v.id('projects'),
         name: v.string(),
-        primaryLanguageId: v.optional(v.id('languages')), // Primary/fallback language ID for faster lookup
         // Usage tracking
         usage: v.optional(
             v.object({
-                languages: v.number(), // current language count across all versions
                 versions: v.number(), // current version count
             })
         ),
@@ -70,6 +68,13 @@ export default defineSchema({
         jsonSchemaFileId: v.optional(v.id('_storage')), // reference to JSON schema file in Convex storage (created later)
         jsonSchemaSize: v.optional(v.number()), // size of JSON schema file in bytes
         schemaUpdatedAt: v.optional(v.number()), // timestamp of last schema update
+        primaryLanguageId: v.optional(v.id('languages')), // Primary/fallback language ID for faster lookup
+        // Usage tracking
+        usage: v.optional(
+            v.object({
+                languages: v.number(), // current language count for this version
+            })
+        ),
     })
         .index('by_namespace', ['namespaceId'])
         .index('by_namespace_version', ['namespaceId', 'version']),

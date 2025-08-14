@@ -1,0 +1,334 @@
+---
+title: 'Projects'
+description: 'Understanding Unlingo projects and how to organize your translations'
+---
+
+## What are Projects?
+
+A **Project** in Unlingo represents a single application or product that requires internationalization. Projects serve as the top-level container for organizing all translation-related resources including namespaces, versions, releases, and API keys.
+
+<img
+  className="block dark:hidden"
+  src="/images/concepts/projects-light.png"
+  alt="Projects Overview Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/concepts/projects-dark.png"
+  alt="Projects Overview Dark"
+/>
+
+## Project Structure
+
+Each project contains:
+
+- **Namespaces**: Logical groupings of related translations
+- **Releases**: Versioned collections of translations ready for deployment
+- **API Keys**: Authentication credentials scoped to the project
+- **Settings**: Configuration options and team permissions
+
+## Creating Projects
+
+### Via Dashboard
+
+<Steps>
+  <Step title="Navigate to Dashboard">
+    Sign in to your Unlingo account and go to the main dashboard
+  </Step>
+  <Step title="Click Create Project">
+    Click the "Create Project" button on your dashboard
+  </Step>
+  <Step title="Fill Project Details">
+    Enter the required information:
+    - **Name**: A descriptive name for your project
+    - **Description**: Brief description of the application
+    - **Default Language**: The primary language for your application
+  </Step>
+  <Step title="Configure Settings">
+    Set up initial project settings:
+    - **Team Access**: Invite team members
+    - **Permissions**: Set role-based access controls
+  </Step>
+</Steps>
+
+### Via API
+
+You can also create projects programmatically:
+
+```bash cURL
+curl -X POST https://api.unlingo.com/v1/projects \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Web Application",
+    "description": "E-commerce website with multi-language support",
+    "defaultLanguage": "en"
+  }'
+```
+
+## Project Settings
+
+### Basic Information
+
+- **Project Name**: Display name for your project
+- **Description**: Detailed description of the project's purpose
+- **Default Language**: The fallback language for missing translations
+- **Project ID**: Unique identifier used in API requests
+
+### Team Management
+
+<CardGroup cols={2}>
+  <Card
+    title="Team Members"
+    icon="users"
+  >
+    Invite developers, translators, and project managers to collaborate
+  </Card>
+  <Card
+    title="Role-Based Access"
+    icon="shield"
+  >
+    Control who can view, edit, or manage different aspects of your project
+  </Card>
+</CardGroup>
+
+### API Configuration
+
+- **Rate Limits**: Configure request limits per API key
+- **CORS Settings**: Manage cross-origin request permissions
+- **Webhook URLs**: Set up notifications for project events
+
+## Project Roles
+
+Unlingo supports different roles with varying permissions:
+
+<AccordionGroup>
+  <Accordion title="Owner">
+    - Full access to all project resources
+    - Can manage team members and permissions
+    - Can delete the project
+    - Can create and revoke API keys
+  </Accordion>
+  
+  <Accordion title="Admin">
+    - Can manage namespaces, versions, and releases
+    - Can invite team members (except other admins)
+    - Can create API keys with limited scope
+    - Cannot delete the project
+  </Accordion>
+  
+  <Accordion title="Developer">
+    - Can create and edit translations
+    - Can create versions and releases
+    - Read-only access to project settings
+    - Cannot manage team members
+  </Accordion>
+  
+  <Accordion title="Translator">
+    - Can edit translation values
+    - Cannot create or delete translation keys
+    - Cannot create versions or releases
+    - Read-only access to project structure
+  </Accordion>
+  
+  <Accordion title="Viewer">
+    - Read-only access to all project resources
+    - Cannot make any changes
+    - Useful for stakeholders and reviewers
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+### Project Organization
+
+<Tip>
+  **One Project per Application**: Create separate projects for different applications, even if they share some translations. This provides better isolation and access control.
+</Tip>
+
+#### Good Project Structure
+```
+- My E-commerce Website (Project)
+  ├── common (Namespace)
+  ├── product-catalog (Namespace)
+  ├── checkout (Namespace)
+  └── user-account (Namespace)
+
+- My Mobile App (Project)
+  ├── onboarding (Namespace)
+  ├── main-navigation (Namespace)
+  └── settings (Namespace)
+```
+
+#### Avoid This Structure
+```
+- All Company Products (Project)
+  ├── website-common (Namespace)
+  ├── website-product-catalog (Namespace)
+  ├── mobile-onboarding (Namespace)
+  └── mobile-navigation (Namespace)
+```
+
+### Naming Conventions
+
+Use clear, descriptive names for your projects:
+
+- ✅ **Good**: "E-commerce Website", "Customer Mobile App", "Admin Dashboard"
+- ❌ **Avoid**: "Project 1", "Test", "My App"
+
+### Environment Separation
+
+Consider creating separate projects for different environments:
+
+- **Production Project**: `myapp-production`
+- **Staging Project**: `myapp-staging`
+- **Development Project**: `myapp-development`
+
+This approach provides:
+- Complete isolation between environments
+- Different team access levels
+- Separate API keys and rate limits
+- Independent release cycles
+
+## Common Patterns
+
+### Multi-Brand Applications
+
+For applications serving multiple brands or white-label solutions:
+
+```
+- Brand A Website (Project)
+- Brand B Website (Project)  
+- Shared Components (Project)
+```
+
+Use the Shared Components project for common translations, then import them into brand-specific projects.
+
+### Microservices Architecture
+
+For microservices, you can choose between:
+
+#### Single Project Approach
+```
+- Company Platform (Project)
+  ├── user-service (Namespace)
+  ├── payment-service (Namespace)
+  ├── notification-service (Namespace)
+  └── common-ui (Namespace)
+```
+
+#### Multiple Projects Approach
+```
+- User Service (Project)
+- Payment Service (Project)
+- Notification Service (Project)
+- Common UI Library (Project)
+```
+
+<Note>
+  The single project approach is often easier to manage, while multiple projects provide better service isolation. Choose based on your team structure and deployment requirements.
+</Note>
+
+## Project Analytics
+
+Track your project's usage and performance:
+
+### Translation Coverage
+- **Language Completion**: Percentage of keys translated per language
+- **Missing Translations**: Keys that need translation
+- **Review Status**: Translation keys pending review
+
+### API Usage
+- **Request Volume**: API calls over time
+- **Error Rates**: Failed requests and common errors
+- **Geographic Distribution**: Where your translations are being fetched
+
+### Team Activity
+- **Recent Changes**: Timeline of translation updates
+- **Contributor Activity**: Who's working on what
+- **Release History**: Version deployment timeline
+
+## Project Migration
+
+### Importing Existing Translations
+
+If you're migrating from another translation service:
+
+<Steps>
+  <Step title="Export Current Translations">
+    Export your translations in JSON, CSV, or other supported formats
+  </Step>
+  <Step title="Create Project Structure">
+    Set up your project with appropriate namespaces
+  </Step>
+  <Step title="Import Translations">
+    Use our bulk import API or dashboard upload feature
+  </Step>
+  <Step title="Validate Imports">
+    Review imported translations for accuracy and completeness
+  </Step>
+</Steps>
+
+### Bulk Import Example
+
+```bash
+curl -X POST https://api.unlingo.com/v1/projects/PROJECT_ID/import \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "namespace": "common",
+    "format": "json",
+    "translations": {
+      "en": {
+        "welcome": "Welcome",
+        "login": "Sign In"
+      },
+      "es": {
+        "welcome": "Bienvenido",
+        "login": "Iniciar Sesión"
+      }
+    }
+  }'
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot create project">
+    Check that you haven't reached your plan's project limit. Free accounts are limited to 1 project, while paid plans allow unlimited projects.
+  </Accordion>
+  
+  <Accordion title="Team member cannot access project">
+    Verify that:
+    - The user has been properly invited to the project
+    - They have the correct role assigned
+    - They have accepted the invitation
+    - Their account email matches the invitation
+  </Accordion>
+  
+  <Accordion title="API calls failing with project errors">
+    Ensure that:
+    - Your API key is associated with the correct project
+    - The project ID in your requests is accurate
+    - Your API key has the necessary permissions
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Learn About Namespaces"
+    icon="folder"
+    href="/concepts/namespaces"
+  >
+    Organize your translations within projects using namespaces
+  </Card>
+  <Card
+    title="Create Your First Release"
+    icon="rocket"
+    href="/concepts/releases"
+  >
+    Package your translations for deployment
+  </Card>
+</CardGroup>

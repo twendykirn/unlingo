@@ -6,7 +6,7 @@ import { useUser, useOrganization } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Mail, CheckCircle } from 'lucide-react';
 import { api } from '@/convex/_generated/api';
 import { useMutation, useQuery } from 'convex/react';
@@ -150,7 +150,7 @@ export default function ContactEmailPage() {
                     <Button
                         type='submit'
                         disabled={!isFormValid || isSaving}
-                        className='w-full bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed py-3'>
+                        className='w-full bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed py-3 cursor-pointer'>
                         {isSaving ? (
                             <div className='flex items-center justify-center space-x-2'>
                                 <div className='w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin'></div>

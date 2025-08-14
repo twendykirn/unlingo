@@ -1,19 +1,29 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { FolderOpen, Plus, ArrowRight, Clock, Settings } from 'lucide-react';
-import { UserButton, OrganizationSwitcher, useUser, useOrganization } from '@clerk/nextjs';
+import { motion } from 'motion/react';
+import { FolderOpen, Plus, ArrowRight, Clock, Settings, House, User, ChartLine, Building2 } from 'lucide-react';
+import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useQuery, usePaginatedQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import Dock from '@/components/ui/dock';
 
 export default function Dashboard() {
     const { user } = useUser();
     const { organization } = useOrganization();
+    const { openOrganizationProfile, openUserProfile } = useClerk();
     const router = useRouter();
+
+    const items = [
+        { icon: <House size={18} />, label: 'Dashboard', onClick: () => router.push('/dashboard') },
+        { icon: <ChartLine size={18} />, label: 'Analytics', onClick: () => router.push('/dashboard/analytics') },
+        { icon: <Settings size={18} />, label: 'Settings', onClick: () => router.push('/dashboard/settings') },
+        { icon: <Building2 size={18} />, label: 'Organization', onClick: () => openOrganizationProfile() },
+        { icon: <User size={18} />, label: 'Profile', onClick: () => openUserProfile() },
+    ];
 
     // Get the current workspace identifier (organization only)
     const clerkId = organization?.id;
@@ -93,38 +103,34 @@ export default function Dashboard() {
 
     return (
         <div className='min-h-screen bg-black text-white'>
-            {/* Header */}
-            <header className='border-b border-gray-800 px-6 py-4'>
-                <div className='flex items-center justify-between'>
+            {/* Sticky Header */}
+            <header className='fixed top-0 left-0 right-0 z-50 bg-black border-b border-gray-800 px-6 py-4 backdrop-blur-sm'>
+                <div className='flex items-center space-x-4'>
                     {/* Logo */}
                     <h1 className='text-2xl font-bold'>
                         <span className='bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent'>
                             Unlingo
                         </span>
                     </h1>
-
-                    {/* Right side: Settings + Org Switcher + Profile */}
-                    <div className='flex items-center space-x-4'>
-                        <Link href='/dashboard/settings'>
-                            <Button variant='ghost' size='sm' className='text-gray-400 hover:text-white cursor-pointer'>
-                                <Settings className='h-4 w-4' />
-                            </Button>
-                        </Link>
-                        <OrganizationSwitcher
-                            hidePersonal={true}
-                            afterCreateOrganizationUrl='/dashboard'
-                            afterLeaveOrganizationUrl='/select-org'
-                            afterSelectOrganizationUrl='/dashboard'
-                        />
-                        <UserButton />
-                    </div>
+                    
+                    {hasProjects && (
+                        <>
+                            <div className='h-6 w-px bg-gray-600' />
+                            <div>
+                                <h2 className='text-xl font-semibold text-white'>Projects</h2>
+                                <p className='text-xs text-gray-400'>
+                                    {projects?.length || 0} of {workspace?.currentUsage.projects}
+                                </p>
+                            </div>
+                        </>
+                    )}
                 </div>
             </header>
 
             {/* Main Content */}
             {!hasProjects ? (
                 // Empty State - No Projects
-                <div className='flex-1 flex items-center justify-center min-h-[calc(100vh-80px)]'>
+                <div className='flex-1 flex items-center justify-center min-h-[calc(100vh-80px)] pt-20'>
                     <div className='text-center max-w-md'>
                         <div className='mb-8'>
                             <FolderOpen className='h-24 w-24 text-gray-600 mx-auto mb-6' />
@@ -162,25 +168,18 @@ export default function Dashboard() {
                 </div>
             ) : (
                 // Projects List View
-                <div className='p-6'>
-                    {/* Page Header */}
-                    <div className='flex items-center justify-between mb-8'>
-                        <div>
-                            <h2 className='text-3xl font-bold'>Projects</h2>
-                            <p className='text-gray-400 mt-1'>
-                                {projects?.length || 0} of {workspace?.currentUsage.projects} projects
-                            </p>
-                        </div>
-
-                        {canCreateProject && (
+                <div className='p-6 pt-24'>
+                    {/* Create Project Button */}
+                    {canCreateProject && (
+                        <div className='flex justify-end mb-8'>
                             <Link href='/dashboard/create-project'>
                                 <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
                                     <Plus className='h-4 w-4 mr-2' />
                                     New Project
                                 </Button>
                             </Link>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* Projects Grid */}
                     <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
@@ -243,6 +242,7 @@ export default function Dashboard() {
                     )}
                 </div>
             )}
+            <Dock items={items} panelHeight={68} baseItemSize={50} magnification={70} />
         </div>
     );
 }

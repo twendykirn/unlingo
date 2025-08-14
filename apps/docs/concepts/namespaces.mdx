@@ -1,0 +1,485 @@
+---
+title: 'Namespaces'
+description: 'Organize your translations with namespaces for better structure and maintainability'
+---
+
+## What are Namespaces?
+
+**Namespaces** are logical containers within a project that group related translations together. They help organize your translation keys by feature, component, or any other logical division that makes sense for your application.
+
+Think of namespaces as folders in a file system - they provide structure and help prevent naming conflicts while making translations easier to manage.
+
+## Why Use Namespaces?
+
+<CardGroup cols={2}>
+  <Card
+    title="Organization"
+    icon="folder-tree"
+  >
+    Group related translations together for better maintainability
+  </Card>
+  <Card
+    title="Separation of Concerns"
+    icon="layer-group"
+  >
+    Isolate different features or components to avoid conflicts
+  </Card>
+  <Card
+    title="Team Collaboration"
+    icon="users"
+  >
+    Allow different teams to work on different namespaces independently
+  </Card>
+  <Card
+    title="Performance"
+    icon="gauge-high"
+  >
+    Load only the translations you need, reducing bundle size
+  </Card>
+</CardGroup>
+
+## Namespace Structure
+
+A typical application might use this namespace structure:
+
+```
+Project: E-commerce Website
+├── common/          # Shared UI elements
+│   ├── buttons
+│   ├── navigation
+│   └── forms
+├── product-catalog/ # Product listing and details
+│   ├── filters
+│   ├── search
+│   └── product-card
+├── checkout/        # Purchase flow
+│   ├── cart
+│   ├── payment
+│   └── confirmation
+└── user-account/    # User profile and settings
+    ├── profile
+    ├── orders
+    └── preferences
+```
+
+## Creating Namespaces
+
+### Via Dashboard
+
+<Steps>
+  <Step title="Navigate to Project">
+    Go to your project dashboard and select the project you want to work with
+  </Step>
+  <Step title="Go to Namespaces Tab">
+    Click on the "Namespaces" tab in your project navigation
+  </Step>
+  <Step title="Create New Namespace">
+    Click "Create Namespace" and fill in the details:
+    - **Name**: A descriptive name (e.g., "product-catalog")
+    - **Description**: Brief explanation of what this namespace contains
+    - **Default Language**: Primary language for this namespace
+  </Step>
+</Steps>
+
+### Via API
+
+```bash cURL
+curl -X POST https://api.unlingo.com/v1/projects/PROJECT_ID/namespaces \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "product-catalog",
+    "description": "Translations for product listing and detail pages",
+    "defaultLanguage": "en"
+  }'
+```
+
+## Fetching Namespace Translations
+
+### Single Namespace
+
+Fetch translations for a specific namespace:
+
+```bash
+curl -X GET "https://api.unlingo.com/v1/translations?version=1.0.0&namespace=common&lang=en" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Multiple Namespaces
+
+Fetch multiple namespaces in a single request:
+
+```bash
+curl -X GET "https://api.unlingo.com/v1/translations?version=1.0.0&namespace=common,product-catalog&lang=en" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### All Namespaces
+
+Fetch all namespaces (omit the namespace parameter):
+
+```bash
+curl -X GET "https://api.unlingo.com/v1/translations?version=1.0.0&lang=en" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Namespace Naming Conventions
+
+### Best Practices
+
+<Tip>
+  Use kebab-case (lowercase with hyphens) for namespace names. This ensures compatibility across different systems and makes URLs more readable.
+</Tip>
+
+#### Good Examples
+- `common`
+- `product-catalog`
+- `user-dashboard`
+- `checkout-flow`
+- `admin-panel`
+
+#### Avoid These
+- `Common` (PascalCase)
+- `product_catalog` (snake_case)
+- `productCatalog` (camelCase)
+- `product catalog` (spaces)
+
+### Hierarchical Naming
+
+For complex applications, use hierarchical naming:
+
+```
+auth/login
+auth/registration
+auth/password-reset
+
+dashboard/overview
+dashboard/analytics
+dashboard/settings
+
+shop/products
+shop/categories
+shop/cart
+```
+
+## Translation Key Organization
+
+### Flat Structure (Simple)
+
+```json
+{
+  "welcome": "Welcome to our store",
+  "loginButton": "Sign In",
+  "searchPlaceholder": "Search products...",
+  "addToCart": "Add to Cart"
+}
+```
+
+### Nested Structure (Recommended)
+
+```json
+{
+  "welcome": "Welcome to our store",
+  "buttons": {
+    "login": "Sign In",
+    "logout": "Sign Out",
+    "addToCart": "Add to Cart",
+    "viewDetails": "View Details"
+  },
+  "forms": {
+    "search": {
+      "placeholder": "Search products...",
+      "submit": "Search",
+      "clear": "Clear"
+    },
+    "contact": {
+      "name": "Your Name",
+      "email": "Email Address",
+      "message": "Message"
+    }
+  }
+}
+```
+
+## Integration Examples
+
+### React with i18next
+
+```javascript
+// Load specific namespace
+import { useTranslation } from 'react-i18next';
+
+function ProductCatalog() {
+  const { t } = useTranslation('product-catalog');
+  
+  return (
+    <div>
+      <h1>{t('title')}</h1>
+      <button>{t('buttons.addToCart')}</button>
+    </div>
+  );
+}
+```
+
+### Loading Multiple Namespaces
+
+```javascript
+function App() {
+  const { t } = useTranslation(['common', 'product-catalog']);
+  
+  return (
+    <div>
+      {/* From common namespace */}
+      <nav>{t('common:navigation.home')}</nav>
+      
+      {/* From product-catalog namespace */}
+      <main>{t('product-catalog:title')}</main>
+    </div>
+  );
+}
+```
+
+### Dynamic Namespace Loading
+
+```javascript
+import { useTranslation } from 'react-i18next';
+import { useState, useEffect } from 'react';
+
+function DynamicComponent({ namespaceName }) {
+  const { t, i18n } = useTranslation();
+  const [isLoaded, setIsLoaded] = useState(false);
+  
+  useEffect(() => {
+    const loadNamespace = async () => {
+      if (!i18n.hasResourceBundle('en', namespaceName)) {
+        await i18n.loadNamespaces(namespaceName);
+      }
+      setIsLoaded(true);
+    };
+    
+    loadNamespace();
+  }, [namespaceName, i18n]);
+  
+  if (!isLoaded) return <div>Loading...</div>;
+  
+  return <div>{t(`${namespaceName}:title`)}</div>;
+}
+```
+
+## Namespace Versioning
+
+Each namespace can have different versions, allowing for independent updates:
+
+### Version Management
+
+```bash
+# Create a new version for specific namespace
+curl -X POST https://api.unlingo.com/v1/namespaces/NAMESPACE_ID/versions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "version": "2.1.0",
+    "description": "Updated product catalog translations",
+    "baseVersion": "2.0.0"
+  }'
+```
+
+### Fetching Specific Namespace Versions
+
+```bash
+# Fetch specific version of a namespace
+curl -X GET "https://api.unlingo.com/v1/translations?version=2.1.0&namespace=product-catalog&lang=en" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Performance Optimization
+
+### Lazy Loading Namespaces
+
+Only load namespaces when they're needed:
+
+```javascript
+// React with code splitting
+const ProductCatalog = lazy(() => 
+  import('./ProductCatalog').then(module => {
+    // Load namespace when component loads
+    i18n.loadNamespaces('product-catalog');
+    return module;
+  })
+);
+```
+
+### Caching Strategies
+
+Implement caching per namespace:
+
+```javascript
+class NamespaceCache {
+  constructor() {
+    this.cache = new Map();
+  }
+  
+  async getNamespace(name, version, language) {
+    const key = `${name}-${version}-${language}`;
+    
+    if (this.cache.has(key)) {
+      return this.cache.get(key);
+    }
+    
+    const translations = await this.fetchFromAPI(name, version, language);
+    this.cache.set(key, translations);
+    
+    return translations;
+  }
+}
+```
+
+## Common Patterns
+
+### Component-Based Namespaces
+
+Align namespaces with your component structure:
+
+```
+components/
+├── Header/
+│   └── translations: common/header
+├── ProductCard/
+│   └── translations: product-catalog/card
+├── ShoppingCart/
+│   └── translations: checkout/cart
+└── UserProfile/
+    └── translations: user-account/profile
+```
+
+### Feature-Based Namespaces
+
+Group by application features:
+
+```
+authentication/     # Login, signup, password reset
+onboarding/        # User onboarding flow
+dashboard/         # Main dashboard interface
+settings/          # User and app settings
+reporting/         # Analytics and reports
+```
+
+### Page-Based Namespaces
+
+Organize by application pages:
+
+```
+pages/
+├── home/          # Homepage translations
+├── about/         # About page
+├── contact/       # Contact page
+├── products/      # Product pages
+└── blog/          # Blog and articles
+```
+
+## Best Practices
+
+### Keep Namespaces Focused
+
+<Warning>
+  Avoid creating overly broad namespaces that contain unrelated translations. This makes maintenance difficult and reduces the benefits of organization.
+</Warning>
+
+#### Good: Focused Namespaces
+```
+auth/              # Only authentication-related
+product-search/    # Only search functionality
+user-preferences/  # Only user settings
+```
+
+#### Avoid: Overly Broad Namespaces
+```
+misc/              # Too vague
+frontend/          # Too broad
+translations/      # Doesn't provide organization
+```
+
+### Consistent Naming
+
+Use a consistent naming convention across your entire project:
+
+```
+// If using feature-based naming
+user-authentication
+user-preferences
+user-dashboard
+
+// If using component-based naming
+header-component
+sidebar-component
+footer-component
+```
+
+### Documentation
+
+Document your namespace structure:
+
+```markdown
+# Translation Namespaces
+
+## common
+Shared UI elements used across the application
+- Buttons, navigation, form labels
+- Error messages and notifications
+
+## product-catalog
+Product listing and search functionality
+- Product cards, filters, sorting
+- Search results and pagination
+
+## checkout
+Purchase flow and cart management
+- Shopping cart, payment forms
+- Order confirmation and receipts
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Namespace not found error">
+    Verify that:
+    - The namespace name is spelled correctly
+    - The namespace exists in your project
+    - Your API key has access to the namespace
+    - The namespace is included in the current release
+  </Accordion>
+  
+  <Accordion title="Translations not loading">
+    Check that:
+    - The namespace parameter is correctly formatted
+    - Your application is configured to load the namespace
+    - The namespace contains translations for the requested language
+    - Network requests to the API are successful
+  </Accordion>
+  
+  <Accordion title="Key conflicts between namespaces">
+    If you have the same key in multiple namespaces:
+    - Use namespace prefixes in your code: `t('namespace:key')`
+    - Consider restructuring to avoid conflicts
+    - Use explicit namespace specification in your i18n configuration
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Learn About Versions"
+    icon="code-branch"
+    href="/concepts/versions"
+  >
+    Understand how to version your namespace translations
+  </Card>
+  <Card
+    title="Create Releases"
+    icon="rocket"
+    href="/concepts/releases"
+  >
+    Package namespaces into deployable releases
+  </Card>
+</CardGroup>

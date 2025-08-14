@@ -4,19 +4,11 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, usePaginatedQuery, useAction } from 'convex/react';
 import { useUser, useOrganization } from '@clerk/nextjs';
-import { ArrowLeft, Plus, Languages, Star, Edit2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Languages, Star, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Id } from '@/convex/_generated/dataModel';
 import { api } from '@/convex/_generated/api';
 
@@ -54,17 +46,6 @@ export default function VersionLanguagesPage() {
             : 'skip'
     );
 
-    const namespaceQuery = useQuery(
-        api.namespaces.getNamespace,
-        workspaceQuery && projectQuery && namespaceId
-            ? {
-                  namespaceId,
-                  projectId: projectQuery._id,
-                  workspaceId: workspaceQuery._id,
-              }
-            : 'skip'
-    );
-
     const versionQuery = useQuery(
         api.namespaceVersions.getNamespaceVersion,
         workspaceQuery && versionId
@@ -92,7 +73,7 @@ export default function VersionLanguagesPage() {
     );
 
     // Loading states
-    if (!workspaceQuery || !projectQuery || !namespaceQuery || !versionQuery) {
+    if (!workspaceQuery || !projectQuery || !versionQuery) {
         return (
             <div className='flex items-center justify-center py-12'>
                 <div className='text-center'>
@@ -155,104 +136,162 @@ export default function VersionLanguagesPage() {
 
     return (
         <div className='p-6 space-y-6'>
-            {/* Header */}
-            <div className='flex items-center space-x-4'>
-                <Button
-                    variant='ghost'
-                    size='sm'
-                    onClick={() => {
-                        router.push(`/dashboard/projects/${projectId}/namespaces/${namespaceId}`);
-                    }}
-                    className='text-gray-400 hover:text-white cursor-pointer'>
-                    <ArrowLeft className='h-4 w-4 mr-2' />
-                    Back
-                </Button>
-                <div>
-                    <h1 className='text-2xl font-bold text-white'>
-                        {namespaceQuery.name} - {versionQuery.version}
-                    </h1>
-                    <p className='text-gray-400'>Manage languages for this version</p>
-                    {namespaceQuery?.primaryLanguageId && (
-                        <div className='text-sm text-gray-400 mt-1'>
-                            {(() => {
-                                const primaryLang = languages.find(l => l._id === namespaceQuery.primaryLanguageId);
-                                return (
-                                    <p className='flex items-center gap-1'>
-                                        <Star className='h-3 w-3 text-yellow-400 fill-yellow-400' />
-                                        Primary: {primaryLang?.languageCode.toUpperCase() || 'Unknown'}
-                                    </p>
-                                );
-                            })()}
+            {/* Elegant Header with Combined Actions */}
+            <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
+                <div className='flex items-center justify-between'>
+                    <div className='flex items-center space-x-4'>
+                        <Button
+                            variant='ghost'
+                            size='sm'
+                            onClick={() => {
+                                router.push(`/dashboard/projects/${projectId}/namespaces/${namespaceId}`);
+                            }}
+                            className='w-10 h-10 p-0 text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer rounded-lg'>
+                            <ArrowLeft className='h-4 w-4' />
+                        </Button>
+                        <div className='flex items-center space-x-3'>
+                            <div className='w-12 h-12 bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 rounded-xl flex items-center justify-center border border-gray-700/30'>
+                                <Languages className='h-6 w-6 text-emerald-400' />
+                            </div>
+                            <div>
+                                <div className='flex items-center space-x-3 mb-1'>
+                                    <h1 className='text-2xl font-semibold text-white'>{versionQuery.version}</h1>
+                                    {versionQuery?.primaryLanguageId && (
+                                        <>
+                                            <div className='w-1 h-1 bg-gray-600 rounded-full'></div>
+                                            <div className='flex items-center space-x-1 bg-yellow-400/10 border border-yellow-400/20 rounded-full px-2 py-1'>
+                                                <Star className='h-3 w-3 text-yellow-400 fill-yellow-400' />
+                                                <span className='text-xs font-medium text-yellow-400'>
+                                                    {(() => {
+                                                        const primaryLang = languages.find(
+                                                            l => l._id === versionQuery.primaryLanguageId
+                                                        );
+                                                        return primaryLang?.languageCode.toUpperCase() || 'Unknown';
+                                                    })()}
+                                                </span>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                                <p className='text-gray-400 text-sm'>Manage languages for this version</p>
+                            </div>
                         </div>
-                    )}
+                    </div>
+                    <div className='flex items-center space-x-3'>
+                        <div className='flex items-center space-x-2 text-xs text-gray-400'>
+                            <span>
+                                {languages?.length || 0} / {workspaceQuery.limits.languagesPerVersion}
+                            </span>
+                            <span>languages</span>
+                        </div>
+                        <Dialog open={isCreateLanguageOpen} onOpenChange={setIsCreateLanguageOpen}>
+                            <DialogTrigger asChild>
+                                <Button
+                                    className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'
+                                    disabled={languages.length >= workspaceQuery.limits.languagesPerVersion}>
+                                    <Plus className='h-4 w-4 mr-2' />
+                                    Add Language
+                                </Button>
+                            </DialogTrigger>
+                        </Dialog>
+                    </div>
                 </div>
             </div>
 
-            {/* Create Language Button */}
-            <div className='flex justify-end'>
-                <Dialog open={isCreateLanguageOpen} onOpenChange={setIsCreateLanguageOpen}>
-                    <DialogTrigger asChild>
-                        <Button
-                            className='bg-green-500 text-white hover:bg-green-600 cursor-pointer'
-                            disabled={languages.length >= workspaceQuery.limits.languagesPerNamespace}>
-                            <Plus className='h-4 w-4 mr-2' />
-                            Add Language
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className='bg-gray-950 border-gray-800 text-white max-w-md'>
-                        <DialogHeader>
-                            <DialogTitle>Add Language</DialogTitle>
-                            <DialogDescription className='text-gray-400'>
-                                Create a new language for this namespace version. You can edit translations later in the
-                                JSON editor.
+            {/* Elegant Create Language Dialog */}
+            <Dialog open={isCreateLanguageOpen} onOpenChange={setIsCreateLanguageOpen}>
+                <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
+                    {/* Header with Icon */}
+                    <div className='flex items-center space-x-4 pb-6 border-b border-gray-800/50'>
+                        <div className='w-12 h-12 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-xl flex items-center justify-center border border-emerald-500/30'>
+                            <Languages className='h-6 w-6 text-emerald-400' />
+                        </div>
+                        <div>
+                            <DialogTitle className='text-xl font-semibold text-white mb-1'>
+                                Add New Language
+                            </DialogTitle>
+                            <DialogDescription className='text-gray-400 text-sm'>
+                                Create a new language for {versionQuery.version} version
                             </DialogDescription>
-                        </DialogHeader>
+                        </div>
+                    </div>
 
-                        <div className='space-y-4'>
-                            <div>
-                                <Label htmlFor='language-code'>Language Code</Label>
+                    <div className='space-y-6 py-6'>
+                        {/* Language Code Input */}
+                        <div className='space-y-3'>
+                            <Label htmlFor='language-code' className='text-sm font-medium text-gray-300'>
+                                Language Code
+                            </Label>
+                            <div className='relative'>
                                 <Input
                                     id='language-code'
                                     placeholder='e.g., en, es, fr, pt-BR'
                                     value={newLanguageCode}
                                     onChange={e => setNewLanguageCode(e.target.value)}
-                                    className='bg-gray-900 border-gray-700 text-white mt-2'
+                                    className='bg-black/30 border-gray-700/50 text-white h-12 px-4 text-lg focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all'
                                 />
-                                <p className='text-xs text-gray-500 mt-1'>
-                                    Use ISO language codes like "en", "es", "fr", or "en-US", "pt-BR"
-                                </p>
-                            </div>
-
-                            {languages.length > 0 && (
-                                <div className='p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg'>
-                                    <p className='text-sm text-blue-400 mb-1'>✨ Automatic Copy</p>
-                                    <p className='text-xs text-gray-400'>
-                                        This language will automatically copy the structure from your primary language
-                                    </p>
+                                <div className='absolute right-3 top-1/2 -translate-y-1/2'>
+                                    <Languages className='h-4 w-4 text-gray-500' />
                                 </div>
-                            )}
+                            </div>
+                            <div className='bg-gray-900/30 border border-gray-700/30 rounded-lg p-3'>
+                                <p className='text-xs text-gray-400 font-medium mb-1'>📝 Format Examples:</p>
+                                <div className='flex flex-wrap gap-2 mt-2'>
+                                    {['en', 'es', 'fr', 'de', 'pt-BR', 'en-US', 'zh-CN'].map(code => (
+                                        <button
+                                            key={code}
+                                            onClick={() => setNewLanguageCode(code)}
+                                            className='px-2 py-1 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/30 rounded text-xs text-gray-300 hover:text-white transition-all cursor-pointer'>
+                                            {code}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
 
-                        <DialogFooter>
+                        {/* Auto-copy Feature */}
+                        {languages.length > 0 && (
+                            <div className='bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 rounded-xl p-4'>
+                                <div className='flex items-center space-x-2 mb-2'>
+                                    <div className='w-6 h-6 bg-emerald-400/20 rounded-full flex items-center justify-center'>
+                                        <span className='text-emerald-400 text-sm'>✨</span>
+                                    </div>
+                                    <p className='text-sm font-medium text-emerald-400'>Smart Copy</p>
+                                </div>
+                                <p className='text-xs text-gray-400 leading-relaxed'>
+                                    This language will automatically inherit the translation structure from your primary
+                                    language, making it easier to start translating.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className='flex items-center justify-between pt-6 border-t border-gray-800/50'>
+                        <div className='text-xs text-gray-500'>
+                            {languages?.length || 0} / {workspaceQuery.limits.languagesPerVersion} languages
+                        </div>
+                        <div className='flex space-x-3'>
                             <Button
-                                variant='outline'
+                                variant='ghost'
                                 onClick={() => {
                                     setIsCreateLanguageOpen(false);
                                     setNewLanguageCode('');
                                 }}
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
+                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleCreateLanguage}
                                 disabled={!newLanguageCode.trim()}
-                                className='bg-green-500 text-white hover:bg-green-600 cursor-pointer'>
+                                className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                <Plus className='h-4 w-4 mr-2' />
                                 Create Language
                             </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Languages List */}
             {languages.length > 0 ? (
@@ -261,65 +300,87 @@ export default function VersionLanguagesPage() {
                         {languages.map((language: any) => (
                             <div
                                 key={language._id}
-                                className='bg-gray-900 border border-gray-800 rounded-lg p-6 hover:border-gray-600 transition-colors'>
-                                <div className='flex items-center justify-between mb-4'>
+                                className='group bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 hover:border-gray-600/50 hover:bg-gray-900/70 transition-all duration-300 backdrop-blur-sm cursor-pointer'
+                                onClick={() => handleEditLanguage(language)}>
+                                {/* Header Section */}
+                                <div className='flex items-center justify-between mb-6'>
                                     <div className='flex items-center space-x-3'>
-                                        <div className='w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center'>
+                                        <div
+                                            className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all ${
+                                                language.fileId
+                                                    ? 'bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border-emerald-500/30'
+                                                    : 'bg-gradient-to-br from-gray-500/20 to-gray-600/20 border-gray-600/30'
+                                            }`}>
                                             <Languages
-                                                className={`h-5 w-5 ${language.fileId ? 'text-white' : 'text-gray-300'}`}
+                                                className={`h-6 w-6 ${
+                                                    language.fileId ? 'text-emerald-400' : 'text-gray-400'
+                                                }`}
                                             />
                                         </div>
                                         <div>
-                                            <h4 className='font-semibold text-white flex items-center gap-2'>
-                                                {language.languageCode.toUpperCase()}
-                                                {/* Show star for primary language */}
-                                                {namespaceQuery?.primaryLanguageId === language._id && (
-                                                    <Star className='h-3 w-3 text-yellow-400 fill-yellow-400' />
+                                            <div className='flex items-center space-x-2 mb-1'>
+                                                <h4 className='text-lg font-semibold text-white transition-colors'>
+                                                    {language.languageCode.toUpperCase()}
+                                                </h4>
+                                                {versionQuery.primaryLanguageId === language._id && (
+                                                    <div className='w-6 h-6 bg-yellow-400/10 border border-yellow-400/30 rounded-full flex items-center justify-center'>
+                                                        <Star className='h-3 w-3 text-yellow-400 fill-yellow-400' />
+                                                    </div>
                                                 )}
-                                            </h4>
-                                            <p className='text-xs text-gray-400'>
-                                                Status:{' '}
-                                                {language.fileId ? (
-                                                    <span className='text-green-400'>
-                                                        {Math.round((language.fileSize || 0) / 1024)} KB
-                                                    </span>
-                                                ) : (
-                                                    <span className='text-yellow-400'>Empty</span>
-                                                )}
-                                            </p>
+                                            </div>
+                                            <div className='flex items-center space-x-2'>
+                                                <div
+                                                    className={`w-2 h-2 rounded-full ${
+                                                        language.fileId ? 'bg-emerald-400' : 'bg-gray-500'
+                                                    }`}></div>
+                                                <p className='text-xs text-gray-400 font-medium'>
+                                                    {language.fileId ? (
+                                                        <span className='text-emerald-400'>
+                                                            {Math.round((language.fileSize || 0) / 1024)} KB
+                                                        </span>
+                                                    ) : (
+                                                        <span className='text-gray-500'>Empty</span>
+                                                    )}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className='flex gap-2 mt-4'>
-                                    {/* Set as primary button - only show if not already primary */}
-                                    {namespaceQuery?.primaryLanguageId !== language._id && (
-                                        <Button
-                                            size='sm'
-                                            variant='outline'
-                                            onClick={() => handleSetPrimaryLanguage(language._id)}
-                                            className='flex-1 border-gray-700 text-yellow-400 hover:bg-yellow-400/10 hover:border-yellow-400 cursor-pointer'>
-                                            <Star className='h-3 w-3 mr-1' />
-                                            Set Primary
-                                        </Button>
-                                    )}
+                                {/* Actions Section */}
+                                <div className='flex items-center justify-between pt-4 border-t border-gray-800/50'>
+                                    {/* Left side - Status and Primary indicator */}
+                                    <div className='flex items-center space-x-2'>
+                                        {versionQuery.primaryLanguageId === language._id ? (
+                                            <div className='flex items-center space-x-1 text-yellow-400'>
+                                                <Star className='h-3 w-3 fill-yellow-400' />
+                                                <span className='text-xs font-medium'>Primary</span>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    handleSetPrimaryLanguage(language._id);
+                                                }}
+                                                className='flex items-center space-x-1 text-gray-400 hover:text-yellow-400 transition-colors text-xs cursor-pointer'>
+                                                <Star className='h-3 w-3' />
+                                                <span className='font-medium'>Set Primary</span>
+                                            </button>
+                                        )}
+                                    </div>
+
                                     <Button
                                         size='sm'
-                                        variant='outline'
-                                        onClick={() => handleEditLanguage(language)}
-                                        className='flex-1 border-gray-700 text-gray-300 hover:bg-gray-700 hover:border-gray-600 cursor-pointer'>
-                                        <Edit2 className='h-3 w-3 mr-1' />
-                                        Edit
-                                    </Button>
-                                    <Button
-                                        size='sm'
-                                        variant='outline'
-                                        onClick={() => handleDeleteLanguage(language._id)}
-                                        disabled={namespaceQuery?.primaryLanguageId === language._id}
-                                        className={`${
-                                            namespaceQuery?.primaryLanguageId === language._id
-                                                ? 'border-gray-600 text-gray-500 cursor-not-allowed'
-                                                : 'border-red-700 text-red-400 hover:bg-red-900/20 hover:border-red-600 cursor-pointer'
+                                        variant='ghost'
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            handleDeleteLanguage(language._id);
+                                        }}
+                                        disabled={versionQuery.primaryLanguageId === language._id}
+                                        className={`p-2 ${
+                                            versionQuery.primaryLanguageId === language._id
+                                                ? 'text-gray-500 cursor-not-allowed hover:bg-transparent'
+                                                : 'text-gray-400 hover:text-red-400 hover:bg-red-500/10 cursor-pointer transition-all'
                                         }`}>
                                         <Trash2 className='h-3 w-3' />
                                     </Button>
@@ -348,10 +409,14 @@ export default function VersionLanguagesPage() {
                     )}
                 </div>
             ) : (
-                <div className='text-center py-12 border border-gray-800 rounded-lg'>
-                    <Languages className='h-12 w-12 text-gray-600 mx-auto mb-4' />
-                    <h3 className='text-xl font-medium text-gray-400 mb-2'>No languages yet</h3>
-                    <p className='text-gray-500 mb-6'>Create your first language to start managing translations.</p>
+                <div className='text-center py-16 bg-gray-900/30 border border-gray-800/50 rounded-xl backdrop-blur-sm'>
+                    <div className='w-16 h-16 bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 rounded-xl flex items-center justify-center border border-gray-700/30 mx-auto mb-6'>
+                        <Languages className='h-8 w-8 text-emerald-400' />
+                    </div>
+                    <h3 className='text-xl font-semibold text-white mb-2'>No languages yet</h3>
+                    <p className='text-gray-400 mb-6'>
+                        Create your first language to start managing translations for this version.
+                    </p>
                 </div>
             )}
         </div>

@@ -1,5 +1,5 @@
 import { v } from 'convex/values';
-import { internalMutation, internalQuery } from './_generated/server';
+import { internalMutation } from './_generated/server';
 
 export const createNamespaceVersionContext = internalMutation({
     args: {
@@ -71,7 +71,6 @@ export const createNamespaceVersionContext = internalMutation({
         // Update namespace usage counter
         await ctx.db.patch(args.namespaceId, {
             usage: {
-                languages: namespace.usage?.languages ?? 0,
                 versions: currentVersionCount + 1,
             },
         });
@@ -85,13 +84,11 @@ export const createNamespaceVersionContext = internalMutation({
 
             return {
                 versionId,
-                namespace,
                 sourceLanguages,
             };
         }
 
         return {
-            namespace,
             versionId,
         };
     },
@@ -114,17 +111,15 @@ export const internalInsertLanguage = internalMutation({
     },
 });
 
-export const internalUpdateNamespaceUsage = internalMutation({
+export const internalUpdateVersionUsage = internalMutation({
     args: {
-        namespaceId: v.id('namespaces'),
+        versionId: v.id('namespaceVersions'),
         languageCount: v.number(),
-        versionCount: v.number(),
     },
     handler: async (ctx, args) => {
-        await ctx.db.patch(args.namespaceId, {
+        await ctx.db.patch(args.versionId, {
             usage: {
                 languages: args.languageCount,
-                versions: args.versionCount,
             },
         });
     },

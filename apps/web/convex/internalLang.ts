@@ -47,7 +47,6 @@ export const languageChangesContext = internalQuery({
 
         return {
             namespaceVersion,
-            namespace,
             language,
         };
     },
@@ -198,11 +197,11 @@ export const createLanguageContext = internalQuery({
             throw new Error(`Language '${args.languageCode}' already exists for this namespace version`);
         }
 
-        // Check if namespace has reached language limit using usage counter
-        const currentLanguageCount = namespace.usage?.languages ?? 0;
-        if (currentLanguageCount >= workspace.limits.languagesPerNamespace) {
+        // Check if namespace version has reached language limit using usage counter
+        const currentLanguageCount = namespaceVersion.usage?.languages ?? 0;
+        if (currentLanguageCount >= workspace.limits.languagesPerVersion) {
             throw new Error(
-                `Language limit reached. Maximum ${workspace.limits.languagesPerNamespace} languages per namespace. Please upgrade your plan.`
+                `Language limit reached. Maximum ${workspace.limits.languagesPerVersion} languages per version. Please upgrade your plan.`
             );
         }
 
@@ -211,8 +210,8 @@ export const createLanguageContext = internalQuery({
             throw new Error('Language code must be in format: "en", "en-US", "fr", "pt-BR", etc.');
         }
 
-        // Check if this is the first language in the namespace using usage counter
-        const isFirstLanguage = (namespace.usage?.languages ?? 0) === 0;
+        // Check if this is the first language in this version using usage counter
+        const isFirstLanguage = (namespaceVersion.usage?.languages ?? 0) === 0;
 
         let sourceFileId: Id<'_storage'> | undefined = undefined;
         let primaryFileId: Id<'_storage'> | undefined = undefined;
@@ -229,9 +228,9 @@ export const createLanguageContext = internalQuery({
             if (sourceLanguage.fileId) {
                 sourceFileId = sourceLanguage.fileId;
             }
-        } else if (!isFirstLanguage && namespace.primaryLanguageId) {
+        } else if (!isFirstLanguage && namespaceVersion.primaryLanguageId) {
             // Auto-copy from primary language for 2nd, 3rd, etc. languages
-            const primaryLanguage = await ctx.db.get(namespace.primaryLanguageId);
+            const primaryLanguage = await ctx.db.get(namespaceVersion.primaryLanguageId);
 
             if (primaryLanguage && primaryLanguage.fileId) {
                 primaryFileId = primaryLanguage.fileId;
@@ -269,20 +268,22 @@ export const internalCreateLanguageUpdate = internalMutation({
             fileSize: args.fileSize,
         });
 
-        // Update namespace usage counter
-        await ctx.db.patch(args.nameSpaceId, {
-            usage: {
-                languages: args.currentLanguageCount + 1,
-                versions: args.versionUsage ?? 0,
-            },
-        });
-
-        // If this is the first language, set it as primary
-        if (args.isFirstLanguage) {
-            await ctx.db.patch(args.nameSpaceId, {
-                primaryLanguageId: languageId,
-            });
-        }
+        // Update namespace version usage counter
+        await ctx.db.patch(
+            args.namespaceVersionId,
+            args.isFirstLanguage
+                ? {
+                      usage: {
+                          languages: args.currentLanguageCount + 1,
+                      },
+                      primaryLanguageId: languageId,
+                  }
+                : {
+                      usage: {
+                          languages: args.currentLanguageCount + 1,
+                      },
+                  }
+        );
 
         return languageId;
     },

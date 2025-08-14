@@ -1,0 +1,520 @@
+---
+title: 'Get Translations'
+api: 'GET https://api.unlingo.com/v1/translations'
+description: 'Retrieve translations for specific namespaces, versions, and languages'
+---
+
+## Overview
+
+This endpoint retrieves translations from your Unlingo project. It's the primary endpoint used by applications to fetch translation data for internationalization.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token with your API key
+  ```
+  Authorization: Bearer YOUR_API_KEY
+  ```
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="version" type="string" required>
+  The release version to fetch translations from. Use "latest" for the most recent published release.
+  
+  **Example**: `1.0.0`, `latest`, `staging`
+</ParamField>
+
+<ParamField query="namespace" type="string" optional>
+  Comma-separated list of namespace names to include. If omitted, returns all namespaces.
+  
+  **Example**: `common`, `common,auth`, `product-catalog`
+</ParamField>
+
+<ParamField query="lang" type="string" required>
+  The language code for the translations to retrieve.
+  
+  **Example**: `en`, `es`, `fr`, `de`
+</ParamField>
+
+<ParamField query="format" type="string" optional default="nested">
+  Response format for the translations.
+  
+  **Options**:
+  - `nested` - Hierarchical object structure (default)
+  - `flat` - Flattened key-value pairs with dot notation
+  - `icu` - ICU MessageFormat compatible
+</ParamField>
+
+<ParamField query="fallback" type="boolean" optional default="true">
+  Whether to include fallback translations when requested language is not available.
+</ParamField>
+
+<ParamField query="includeMetadata" type="boolean" optional default="false">
+  Include additional metadata about translations in the response.
+</ParamField>
+
+## Response
+
+<ResponseField name="data" type="object">
+  The translation data organized by namespace (if multiple) or as a flat object (if single namespace).
+</ResponseField>
+
+<ResponseField name="meta" type="object">
+  <Expandable title="properties">
+    <ResponseField name="requestId" type="string">
+      Unique identifier for this request
+    </ResponseField>
+    <ResponseField name="timestamp" type="string">
+      ISO 8601 timestamp of the response
+    </ResponseField>
+    <ResponseField name="version" type="string">
+      The actual version that was served (useful when requesting "latest")
+    </ResponseField>
+    <ResponseField name="language" type="string">
+      The language code that was served
+    </ResponseField>
+    <ResponseField name="namespaces" type="array">
+      Array of namespace names included in the response
+    </ResponseField>
+    <ResponseField name="fallbackUsed" type="boolean">
+      Whether fallback translations were used
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Single Namespace Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET "https://api.unlingo.com/v1/translations?version=1.0.0&namespace=common&lang=en" \
+  -H "Authorization: Bearer ul_1234567890abcdef"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.unlingo.com/v1/translations?version=1.0.0&namespace=common&lang=en',
+  {
+    headers: {
+      'Authorization': 'Bearer ul_1234567890abcdef'
+    }
+  }
+);
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+url = "https://api.unlingo.com/v1/translations"
+headers = {
+    "Authorization": "Bearer ul_1234567890abcdef"
+}
+params = {
+    "version": "1.0.0",
+    "namespace": "common",
+    "lang": "en"
+}
+
+response = requests.get(url, headers=headers, params=params)
+data = response.json()
+```
+
+```php PHP
+<?php
+$url = 'https://api.unlingo.com/v1/translations?' . http_build_query([
+    'version' => '1.0.0',
+    'namespace' => 'common',
+    'lang' => 'en'
+]);
+
+$headers = [
+    'Authorization: Bearer ul_1234567890abcdef',
+    'Content-Type: application/json'
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+$response = curl_exec($ch);
+$data = json_decode($response, true);
+curl_close($ch);
+?>
+```
+
+</CodeGroup>
+
+### Response (Nested Format)
+
+```json
+{
+  "data": {
+    "welcome": "Welcome to our application",
+    "buttons": {
+      "login": "Sign In",
+      "logout": "Sign Out",
+      "submit": "Submit",
+      "cancel": "Cancel"
+    },
+    "navigation": {
+      "home": "Home",
+      "about": "About",
+      "contact": "Contact Us"
+    },
+    "forms": {
+      "email": "Email Address",
+      "password": "Password",
+      "confirmPassword": "Confirm Password"
+    }
+  },
+  "meta": {
+    "requestId": "req_1234567890abcdef",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "version": "1.0.0",
+    "language": "en",
+    "namespaces": ["common"],
+    "fallbackUsed": false
+  }
+}
+```
+
+### Multiple Namespaces Request
+
+```bash
+curl -X GET "https://api.unlingo.com/v1/translations?version=1.0.0&namespace=common,auth&lang=en" \
+  -H "Authorization: Bearer ul_1234567890abcdef"
+```
+
+### Response (Multiple Namespaces)
+
+```json
+{
+  "data": {
+    "common": {
+      "welcome": "Welcome to our application",
+      "buttons": {
+        "submit": "Submit",
+        "cancel": "Cancel"
+      }
+    },
+    "auth": {
+      "login": {
+        "title": "Sign In",
+        "subtitle": "Welcome back",
+        "forgotPassword": "Forgot your password?"
+      },
+      "register": {
+        "title": "Create Account",
+        "subtitle": "Join us today"
+      }
+    }
+  },
+  "meta": {
+    "requestId": "req_1234567890abcdef",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "version": "1.0.0",
+    "language": "en",
+    "namespaces": ["common", "auth"],
+    "fallbackUsed": false
+  }
+}
+```
+
+### Flat Format Request
+
+```bash
+curl -X GET "https://api.unlingo.com/v1/translations?version=1.0.0&namespace=common&lang=en&format=flat" \
+  -H "Authorization: Bearer ul_1234567890abcdef"
+```
+
+### Response (Flat Format)
+
+```json
+{
+  "data": {
+    "welcome": "Welcome to our application",
+    "buttons.login": "Sign In",
+    "buttons.logout": "Sign Out",
+    "buttons.submit": "Submit",
+    "navigation.home": "Home",
+    "navigation.about": "About",
+    "forms.email": "Email Address",
+    "forms.password": "Password"
+  },
+  "meta": {
+    "requestId": "req_1234567890abcdef",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "version": "1.0.0",
+    "language": "en",
+    "namespaces": ["common"],
+    "fallbackUsed": false
+  }
+}
+```
+
+## Advanced Usage
+
+### With Metadata
+
+```bash
+curl -X GET "https://api.unlingo.com/v1/translations?version=1.0.0&namespace=common&lang=en&includeMetadata=true" \
+  -H "Authorization: Bearer ul_1234567890abcdef"
+```
+
+```json
+{
+  "data": {
+    "welcome": {
+      "value": "Welcome to our application",
+      "metadata": {
+        "lastModified": "2024-01-10T15:30:00Z",
+        "author": "john@example.com",
+        "approved": true,
+        "notes": "Updated for new branding"
+      }
+    }
+  }
+}
+```
+
+### Fallback Behavior
+
+When `fallback=true` (default) and the requested language is not available:
+
+1. Returns the project's default language
+2. Sets `fallbackUsed: true` in metadata
+3. Includes `fallbackLanguage` in metadata
+
+```json
+{
+  "data": {
+    "welcome": "Welcome to our application"
+  },
+  "meta": {
+    "requestId": "req_1234567890abcdef",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "version": "1.0.0",
+    "language": "en",
+    "requestedLanguage": "zh",
+    "fallbackUsed": true,
+    "fallbackLanguage": "en",
+    "namespaces": ["common"]
+  }
+}
+```
+
+## Error Responses
+
+### Namespace Not Found
+
+```json
+{
+  "error": {
+    "code": "NAMESPACE_NOT_FOUND",
+    "message": "The namespace 'invalid-namespace' was not found in version '1.0.0'",
+    "details": {
+      "namespace": "invalid-namespace",
+      "version": "1.0.0",
+      "availableNamespaces": ["common", "auth", "products"]
+    }
+  },
+  "meta": {
+    "requestId": "req_1234567890abcdef",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### Version Not Found
+
+```json
+{
+  "error": {
+    "code": "VERSION_NOT_FOUND",
+    "message": "Version '2.0.0' was not found",
+    "details": {
+      "version": "2.0.0",
+      "availableVersions": ["1.0.0", "1.1.0", "latest"]
+    }
+  },
+  "meta": {
+    "requestId": "req_1234567890abcdef",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### Language Not Available
+
+```json
+{
+  "error": {
+    "code": "LANGUAGE_NOT_AVAILABLE",
+    "message": "Language 'zh' is not available for version '1.0.0'",
+    "details": {
+      "language": "zh",
+      "version": "1.0.0",
+      "availableLanguages": ["en", "es", "fr", "de"]
+    }
+  },
+  "meta": {
+    "requestId": "req_1234567890abcdef",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+## Performance Considerations
+
+### Caching
+
+Translations are cached at multiple levels:
+
+- **CDN Cache**: 1 hour for published releases
+- **API Cache**: 5 minutes for dynamic requests
+- **Client Cache**: Implement your own caching strategy
+
+### Optimization Tips
+
+1. **Request specific namespaces** instead of all translations
+2. **Use conditional requests** with `If-None-Match` headers
+3. **Implement client-side caching** with appropriate TTL
+4. **Use compression** (gzip/brotli) - enabled automatically
+
+### Conditional Requests
+
+Use ETags for efficient caching:
+
+```bash
+# First request
+curl -X GET "https://api.unlingo.com/v1/translations?version=1.0.0&namespace=common&lang=en" \
+  -H "Authorization: Bearer ul_1234567890abcdef"
+
+# Response includes ETag
+# ETag: "W/\"686897696a7c876b7e\""
+
+# Subsequent request
+curl -X GET "https://api.unlingo.com/v1/translations?version=1.0.0&namespace=common&lang=en" \
+  -H "Authorization: Bearer ul_1234567890abcdef" \
+  -H "If-None-Match: W/\"686897696a7c876b7e\""
+
+# Returns 304 Not Modified if unchanged
+```
+
+## Rate Limits
+
+This endpoint has the following rate limits:
+
+| Plan | Requests per minute | Burst limit |
+|------|-------------------|-------------|
+| Free | 100 | 200 |
+| Pro | 1,000 | 2,000 |
+| Enterprise | Custom | Custom |
+
+## Best Practices
+
+### Client Implementation
+
+```javascript
+class UnlingoClient {
+  constructor(apiKey, options = {}) {
+    this.apiKey = apiKey;
+    this.baseUrl = options.baseUrl || 'https://api.unlingo.com/v1';
+    this.cache = new Map();
+    this.defaultTTL = options.cacheTTL || 300000; // 5 minutes
+  }
+
+  async getTranslations(version, namespace, language, options = {}) {
+    const cacheKey = `${version}-${namespace}-${language}`;
+    const cached = this.cache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < this.defaultTTL) {
+      return cached.data;
+    }
+
+    const url = new URL('/translations', this.baseUrl);
+    url.searchParams.set('version', version);
+    url.searchParams.set('namespace', namespace);
+    url.searchParams.set('lang', language);
+    
+    Object.entries(options).forEach(([key, value]) => {
+      if (value !== undefined) {
+        url.searchParams.set(key, value);
+      }
+    });
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Cache the response
+    this.cache.set(cacheKey, {
+      data: data.data,
+      timestamp: Date.now()
+    });
+
+    return data.data;
+  }
+}
+```
+
+### Error Handling
+
+```javascript
+async function fetchTranslationsWithRetry(client, version, namespace, language, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await client.getTranslations(version, namespace, language);
+    } catch (error) {
+      if (error.status === 429 && attempt < maxRetries) {
+        // Rate limited - wait before retrying
+        const retryAfter = error.headers?.['retry-after'] || Math.pow(2, attempt);
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        continue;
+      }
+      
+      if (error.status === 404) {
+        console.warn(`Translations not found: ${namespace} (${language})`);
+        return {}; // Return empty object as fallback
+      }
+      
+      throw error; // Re-throw other errors
+    }
+  }
+}
+```
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card
+    title="List Projects"
+    icon="folder"
+    href="/api-reference/projects/list-projects"
+  >
+    Get available projects and their details
+  </Card>
+  <Card
+    title="List Namespaces"
+    icon="layer-group"
+    href="/api-reference/namespaces/list-namespaces"
+  >
+    View available namespaces in a project
+  </Card>
+</CardGroup>
