@@ -1,33 +1,27 @@
 import { internalMutation, internalQuery, MutationCtx, query, mutation, internalAction } from './_generated/server';
 import { v } from 'convex/values';
 import { Id } from './_generated/dataModel';
-import { cancelCurrentSubscription, polar } from './polar';
+import { polar } from './polar';
 import { internal } from './_generated/api';
 
 // Personal workspaces are no longer supported - only organization workspaces
 
 // Create a team workspace for a new organization
-export const createOrganizationWorkspace = internalMutation({
+export const createOrganizationWorkspace = mutation({
     args: {
         clerkOrgId: v.string(),
-        contactEmail: v.optional(v.string()),
+        contactEmail: v.string(),
     },
     handler: async (ctx, args) => {
-        // Check if workspace already exists
-        const existingWorkspace = await ctx.db
-            .query('workspaces')
-            .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkOrgId))
-            .first();
-
-        if (existingWorkspace) {
-            console.log(`Workspace already exists for organization ${args.clerkOrgId}`);
-            return existingWorkspace._id;
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error('Not authenticated');
         }
 
         // Create team workspace
         const workspaceId = await ctx.db.insert('workspaces', {
             clerkId: args.clerkOrgId,
-            contactEmail: args.contactEmail || '', // Default to empty string if not provided
+            contactEmail: args.contactEmail,
             currentUsage: {
                 requests: 0,
                 projects: 0,
@@ -41,7 +35,7 @@ export const createOrganizationWorkspace = internalMutation({
             },
         });
 
-        console.log(`Created team workspace for organization ${args.clerkOrgId}`);
+        console.log(`Created team workspace for organization ${args.clerkOrgId} by user ${identity.issuer}`);
         return workspaceId;
     },
 });
@@ -194,7 +188,7 @@ export const getWorkspaceByClerkId = query({
         // Handle race condition: during org creation, Clerk's token might not have updated yet
         // Allow query if either identity.org matches OR if the user just created this org
         const hasOrgAccess = identity.org === args.clerkId;
-        
+
         if (!hasOrgAccess) {
             // For race condition during org creation, return null instead of throwing
             // This allows the frontend to handle the "not yet available" state gracefully
@@ -221,7 +215,7 @@ export const getWorkspaceWithSubscription = query({
 
         // Handle race condition: during org creation, Clerk's token might not have updated yet
         const hasOrgAccess = identity.org === args.clerkId;
-        
+
         if (!hasOrgAccess) {
             // For race condition during org creation, return null instead of throwing
             return null;
@@ -280,7 +274,7 @@ export const updateWorkspaceContactEmail = mutation({
 
         // Handle race condition: during org creation, Clerk's token might not have updated yet
         const hasOrgAccess = identity.org === args.clerkId;
-        
+
         if (!hasOrgAccess) {
             throw new Error('Unauthorized: Can only update organization workspaces - please try again in a moment');
         }

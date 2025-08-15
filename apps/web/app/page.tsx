@@ -14,6 +14,10 @@ import {
     Calendar,
     Copy,
     Play,
+    RefreshCw,
+    Bot,
+    Camera,
+    Layers,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -38,14 +42,29 @@ const features = [
         description: 'Lightning-fast translation delivery from edge locations worldwide',
     },
     {
-        icon: Code2,
-        title: 'i18next Compatible',
-        description: 'Seamless integration with your existing i18next setup',
+        icon: Layers,
+        title: 'Universal Framework Support',
+        description: 'Works seamlessly with i18next, next-intl, FormatJS, and any modern i18n library',
     },
     {
         icon: Zap,
         title: 'Developer-Friendly API',
         description: 'Simple, intuitive API that developers love to work with',
+    },
+    {
+        icon: RefreshCw,
+        title: 'Insta Sync',
+        description: 'Instantly propagates translation keys across all languages when you edit the primary language',
+    },
+    {
+        icon: Bot,
+        title: 'AI-Powered Translations',
+        description: 'Smart AI assistance helps generate high-quality translations',
+    },
+    {
+        icon: Camera,
+        title: 'Visual Context Mapping',
+        description: 'Attach screenshots to translations for crystal-clear context and faster localization workflows',
     },
     {
         icon: Database,
@@ -350,10 +369,7 @@ export default function Page() {
                         transition={{ duration: 0.8 }}
                         className='space-y-6'>
                         <div className='relative inline-flex items-center space-x-2 bg-gray-900/50 rounded-full px-4 py-2 text-sm overflow-hidden'>
-                            <ShineBorder 
-                                shineColor={["#ec4899", "#7c3aed", "#3b82f6"]} 
-                                className="absolute inset-0"
-                            />
+                            <ShineBorder shineColor={['#ec4899', '#7c3aed', '#3b82f6']} className='absolute inset-0' />
                             <div className='w-2 h-2 bg-green-400 rounded-full animate-pulse relative z-10' />
                             <span className='text-gray-300 relative z-10'>Translations made simple</span>
                         </div>
@@ -580,7 +596,8 @@ export default function Page() {
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.2 }}
                         viewport={{ once: true }}
-                        className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 items-center justify-items-center'>
+                        className='grid grid-cols-1 md:grid-cols-3 gap-8 items-center justify-items-center max-w-4xl mx-auto'>
+                        {/* First Row */}
                         {/* Convex */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://convex.dev' target='_blank'>
                             <SpotlightCard
@@ -609,6 +626,21 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
+                        {/* Vercel */}
+                        <Link className='w-full h-24 cursor-pointer group' href='https://vercel.com' target='_blank'>
+                            <SpotlightCard
+                                className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-white/30 transition-all duration-300'
+                                spotlightColor='rgba(255, 255, 255, 0.15)'>
+                                <div className='text-center'>
+                                    <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-white transition-colors'>
+                                        Vercel
+                                    </div>
+                                    <div className='text-xs text-gray-500'>Hosting Platform</div>
+                                </div>
+                            </SpotlightCard>
+                        </Link>
+
+                        {/* Second Row */}
                         {/* Polar */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://polar.sh' target='_blank'>
                             <SpotlightCard

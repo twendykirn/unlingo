@@ -99,8 +99,8 @@ export function SettingsTab({ project, workspace }: SettingsTabProps) {
             <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
                 <div className='flex items-center justify-between'>
                     <div className='flex items-center space-x-4'>
-                        <div className='w-12 h-12 bg-gradient-to-br from-gray-500/10 to-gray-600/10 rounded-xl flex items-center justify-center border border-gray-700/30'>
-                            <Settings className='h-6 w-6 text-gray-400' />
+                        <div className='w-12 h-12 bg-gradient-to-br from-orange-500/20 to-amber-500/20 rounded-xl flex items-center justify-center border border-orange-500/30'>
+                            <Settings className='h-6 w-6 text-orange-400' />
                         </div>
                         <div>
                             <h3 className='text-2xl font-semibold text-white'>Project Settings</h3>
@@ -123,7 +123,7 @@ export function SettingsTab({ project, workspace }: SettingsTabProps) {
                                     id='projectName'
                                     value={editName}
                                     onChange={e => setEditName(e.target.value)}
-                                    className='bg-black/30 border-gray-700/50 text-white h-11 px-4 mt-2 focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 transition-all'
+                                    className='bg-black/30 border-gray-700/50 text-white h-11 px-4 mt-2 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500/50 transition-all'
                                 />
                             </div>
                             <div>
@@ -135,7 +135,7 @@ export function SettingsTab({ project, workspace }: SettingsTabProps) {
                                     value={editDescription}
                                     onChange={e => setEditDescription(e.target.value)}
                                     rows={4}
-                                    className='bg-black/30 border-gray-700/50 text-white p-4 mt-2 focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 transition-all'
+                                    className='bg-black/30 border-gray-700/50 text-white p-4 mt-2 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500/50 transition-all'
                                     placeholder='A brief description of your project.'
                                 />
                             </div>

@@ -19,24 +19,44 @@ const sidebarItems = [
         label: 'Namespaces',
         href: '/namespaces',
         description: 'Manage translation namespaces',
+        colors: {
+            gradient: 'from-cyan-500/20 to-blue-500/20',
+            border: 'border-cyan-500/30',
+            icon: 'text-cyan-400',
+        },
     },
     {
         icon: GitBranch,
         label: 'Releases',
         href: '/releases',
         description: 'Create and manage releases',
+        colors: {
+            gradient: 'from-green-500/20 to-emerald-500/20',
+            border: 'border-green-500/30',
+            icon: 'text-green-400',
+        },
     },
     {
         icon: Key,
         label: 'API Keys',
         href: '/api-keys',
         description: 'Generate API keys for this project',
+        colors: {
+            gradient: 'from-purple-500/20 to-indigo-500/20',
+            border: 'border-purple-500/30',
+            icon: 'text-purple-400',
+        },
     },
     {
         icon: Settings,
         label: 'Settings',
         href: '/settings',
         description: 'Project settings and configuration',
+        colors: {
+            gradient: 'from-orange-500/20 to-amber-500/20',
+            border: 'border-orange-500/30',
+            icon: 'text-orange-400',
+        },
     },
 ];
 
@@ -148,8 +168,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 {/* Project Header */}
                 <div className='p-6 border-b border-gray-800/50'>
                     <div className='flex items-center space-x-4 mb-4'>
-                        <div className='w-12 h-12 bg-gradient-to-br from-pink-500/20 to-purple-600/20 rounded-xl flex items-center justify-center border border-pink-500/30'>
-                            <Globe className='h-6 w-6 text-pink-400' />
+                        <div className='w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/30'>
+                            <Globe className='h-6 w-6 text-cyan-400' />
                         </div>
                         <div className='flex-1'>
                             <h1 className='text-lg font-semibold text-white truncate' title={project.name}>
@@ -178,13 +198,13 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                                 <div
                                     className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
                                         activeTab === item.label.toLowerCase()
-                                            ? 'bg-gradient-to-br from-pink-500/20 to-purple-600/20 border border-pink-500/30'
+                                            ? `bg-gradient-to-br ${item.colors.gradient} border ${item.colors.border}`
                                             : 'bg-gray-700/30 border border-gray-600/30 group-hover:bg-gray-600/40'
                                     }`}>
                                     <item.icon
                                         className={`h-4 w-4 ${
                                             activeTab === item.label.toLowerCase()
-                                                ? 'text-pink-400'
+                                                ? item.colors.icon
                                                 : 'text-gray-400 group-hover:text-gray-300'
                                         }`}
                                     />

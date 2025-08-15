@@ -11,13 +11,20 @@ export const createNodesFromJson = (obj: any, parentKey = '', parentId?: string)
 
         const isArray = Array.isArray(value);
         const isObject = typeof value === 'object' && value !== null && !isArray;
+        const isNumber = typeof value === 'number';
+        const isBoolean = typeof value === 'boolean';
 
-        let nodeType: 'object' | 'string' | 'array' = 'string';
+        let nodeType: 'object' | 'string' | 'array' | 'number' | 'boolean' = 'string';
         if (isArray) {
             nodeType = 'array';
         } else if (isObject) {
             nodeType = 'object';
+        } else if (isNumber) {
+            nodeType = 'number';
+        } else if (isBoolean) {
+            nodeType = 'boolean';
         }
+        // Strings remain as 'string' type
 
         const node: TranslationNode = {
             id: nodeId,
@@ -50,13 +57,20 @@ export const createNodesFromJson = (obj: any, parentKey = '', parentId?: string)
                 const arrayItemId = `node-${arrayItemKey}`;
                 const itemIsArray = Array.isArray(item);
                 const itemIsObject = typeof item === 'object' && item !== null && !itemIsArray;
+                const itemIsNumber = typeof item === 'number';
+                const itemIsBoolean = typeof item === 'boolean';
 
-                let itemType: 'object' | 'string' | 'array' = 'string';
+                let itemType: 'object' | 'string' | 'array' | 'number' | 'boolean' = 'string';
                 if (itemIsArray) {
                     itemType = 'array';
                 } else if (itemIsObject) {
                     itemType = 'object';
+                } else if (itemIsNumber) {
+                    itemType = 'number';
+                } else if (itemIsBoolean) {
+                    itemType = 'boolean';
                 }
+                // Strings remain as 'string' type
 
                 const arrayItemNode: TranslationNode = {
                     id: arrayItemId,

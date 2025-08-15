@@ -40,12 +40,6 @@ http.route({
 
         try {
             switch (evt.type) {
-                case 'organization.created':
-                    await ctx.runMutation(internal.workspaces.createOrganizationWorkspace, {
-                        clerkOrgId: evt.data.id,
-                    });
-                    break;
-
                 case 'organization.deleted':
                     await ctx.runMutation(internal.workspaces.deleteOrganizationWorkspace, {
                         clerkOrgId: evt.data.id,

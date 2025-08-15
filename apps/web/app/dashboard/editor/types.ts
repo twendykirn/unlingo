@@ -2,7 +2,7 @@ export interface TranslationNode {
     id: string;
     key: string;
     value: any;
-    type: 'object' | 'string' | 'array';
+    type: 'object' | 'string' | 'array' | 'number' | 'boolean';
     parent?: string;
     children: string[];
 }

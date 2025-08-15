@@ -1,14 +1,18 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { FolderOpen, Plus, ArrowRight, Clock, Settings, House, User, ChartLine, Building2 } from 'lucide-react';
+import { FolderOpen, Plus, ArrowRight, Clock, Settings, House, User, ChartLine, Building2, X, Loader2 } from 'lucide-react';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
-import { useQuery, usePaginatedQuery } from 'convex/react';
+import { useQuery, usePaginatedQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Dock from '@/components/ui/dock';
 
 export default function Dashboard() {
@@ -16,6 +20,13 @@ export default function Dashboard() {
     const { organization } = useOrganization();
     const { openOrganizationProfile, openUserProfile } = useClerk();
     const router = useRouter();
+
+    // Create Project Dialog State
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [projectName, setProjectName] = useState('');
+    const [projectDescription, setProjectDescription] = useState('');
+    const [isCreating, setIsCreating] = useState(false);
+    const [createError, setCreateError] = useState('');
 
     const items = [
         { icon: <House size={18} />, label: 'Dashboard', onClick: () => router.push('/dashboard') },
@@ -30,6 +41,9 @@ export default function Dashboard() {
 
     // Query workspace with subscription info
     const workspace = useQuery(api.workspaces.getWorkspaceWithSubscription, clerkId ? { clerkId } : 'skip');
+
+    // Create project mutation
+    const createProject = useMutation(api.projects.createProject);
 
     // Query projects with pagination using usePaginatedQuery
     const {
@@ -47,12 +61,6 @@ export default function Dashboard() {
         }
     }, [user, organization, router]);
 
-    // Redirect to contact email setup if required
-    useEffect(() => {
-        if (workspace && !workspace.contactEmail) {
-            router.push('/dashboard/contact-email');
-        }
-    }, [workspace, router]);
 
     // Loading state
     if (!user || !organization || !clerkId) {
@@ -101,28 +109,101 @@ export default function Dashboard() {
         }
     };
 
+    const handleCreateProject = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!workspace) {
+            setCreateError('Workspace not found.');
+            return;
+        }
+
+        if (!workspace.contactEmail) {
+            router.push('/dashboard/settings');
+            return;
+        }
+
+        if (!projectName.trim()) {
+            setCreateError('Project name is required');
+            return;
+        }
+
+        // Check limits at the time of submission
+        if (workspace.currentUsage.projects >= workspace.limits.projects) {
+            setCreateError('Cannot create project. Please check your subscription limits.');
+            return;
+        }
+
+        setIsCreating(true);
+        setCreateError('');
+
+        try {
+            const projectId = await createProject({
+                workspaceId: workspace._id,
+                name: projectName.trim(),
+                description: projectDescription.trim() || undefined,
+            });
+
+            // Reset form and close dialog
+            setProjectName('');
+            setProjectDescription('');
+            setIsCreateDialogOpen(false);
+
+            // Redirect to the new project
+            router.push(`/dashboard/projects/${projectId}`);
+        } catch (err) {
+            setCreateError(err instanceof Error ? err.message : 'Failed to create project');
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    const resetCreateForm = () => {
+        setProjectName('');
+        setProjectDescription('');
+        setCreateError('');
+        setIsCreating(false);
+    };
+
     return (
         <div className='min-h-screen bg-black text-white'>
             {/* Sticky Header */}
-            <header className='fixed top-0 left-0 right-0 z-50 bg-black border-b border-gray-800 px-6 py-4 backdrop-blur-sm'>
-                <div className='flex items-center space-x-4'>
-                    {/* Logo */}
-                    <h1 className='text-2xl font-bold'>
-                        <span className='bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent'>
-                            Unlingo
-                        </span>
-                    </h1>
-                    
+            <header className='fixed top-0 left-0 right-0 z-50 bg-black/95 border-b border-gray-800/50 px-6 py-4 backdrop-blur-md'>
+                <div className='flex items-center justify-between'>
+                    <div className='flex items-center space-x-4'>
+                        {/* Logo */}
+                        <h1 className='text-2xl font-bold'>
+                            <span className='bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent'>
+                                Unlingo
+                            </span>
+                        </h1>
+                        
+                        {/* Workspace Name */}
+                        {organization && (
+                            <>
+                                <div className='h-6 w-px bg-gray-600/50' />
+                                <div className='flex items-center space-x-3'>
+                                    <div className='w-8 h-8 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center border border-cyan-500/30'>
+                                        <Building2 className='h-4 w-4 text-cyan-400' />
+                                    </div>
+                                    <div>
+                                        <h2 className='text-sm font-semibold text-white'>{organization.name}</h2>
+                                        <p className='text-xs text-gray-500'>Workspace</p>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Projects Info */}
                     {hasProjects && (
-                        <>
-                            <div className='h-6 w-px bg-gray-600' />
-                            <div>
-                                <h2 className='text-xl font-semibold text-white'>Projects</h2>
+                        <div className='flex items-center space-x-3'>
+                            <div className='text-right'>
+                                <p className='text-sm font-medium text-white'>{projects?.length || 0} Projects</p>
                                 <p className='text-xs text-gray-400'>
-                                    {projects?.length || 0} of {workspace?.currentUsage.projects}
+                                    {workspace?.currentUsage.projects} of {workspace?.limits.projects} used
                                 </p>
                             </div>
-                        </>
+                        </div>
                     )}
                 </div>
             </header>
@@ -141,12 +222,17 @@ export default function Dashboard() {
                         </div>
 
                         {canCreateProject ? (
-                            <Link href='/dashboard/create-project'>
-                                <Button className='bg-white text-black hover:bg-gray-200 text-lg px-8 py-4 cursor-pointer'>
-                                    <Plus className='h-5 w-5 mr-2' />
-                                    Create Your First Project
-                                </Button>
-                            </Link>
+                            <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+                                setIsCreateDialogOpen(open);
+                                if (!open) resetCreateForm();
+                            }}>
+                                <DialogTrigger asChild>
+                                    <Button className='bg-white text-black hover:bg-gray-200 text-lg px-8 py-4 cursor-pointer'>
+                                        <Plus className='h-5 w-5 mr-2' />
+                                        Create Your First Project
+                                    </Button>
+                                </DialogTrigger>
+                            </Dialog>
                         ) : (
                             <div className='space-y-4'>
                                 <Button
@@ -172,12 +258,17 @@ export default function Dashboard() {
                     {/* Create Project Button */}
                     {canCreateProject && (
                         <div className='flex justify-end mb-8'>
-                            <Link href='/dashboard/create-project'>
-                                <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
-                                    <Plus className='h-4 w-4 mr-2' />
-                                    New Project
-                                </Button>
-                            </Link>
+                            <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+                                setIsCreateDialogOpen(open);
+                                if (!open) resetCreateForm();
+                            }}>
+                                <DialogTrigger asChild>
+                                    <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
+                                        <Plus className='h-4 w-4 mr-2' />
+                                        New Project
+                                    </Button>
+                                </DialogTrigger>
+                            </Dialog>
                         </div>
                     )}
 
@@ -242,6 +333,123 @@ export default function Dashboard() {
                     )}
                 </div>
             )}
+
+            {/* Create Project Dialog */}
+            <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+                setIsCreateDialogOpen(open);
+                if (!open) resetCreateForm();
+            }}>
+                <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
+                    <DialogHeader className='pb-6 border-b border-gray-800/50'>
+                        <div className='flex items-center space-x-4'>
+                            <div className='w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center border border-green-500/30'>
+                                <Plus className='h-6 w-6 text-green-400' />
+                            </div>
+                            <div>
+                                <DialogTitle className='text-xl font-semibold text-white mb-1'>
+                                    Create New Project
+                                </DialogTitle>
+                                <p className='text-gray-400 text-sm'>
+                                    Set up a new translation project to organize your content.
+                                </p>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    {/* Limits Info */}
+                    {workspace && (
+                        <div className='bg-gray-800/30 border border-gray-700/50 rounded-xl p-4 mb-6'>
+                            <div className='flex items-center justify-between text-sm'>
+                                <span className='text-gray-400'>Projects</span>
+                                <span className={`font-medium ${canCreateProject ? 'text-green-400' : 'text-red-400'}`}>
+                                    {workspace.currentUsage.projects} / {workspace.limits.projects}
+                                </span>
+                            </div>
+                            {!canCreateProject && (
+                                <div className='text-red-400 text-sm mt-2'>
+                                    <p>You've reached your project limit.</p>
+                                    <Link href='/dashboard/settings' className='underline hover:text-red-300'>
+                                        Upgrade your plan
+                                    </Link>{' '}
+                                    to create more projects.
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleCreateProject} className='space-y-6'>
+                        {createError && (
+                            <div className='bg-red-500/10 border border-red-500/20 rounded-xl p-4'>
+                                <p className='text-red-400 text-sm'>{createError}</p>
+                            </div>
+                        )}
+
+                        <div className='space-y-2'>
+                            <Label htmlFor='projectName' className='text-sm font-medium text-gray-300'>
+                                Project Name *
+                            </Label>
+                            <Input
+                                id='projectName'
+                                type='text'
+                                value={projectName}
+                                onChange={e => setProjectName(e.target.value)}
+                                className='bg-black/30 border-gray-700/50 text-white h-11 px-4 focus:ring-2 focus:ring-green-500/30 focus:border-green-500/50 transition-all'
+                                placeholder='e.g., My Website, Mobile App, Admin Panel'
+                                maxLength={100}
+                                required
+                                disabled={isCreating}
+                                autoFocus
+                            />
+                            <p className='text-xs text-gray-500'>{projectName.length}/100 characters</p>
+                        </div>
+
+                        <div className='space-y-2'>
+                            <Label htmlFor='projectDescription' className='text-sm font-medium text-gray-300'>
+                                Description (Optional)
+                            </Label>
+                            <Textarea
+                                id='projectDescription'
+                                value={projectDescription}
+                                onChange={e => setProjectDescription(e.target.value)}
+                                rows={4}
+                                className='bg-black/30 border-gray-700/50 text-white p-4 focus:ring-2 focus:ring-green-500/30 focus:border-green-500/50 transition-all resize-none'
+                                placeholder='Brief description of what this project is for...'
+                                maxLength={500}
+                                disabled={isCreating}
+                            />
+                            <p className='text-xs text-gray-500'>{projectDescription.length}/500 characters</p>
+                        </div>
+
+                        <div className='flex items-center justify-end space-x-3 pt-6 border-t border-gray-800/50'>
+                            <Button
+                                type='button'
+                                variant='ghost'
+                                onClick={() => setIsCreateDialogOpen(false)}
+                                disabled={isCreating}
+                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                Cancel
+                            </Button>
+                            <Button
+                                type='submit'
+                                disabled={isCreating || !projectName.trim() || !canCreateProject}
+                                className='bg-green-600 text-white hover:bg-green-700 cursor-pointer transition-all px-6'>
+                                {isCreating ? (
+                                    <>
+                                        <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+                                        Creating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus className='h-4 w-4 mr-2' />
+                                        Create Project
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
             <Dock items={items} panelHeight={68} baseItemSize={50} magnification={70} />
         </div>
     );

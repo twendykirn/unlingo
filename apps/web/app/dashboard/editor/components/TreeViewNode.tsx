@@ -27,7 +27,7 @@ export default function TreeViewNode({ id, level, toggleExpanded }: Props) {
     };
 
     const getDisplayValue = () => {
-        if (!node) return;
+        if (node === undefined) return;
 
         if (node.type === 'object') {
             // Count actual child nodes instead of relying on node.value
@@ -37,7 +37,7 @@ export default function TreeViewNode({ id, level, toggleExpanded }: Props) {
             const arr = Array.isArray(node.value) ? node.value : [];
             return `[${arr.length} items]`;
         }
-        return String(node.value || '');
+        return node.value === false ? 'false' : String(node.value || '');
     };
 
     // Helper function to get display key (handles array indices)

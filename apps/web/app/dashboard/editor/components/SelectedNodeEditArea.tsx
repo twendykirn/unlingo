@@ -93,13 +93,27 @@ export default function SelectedNodeEditArea() {
 
             const nodes = nodes$.get();
 
-            // Update the selected node's value
-            const updatedNodes = nodes.map(node => (node.id === selectedNode.id ? { ...node, value: newValue } : node));
+            // Determine the new type based on the new value
+            let newType: 'object' | 'string' | 'array' | 'number' | 'boolean' = 'string';
+            if (Array.isArray(newValue)) {
+                newType = 'array';
+            } else if (typeof newValue === 'object' && newValue !== null) {
+                newType = 'object';
+            } else if (typeof newValue === 'number') {
+                newType = 'number';
+            } else if (typeof newValue === 'boolean') {
+                newType = 'boolean';
+            }
 
-            // If the node has children, we need to update or recreate them based on the new value
+            // Update the selected node's value and type
+            const updatedNodes = nodes.map(node =>
+                node.id === selectedNode.id ? { ...node, value: newValue, type: newType } : node
+            );
+
+            // If the node is or becomes an object/array, we need to update or recreate its children based on the new value
             let finalNodes: TranslationNode[];
 
-            if (selectedNode.children.length > 0) {
+            if (newType === 'object' || newType === 'array' || selectedNode.children.length > 0) {
                 // Remove existing children of this node
                 const filteredNodes = updatedNodes.filter(
                     node => !isDescendantOf(node.id, selectedNode.id, updatedNodes)
@@ -107,7 +121,7 @@ export default function SelectedNodeEditArea() {
 
                 // Create new child nodes from the new value
                 if (
-                    selectedNode.type === 'object' &&
+                    newType === 'object' &&
                     typeof newValue === 'object' &&
                     newValue !== null &&
                     !Array.isArray(newValue)
@@ -119,12 +133,17 @@ export default function SelectedNodeEditArea() {
 
                     // Update the parent node's children array
                     const parentNodeIndex = filteredNodes.findIndex(node => node.id === selectedNode.id);
-                    if (parentNodeIndex !== -1 && filteredNodes[parentNodeIndex]) {
-                        filteredNodes[parentNodeIndex].children = directChildren;
+                    if (parentNodeIndex !== -1) {
+                        filteredNodes[parentNodeIndex] = {
+                            ...filteredNodes[parentNodeIndex],
+                            children: directChildren,
+                            type: newType,
+                            value: newValue,
+                        } as TranslationNode;
                     }
 
                     filteredNodes.push(...childNodes);
-                } else if (selectedNode.type === 'array' && Array.isArray(newValue)) {
+                } else if (newType === 'array' && Array.isArray(newValue)) {
                     const childNodes = createNodesFromJson({ temp: newValue }, selectedNode.key, selectedNode.id);
                     // Filter out the temporary parent node and adjust the children
                     const arrayChildNodes = childNodes.filter(node => node.id !== `node-${selectedNode.key}.temp`);
@@ -134,15 +153,32 @@ export default function SelectedNodeEditArea() {
 
                     // Update the parent node's children array
                     const parentNodeIndex = filteredNodes.findIndex(node => node.id === selectedNode.id);
-                    if (parentNodeIndex !== -1 && filteredNodes[parentNodeIndex]) {
-                        filteredNodes[parentNodeIndex].children = directChildren;
+                    if (parentNodeIndex !== -1) {
+                        filteredNodes[parentNodeIndex] = {
+                            ...filteredNodes[parentNodeIndex],
+                            children: directChildren,
+                            type: newType,
+                            value: newValue,
+                        } as TranslationNode;
                     }
 
                     filteredNodes.push(...arrayChildNodes);
+                } else {
+                    // Node is becoming a primitive type (string, number, boolean) - clear any existing children
+                    const parentNodeIndex = filteredNodes.findIndex(node => node.id === selectedNode.id);
+                    if (parentNodeIndex !== -1) {
+                        filteredNodes[parentNodeIndex] = {
+                            ...filteredNodes[parentNodeIndex],
+                            children: [],
+                            type: newType,
+                            value: newValue,
+                        } as TranslationNode;
+                    }
                 }
 
                 finalNodes = filteredNodes;
             } else {
+                // Simple primitive value update with no children - just use the updated nodes
                 finalNodes = updatedNodes;
             }
 

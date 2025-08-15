@@ -40,25 +40,30 @@ export default function EmptyValuesButton({ emptyNodes, onNavigateToEmptyValue }
             {emptyNodes.length > 0 && (
                 <button
                     onClick={() => setShowEmptyValuesDialog(true)}
-                    className='flex items-center space-x-2 px-3 py-1 bg-yellow-900/50 border border-yellow-500/50 rounded-md hover:bg-yellow-900/70 transition-colors cursor-pointer'>
-                    <AlertTriangle className='h-4 w-4 text-yellow-500' />
-                    <span className='text-sm text-yellow-400'>
-                        {emptyNodes.length} empty value{emptyNodes.length !== 1 ? 's' : ''}
+                    className='flex items-center space-x-2 px-4 py-2 bg-amber-600/20 border border-amber-500/30 rounded-xl hover:bg-amber-600/30 transition-all cursor-pointer'>
+                    <AlertTriangle className='h-4 w-4 text-amber-400' />
+                    <span className='text-sm font-medium text-amber-300'>
+                        {emptyNodes.length} Issue{emptyNodes.length !== 1 ? 's' : ''}
                     </span>
                 </button>
             )}
             <Dialog open={showEmptyValuesDialog} onOpenChange={setShowEmptyValuesDialog}>
-                <DialogContent className='max-w-md max-h-[70vh] bg-gray-900 border-gray-700 overflow-hidden flex flex-col'>
-                    <DialogHeader className='flex-shrink-0'>
-                        <DialogTitle className='flex items-center space-x-2 text-white'>
-                            <AlertTriangle className='h-5 w-5 text-yellow-500' />
-                            <span>Empty Values ({emptyNodes.length})</span>
+                <DialogContent className='max-w-lg max-h-[70vh] bg-gray-950/95 border-gray-800/50 overflow-hidden flex flex-col backdrop-blur-md'>
+                    <DialogHeader className='flex-shrink-0 pb-4 border-b border-gray-800/50'>
+                        <DialogTitle className='flex items-center space-x-3 text-white'>
+                            <div className='w-10 h-10 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-xl flex items-center justify-center border border-amber-500/30'>
+                                <AlertTriangle className='h-5 w-5 text-amber-400' />
+                            </div>
+                            <div>
+                                <h3 className='text-lg font-semibold'>Translation Issues</h3>
+                                <p className='text-sm text-gray-400 font-normal'>{emptyNodes.length} empty value{emptyNodes.length !== 1 ? 's' : ''} found</p>
+                            </div>
                         </DialogTitle>
                     </DialogHeader>
 
-                    <div className='flex-1 overflow-hidden flex flex-col mt-4'>
+                    <div className='flex-1 overflow-hidden flex flex-col py-4'>
                         <DialogDescription className='text-sm text-gray-400 mb-4 flex-shrink-0'>
-                            Click on any item below to navigate to it in the editor.
+                            Click on any item below to navigate to it and fix the issue.
                         </DialogDescription>
 
                         <div className='flex flex-1 min-h-0'>
@@ -67,17 +72,18 @@ export default function EmptyValuesButton({ emptyNodes, onNavigateToEmptyValue }
                                     <button
                                         key={node.id}
                                         onClick={() => navigateToEmptyValue(node.id)}
-                                        className='w-full text-left p-3 rounded-lg hover:bg-gray-800 transition-colors group border border-transparent hover:border-gray-600 cursor-pointer'>
+                                        className='w-full text-left p-4 rounded-xl hover:bg-gray-800/50 transition-all group border border-transparent hover:border-gray-700/50 cursor-pointer'>
                                         <div className='flex items-center justify-between w-full'>
                                             <div className='flex-1 min-w-0'>
-                                                <div className='text-sm font-medium text-white group-hover:text-blue-400 transition-colors truncate text-ellipsis w-[370px]'>
+                                                <div className='text-sm font-medium text-white group-hover:text-amber-300 transition-colors truncate'>
                                                     {node.key}
                                                 </div>
-                                                <div className='text-xs text-gray-500 mt-1'>
-                                                    {node.type} • Empty value
+                                                <div className='text-xs text-gray-500 mt-1 flex items-center space-x-2'>
+                                                    <span className='px-2 py-1 bg-gray-700/50 rounded-md'>{node.type}</span>
+                                                    <span>Empty value</span>
                                                 </div>
                                             </div>
-                                            <ChevronRight className='h-4 w-4 text-gray-500 group-hover:text-blue-400 flex-shrink-0 ml-2' />
+                                            <ChevronRight className='h-4 w-4 text-gray-500 group-hover:text-amber-400 flex-shrink-0 ml-3 transition-all' />
                                         </div>
                                     </button>
                                 ))}

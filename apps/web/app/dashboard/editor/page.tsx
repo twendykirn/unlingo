@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, X, ArrowLeft } from 'lucide-react';
+import { Plus, X, ArrowLeft, Code, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery, useAction } from 'convex/react';
@@ -12,6 +12,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { validateWithAjv } from '@/lib/zodSchemaGenerator';
 import * as diff from 'json-diff';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import EmptyValuesButton from './components/EmptyValuesButton';
 import { TranslationNode } from './types';
 import { convertNodesToJson } from './utils/convertNodesToJson';
@@ -24,6 +25,7 @@ import { validateNodes } from './utils/validateNodes';
 import { collectEmptyValueNodes } from './utils/collectEmptyValueNodes';
 import { getUIValueAsJSON } from './utils/getUIValueAsJson';
 import NodeInfoContainer from './components/NodeInfoContainer';
+import AddKeyModal from './components/AddKeyModal';
 import { useObserve } from '@legendapp/state/react';
 import { expandedKeys$, filteredNodes$, hasUnsavedChanges$, nodes$, searchQuery$, selectedNode$ } from './store';
 import SaveButton from './components/SaveButton';
@@ -48,19 +50,6 @@ export default function TranslationEditor() {
 
     const [showAddKeyModal, setShowAddKeyModal] = useState(false);
     const [addKeyParent, setAddKeyParent] = useState<string | null>(null);
-    const [newKeyName, setNewKeyName] = useState('');
-    const [newKeyValue, setNewKeyValue] = useState('');
-    const [addKeyMode, setAddKeyMode] = useState<'ui' | 'json'>('ui');
-    const [uiValueType, setUiValueType] = useState<'string' | 'number' | 'boolean' | 'array' | 'object'>('string');
-    const [uiStringValue, setUiStringValue] = useState('');
-    const [uiNumberValue, setUiNumberValue] = useState('');
-    const [uiBooleanValue, setUiBooleanValue] = useState(true);
-    const [uiArrayItems, setUiArrayItems] = useState<
-        { value: string; type: 'string' | 'number' | 'boolean' | 'object' | 'array' }[]
-    >([{ value: '', type: 'string' }]);
-    const [uiObjectKeys, setUiObjectKeys] = useState<
-        { key: string; value: string; type: 'string' | 'number' | 'boolean' | 'object' | 'array' }[]
-    >([{ key: '', value: '', type: 'string' }]);
     const [availableParents, setAvailableParents] = useState<{ id: string; key: string }[]>([]);
     const [emptyValueNodes, setEmptyValueNodes] = useState<TranslationNode[]>([]);
 
@@ -212,6 +201,12 @@ export default function TranslationEditor() {
     };
 
     const onAddParentNode = (nodeId: string) => {
+        const objectNodes = nodes$
+            .get()
+            .filter(node => node.type === 'object')
+            .map(node => ({ id: node.id, key: node.key }))
+            .sort((a, b) => a.key.localeCompare(b.key));
+        setAvailableParents(objectNodes);
         setAddKeyParent(nodeId);
         setShowAddKeyModal(true);
     };
@@ -277,132 +272,33 @@ export default function TranslationEditor() {
         }
     };
 
-    // Convert JSON string to UI values
-    const setUIValuesFromJSON = (jsonString: string) => {
-        if (!jsonString.trim()) {
-            setUiValueType('string');
-            setUiStringValue('');
-            return;
-        }
-
-        try {
-            const parsed = JSON.parse(jsonString);
-
-            if (typeof parsed === 'string') {
-                setUiValueType('string');
-                setUiStringValue(parsed);
-            } else if (typeof parsed === 'number') {
-                setUiValueType('number');
-                setUiNumberValue(parsed.toString());
-            } else if (typeof parsed === 'boolean') {
-                setUiValueType('boolean');
-                setUiBooleanValue(parsed);
-            } else if (Array.isArray(parsed)) {
-                setUiValueType('array');
-                setUiArrayItems(
-                    parsed.length > 0
-                        ? parsed.map(item => ({
-                              value: JSON.stringify(item, null, 2),
-                              type: Array.isArray(item)
-                                  ? 'array'
-                                  : typeof item === 'object' && item !== null
-                                    ? 'object'
-                                    : (typeof item as 'string' | 'number' | 'boolean'),
-                          }))
-                        : [{ value: '', type: 'string' }]
-                );
-            } else if (typeof parsed === 'object' && parsed !== null) {
-                setUiValueType('object');
-                const entries = Object.entries(parsed);
-                setUiObjectKeys(
-                    entries.length > 0
-                        ? entries.map(([key, value]) => ({
-                              key,
-                              value: JSON.stringify(value, null, 2),
-                              type: Array.isArray(value)
-                                  ? 'array'
-                                  : typeof value === 'object' && value !== null
-                                    ? 'object'
-                                    : (typeof value as 'string' | 'number' | 'boolean'),
-                          }))
-                        : [{ key: '', value: '', type: 'string' }]
-                );
-            } else {
-                setUiValueType('string');
-                setUiStringValue('');
-            }
-        } catch {
-            // Invalid JSON, keep current UI state
-        }
-    };
-
-    // Handle mode switching for Add Key
-    const switchToUIMode = () => {
-        if (isValidJson(newKeyValue) || !newKeyValue.trim()) {
-            setUIValuesFromJSON(newKeyValue);
-            setAddKeyMode('ui');
-        }
-    };
-
-    const switchToJSONMode = () => {
-        const jsonValue = getUIValueAsJSON({
-            uiValueType,
-            uiStringValue,
-            uiNumberValue,
-            uiBooleanValue,
-            uiArrayItems,
-            uiObjectKeys,
-        });
-        setNewKeyValue(jsonValue);
-        setAddKeyMode('json');
-    };
-
     // Add new key functionality
-    const addNewKey = () => {
-        if (!newKeyName.trim()) {
-            alert('Please enter a key name');
-            return;
-        }
-
-        // Get the value based on current mode
-        let finalValue;
-        if (addKeyMode === 'ui') {
-            finalValue = getUIValueAsJSON({
-                uiValueType,
-                uiStringValue,
-                uiNumberValue,
-                uiBooleanValue,
-                uiArrayItems,
-                uiObjectKeys,
-            });
-        } else {
-            finalValue = newKeyValue;
-        }
-
-        if (!finalValue.trim()) {
-            alert('Please enter a value');
-            return;
-        }
-
+    const addNewKey = (keyName: string, finalValue: string, addKeyMode: 'ui' | 'json', uiData: any) => {
         try {
             // Validate and parse the value
             let parsedValue;
-            let nodeType: 'object' | 'string' | 'array' = 'string';
+            let nodeType: 'object' | 'string' | 'array' | 'number' | 'boolean' = 'string';
 
             // Check if it's valid JSON
             if (isValidJson(finalValue)) {
                 try {
                     parsedValue = JSON.parse(finalValue);
-                    const isArray = Array.isArray(parsedValue);
-                    const isObject = typeof parsedValue === 'object' && parsedValue !== null && !isArray;
-                    nodeType = isArray ? 'array' : isObject ? 'object' : 'string';
+                    if (Array.isArray(parsedValue)) {
+                        nodeType = 'array';
+                    } else if (typeof parsedValue === 'object' && parsedValue !== null) {
+                        nodeType = 'object';
+                    } else if (typeof parsedValue === 'number') {
+                        nodeType = 'number';
+                    } else if (typeof parsedValue === 'boolean') {
+                        nodeType = 'boolean';
+                    } else {
+                        nodeType = 'string';
+                    }
                 } catch {
-                    // Should not happen since we checked isValidJson, but fallback
                     alert('Invalid JSON format');
                     return;
                 }
             } else {
-                // If it's not valid JSON, don't allow saving
                 alert('Please enter valid JSON or fix the syntax');
                 return;
             }
@@ -424,7 +320,7 @@ export default function TranslationEditor() {
                 }
 
                 // Check if key already exists at this level
-                const newNodeKey = `${parentNode.key}.${newKeyName.trim()}`;
+                const newNodeKey = `${parentNode.key}.${keyName.trim()}`;
                 const existingNode = nodes.find(n => n.key === newNodeKey);
                 if (existingNode) {
                     alert('A key with this name already exists at this level');
@@ -468,7 +364,7 @@ export default function TranslationEditor() {
                 hasUnsavedChanges$.set(true);
             } else {
                 // Adding to root level - merge with existing JSON structure
-                const rootKeyName = newKeyName.trim();
+                const rootKeyName = keyName.trim();
 
                 // Check if key already exists at root level
                 const existingRootNode = nodes.find(n => !n.parent && n.key === rootKeyName);
@@ -496,16 +392,8 @@ export default function TranslationEditor() {
 
             // Reset modal state
             setShowAddKeyModal(false);
+            setAvailableParents([]);
             setAddKeyParent(null);
-            setNewKeyName('');
-            setNewKeyValue('');
-            setAddKeyMode('ui');
-            setUiValueType('string');
-            setUiStringValue('');
-            setUiNumberValue('');
-            setUiBooleanValue(true);
-            setUiArrayItems([{ value: '', type: 'string' }]);
-            setUiObjectKeys([{ key: '', value: '', type: 'string' }]);
             hasUnsavedChanges$.set(true);
         } catch {
             alert('Failed to add key. Please check your input.');
@@ -574,11 +462,6 @@ export default function TranslationEditor() {
             const filtered = filterNodes(searchQuery);
             filteredNodes$.set(filtered);
             setEmptyValueNodes(collectEmptyValueNodes(value));
-            const objectNodes = value
-                .filter(node => node.type === 'object')
-                .map(node => ({ id: node.id, key: node.key }))
-                .sort((a, b) => a.key.localeCompare(b.key));
-            setAvailableParents(objectNodes);
         }
     });
 
@@ -645,29 +528,121 @@ export default function TranslationEditor() {
 
     return (
         <div className='h-screen bg-black text-white flex flex-col overflow-hidden'>
-            {/* Header */}
-            <div className='bg-gray-950 border-b border-gray-800 px-6 py-4'>
+            {/* Elegant Header */}
+            <header className='bg-gray-950/95 border-b border-gray-800/50 px-6 py-4 backdrop-blur-md'>
                 <div className='flex items-center justify-between'>
-                    <div className='flex items-center space-x-4'>
+                    <div className='flex items-center space-x-6'>
                         <Button
                             variant='ghost'
                             size='sm'
                             onClick={handleGoBack}
-                            className='text-gray-400 hover:text-white cursor-pointer'>
+                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all rounded-lg'>
                             <ArrowLeft className='h-4 w-4 mr-2' />
                             Back
                         </Button>
-                        <h1 className='text-2xl font-bold'>Translation Editor</h1>
-                        <div className='flex items-center space-x-2 text-sm text-gray-400'>
-                            <span>{language.namespaceName}</span>
-                            <span>•</span>
-                            <span>{language.version}</span>
-                            <span>•</span>
-                            <span>{selectedLanguage.toUpperCase()}</span>
+
+                        <div className='flex items-center space-x-4'>
+                            <div className='w-10 h-10 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/30'>
+                                <Code className='h-5 w-5 text-cyan-400' />
+                            </div>
+                            <div>
+                                <div className='flex items-center space-x-2'>
+                                    <h1 className='text-xl font-semibold text-white'>Translation Editor</h1>
+                                    <HoverCard>
+                                        <HoverCardTrigger asChild>
+                                            <Button
+                                                variant='ghost'
+                                                size='sm'
+                                                className='h-6 w-6 p-0 text-gray-400 hover:text-white'>
+                                                <Info className='h-4 w-4' />
+                                            </Button>
+                                        </HoverCardTrigger>
+                                        <HoverCardContent className='w-80 bg-gray-950/95 border-gray-800/50 text-white backdrop-blur-md'>
+                                            <div className='space-y-3'>
+                                                <div className='flex items-center space-x-2'>
+                                                    <Info className='h-4 w-4 text-blue-400' />
+                                                    <h4 className='text-sm font-semibold text-blue-400'>
+                                                        JSON Editor Tips
+                                                    </h4>
+                                                </div>
+                                                <div className='space-y-2 text-xs text-gray-300'>
+                                                    <div>
+                                                        <p className='font-medium text-yellow-400 mb-1'>
+                                                            ⚠️ Common Mistakes:
+                                                        </p>
+                                                        <ul className='space-y-1 text-gray-400'>
+                                                            <li>
+                                                                •{' '}
+                                                                <code className='bg-gray-800 px-1 rounded'>
+                                                                    ['1', '2']
+                                                                </code>{' '}
+                                                                saves as strings, not array
+                                                            </li>
+                                                            <li>
+                                                                •{' '}
+                                                                <code className='bg-gray-800 px-1 rounded'>{`{key: 'value'}`}</code>{' '}
+                                                                is invalid - keys need quotes
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                    <div>
+                                                        <p className='font-medium text-green-400 mb-1'>
+                                                            ✅ Correct Format:
+                                                        </p>
+                                                        <ul className='space-y-1 text-gray-400'>
+                                                            <li>
+                                                                •{' '}
+                                                                <code className='bg-gray-800 px-1 rounded'>
+                                                                    [1, 2, 3]
+                                                                </code>{' '}
+                                                                for numbers
+                                                            </li>
+                                                            <li>
+                                                                •{' '}
+                                                                <code className='bg-gray-800 px-1 rounded'>
+                                                                    ["one", "two"]
+                                                                </code>{' '}
+                                                                for strings
+                                                            </li>
+                                                            <li>
+                                                                •{' '}
+                                                                <code className='bg-gray-800 px-1 rounded'>{`{"key": "value"}`}</code>{' '}
+                                                                for objects
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                    <div className='pt-2 border-t border-gray-800/50'>
+                                                        <p className='text-amber-400 text-xs'>
+                                                            💡 <strong>Pro tip:</strong> If JSON is invalid, values are
+                                                            automatically saved as strings to prevent data loss.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </HoverCardContent>
+                                    </HoverCard>
+                                </div>
+                                <div className='flex items-center space-x-2 text-xs text-gray-400'>
+                                    <span className='px-2 py-1 bg-gray-800/50 rounded-md border border-gray-700/50'>
+                                        {language.namespaceName}
+                                    </span>
+                                    <span className='px-2 py-1 bg-gray-800/50 rounded-md border border-gray-700/50'>
+                                        {language.version}
+                                    </span>
+                                    <span
+                                        className={`px-2 py-1 rounded-md border font-medium ${
+                                            isPrimaryLanguage
+                                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                                : 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                                        }`}>
+                                        {selectedLanguage.toUpperCase()} {isPrimaryLanguage ? '(Primary)' : ''}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div className='flex items-center space-x-2'>
+                    <div className='flex items-center space-x-3'>
                         <EmptyValuesButton emptyNodes={emptyValueNodes} onNavigateToEmptyValue={navigateToEmptyValue} />
                         <JsonEditModeModal
                             isPrimaryLanguage={isPrimaryLanguage}
@@ -680,46 +655,51 @@ export default function TranslationEditor() {
                         />
                     </div>
                 </div>
-            </div>
+            </header>
 
-            {/* Toolbar */}
-            <div className='bg-gray-900 border-b border-gray-800 px-6 py-3'>
+            {/* Enhanced Toolbar */}
+            <div className='bg-gray-900/50 border-b border-gray-800/50 px-6 py-4 backdrop-blur-sm'>
                 <div className='flex items-center justify-between'>
                     <div className='flex items-center space-x-4'>
-                        {/* Search Field */}
                         <SearchField />
                     </div>
 
-                    <div className='flex items-center space-x-2'>
-                        <Button
-                            variant='outline'
-                            size='sm'
-                            disabled={!isPrimaryLanguage}
-                            className={isPrimaryLanguage ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}
-                            onClick={() => {
-                                if (!isPrimaryLanguage) {
-                                    alert(
-                                        'Only the primary language can add translation keys. Non-primary languages can only edit values.'
-                                    );
-                                    return;
-                                }
-                                setAddKeyParent(null); // Ensure adding to root level
-                                setShowAddKeyModal(true);
-                            }}
-                            title={
-                                isPrimaryLanguage ? 'Add new translation key' : 'Only primary language can add keys'
-                            }>
-                            <Plus className='h-4 w-4 mr-2' />
-                            Add Key
-                        </Button>
-                    </div>
+                    <Button
+                        variant='outline'
+                        size='sm'
+                        disabled={!isPrimaryLanguage}
+                        className={`transition-all ${
+                            isPrimaryLanguage
+                                ? 'cursor-pointer border-green-500/30 text-green-400 hover:bg-green-500/10 hover:border-green-500/50'
+                                : 'cursor-not-allowed opacity-50'
+                        }`}
+                        onClick={() => {
+                            if (!isPrimaryLanguage) {
+                                alert(
+                                    'Only the primary language can add translation keys. Non-primary languages can only edit values.'
+                                );
+                                return;
+                            }
+                            const objectNodes = nodes$
+                                .get()
+                                .filter(node => node.type === 'object')
+                                .map(node => ({ id: node.id, key: node.key }))
+                                .sort((a, b) => a.key.localeCompare(b.key));
+                            setAvailableParents(objectNodes);
+                            setAddKeyParent(null);
+                            setShowAddKeyModal(true);
+                        }}
+                        title={isPrimaryLanguage ? 'Add new translation key' : 'Only primary language can add keys'}>
+                        <Plus className='h-4 w-4 mr-2' />
+                        Add Key
+                    </Button>
                 </div>
             </div>
 
             {/* Main Content */}
             <div className='flex flex-1 min-h-0'>
                 {/* Tree View */}
-                <ScrollArea className='flex-1 bg-gray-900'>
+                <ScrollArea className='flex-1 bg-gray-900/30'>
                     <TreeView />
                 </ScrollArea>
 
@@ -730,576 +710,15 @@ export default function TranslationEditor() {
                 />
             </div>
 
-            {/* Add Key Modal */}
-            {showAddKeyModal && (
-                <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'>
-                    <div className='bg-gray-900 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto'>
-                        <AddNewTranslationKeyTitle addKeyParent={addKeyParent} />
-                        <div className='space-y-4'>
-                            {/* Parent Selector - show when opened from toolbar or when a parent is selected */}
-                            {availableParents.length > 0 && (
-                                <div>
-                                    <label className='block text-sm font-medium text-gray-400 mb-2'>
-                                        Parent Object (Optional)
-                                    </label>
-                                    <Select
-                                        value={addKeyParent || '__root__'}
-                                        onValueChange={value => setAddKeyParent(value === '__root__' ? null : value)}>
-                                        <SelectTrigger className='w-full bg-gray-800 border-gray-700 text-white'>
-                                            <SelectValue placeholder='Root Level' />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value='__root__'>Root Level</SelectItem>
-                                            {availableParents.map(parent => (
-                                                <SelectItem key={parent.id} value={parent.id}>
-                                                    {parent.key}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <p className='text-xs text-gray-500 mt-1'>
-                                        Select an object to add the key as its child, or leave as "Root Level"
-                                    </p>
-                                </div>
-                            )}
-
-                            <div>
-                                <label className='block text-sm font-medium text-gray-400 mb-2'>Key Name</label>
-                                <input
-                                    type='text'
-                                    value={newKeyName}
-                                    onChange={e => setNewKeyName(e.target.value)}
-                                    className='w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-                                    placeholder='e.g., title, description, button'
-                                />
-                            </div>
-
-                            {/* Mode Selector */}
-                            <div>
-                                <label className='block text-sm font-medium text-gray-400 mb-2'>Value Mode</label>
-                                <div className='flex space-x-2'>
-                                    <Button
-                                        type='button'
-                                        size='sm'
-                                        variant={addKeyMode === 'ui' ? 'default' : 'outline'}
-                                        onClick={() => {
-                                            if (addKeyMode === 'json') {
-                                                switchToUIMode();
-                                            }
-                                        }}
-                                        disabled={
-                                            addKeyMode === 'json' && !!newKeyValue.trim() && !isValidJson(newKeyValue)
-                                        }
-                                        className={`cursor-pointer ${
-                                            addKeyMode === 'json' && !!newKeyValue.trim() && !isValidJson(newKeyValue)
-                                                ? 'opacity-50 cursor-not-allowed'
-                                                : ''
-                                        }`}>
-                                        UI Mode
-                                    </Button>
-                                    <Button
-                                        type='button'
-                                        size='sm'
-                                        variant={addKeyMode === 'json' ? 'default' : 'outline'}
-                                        onClick={switchToJSONMode}
-                                        className='cursor-pointer'>
-                                        JSON Mode
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {/* Value Input */}
-                            <div>
-                                <label className='block text-sm font-medium text-gray-400 mb-2'>Value</label>
-
-                                {addKeyMode === 'ui' ? (
-                                    <div className='space-y-4'>
-                                        {/* Type Selector */}
-                                        <Select
-                                            value={uiValueType}
-                                            onValueChange={value => {
-                                                setUiValueType(value as typeof uiValueType);
-                                                // Reset all UI values when type changes
-                                                setUiStringValue('');
-                                                setUiNumberValue('');
-                                                setUiBooleanValue(true);
-                                                setUiArrayItems([{ value: '', type: 'string' }]);
-                                                setUiObjectKeys([{ key: '', value: '', type: 'string' }]);
-                                            }}>
-                                            <SelectTrigger className='w-full bg-gray-800 border-gray-700 text-white'>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value='string'>String</SelectItem>
-                                                <SelectItem value='number'>Number</SelectItem>
-                                                <SelectItem value='boolean'>Boolean</SelectItem>
-                                                <SelectItem value='array'>Array</SelectItem>
-                                                <SelectItem value='object'>Object</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-
-                                        {/* Value Input Based on Type */}
-                                        {uiValueType === 'string' && (
-                                            <input
-                                                type='text'
-                                                value={uiStringValue}
-                                                onChange={e => setUiStringValue(e.target.value)}
-                                                className='w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-                                                placeholder='Enter string value...'
-                                            />
-                                        )}
-
-                                        {uiValueType === 'number' && (
-                                            <input
-                                                type='number'
-                                                value={uiNumberValue}
-                                                onChange={e => setUiNumberValue(e.target.value)}
-                                                className='w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-                                                placeholder='Enter number value...'
-                                            />
-                                        )}
-
-                                        {uiValueType === 'boolean' && (
-                                            <Select
-                                                value={uiBooleanValue.toString()}
-                                                onValueChange={value => setUiBooleanValue(value === 'true')}>
-                                                <SelectTrigger className='w-full bg-gray-800 border-gray-700 text-white'>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value='true'>true</SelectItem>
-                                                    <SelectItem value='false'>false</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        )}
-
-                                        {uiValueType === 'array' && (
-                                            <div className='space-y-3'>
-                                                <label className='text-xs text-gray-500'>Array Items</label>
-                                                {uiArrayItems.map((item, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className='space-y-2 p-3 bg-gray-800/50 rounded-md border border-gray-700'>
-                                                        {/* Type selector */}
-                                                        <div className='flex items-center space-x-2'>
-                                                            <label className='text-xs text-gray-500 w-12 flex-shrink-0'>
-                                                                Type:
-                                                            </label>
-                                                            <Select
-                                                                value={item.type}
-                                                                onValueChange={value => {
-                                                                    const newItems = [...uiArrayItems];
-                                                                    newItems[index] = {
-                                                                        ...item,
-                                                                        type: value as typeof item.type,
-                                                                        value: '',
-                                                                    };
-                                                                    setUiArrayItems(newItems);
-                                                                }}>
-                                                                <SelectTrigger className='flex-1 bg-gray-800 border-gray-700 text-white'>
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value='string'>String</SelectItem>
-                                                                    <SelectItem value='number'>Number</SelectItem>
-                                                                    <SelectItem value='boolean'>Boolean</SelectItem>
-                                                                    <SelectItem value='array'>Array</SelectItem>
-                                                                    <SelectItem value='object'>Object</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                            <Button
-                                                                type='button'
-                                                                size='sm'
-                                                                variant='outline'
-                                                                onClick={() => {
-                                                                    if (uiArrayItems.length > 1) {
-                                                                        const newItems = uiArrayItems.filter(
-                                                                            (_, i) => i !== index
-                                                                        );
-                                                                        setUiArrayItems(newItems);
-                                                                    } else {
-                                                                        const newItems = [...uiArrayItems];
-                                                                        newItems[index] = { value: '', type: 'string' };
-                                                                        setUiArrayItems(newItems);
-                                                                    }
-                                                                }}
-                                                                className='text-red-400 hover:text-red-300 hover:border-red-400 flex-shrink-0'>
-                                                                ✕
-                                                            </Button>
-                                                        </div>
-                                                        {/* Value input */}
-                                                        <div className='flex items-center space-x-2'>
-                                                            <label className='text-xs text-gray-500 w-12 flex-shrink-0'>
-                                                                Value:
-                                                            </label>
-                                                            {item.type === 'boolean' ? (
-                                                                <Select
-                                                                    value={item.value || 'true'}
-                                                                    onValueChange={value => {
-                                                                        const newItems = [...uiArrayItems];
-                                                                        newItems[index] = { ...item, value };
-                                                                        setUiArrayItems(newItems);
-                                                                    }}>
-                                                                    <SelectTrigger className='flex-1 bg-gray-800 border-gray-700 text-white'>
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value='true'>true</SelectItem>
-                                                                        <SelectItem value='false'>false</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            ) : (
-                                                                <input
-                                                                    type={item.type === 'number' ? 'number' : 'text'}
-                                                                    value={item.value}
-                                                                    onChange={e => {
-                                                                        const newItems = [...uiArrayItems];
-                                                                        newItems[index] = {
-                                                                            ...item,
-                                                                            value: e.target.value,
-                                                                        };
-                                                                        setUiArrayItems(newItems);
-                                                                    }}
-                                                                    className='flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-                                                                    placeholder={
-                                                                        item.type === 'string'
-                                                                            ? 'String value'
-                                                                            : item.type === 'number'
-                                                                              ? 'Enter number'
-                                                                              : item.type === 'object'
-                                                                                ? '{"key": "value"}'
-                                                                                : item.type === 'array'
-                                                                                  ? '[1, 2, 3]'
-                                                                                  : 'Enter value'
-                                                                    }
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                <Button
-                                                    type='button'
-                                                    size='sm'
-                                                    variant='outline'
-                                                    onClick={() =>
-                                                        setUiArrayItems([
-                                                            ...uiArrayItems,
-                                                            { value: '', type: 'string' },
-                                                        ])
-                                                    }
-                                                    className='w-full text-green-400 hover:text-green-300 hover:border-green-400'>
-                                                    + Add Item
-                                                </Button>
-                                            </div>
-                                        )}
-
-                                        {uiValueType === 'object' && (
-                                            <div className='space-y-3'>
-                                                <label className='text-xs text-gray-500'>Object Properties</label>
-                                                {uiObjectKeys.map((entry, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className='space-y-2 p-3 bg-gray-800/50 rounded-md border border-gray-700'>
-                                                        {/* Property Key */}
-                                                        <div className='flex items-center space-x-2'>
-                                                            <label className='text-xs text-gray-500 w-12 flex-shrink-0'>
-                                                                Key:
-                                                            </label>
-                                                            <input
-                                                                type='text'
-                                                                value={entry.key}
-                                                                onChange={e => {
-                                                                    const newEntries = [...uiObjectKeys];
-                                                                    if (newEntries[index]) {
-                                                                        newEntries[index].key = e.target.value;
-                                                                        setUiObjectKeys(newEntries);
-                                                                    }
-                                                                }}
-                                                                className='flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-                                                                placeholder='Property key'
-                                                            />
-                                                            <Button
-                                                                type='button'
-                                                                size='sm'
-                                                                variant='outline'
-                                                                onClick={() => {
-                                                                    if (uiObjectKeys.length > 1) {
-                                                                        const newEntries = uiObjectKeys.filter(
-                                                                            (_, i) => i !== index
-                                                                        );
-                                                                        setUiObjectKeys(newEntries);
-                                                                    } else {
-                                                                        // Clear the values if it's the only item
-                                                                        const newEntries = [...uiObjectKeys];
-                                                                        newEntries[index] = {
-                                                                            key: '',
-                                                                            value: '',
-                                                                            type: 'string',
-                                                                        };
-                                                                        setUiObjectKeys(newEntries);
-                                                                    }
-                                                                }}
-                                                                className='text-red-400 hover:text-red-300 hover:border-red-400 flex-shrink-0'>
-                                                                <X className='h-4 w-4' />
-                                                            </Button>
-                                                        </div>
-                                                        {/* Value Type selector */}
-                                                        <div className='flex items-center space-x-2'>
-                                                            <label className='text-xs text-gray-500 w-12 flex-shrink-0'>
-                                                                Type:
-                                                            </label>
-                                                            <Select
-                                                                value={entry.type}
-                                                                onValueChange={value => {
-                                                                    const newEntries = [...uiObjectKeys];
-                                                                    newEntries[index] = {
-                                                                        ...entry,
-                                                                        type: value as typeof entry.type,
-                                                                        value: '',
-                                                                    };
-                                                                    setUiObjectKeys(newEntries);
-                                                                }}>
-                                                                <SelectTrigger className='flex-1 bg-gray-800 border-gray-700 text-white'>
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value='string'>String</SelectItem>
-                                                                    <SelectItem value='number'>Number</SelectItem>
-                                                                    <SelectItem value='boolean'>Boolean</SelectItem>
-                                                                    <SelectItem value='array'>Array</SelectItem>
-                                                                    <SelectItem value='object'>Object</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                        {/* Property Value based on type */}
-                                                        <div className='flex items-center space-x-2'>
-                                                            <label className='text-xs text-gray-500 w-12 flex-shrink-0'>
-                                                                Value:
-                                                            </label>
-                                                            {entry.type === 'string' && (
-                                                                <input
-                                                                    type='text'
-                                                                    value={entry.value}
-                                                                    onChange={e => {
-                                                                        const newEntries = [...uiObjectKeys];
-                                                                        if (newEntries[index]) {
-                                                                            newEntries[index].value = e.target.value;
-                                                                            setUiObjectKeys(newEntries);
-                                                                        }
-                                                                    }}
-                                                                    className='flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-                                                                    placeholder='Enter string value...'
-                                                                />
-                                                            )}
-                                                            {entry.type === 'number' && (
-                                                                <input
-                                                                    type='number'
-                                                                    value={entry.value}
-                                                                    onChange={e => {
-                                                                        const newEntries = [...uiObjectKeys];
-                                                                        if (newEntries[index]) {
-                                                                            newEntries[index].value = e.target.value;
-                                                                            setUiObjectKeys(newEntries);
-                                                                        }
-                                                                    }}
-                                                                    className='flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-                                                                    placeholder='Enter number...'
-                                                                />
-                                                            )}
-                                                            {entry.type === 'boolean' && (
-                                                                <Select
-                                                                    value={entry.value || 'true'}
-                                                                    onValueChange={value => {
-                                                                        const newEntries = [...uiObjectKeys];
-                                                                        if (newEntries[index]) {
-                                                                            newEntries[index].value = value;
-                                                                            setUiObjectKeys(newEntries);
-                                                                        }
-                                                                    }}>
-                                                                    <SelectTrigger className='flex-1 bg-gray-800 border-gray-700 text-white'>
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value='true'>true</SelectItem>
-                                                                        <SelectItem value='false'>false</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            )}
-                                                            {(entry.type === 'array' || entry.type === 'object') && (
-                                                                <input
-                                                                    type='text'
-                                                                    value={entry.value}
-                                                                    onChange={e => {
-                                                                        const newEntries = [...uiObjectKeys];
-                                                                        if (newEntries[index]) {
-                                                                            newEntries[index].value = e.target.value;
-                                                                            setUiObjectKeys(newEntries);
-                                                                        }
-                                                                    }}
-                                                                    className='flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-                                                                    placeholder={
-                                                                        entry.type === 'array'
-                                                                            ? 'Enter valid JSON array: [1, 2, 3]'
-                                                                            : 'Enter valid JSON object: {"key": "value"}'
-                                                                    }
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                <Button
-                                                    type='button'
-                                                    size='sm'
-                                                    variant='outline'
-                                                    onClick={() =>
-                                                        setUiObjectKeys([
-                                                            ...uiObjectKeys,
-                                                            { key: '', value: '', type: 'string' },
-                                                        ])
-                                                    }
-                                                    className='w-full text-green-400 hover:text-green-300 hover:border-green-400'>
-                                                    + Add Property
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className='relative'>
-                                        <textarea
-                                            value={newKeyValue}
-                                            onChange={e => setNewKeyValue(e.target.value)}
-                                            className={`w-full px-3 py-2 bg-gray-800 border rounded-md text-sm resize-none focus:outline-none focus:ring-2 overflow-y-auto min-h-[6rem] max-h-48 ${
-                                                !newKeyValue.trim()
-                                                    ? 'border-red-500 focus:ring-red-500'
-                                                    : newKeyValue.trim() && !isValidJson(newKeyValue)
-                                                      ? 'border-red-500 focus:ring-red-500'
-                                                      : 'border-gray-700 focus:ring-blue-500'
-                                            }`}
-                                            placeholder={`Enter valid JSON value...\n\nExamples:\n- "Hello World" (string)\n- {"en": "Hello", "es": "Hola"} (object)\n- ["item1", "item2"] (array)\n- 42 (number)\n- true (boolean)`}
-                                        />
-                                        {newKeyValue.trim() && isValidJson(newKeyValue) && (
-                                            <div className='absolute top-2 right-2'>
-                                                <div
-                                                    className='w-2 h-2 bg-green-500 rounded-full'
-                                                    title='Valid JSON'></div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Validation Messages */}
-                            <div className='text-xs text-gray-500'>
-                                {addKeyMode === 'ui' ? (
-                                    (() => {
-                                        const uiValue = getUIValueAsJSON({
-                                            uiValueType,
-                                            uiStringValue,
-                                            uiNumberValue,
-                                            uiBooleanValue,
-                                            uiArrayItems,
-                                            uiObjectKeys,
-                                        });
-                                        // Allow empty objects {} and arrays [] as valid values
-                                        const isEmptyContainer = uiValue === '{}' || uiValue === '[]';
-                                        return !uiValue.trim() && !isEmptyContainer ? (
-                                            <p className='text-red-400'>
-                                                ⚠ Value is required - please fill in the required fields
-                                            </p>
-                                        ) : !isValidJson(uiValue) ? (
-                                            <p className='text-red-400'>
-                                                ⚠ Invalid configuration - please check your input
-                                            </p>
-                                        ) : (
-                                            <p>
-                                                <strong>Preview:</strong> {uiValue}
-                                            </p>
-                                        );
-                                    })()
-                                ) : !newKeyValue.trim() ? (
-                                    <p className='text-red-400'>
-                                        ⚠ Value is required - please enter a valid JSON value
-                                    </p>
-                                ) : newKeyValue.trim() && !isValidJson(newKeyValue) ? (
-                                    <p className='text-red-400'>
-                                        ⚠ Invalid JSON format - please fix the syntax or use proper JSON
-                                    </p>
-                                ) : (
-                                    <p>
-                                        <strong>Tip:</strong> Use valid JSON syntax for all values (strings must be
-                                        quoted).
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className='flex justify-end space-x-2 mt-6'>
-                            <Button
-                                variant='outline'
-                                onClick={() => {
-                                    setShowAddKeyModal(false);
-                                    setAddKeyParent(null);
-                                    setNewKeyName('');
-                                    setNewKeyValue('');
-                                    setAddKeyMode('ui');
-                                    setUiValueType('string');
-                                    setUiStringValue('');
-                                    setUiNumberValue('');
-                                    setUiBooleanValue(true);
-                                    setUiArrayItems([{ value: '', type: 'string' }]);
-                                    setUiObjectKeys([{ key: '', value: '', type: 'string' }]);
-                                }}
-                                className='cursor-pointer'>
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={addNewKey}
-                                disabled={
-                                    !newKeyName.trim() ||
-                                    (() => {
-                                        if (addKeyMode === 'ui') {
-                                            const uiValue = getUIValueAsJSON({
-                                                uiValueType,
-                                                uiStringValue,
-                                                uiNumberValue,
-                                                uiBooleanValue,
-                                                uiArrayItems,
-                                                uiObjectKeys,
-                                            });
-                                            const isEmptyContainer = uiValue === '{}' || uiValue === '[]';
-                                            return (!uiValue.trim() && !isEmptyContainer) || !isValidJson(uiValue);
-                                        } else {
-                                            return !newKeyValue.trim() || !isValidJson(newKeyValue);
-                                        }
-                                    })()
-                                }
-                                className={`${
-                                    !newKeyName.trim() ||
-                                    (() => {
-                                        if (addKeyMode === 'ui') {
-                                            const uiValue = getUIValueAsJSON({
-                                                uiValueType,
-                                                uiStringValue,
-                                                uiNumberValue,
-                                                uiBooleanValue,
-                                                uiArrayItems,
-                                                uiObjectKeys,
-                                            });
-                                            const isEmptyContainer = uiValue === '{}' || uiValue === '[]';
-                                            return (!uiValue.trim() && !isEmptyContainer) || !isValidJson(uiValue);
-                                        } else {
-                                            return !newKeyValue.trim() || !isValidJson(newKeyValue);
-                                        }
-                                    })()
-                                        ? 'cursor-not-allowed opacity-50'
-                                        : 'cursor-pointer'
-                                }`}>
-                                Add Key
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Elegant Add Key Dialog */}
+            <AddKeyModal
+                isOpen={showAddKeyModal}
+                onClose={() => setShowAddKeyModal(false)}
+                onAddKey={addNewKey}
+                availableParents={availableParents}
+                addKeyParent={addKeyParent}
+                onAddKeyParentChange={setAddKeyParent}
+            />
         </div>
     );
 }
