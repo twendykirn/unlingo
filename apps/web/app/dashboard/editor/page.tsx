@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, X, ArrowLeft, Code, Info } from 'lucide-react';
+import { Plus, ArrowLeft, Code, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery, useAction } from 'convex/react';
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { api } from '@/convex/_generated/api';
@@ -23,14 +22,12 @@ import TreeView from './components/TreeView';
 import { createStructuredChanges } from './utils/createStructuredChanges';
 import { validateNodes } from './utils/validateNodes';
 import { collectEmptyValueNodes } from './utils/collectEmptyValueNodes';
-import { getUIValueAsJSON } from './utils/getUIValueAsJson';
 import NodeInfoContainer from './components/NodeInfoContainer';
 import AddKeyModal from './components/AddKeyModal';
 import { useObserve } from '@legendapp/state/react';
 import { expandedKeys$, filteredNodes$, hasUnsavedChanges$, nodes$, searchQuery$, selectedNode$ } from './store';
 import SaveButton from './components/SaveButton';
 import SearchField from './components/SearchField';
-import AddNewTranslationKeyTitle from './components/AddNewTranslationKeyTitle';
 
 interface LanguageChanges {
     changes: any; // The structured changes object
@@ -55,6 +52,9 @@ export default function TranslationEditor() {
 
     // JSON Schema state for primary language validation
     const [primaryLanguageSchema, setPrimaryLanguageSchema] = useState<any | null>(null);
+
+    // Primary language content for AI translations
+    const [primaryLanguageContent, setPrimaryLanguageContent] = useState<any>({});
 
     const [isSaving, setIsSaving] = useState(false);
 
@@ -92,6 +92,9 @@ export default function TranslationEditor() {
 
     // Check if this is the primary language
     const isPrimaryLanguage = !!language?.isPrimary;
+
+    // Check if workspace has premium subscription
+    const isPremium = !!currentWorkspace?.isPremium;
 
     // Generate changes using json-diff for primary language saves
     const generateLanguageChanges = (oldJson: any, newJson: any): LanguageChanges => {
@@ -144,6 +147,21 @@ export default function TranslationEditor() {
             if (primarySchema) {
                 setPrimaryLanguageSchema(JSON.parse(primarySchema));
             }
+
+            // If this is not the primary language, fetch primary language content
+            if (!isPrimaryLanguage && language.primaryLanguageId) {
+                try {
+                    const primaryContent = await getLanguageContent({
+                        languageId: language.primaryLanguageId,
+                        workspaceId: currentWorkspace._id,
+                    });
+                    setPrimaryLanguageContent(primaryContent || {});
+                } catch (error) {
+                    console.error('Failed to fetch primary language content:', error);
+                    setPrimaryLanguageContent({});
+                }
+            }
+
             // languageContent is already parsed JSON object from the query
             // It will be {} (empty object) if no content exists, which is fine
             const initialNodes = createNodesFromJson(languageContent);
@@ -707,6 +725,10 @@ export default function TranslationEditor() {
                     isPrimaryLanguage={isPrimaryLanguage}
                     onDeleteNode={onNodeDelete}
                     onAddParentNode={onAddParentNode}
+                    primaryLanguageContent={primaryLanguageContent}
+                    selectedLanguage={selectedLanguage}
+                    isPremium={isPremium}
+                    workspaceId={currentWorkspace?._id}
                 />
             </div>
 

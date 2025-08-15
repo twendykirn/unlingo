@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Copy } from 'lucide-react';
+import { Copy, Sparkles, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { copyToClipboard } from '../utils/copyToClipboard';
 import { isValidJson } from '../utils/isValidJson';
@@ -13,8 +13,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { hasUnsavedChanges$, nodes$, selectedNode$ } from '../store';
 import { use$ } from '@legendapp/state/react';
 import { TranslationNode } from '../types';
+import { useAction } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
-export default function SelectedNodeEditArea() {
+interface SelectedNodeEditAreaProps {
+    isPrimaryLanguage: boolean;
+    primaryLanguageContent: any;
+    selectedLanguage: string;
+    isPremium: boolean;
+    workspaceId?: Id<'workspaces'>;
+}
+
+export default function SelectedNodeEditArea({
+    isPrimaryLanguage,
+    primaryLanguageContent,
+    selectedLanguage,
+    isPremium,
+    workspaceId,
+}: SelectedNodeEditAreaProps) {
     const [editValue, setEditValue] = useState('');
     const [editMode, setEditMode] = useState<'ui' | 'json'>('json');
     const [editUIValueType, setEditUIValueType] = useState<'string' | 'number' | 'boolean' | 'array' | 'object'>(
@@ -30,8 +47,12 @@ export default function SelectedNodeEditArea() {
         { key: string; value: string; type: 'string' | 'number' | 'boolean' | 'object' | 'array' }[]
     >([{ key: '', value: '', type: 'string' }]);
     const [isChanged, setIsChanged] = useState(false);
+    const [isTranslating, setIsTranslating] = useState(false);
 
     const selectedNode = use$(selectedNode$);
+
+    // Convex action for translation
+    const translateContent = useAction(api.translation.translateContent);
 
     // Wrapper functions to track changes when UI arrays/objects are modified
     const setEditUIArrayItemsWithChange = (items: typeof editUIArrayItems) => {
@@ -64,6 +85,55 @@ export default function SelectedNodeEditArea() {
         }
 
         return true;
+    };
+
+    // Handle AI translation
+    const handleAITranslation = async () => {
+        if (!selectedNode || isTranslating || isPrimaryLanguage || !workspaceId) return;
+
+        setIsTranslating(true);
+        try {
+            // Get the primary language value for this key
+            const getPrimaryValueByKey = (obj: any, key: string): any => {
+                const keys = key.split('.');
+                let current = obj;
+
+                for (const k of keys) {
+                    if (current && typeof current === 'object' && current[k] !== undefined) {
+                        current = current[k];
+                    } else {
+                        return undefined;
+                    }
+                }
+                return current;
+            };
+
+            const primaryValue = getPrimaryValueByKey(primaryLanguageContent, selectedNode.key);
+
+            if (primaryValue === undefined) {
+                alert('Primary language value not found for this key');
+                return;
+            }
+
+            const result = await translateContent({
+                primaryValue: primaryValue,
+                targetLanguage: selectedLanguage,
+                workspaceId: workspaceId,
+            });
+
+            const { translatedValue } = result;
+
+            // Update the edit value with the translated content
+            const jsonValue = JSON.stringify(translatedValue, null, 2);
+            setEditValue(jsonValue);
+            setEditUIValuesFromJSON(jsonValue);
+            setIsChanged(true);
+        } catch (error) {
+            console.error('Translation error:', error);
+            alert(error instanceof Error ? error.message : 'Translation failed. Please try again.');
+        } finally {
+            setIsTranslating(false);
+        }
     };
 
     // Apply current edit changes
@@ -787,22 +857,40 @@ export default function SelectedNodeEditArea() {
                             ? 'Invalid JSON format'
                             : 'Apply changes to update the value'}
                     </div>
-                    <Button
-                        size='sm'
-                        onClick={applyEdit}
-                        disabled={
-                            !isChanged ||
-                            !editValue?.trim() ||
-                            !!(editValue && !isValidJson(editValue)) ||
-                            !hasValidObjectKeys()
-                        }
-                        className={`ml-2 ${
-                            editValue?.trim() && isValidJson(editValue || '{}')
-                                ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer text-white'
-                                : 'bg-gray-600 cursor-not-allowed'
-                        }`}>
-                        Apply
-                    </Button>
+                    <div className='flex items-center space-x-2'>
+                        {!isPrimaryLanguage && isPremium && (
+                            <Button
+                                size='sm'
+                                onClick={handleAITranslation}
+                                disabled={isTranslating || !selectedNode}
+                                className={`bg-purple-600 hover:bg-purple-700 cursor-pointer text-white ${
+                                    isTranslating ? 'opacity-75 cursor-not-allowed' : ''
+                                }`}>
+                                {isTranslating ? (
+                                    <Loader2 className='h-3 w-3 mr-1 animate-spin' />
+                                ) : (
+                                    <Sparkles className='h-3 w-3 mr-1' />
+                                )}
+                                AI
+                            </Button>
+                        )}
+                        <Button
+                            size='sm'
+                            onClick={applyEdit}
+                            disabled={
+                                !isChanged ||
+                                !editValue?.trim() ||
+                                !!(editValue && !isValidJson(editValue)) ||
+                                !hasValidObjectKeys()
+                            }
+                            className={`${
+                                editValue?.trim() && isValidJson(editValue || '{}')
+                                    ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer text-white'
+                                    : 'bg-gray-600 cursor-not-allowed'
+                            }`}>
+                            Apply
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -156,6 +156,7 @@ export const getLanguageWithContext = query({
             namespaceId: namespace._id,
             namespaceVersionId: namespaceVersion._id,
             isPrimary: namespaceVersion.primaryLanguageId === language._id,
+            primaryLanguageId: namespaceVersion.primaryLanguageId,
         };
     },
 });

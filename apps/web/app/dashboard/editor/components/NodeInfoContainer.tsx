@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { TranslationNode } from '../types';
+import { Id } from '@/convex/_generated/dataModel';
 import { Copy, Plus, Search, Trash2, X } from 'lucide-react';
 import { createNodesFromJson } from '../utils/createNodesFromJson';
 import { copyToClipboard } from '../utils/copyToClipboard';
@@ -15,9 +16,21 @@ interface Props {
     isPrimaryLanguage: boolean;
     onDeleteNode: (newNodes: TranslationNode[]) => void;
     onAddParentNode: (nodeId: string) => void;
+    primaryLanguageContent: any;
+    selectedLanguage: string;
+    isPremium: boolean;
+    workspaceId?: Id<'workspaces'>;
 }
 
-export default function NodeInfoContainer({ isPrimaryLanguage, onDeleteNode, onAddParentNode }: Props) {
+export default function NodeInfoContainer({
+    isPrimaryLanguage,
+    onDeleteNode,
+    onAddParentNode,
+    primaryLanguageContent,
+    selectedLanguage,
+    isPremium,
+    workspaceId,
+}: Props) {
     const [editKey, setEditKey] = useState('');
 
     const selectedNode = use$(selectedNode$);
@@ -268,7 +281,13 @@ export default function NodeInfoContainer({ isPrimaryLanguage, onDeleteNode, onA
                                     </div>
 
                                     {/* Value */}
-                                    <SelectedNodeEditArea />
+                                    <SelectedNodeEditArea
+                                        isPrimaryLanguage={isPrimaryLanguage}
+                                        primaryLanguageContent={primaryLanguageContent}
+                                        selectedLanguage={selectedLanguage}
+                                        isPremium={isPremium}
+                                        workspaceId={workspaceId}
+                                    />
                                 </div>
                             );
                         })()}
