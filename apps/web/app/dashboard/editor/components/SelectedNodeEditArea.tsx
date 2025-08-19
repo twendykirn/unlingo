@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Copy, Sparkles, Loader2 } from 'lucide-react';
+import { Copy, Sparkles, Loader2, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { copyToClipboard } from '../utils/copyToClipboard';
 import { isValidJson } from '../utils/isValidJson';
@@ -473,7 +473,7 @@ export default function SelectedNodeEditArea({
                         }
                         copyToClipboard(valueText);
                     }}
-                    className='text-gray-400 hover:text-white hover:border-gray-400 cursor-pointer h-6 w-6 p-0'>
+                    className='text-gray-400 hover:text-white hover:border-gray-400 h-6 w-6 p-0'>
                     <Copy className='h-3 w-3' />
                 </Button>
             </div>
@@ -490,7 +490,7 @@ export default function SelectedNodeEditArea({
                             }
                         }}
                         disabled={editMode === 'json' && !!editValue.trim() && !isValidJson(editValue)}
-                        className={`cursor-pointer ${
+                        className={`${
                             editMode === 'json' && editValue.trim() && !isValidJson(editValue)
                                 ? 'opacity-50 cursor-not-allowed'
                                 : ''
@@ -501,8 +501,7 @@ export default function SelectedNodeEditArea({
                         type='button'
                         size='sm'
                         variant={editMode === 'json' ? 'default' : 'outline'}
-                        onClick={switchToEditJSONMode}
-                        className='cursor-pointer'>
+                        onClick={switchToEditJSONMode}>
                         JSON Mode
                     </Button>
                 </div>
@@ -602,8 +601,8 @@ export default function SelectedNodeEditArea({
                                                     }
                                                     setTimeout(handleEditUIValueChange, 0);
                                                 }}
-                                                className='text-red-400 hover:text-red-300 hover:border-red-400 flex-shrink-0 h-6 w-6 p-0 text-xs cursor-pointer'>
-                                                ✕
+                                                className='text-red-400 hover:text-red-300 hover:border-red-400 flex-shrink-0 h-6 w-6 p-0 text-xs'>
+                                                <X className='h-3 w-3' />
                                             </Button>
                                         </div>
                                         {/* Value input */}
@@ -673,7 +672,7 @@ export default function SelectedNodeEditArea({
                                             { value: '', type: 'string' },
                                         ]);
                                     }}
-                                    className='w-full text-green-400 hover:text-green-300 hover:border-green-400 h-6 text-xs cursor-pointer'>
+                                    className='w-full text-green-400 hover:text-green-300 hover:border-green-400 h-6 text-xs'>
                                     + Add Item
                                 </Button>
                             </div>
@@ -722,8 +721,8 @@ export default function SelectedNodeEditArea({
                                                     }
                                                     setTimeout(handleEditUIValueChange, 0);
                                                 }}
-                                                className='text-red-400 hover:text-red-300 hover:border-red-400 flex-shrink-0 h-6 w-6 p-0 text-xs cursor-pointer'>
-                                                ✕
+                                                className='text-red-400 hover:text-red-300 hover:border-red-400 flex-shrink-0 h-6 w-6 p-0 text-xs'>
+                                                <X className='h-3 w-3' />
                                             </Button>
                                         </div>
                                         {/* Value Type */}
@@ -822,7 +821,7 @@ export default function SelectedNodeEditArea({
                                             },
                                         ]);
                                     }}
-                                    className='w-full text-green-400 hover:text-green-300 hover:border-green-400 h-6 text-xs cursor-pointer'>
+                                    className='w-full text-green-400 hover:text-green-300 hover:border-green-400 h-6 text-xs'>
                                     + Add Property
                                 </Button>
                             </div>
@@ -863,7 +862,7 @@ export default function SelectedNodeEditArea({
                                 size='sm'
                                 onClick={handleAITranslation}
                                 disabled={isTranslating || !selectedNode}
-                                className={`bg-purple-600 hover:bg-purple-700 cursor-pointer text-white ${
+                                className={`bg-purple-600 hover:bg-purple-700 text-white ${
                                     isTranslating ? 'opacity-75 cursor-not-allowed' : ''
                                 }`}>
                                 {isTranslating ? (
@@ -885,7 +884,7 @@ export default function SelectedNodeEditArea({
                             }
                             className={`${
                                 editValue?.trim() && isValidJson(editValue || '{}')
-                                    ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer text-white'
+                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
                                     : 'bg-gray-600 cursor-not-allowed'
                             }`}>
                             Apply

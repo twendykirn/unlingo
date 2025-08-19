@@ -1,161 +1,62 @@
 {
-  "$schema": "https://mintlify.com/schema.json",
-  "name": "Unlingo",
-  "logo": {
-    "dark": "/logo/dark.svg",
-    "light": "/logo/light.svg"
-  },
-  "favicon": "/favicon.svg",
-  "colors": {
-    "primary": "#8B5CF6",
-    "light": "#A78BFA",
-    "dark": "#7C3AED",
-    "anchors": {
-      "from": "#8B5CF6",
-      "to": "#EC4899"
-    }
-  },
-  "topbarLinks": [
-    {
-      "name": "Dashboard",
-      "url": "https://app.unlingo.com"
-    }
-  ],
-  "topbarCtaButton": {
-    "name": "Get Started",
-    "url": "https://app.unlingo.com/sign-up"
-  },
-  "tabs": [
-    {
-      "name": "API Reference",
-      "url": "api-reference"
+    "$schema": "https://mintlify.com/schema.json",
+    "name": "Unlingo",
+    "logo": {
+        "dark": "/assets/logo.png",
+        "light": "/assets/logo.png"
     },
-    {
-      "name": "SDK & Libraries",
-      "url": "integrations"
-    }
-  ],
-  "anchors": [
-    {
-      "name": "Dashboard",
-      "icon": "square-terminal",
-      "url": "https://app.unlingo.com"
-    },
-    {
-      "name": "GitHub",
-      "icon": "github",
-      "url": "https://github.com/unlingo"
-    },
-    {
-      "name": "Discord",
-      "icon": "discord",
-      "url": "https://discord.gg/unlingo"
-    }
-  ],
-  "navigation": [
-    {
-      "group": "Get Started",
-      "pages": [
-        "introduction",
-        "quickstart",
-        "authentication"
-      ]
-    },
-    {
-      "group": "Core Concepts",
-      "pages": [
-        "concepts/projects",
-        "concepts/namespaces",
-        "concepts/versions",
-        "concepts/releases"
-      ]
-    },
-    {
-      "group": "Integrations",
-      "pages": [
-        {
-          "group": "JavaScript/TypeScript",
-          "pages": [
-            "integrations/i18next",
-            "integrations/next-intl",
-            "integrations/react-intl",
-            "integrations/vue-i18n"
-          ]
-        },
-        {
-          "group": "React Native",
-          "pages": [
-            "integrations/react-native"
-          ]
-        },
-        {
-          "group": "Other Libraries",
-          "pages": [
-            "integrations/lingui",
-            "integrations/formatjs"
-          ]
+    "favicon": "/assets/favicon.ico",
+    "colors": {
+        "primary": "#ffffff",
+        "light": "#f3f4f6",
+        "dark": "#1f2937",
+        "anchors": {
+            "from": "#ffffff",
+            "to": "#9ca3af"
         }
-      ]
     },
-    {
-      "group": "API Documentation",
-      "pages": [
-        "api-reference/introduction",
-        "api-reference/authentication",
+    "topbarLinks": [
         {
-          "group": "Translations",
-          "pages": [
-            "api-reference/translations/get-translations",
-            "api-reference/translations/get-namespace-translations",
-            "api-reference/translations/get-version-translations"
-          ]
-        },
-        {
-          "group": "Projects",
-          "pages": [
-            "api-reference/projects/list-projects",
-            "api-reference/projects/get-project",
-            "api-reference/projects/create-project",
-            "api-reference/projects/update-project"
-          ]
-        },
-        {
-          "group": "Namespaces",
-          "pages": [
-            "api-reference/namespaces/list-namespaces",
-            "api-reference/namespaces/get-namespace",
-            "api-reference/namespaces/create-namespace"
-          ]
+            "name": "Dashboard",
+            "url": "https://unlingo.com/dashboard"
         }
-      ]
+    ],
+    "topbarCtaButton": {
+        "name": "Get Started",
+        "url": "https://unlingo.com/sign-up"
     },
-    {
-      "group": "Examples",
-      "pages": [
-        "examples/basic-setup",
-        "examples/dynamic-loading",
-        "examples/caching-strategies",
-        "examples/error-handling"
-      ]
+    "navigation": [
+        {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart"]
+        },
+        {
+            "group": "Core Concepts",
+            "pages": [
+                "concepts/projects",
+                "concepts/namespaces",
+                "concepts/versions",
+                "concepts/translations",
+                "concepts/releases",
+                "concepts/screenshots"
+            ]
+        },
+        {
+            "group": "Integrations",
+            "pages": ["integrations/i18next", "integrations/next-intl"]
+        },
+        {
+            "group": "API Reference",
+            "pages": ["api-reference/translations/get-translations"]
+        }
+    ],
+    "footerSocials": {
+        "x": "https://x.com/twendykirn",
+        "discord": "https://discord.gg/TdDYte7KjG"
     },
-    {
-      "group": "Advanced",
-      "pages": [
-        "advanced/caching",
-        "advanced/performance",
-        "advanced/versioning",
-        "advanced/deployment"
-      ]
+    "feedback": {
+        "thumbsRating": true,
+        "suggestEdit": true,
+        "raiseIssue": true
     }
-  ],
-  "footerSocials": {
-    "x": "https://x.com/unlingo",
-    "github": "https://github.com/unlingo",
-    "discord": "https://discord.gg/unlingo"
-  },
-  "feedback": {
-    "thumbsRating": true,
-    "suggestEdit": true,
-    "raiseIssue": true
-  }
 }

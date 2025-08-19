@@ -22,7 +22,7 @@ export const getProjects = query({
 
         // Only allow access to organization workspaces
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+            throw new Error('Unauthorized: Can only access organization workspaces');
         }
 
         return await ctx.db
@@ -53,7 +53,7 @@ export const getProject = query({
 
         // Only allow access to organization workspaces
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only access organization workspaces");
+            throw new Error('Unauthorized: Can only access organization workspaces');
         }
 
         const project = await ctx.db.get(args.projectId);
@@ -88,7 +88,7 @@ export const createProject = mutation({
 
         // Verify user is in organization that owns this workspace
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only create projects in organization workspaces");
+            throw new Error('Unauthorized: Can only create projects in organization workspaces');
         }
 
         // Check if user has reached project limit
@@ -149,7 +149,7 @@ export const updateProject = mutation({
         }
 
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only update projects in organization workspaces");
+            throw new Error('Unauthorized: Can only update projects in organization workspaces');
         }
 
         const project = await ctx.db.get(args.projectId);
@@ -203,7 +203,7 @@ export const deleteProject = mutation({
         }
 
         if (identity.org !== workspace.clerkId) {
-            throw new Error("Unauthorized: Can only delete projects from organization workspaces");
+            throw new Error('Unauthorized: Can only delete projects from organization workspaces');
         }
 
         const project = await ctx.db.get(args.projectId);
@@ -224,7 +224,44 @@ export const deleteProject = mutation({
             await ctx.db.delete(release._id);
         }
 
-        // 2. Delete namespaces and related data
+        // 2. Delete screenshots and related data
+        const screenshots = await ctx.db
+            .query('screenshots')
+            .withIndex('by_project', q => q.eq('projectId', args.projectId))
+            .collect();
+
+        for (const screenshot of screenshots) {
+            // Delete screenshot containers and their mappings
+            const containers = await ctx.db
+                .query('screenshotContainers')
+                .withIndex('by_screenshot', q => q.eq('screenshotId', screenshot._id))
+                .collect();
+
+            for (const container of containers) {
+                // Delete key mappings for this container
+                const mappings = await ctx.db
+                    .query('screenshotKeyMappings')
+                    .withIndex('by_container', q => q.eq('containerId', container._id))
+                    .collect();
+
+                for (const mapping of mappings) {
+                    await ctx.db.delete(mapping._id);
+                }
+
+                // Delete the container
+                await ctx.db.delete(container._id);
+            }
+
+            // Delete the screenshot image file from Convex Storage
+            if (screenshot.imageFileId) {
+                await ctx.storage.delete(screenshot.imageFileId);
+            }
+
+            // Delete the screenshot
+            await ctx.db.delete(screenshot._id);
+        }
+
+        // 3. Delete namespaces and related data
         const namespaces = await ctx.db
             .query('namespaces')
             .withIndex('by_project', q => q.eq('projectId', args.projectId))
@@ -245,11 +282,16 @@ export const deleteProject = mutation({
                     .collect();
 
                 for (const language of languages) {
-                    // Delete the file from Convex Storage
+                    // Delete the JSON file from Convex Storage
                     if (language.fileId) {
                         await ctx.storage.delete(language.fileId);
                     }
                     await ctx.db.delete(language._id);
+                }
+
+                // Delete the JSON schema file from Convex Storage
+                if (version.jsonSchemaFileId) {
+                    await ctx.storage.delete(version.jsonSchemaFileId);
                 }
 
                 await ctx.db.delete(version._id);
@@ -258,7 +300,7 @@ export const deleteProject = mutation({
             await ctx.db.delete(namespace._id);
         }
 
-        // 3. Delete API keys for this project
+        // 4. Delete API keys for this project
         const apiKeys = await ctx.db
             .query('apiKeys')
             .withIndex('by_project', q => q.eq('projectId', args.projectId))
@@ -268,10 +310,10 @@ export const deleteProject = mutation({
             await ctx.db.delete(apiKey._id);
         }
 
-        // 4. Delete the project
+        // 5. Delete the project
         await ctx.db.delete(args.projectId);
 
-        // 5. Update workspace usage
+        // 6. Update workspace usage
         await ctx.db.patch(args.workspaceId, {
             currentUsage: {
                 ...workspace.currentUsage,

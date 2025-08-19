@@ -4,19 +4,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, usePaginatedQuery } from 'convex/react';
 import { useUser, useOrganization } from '@clerk/nextjs';
-import {
-    GitBranch,
-    Plus,
-    MoreVertical,
-    Trash2,
-    Package,
-    Tag,
-    Clock,
-    CheckCircle2,
-    Copy,
-    Check,
-    Save,
-} from 'lucide-react';
+import { GitBranch, Plus, MoreVertical, Trash2, Copy, Check, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,8 +17,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { api } from '../../../../../convex/_generated/api';
-import { Id } from '../../../../../convex/_generated/dataModel';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { NamespaceVersion } from '../types';
 import NamespaceVersionSelector from './NamespaceVersionSelector';
 
@@ -60,14 +48,14 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
     const [isCreateReleaseOpen, setIsCreateReleaseOpen] = useState(false);
     const [selectedRelease, setSelectedRelease] = useState<any | null>(null);
     const [newReleaseName, setNewReleaseName] = useState('');
-    const [newReleaseVersion, setNewReleaseVersion] = useState('');
+    const [newReleaseTag, setNewReleaseTag] = useState('');
     const [selectedNamespaceVersions, setSelectedNamespaceVersions] = useState<NamespaceVersion[]>([]);
     const [isEditReleaseOpen, setIsEditReleaseOpen] = useState(false);
     const [isDeleteReleaseOpen, setIsDeleteReleaseOpen] = useState(false);
     const [editReleaseName, setEditReleaseName] = useState('');
-    const [editReleaseVersion, setEditReleaseVersion] = useState('');
+    const [editReleaseTag, setEditReleaseTag] = useState('');
     const [editNamespaceVersions, setEditNamespaceVersions] = useState<NamespaceVersion[]>([]);
-    const [copiedVersionId, setCopiedVersionId] = useState<string | null>(null);
+    const [copiedTagId, setCopiedTagId] = useState<string | null>(null);
 
     const createRelease = useMutation(api.releases.createRelease);
     const updateRelease = useMutation(api.releases.updateRelease);
@@ -133,14 +121,14 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
     }
 
     const handleCreateRelease = async () => {
-        if (!newReleaseName.trim() || !newReleaseVersion.trim() || !currentProject || !currentWorkspace) return;
+        if (!newReleaseName.trim() || !newReleaseTag.trim() || !currentProject || !currentWorkspace) return;
 
         try {
             await createRelease({
                 projectId: currentProject._id,
                 workspaceId: currentWorkspace._id,
                 name: newReleaseName.trim(),
-                version: newReleaseVersion.trim(),
+                tag: newReleaseTag.trim(),
                 namespaceVersions: selectedNamespaceVersions.map(nv => ({
                     namespaceId: nv.namespaceId,
                     versionId: nv.versionId,
@@ -156,7 +144,7 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
     const handleEditRelease = async () => {
         if (
             !editReleaseName.trim() ||
-            !editReleaseVersion.trim() ||
+            !editReleaseTag.trim() ||
             !selectedRelease ||
             !currentProject ||
             !currentWorkspace
@@ -168,14 +156,14 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                 releaseId: selectedRelease._id as Id<'releases'>,
                 workspaceId: currentWorkspace._id,
                 name: editReleaseName.trim(),
-                version: editReleaseVersion.trim(),
+                tag: editReleaseTag.trim(),
                 namespaceVersions: editNamespaceVersions.map(nv => ({
                     namespaceId: nv.namespaceId,
                     versionId: nv.versionId,
                 })),
             });
             setEditReleaseName('');
-            setEditReleaseVersion('');
+            setEditReleaseTag('');
             setEditNamespaceVersions([]);
             setIsEditReleaseOpen(false);
         } catch (error) {
@@ -200,18 +188,18 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
 
     const resetCreateForm = () => {
         setNewReleaseName('');
-        setNewReleaseVersion('');
+        setNewReleaseTag('');
         setSelectedNamespaceVersions([]);
     };
 
-    const handleCopyVersion = async (version: string, releaseId: string, e: React.MouseEvent) => {
+    const handleCopyTag = async (tag: string, releaseId: string, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            await navigator.clipboard.writeText(version);
-            setCopiedVersionId(releaseId);
-            setTimeout(() => setCopiedVersionId(null), 1500);
+            await navigator.clipboard.writeText(tag);
+            setCopiedTagId(releaseId);
+            setTimeout(() => setCopiedTagId(null), 1500);
         } catch (err) {
-            console.error('Failed to copy version:', err);
+            console.error('Failed to copy tag:', err);
         }
     };
 
@@ -219,7 +207,7 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
         e.stopPropagation();
         setSelectedRelease(release);
         setEditReleaseName(release.name);
-        setEditReleaseVersion(release.version);
+        setEditReleaseTag(release.tag);
 
         const namespaceVersionsWithNames: NamespaceVersion[] = (release.namespaceVersions || []).map((nv: any) => {
             const namespace = namespaces?.find(ns => ns._id === nv.namespaceId);
@@ -250,13 +238,9 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                             </div>
                         </div>
                         <div className='flex items-center space-x-3'>
-                            <div className='flex items-center space-x-2 text-xs text-gray-400'>
-                                <span>0 / {currentWorkspace.limits.releasesPerProject}</span>
-                                <span>releases</span>
-                            </div>
                             <Dialog open={isCreateReleaseOpen} onOpenChange={setIsCreateReleaseOpen}>
                                 <DialogTrigger asChild>
-                                    <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'>
+                                    <Button className='bg-white text-black hover:bg-gray-200 transition-all'>
                                         <Plus className='h-4 w-4 mr-2' />
                                         Create Release
                                     </Button>
@@ -297,12 +281,12 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                                     />
                                 </div>
                                 <div>
-                                    <Label htmlFor='release-version'>Version</Label>
+                                    <Label htmlFor='release-tag'>Tag</Label>
                                     <Input
-                                        id='release-version'
+                                        id='release-tag'
                                         placeholder='e.g., 1.0.0, beta, staging'
-                                        value={newReleaseVersion}
-                                        onChange={e => setNewReleaseVersion(e.target.value)}
+                                        value={newReleaseTag}
+                                        onChange={e => setNewReleaseTag(e.target.value)}
                                         className='bg-black/30 border-gray-700/50 text-white mt-2'
                                     />
                                 </div>
@@ -328,7 +312,7 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                             </Button>
                             <Button
                                 onClick={handleCreateRelease}
-                                disabled={!newReleaseName.trim() || !newReleaseVersion.trim()}
+                                disabled={!newReleaseName.trim() || !newReleaseTag.trim()}
                                 className='bg-white text-black hover:bg-gray-200'>
                                 Create Release
                             </Button>
@@ -353,17 +337,9 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                         </div>
                     </div>
                     <div className='flex items-center space-x-3'>
-                        <div className='flex items-center space-x-2 text-xs text-gray-400'>
-                            <span>
-                                {releases.length} / {currentWorkspace.limits.releasesPerProject}
-                            </span>
-                            <span>releases</span>
-                        </div>
                         <Dialog open={isCreateReleaseOpen} onOpenChange={setIsCreateReleaseOpen}>
                             <DialogTrigger asChild>
-                                <Button
-                                    className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'
-                                    disabled={releases.length >= currentWorkspace.limits.releasesPerProject}>
+                                <Button className='bg-white text-black hover:bg-gray-200 transition-all'>
                                     <Plus className='h-4 w-4 mr-2' />
                                     Create Release
                                 </Button>
@@ -374,7 +350,7 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
             </div>
 
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-                {releases.map((release: any) => (
+                {releases.map(release => (
                     <div
                         key={release._id}
                         className='group bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 transition-all duration-300 hover:border-gray-600/50 hover:bg-gray-900/70 backdrop-blur-sm'>
@@ -388,13 +364,13 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                                         {release.name}
                                     </h4>
                                     <div className='flex items-center gap-1'>
-                                        <p className='text-sm text-gray-400 font-mono'>{release.version}</p>
+                                        <p className='text-sm text-gray-400 font-mono'>{release.tag}</p>
                                         <Button
                                             variant='ghost'
                                             size='icon'
-                                            onClick={e => handleCopyVersion(release.version, release._id, e)}
-                                            className='h-6 w-6 p-1 text-gray-400 hover:text-white cursor-pointer'>
-                                            {copiedVersionId === release._id ? (
+                                            onClick={e => handleCopyTag(release.tag, release._id, e)}
+                                            className='h-6 w-6 p-1 text-gray-400 hover:text-white'>
+                                            {copiedTagId === release._id ? (
                                                 <Check className='h-3 w-3 text-green-400' />
                                             ) : (
                                                 <Copy className='h-3 w-3' />
@@ -403,6 +379,13 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                                     </div>
                                 </div>
                             </div>
+                            <Button
+                                size='sm'
+                                variant='ghost'
+                                className='p-2 text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'
+                                onClick={e => handleMoreVerticalClick(e, release)}>
+                                <MoreVertical className='h-4 w-4' />
+                            </Button>
                         </div>
 
                         <div className='space-y-3 mb-4'>
@@ -422,16 +405,6 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                                 </span>
                             </div>
                         </div>
-
-                        <div className='flex items-center justify-end pt-4 border-t border-gray-800/50'>
-                            <Button
-                                size='sm'
-                                variant='ghost'
-                                className='p-2 text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'
-                                onClick={e => handleMoreVerticalClick(e, release)}>
-                                <MoreVertical className='h-4 w-4' />
-                            </Button>
-                        </div>
                     </div>
                 ))}
             </div>
@@ -441,7 +414,7 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                     <Button
                         onClick={() => loadMore(20)}
                         variant='outline'
-                        className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
+                        className='border-gray-700 text-gray-300 hover:bg-gray-800'>
                         Load More Releases
                     </Button>
                 </div>
@@ -475,12 +448,12 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                                 />
                             </div>
                             <div>
-                                <Label htmlFor='release-version-dialog'>Version</Label>
+                                <Label htmlFor='release-tag-dialog'>Tag</Label>
                                 <Input
-                                    id='release-version-dialog'
+                                    id='release-tag-dialog'
                                     placeholder='e.g., 1.0.0, beta, staging'
-                                    value={newReleaseVersion}
-                                    onChange={e => setNewReleaseVersion(e.target.value)}
+                                    value={newReleaseTag}
+                                    onChange={e => setNewReleaseTag(e.target.value)}
                                     className='bg-black/30 border-gray-700/50 text-white mt-2'
                                 />
                             </div>
@@ -506,7 +479,7 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                         </Button>
                         <Button
                             onClick={handleCreateRelease}
-                            disabled={!newReleaseName.trim() || !newReleaseVersion.trim()}
+                            disabled={!newReleaseName.trim() || !newReleaseTag.trim()}
                             className='bg-white text-black hover:bg-gray-200'>
                             Create Release
                         </Button>
@@ -534,11 +507,11 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                                 />
                             </div>
                             <div>
-                                <Label htmlFor='edit-release-version'>Version</Label>
+                                <Label htmlFor='edit-release-tag'>Tag</Label>
                                 <Input
-                                    id='edit-release-version'
-                                    value={editReleaseVersion}
-                                    onChange={e => setEditReleaseVersion(e.target.value)}
+                                    id='edit-release-tag'
+                                    value={editReleaseTag}
+                                    onChange={e => setEditReleaseTag(e.target.value)}
                                     className='bg-black/30 border-gray-700/50 text-white mt-2'
                                 />
                             </div>
@@ -572,7 +545,7 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                             </Button>
                             <Button
                                 onClick={handleEditRelease}
-                                disabled={!editReleaseName.trim() || !editReleaseVersion.trim()}
+                                disabled={!editReleaseName.trim() || !editReleaseTag.trim()}
                                 className='bg-white text-black hover:bg-gray-200'>
                                 <Save className='h-4 w-4 mr-2' />
                                 Save Changes

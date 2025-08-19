@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { FolderOpen, Plus, ArrowRight, Clock, Settings, House, User, ChartLine, Building2, X, Loader2 } from 'lucide-react';
+import { FolderOpen, Plus, Globe, Clock, Settings, House, User, ChartLine, Building2, X, Loader2 } from 'lucide-react';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useQuery, usePaginatedQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -60,7 +60,6 @@ export default function Dashboard() {
             router.push('/select-org');
         }
     }, [user, organization, router]);
-
 
     // Loading state
     if (!user || !organization || !clerkId) {
@@ -176,7 +175,7 @@ export default function Dashboard() {
                                 Unlingo
                             </span>
                         </h1>
-                        
+
                         {/* Workspace Name */}
                         {organization && (
                             <>
@@ -222,12 +221,14 @@ export default function Dashboard() {
                         </div>
 
                         {canCreateProject ? (
-                            <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
-                                setIsCreateDialogOpen(open);
-                                if (!open) resetCreateForm();
-                            }}>
+                            <Dialog
+                                open={isCreateDialogOpen}
+                                onOpenChange={open => {
+                                    setIsCreateDialogOpen(open);
+                                    if (!open) resetCreateForm();
+                                }}>
                                 <DialogTrigger asChild>
-                                    <Button className='bg-white text-black hover:bg-gray-200 text-lg px-8 py-4 cursor-pointer'>
+                                    <Button className='bg-white text-black hover:bg-gray-200 text-lg px-8 py-4'>
                                         <Plus className='h-5 w-5 mr-2' />
                                         Create Your First Project
                                     </Button>
@@ -258,12 +259,14 @@ export default function Dashboard() {
                     {/* Create Project Button */}
                     {canCreateProject && (
                         <div className='flex justify-end mb-8'>
-                            <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
-                                setIsCreateDialogOpen(open);
-                                if (!open) resetCreateForm();
-                            }}>
+                            <Dialog
+                                open={isCreateDialogOpen}
+                                onOpenChange={open => {
+                                    setIsCreateDialogOpen(open);
+                                    if (!open) resetCreateForm();
+                                }}>
                                 <DialogTrigger asChild>
-                                    <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer'>
+                                    <Button className='bg-white text-black hover:bg-gray-200'>
                                         <Plus className='h-4 w-4 mr-2' />
                                         New Project
                                     </Button>
@@ -280,33 +283,44 @@ export default function Dashboard() {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                                className='bg-gray-900 border border-gray-800 rounded-lg p-6 hover:border-gray-700 transition-colors group cursor-pointer'>
+                                className='group cursor-pointer'>
                                 <Link href={`/dashboard/projects/${project._id}`}>
-                                    <div className='space-y-4'>
-                                        <div>
-                                            <h3 className='text-xl font-semibold mb-2 group-hover:text-blue-400 transition-colors'>
-                                                {project.name}
-                                            </h3>
-                                            {project.description && (
-                                                <p className='text-gray-400 text-sm line-clamp-2'>
-                                                    {project.description}
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        <div className='flex items-center justify-between text-sm text-gray-400'>
-                                            <div className='flex items-center space-x-1'>
-                                                <Clock className='h-4 w-4' />
-                                                <span>
-                                                    Created {new Date(project._creationTime).toLocaleDateString()}
-                                                </span>
+                                    <div className='bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 transition-all duration-300 hover:border-gray-600/50 hover:bg-gray-900/70 backdrop-blur-sm'>
+                                        {/* Header Section */}
+                                        <div className='flex items-center justify-between mb-6'>
+                                            <div className='flex items-center space-x-3'>
+                                                <div className='w-12 h-12 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-xl flex items-center justify-center border border-gray-700/30 group-hover:border-blue-500/50 transition-all'>
+                                                    <Globe className='h-6 w-6 text-blue-400' />
+                                                </div>
+                                                <div>
+                                                    <h4 className='text-lg font-semibold text-white transition-colors mb-1'>
+                                                        {project.name}
+                                                    </h4>
+                                                    <p className='text-xs text-gray-400 font-medium'>
+                                                        Translation Project
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div className='pt-4 border-t border-gray-800'>
-                                            <div className='flex items-center justify-center space-x-2 text-blue-400 group-hover:text-blue-300 transition-colors'>
-                                                <span>Open Project</span>
-                                                <ArrowRight className='h-4 w-4' />
+                                        {/* Description Section */}
+                                        <div className='mb-4'>
+                                            {project.description ? (
+                                                <p className='text-gray-400 text-sm leading-relaxed line-clamp-2'>
+                                                    {project.description}
+                                                </p>
+                                            ) : (
+                                                <p className='text-gray-500 text-sm italic'>No description provided</p>
+                                            )}
+                                        </div>
+
+                                        {/* Stats Section */}
+                                        <div className='space-y-3 mb-4'>
+                                            <div className='flex items-center justify-between text-xs'>
+                                                <span className='text-gray-400'>Created</span>
+                                                <span className='text-gray-300 font-medium'>
+                                                    {new Date(project._creationTime).toLocaleDateString()}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -318,7 +332,7 @@ export default function Dashboard() {
                     {/* Load More Button */}
                     {status === 'CanLoadMore' && (
                         <div className='text-center mt-8'>
-                            <Button variant='outline' onClick={handleLoadMore} className='px-8 cursor-pointer'>
+                            <Button variant='outline' onClick={handleLoadMore} className='px-8'>
                                 Load More Projects
                             </Button>
                         </div>
@@ -335,10 +349,12 @@ export default function Dashboard() {
             )}
 
             {/* Create Project Dialog */}
-            <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
-                setIsCreateDialogOpen(open);
-                if (!open) resetCreateForm();
-            }}>
+            <Dialog
+                open={isCreateDialogOpen}
+                onOpenChange={open => {
+                    setIsCreateDialogOpen(open);
+                    if (!open) resetCreateForm();
+                }}>
                 <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
                     <DialogHeader className='pb-6 border-b border-gray-800/50'>
                         <div className='flex items-center space-x-4'>
@@ -426,13 +442,13 @@ export default function Dashboard() {
                                 variant='ghost'
                                 onClick={() => setIsCreateDialogOpen(false)}
                                 disabled={isCreating}
-                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                                 Cancel
                             </Button>
                             <Button
                                 type='submit'
                                 disabled={isCreating || !projectName.trim() || !canCreateProject}
-                                className='bg-green-600 text-white hover:bg-green-700 cursor-pointer transition-all px-6'>
+                                className='bg-green-600 text-white hover:bg-green-700 transition-all px-6'>
                                 {isCreating ? (
                                     <>
                                         <Loader2 className='h-4 w-4 mr-2 animate-spin' />

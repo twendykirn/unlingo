@@ -92,7 +92,8 @@ export function SettingsTab({ project, workspace }: SettingsTabProps) {
     };
 
     const canDelete = deleteConfirmation === project?.name;
-    const hasChanges = project && (editName.trim() !== project.name || editDescription.trim() !== (project.description || ''));
+    const hasChanges =
+        project && (editName.trim() !== project.name || editDescription.trim() !== (project.description || ''));
 
     return (
         <div className='space-y-6'>
@@ -144,7 +145,7 @@ export function SettingsTab({ project, workspace }: SettingsTabProps) {
                             <Button
                                 onClick={handleUpdateProject}
                                 disabled={!hasChanges || isUpdating}
-                                className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                className='bg-white text-black hover:bg-gray-200 transition-all px-6'>
                                 <Save className='h-4 w-4 mr-2' />
                                 {isUpdating ? 'Saving...' : 'Save Changes'}
                             </Button>
@@ -155,14 +156,12 @@ export function SettingsTab({ project, workspace }: SettingsTabProps) {
                 <div className='space-y-6'>
                     <div className='bg-gray-900/50 border border-red-800/50 rounded-xl p-6 backdrop-blur-sm'>
                         <h4 className='text-lg font-semibold text-red-400 mb-2'>Danger Zone</h4>
-                        <p className='text-sm text-gray-400 mb-4'>
-                            These actions are permanent and cannot be undone.
-                        </p>
+                        <p className='text-sm text-gray-400 mb-4'>These actions are permanent and cannot be undone.</p>
                         <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                             <DialogTrigger asChild>
                                 <Button
                                     variant='outline'
-                                    className='w-full border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 cursor-pointer transition-all'>
+                                    className='w-full border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 transition-all'>
                                     <Trash2 className='h-4 w-4 mr-2' />
                                     Delete Project
                                 </Button>
@@ -214,13 +213,13 @@ export function SettingsTab({ project, workspace }: SettingsTabProps) {
                                         variant='ghost'
                                         onClick={() => setIsDeleteOpen(false)}
                                         disabled={isDeleting}
-                                        className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                        className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                                         Cancel
                                     </Button>
                                     <Button
                                         onClick={handleDeleteProject}
                                         disabled={!canDelete || isDeleting}
-                                        className='bg-red-600 text-white hover:bg-red-700 cursor-pointer transition-all px-6'>
+                                        className='bg-red-600 text-white hover:bg-red-700 transition-all px-6'>
                                         {isDeleting ? 'Deleting...' : 'Delete Project'}
                                     </Button>
                                 </div>

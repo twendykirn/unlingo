@@ -554,7 +554,7 @@ export default function TranslationEditor() {
                             variant='ghost'
                             size='sm'
                             onClick={handleGoBack}
-                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all rounded-lg'>
+                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all rounded-lg'>
                             <ArrowLeft className='h-4 w-4 mr-2' />
                             Back
                         </Button>
@@ -688,7 +688,7 @@ export default function TranslationEditor() {
                         disabled={!isPrimaryLanguage}
                         className={`transition-all ${
                             isPrimaryLanguage
-                                ? 'cursor-pointer border-green-500/30 text-green-400 hover:bg-green-500/10 hover:border-green-500/50'
+                                ? 'border-green-500/30 text-green-400 hover:bg-green-500/10 hover:border-green-500/50'
                                 : 'cursor-not-allowed opacity-50'
                         }`}
                         onClick={() => {

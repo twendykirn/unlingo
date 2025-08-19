@@ -2,17 +2,9 @@
 
 import { useState } from 'react';
 import { usePaginatedQuery, useMutation } from 'convex/react';
-import { Key, Copy, Trash2, Plus, Check, MoreVertical } from 'lucide-react';
+import { Key, Copy, Trash2, Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '../../../../../convex/_generated/api';
@@ -25,9 +17,6 @@ interface ApiKeysTabProps {
     };
     workspace: {
         _id: Id<'workspaces'>;
-        limits: {
-            apiKeysPerProject: number;
-        };
     };
 }
 
@@ -141,13 +130,9 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
                             </div>
                         </div>
                         <div className='flex items-center space-x-3'>
-                            <div className='flex items-center space-x-2 text-xs text-gray-400'>
-                                <span>0 / {workspace.limits.apiKeysPerProject}</span>
-                                <span>API Keys</span>
-                            </div>
                             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                                 <DialogTrigger asChild>
-                                    <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'>
+                                    <Button className='bg-white text-black hover:bg-gray-200 transition-all'>
                                         <Plus className='h-4 w-4 mr-2' />
                                         Generate Key
                                     </Button>
@@ -202,20 +187,17 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
                             </div>
                         </div>
                         <div className='flex items-center justify-between pt-6 border-t border-gray-800/50'>
-                            <div className='text-xs text-gray-500'>
-                                {apiKeys?.length || 0} / {workspace.limits.apiKeysPerProject} API Keys
-                            </div>
                             <div className='flex space-x-3'>
                                 <Button
                                     variant='ghost'
                                     onClick={() => setIsCreateOpen(false)}
-                                    className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                    className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                                     Cancel
                                 </Button>
                                 <Button
                                     onClick={handleGenerateKey}
                                     disabled={!keyName.trim() || isGenerating}
-                                    className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                    className='bg-white text-black hover:bg-gray-200 transition-all px-6'>
                                     {isGenerating ? 'Generating...' : 'Generate Key'}
                                 </Button>
                             </div>
@@ -239,18 +221,10 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
                             <p className='text-gray-400 text-sm'>Manage programmatic access to your project</p>
                         </div>
                     </div>
-                    <div className='flex items-center space-x-3'>
-                        <div className='flex items-center space-x-2 text-xs text-gray-400'>
-                            <span>
-                                {apiKeys.length} / {workspace.limits.apiKeysPerProject}
-                            </span>
-                            <span>API Keys</span>
-                        </div>
+                    <div className='flex items-center'>
                         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                             <DialogTrigger asChild>
-                                <Button
-                                    className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'
-                                    disabled={apiKeys.length >= workspace.limits.apiKeysPerProject}>
+                                <Button className='bg-white text-black hover:bg-gray-200 transition-all'>
                                     <Plus className='h-4 w-4 mr-2' />
                                     Generate Key
                                 </Button>
@@ -289,7 +263,7 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
                                             setDeleteKeyId(key._id);
                                             setDeleteKeyName(key.name);
                                         }}
-                                        className='text-gray-400 hover:text-red-400 hover:bg-red-500/10 cursor-pointer transition-all p-2'>
+                                        className='text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all p-2'>
                                         <Trash2 className='h-4 w-4' />
                                     </Button>
                                 </div>
@@ -302,7 +276,7 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
                         <Button
                             variant='outline'
                             onClick={() => loadMore(10)}
-                            className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
+                            className='border-gray-700 text-gray-300 hover:bg-gray-800'>
                             Load More
                         </Button>
                     </div>
@@ -344,20 +318,17 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
                         </div>
                     </div>
                     <div className='flex items-center justify-between pt-6 border-t border-gray-800/50'>
-                        <div className='text-xs text-gray-500'>
-                            {apiKeys?.length || 0} / {workspace.limits.apiKeysPerProject} API Keys
-                        </div>
                         <div className='flex space-x-3'>
                             <Button
                                 variant='ghost'
                                 onClick={() => setIsCreateOpen(false)}
-                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleGenerateKey}
                                 disabled={!keyName.trim() || isGenerating}
-                                className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                className='bg-white text-black hover:bg-gray-200 transition-all px-6'>
                                 {isGenerating ? 'Generating...' : 'Generate Key'}
                             </Button>
                         </div>
@@ -420,7 +391,7 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
                                     setNewlyGeneratedKey(null);
                                     setCopySuccess(false);
                                 }}
-                                className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                className='bg-white text-black hover:bg-gray-200 transition-all px-6'>
                                 Done
                             </Button>
                         </div>
@@ -463,13 +434,13 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
                             variant='ghost'
                             onClick={() => setDeleteKeyId(null)}
                             disabled={isDeleting}
-                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                             Cancel
                         </Button>
                         <Button
                             onClick={handleDeleteKey}
                             disabled={isDeleting}
-                            className='bg-red-600 text-white hover:bg-red-700 cursor-pointer transition-all px-6'>
+                            className='bg-red-600 text-white hover:bg-red-700 transition-all px-6'>
                             {isDeleting ? 'Deleting...' : 'Delete Key'}
                         </Button>
                     </div>

@@ -20,7 +20,7 @@ export default function TermsOfService() {
 
                         {/* Back Button */}
                         <Link href='/'>
-                            <Button variant='ghost' size='sm' className='text-gray-300 hover:text-white cursor-pointer'>
+                            <Button variant='ghost' size='sm' className='text-gray-300 hover:text-white'>
                                 <ArrowLeft className='h-4 w-4 mr-2' />
                                 Back to Home
                             </Button>

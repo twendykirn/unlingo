@@ -22,12 +22,12 @@ export default function SaveButton({ isSaving, emptyValueNodesLength, onSave }: 
             disabled={!canSave}
             className={`transition-all px-4 ${
                 canSave
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer border-blue-500/30'
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500/30'
                     : hasErrors
-                    ? 'bg-red-600/20 border-red-500/30 text-red-400 cursor-not-allowed'
-                    : isSaving
-                    ? 'bg-blue-600/50 border-blue-500/30 text-blue-300 cursor-not-allowed'
-                    : 'bg-green-600/20 border-green-500/30 text-green-400 cursor-not-allowed'
+                      ? 'bg-red-600/20 border-red-500/30 text-red-400 cursor-not-allowed'
+                      : isSaving
+                        ? 'bg-blue-600/50 border-blue-500/30 text-blue-300 cursor-not-allowed'
+                        : 'bg-green-600/20 border-green-500/30 text-green-400 cursor-not-allowed'
             } border`}>
             {isSaving ? (
                 <>

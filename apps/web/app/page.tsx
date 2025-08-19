@@ -3,9 +3,7 @@
 import { motion } from 'motion/react';
 import {
     ArrowRight,
-    Globe2,
     Zap,
-    Code2,
     Database,
     Palette,
     Check,
@@ -18,33 +16,32 @@ import {
     Bot,
     Camera,
     Layers,
+    BarChart3,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, SignOutButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Gradient } from '@/components/ui/gradient';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import SpotlightCard from '@/components/ui/spotlight-card';
 import Galaxy from '@/components/ui/galaxy';
 import { BorderBeam } from '@/components/magicui/border-beam';
 import { MagicCard } from '@/components/magicui/magic-card';
 import { Meteors } from '@/components/magicui/meteors';
 import { ShineBorder } from '@/components/magicui/shine-border';
-import { AnimatedGradientText } from '@/components/magicui/animated-gradient-text';
-import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { CodeEditor } from '@/components/code-editor';
 
 const features = [
     {
-        icon: Globe2,
-        title: 'Global Low Latency',
-        description: 'Lightning-fast translation delivery from edge locations worldwide',
+        icon: BarChart3,
+        title: 'Analytics',
+        description: 'Track languages usage to monitor performance and optimize your translations',
     },
     {
         icon: Layers,
         title: 'Universal Framework Support',
-        description: 'Works seamlessly with i18next, next-intl, FormatJS, and any modern i18n library',
+        description: 'Works seamlessly with i18next, next-intl and any modern i18n library',
     },
     {
         icon: Zap,
@@ -106,15 +103,15 @@ class UnlingoBackend {
 
     async read(language, namespace, callback) {
         try {
-            const url = new URL('/api/v1/translations', 'https://api.unlingo.com');
-            url.searchParams.set('version', 'YOUR_RELEASE_VERSION');
+            const url = new URL('/v1/translations', 'https://api.unlingo.com');
+            url.searchParams.set('release', process.env.UNLINGO_RELEASE_TAG);
             url.searchParams.set('namespace', namespace);
             url.searchParams.set('lang', language);
 
             const response = await fetch(url.toString(), {
                 method: 'GET',
                 headers: {
-                    'x-api-key': 'YOUR_API_KEY',
+                    'x-api-key': process.env.UNLINGO_API_KEY,
                     'Content-Type': 'application/json',
                 },
             });
@@ -132,10 +129,8 @@ class UnlingoBackend {
     }
 }
 
-const module = new UnlingoBackend();
-
 i18next
-  .use(module) 
+  .use(UnlingoBackend) 
   .use(initReactI18next)
   .init({
     ...
@@ -144,25 +139,25 @@ i18next
 export default i18next;`;
 
         case 'next-intl':
-            return `import {getRequestConfig} from 'next-intl/server';
-import {hasLocale} from 'next-intl';
-import {routing} from './routing';
+            return `import { getRequestConfig } from 'next-intl/server';
+import { hasLocale } from 'next-intl';
+import { routing } from './routing';
  
-export default getRequestConfig(async ({requestLocale}) => {
+export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale;
   const locale = hasLocale(routing.locales, requested)
     ? requested
     : routing.defaultLocale;
 
-    const url = new URL('/api/v1/translations', 'https://api.unlingo.com');
-    url.searchParams.set('version', 'YOUR_RELEASE_VERSION');
-    url.searchParams.set('namespace', 'YOUR_NAMESPACE');
+    const url = new URL('/v1/translations', 'https://api.unlingo.com');
+    url.searchParams.set('release', process.env.UNLINGO_RELEASE_TAG);
+    url.searchParams.set('namespace', process.env.UNLINGO_NAMESPACE);
     url.searchParams.set('lang', locale);
 
     const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
-            'x-api-key': 'YOUR_API_KEY',
+            'x-api-key': process.env.UNLINGO_API_KEY,
             'Content-Type': 'application/json',
         },
     });
@@ -174,70 +169,9 @@ export default getRequestConfig(async ({requestLocale}) => {
   };
 });`;
 
-        case 'Lingui':
-            return `import { i18n } from "@lingui/core"
-
-export async function dynamicActivate(locale: string) {
-    const url = new URL('/api/v1/translations', 'https://api.unlingo.com');
-    url.searchParams.set('version', 'YOUR_RELEASE_VERSION');
-    url.searchParams.set('namespace', 'YOUR_NAMESPACE');
-    url.searchParams.set('lang', locale);
-
-    const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-            'x-api-key': 'YOUR_API_KEY',
-            'Content-Type': 'application/json',
-        },
-    });
-    const messages = await response.json();
-
-    i18n.load(locale, messages)
-    i18n.activate(locale)
-}`;
-
-        case 'formatjs':
-            return `import * as React from 'react'
-import * as ReactDOM from 'react-dom'
-import {IntlProvider} from 'react-intl'
-
-async function loadLocaleData(locale: string) {
-    const url = new URL('/api/v1/translations', 'https://api.unlingo.com');
-    url.searchParams.set('version', 'YOUR_RELEASE_VERSION');
-    url.searchParams.set('namespace', 'YOUR_NAMESPACE');
-    url.searchParams.set('lang', locale);
-
-    const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-            'x-api-key': 'YOUR_API_KEY',
-            'Content-Type': 'application/json',
-        },
-    });
-    const messages = await response.json();
-    return messages;
-}
-
-function App(props) {
-  return (
-    <IntlProvider
-      locale={props.locale}
-      defaultLocale="en"
-      messages={props.messages}
-    >
-      <MainApp />
-    </IntlProvider>
-  )
-}
-
-async function bootstrapApplication(locale, mainDiv) {
-  const messages = await loadLocaleData(locale)
-  ReactDOM.render(<App locale={locale} messages={messages} />, mainDiv)
-}}`;
-
         case 'rest api':
             return `const response = await fetch(
-  'https://api.unlingo.com/v1/translations?version=YOUR_RELEASE_VERSION&namespace=YOUR_NAMESPACE&lang=YOUR_LANGUAGE', {
+  'https://api.unlingo.com/v1/translations?release=YOUR_RELEASE_TAG&namespace=YOUR_NAMESPACE&lang=YOUR_LANGUAGE', {
   headers: {
     'Authorization': 'Bearer your-api-key',
   }
@@ -318,15 +252,13 @@ export default function Page() {
                             {isSignedIn ? (
                                 <>
                                     <SignOutButton>
-                                        <Button
-                                            variant='ghost'
-                                            className='text-gray-300 hover:text-white cursor-pointer'>
+                                        <Button variant='ghost' className='text-gray-300 hover:text-white'>
                                             Sign Out
                                         </Button>
                                     </SignOutButton>
                                     <Button
                                         size='sm'
-                                        className='bg-white text-black hover:bg-gray-200 cursor-pointer'
+                                        className='bg-white text-black hover:bg-gray-200'
                                         onClick={() => router.push('/dashboard')}>
                                         Dashboard
                                     </Button>
@@ -335,13 +267,13 @@ export default function Page() {
                                 <>
                                     <Button
                                         variant='ghost'
-                                        className='text-gray-300 hover:text-white cursor-pointer'
+                                        className='text-gray-300 hover:text-white'
                                         onClick={() => router.push('/sign-in')}>
                                         Sign in
                                     </Button>
                                     <Button
                                         size='sm'
-                                        className='bg-white text-black hover:bg-gray-200 cursor-pointer'
+                                        className='bg-white text-black hover:bg-gray-200'
                                         onClick={() => router.push('/sign-up')}>
                                         Get Started
                                     </Button>
@@ -393,7 +325,7 @@ export default function Page() {
                         className='flex flex-col sm:flex-row gap-4 justify-center items-center'>
                         <Button
                             size='lg'
-                            className='bg-white hover:bg-gray-200 font-semibold px-8 py-4 text-lg group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300'
+                            className='bg-white hover:bg-gray-200 font-semibold px-8 py-4 text-lg group shadow-lg hover:shadow-xl transition-all duration-300'
                             onClick={() => router.push('/sign-up')}>
                             Get Started Free
                             <ArrowRight className='ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform' />
@@ -402,7 +334,7 @@ export default function Page() {
                             <Button
                                 variant='outline'
                                 size='lg'
-                                className='border-2 border-white/30 hover:border-white/50 bg-black/40 backdrop-blur-sm hover:bg-white/10 px-8 py-4 text-lg cursor-pointer text-white hover:text-white shadow-lg hover:shadow-xl transition-all duration-300'>
+                                className='border-2 border-white/30 hover:border-white/50 bg-black/40 backdrop-blur-sm hover:bg-white/10 px-8 py-4 text-lg text-white hover:text-white shadow-lg hover:shadow-xl transition-all duration-300'>
                                 View Documentation
                             </Button>
                         </Link>
@@ -460,7 +392,7 @@ export default function Page() {
                         transition={{ duration: 0.6, delay: 0.2 }}
                         viewport={{ once: true }}
                         className='flex flex-wrap justify-center gap-4 mb-12'>
-                        {['i18next', 'next-intl', 'Lingui', 'formatjs', 'rest api'].map(library => (
+                        {['i18next', 'next-intl', 'rest api'].map(library => (
                             <button
                                 key={library}
                                 onClick={() => setActiveLibrary(library)}
@@ -480,26 +412,31 @@ export default function Page() {
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.4 }}
                         viewport={{ once: true }}
-                        className='max-w-5xl mx-auto'>
-                        <div className='bg-gray-900/50 border border-gray-800 rounded-lg overflow-hidden relative'>
-                            <div className='flex items-center justify-between px-6 py-4 border-b border-gray-800'>
-                                <div className='flex space-x-2'>
-                                    <div className='w-3 h-3 bg-red-500 rounded-full' />
-                                    <div className='w-3 h-3 bg-yellow-500 rounded-full' />
-                                    <div className='w-3 h-3 bg-green-500 rounded-full' />
+                        className='max-w-6xl mx-auto'>
+                        <div className='relative bg-gray-950/80 backdrop-blur-sm border border-gray-800/50 rounded-xl overflow-hidden shadow-2xl'>
+                            {/* Terminal Header */}
+                            <div className='flex items-center justify-between px-6 py-4 bg-gray-900/50 border-b border-gray-800/50'>
+                                <div className='flex items-center space-x-4'>
+                                    <div className='flex space-x-2'>
+                                        <div className='w-3 h-3 bg-red-500 rounded-full' />
+                                        <div className='w-3 h-3 bg-yellow-500 rounded-full' />
+                                        <div className='w-3 h-3 bg-green-500 rounded-full' />
+                                    </div>
+                                    <div className='text-sm text-gray-400 font-mono'>
+                                        {activeLibrary === 'rest api' ? 'curl' : `${activeLibrary}.js`}
+                                    </div>
                                 </div>
                                 <div className='flex items-center space-x-3'>
-                                    <span className='text-sm text-gray-400'>{activeLibrary}</span>
+                                    <span className='text-xs text-gray-500 bg-gray-800/50 px-2 py-1 rounded-md font-mono'>
+                                        {activeLibrary}
+                                    </span>
                                     <button
                                         onClick={() => {
-                                            const codeElement = document.querySelector('.code-content');
-                                            if (codeElement) {
-                                                navigator.clipboard.writeText(codeElement.textContent || '');
-                                                setIsCopied(true);
-                                                setTimeout(() => setIsCopied(false), 600);
-                                            }
+                                            navigator.clipboard.writeText(getCodeExample(activeLibrary));
+                                            setIsCopied(true);
+                                            setTimeout(() => setIsCopied(false), 600);
                                         }}
-                                        className='p-2 hover:bg-gray-800 rounded-md transition-colors cursor-pointer group'>
+                                        className='p-2 hover:bg-gray-800 rounded-lg transition-all duration-200 cursor-pointer group'>
                                         {isCopied ? (
                                             <Check className='h-4 w-4 text-green-400' />
                                         ) : (
@@ -508,20 +445,41 @@ export default function Page() {
                                     </button>
                                 </div>
                             </div>
-                            <ScrollArea className='h-96 p-6'>
-                                <pre className='text-left text-sm text-gray-300 font-mono'>
-                                    <code className='code-content'>{getCodeExample(activeLibrary)}</code>
-                                </pre>
-                            </ScrollArea>
+
+                            {/* Code Editor */}
+                            <div className='relative overflow-hidden'>
+                                <div
+                                    className='max-h-[500px] overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-track-gray-800/30 scrollbar-thumb-gray-600/50 hover:scrollbar-thumb-gray-500/70 scrollbar-thumb-rounded-full scrollbar-track-rounded-full'
+                                    style={{
+                                        scrollbarWidth: 'thin',
+                                        scrollbarColor: 'rgba(75, 85, 99, 0.5) rgba(31, 41, 55, 0.3)',
+                                    }}>
+                                    <CodeEditor
+                                        value={getCodeExample(activeLibrary)}
+                                        language='javascript'
+                                        readOnly
+                                        padding={24}
+                                        className='min-h-[400px] text-sm font-mono border-none pointer-events-none'
+                                        style={{
+                                            fontSize: '14px',
+                                            fontFamily:
+                                                'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+                                        }}
+                                        data-color-mode='dark'
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Animated Border Effects */}
                             <BorderBeam
-                                duration={8}
-                                size={600}
+                                duration={12}
+                                size={800}
                                 className='from-transparent via-pink-600 to-transparent'
                             />
                             <BorderBeam
-                                duration={8}
-                                delay={4}
-                                size={600}
+                                duration={12}
+                                delay={6}
+                                size={800}
                                 borderWidth={2}
                                 className='from-transparent via-purple-600 to-transparent'
                             />
@@ -655,14 +613,14 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* TinyBird */}
-                        <Link className='w-full h-24 cursor-pointer group' href='https://tinybird.co' target='_blank'>
+                        {/* Databuddy */}
+                        <Link className='w-full h-24 cursor-pointer group' href='https://databuddy.cc' target='_blank'>
                             <SpotlightCard
-                                className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-emerald-500/30 transition-all duration-300'
-                                spotlightColor='rgba(16, 185, 129, 0.15)'>
+                                className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-[#3C83F6]/30 transition-all duration-300'
+                                spotlightColor='rgba(60, 131, 246, 0.15)'>
                                 <div className='text-center'>
-                                    <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-emerald-400 transition-colors'>
-                                        TinyBird
+                                    <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-[#3C83F6] transition-colors'>
+                                        Databuddy
                                     </div>
                                     <div className='text-xs text-gray-500'>Analytics</div>
                                 </div>
@@ -746,7 +704,7 @@ export default function Page() {
                                 </li>
                             </ul>
                             <Button
-                                className='w-full bg-white text-black hover:bg-gray-200 cursor-pointer'
+                                className='w-full bg-white text-black hover:bg-gray-200'
                                 onClick={() => router.push('/sign-up')}>
                                 Get Started Free
                             </Button>
@@ -839,7 +797,7 @@ export default function Page() {
                                         </li>
                                     </ul>
                                     <Button
-                                        className='w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white cursor-pointer'
+                                        className='w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white'
                                         onClick={() => router.push('/sign-up')}>
                                         Upgrade to Pro
                                     </Button>
@@ -869,9 +827,9 @@ export default function Page() {
                                     <span>Dedicated support</span>
                                 </li>
                             </ul>
-                            <Button className='w-full bg-white text-black hover:bg-gray-200 cursor-pointer'>
-                                Contact Us
-                            </Button>
+                            <Link href='mailto:support@unlingo.com?subject=Enterprise%20Support'>
+                                <Button className='w-full bg-white text-black hover:bg-gray-200'>Contact Us</Button>
+                            </Link>
                         </motion.div>
                     </div>
                 </div>
@@ -901,16 +859,13 @@ export default function Page() {
                             <Link href='/sign-up'>
                                 <Button
                                     size='lg'
-                                    className='bg-white text-black hover:bg-gray-200 font-semibold text-lg group cursor-pointer'>
+                                    className='bg-white text-black hover:bg-gray-200 font-semibold text-lg group'>
                                     Start Now
                                     <ArrowRight className='ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform' />
                                 </Button>
                             </Link>
                             <Link href='mailto:support@unlingo.com'>
-                                <Button
-                                    variant='ghost'
-                                    size='lg'
-                                    className='text-gray-400 hover:text-white text-lg cursor-pointer'>
+                                <Button variant='ghost' size='lg' className='text-gray-400 hover:text-white text-lg'>
                                     <Calendar className='mr-2 h-5 w-5' />
                                     Contact Us
                                 </Button>

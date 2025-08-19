@@ -1,0 +1,131 @@
+---
+title: 'Releases'
+description: 'Learn how to create and manage releases to publish your translations for production use'
+---
+
+## Overview
+
+Releases in Unlingo are snapshots of your translations that are published and made available for production use. They represent stable, tested versions of your content that applications can reliably consume through the API.
+
+Think of releases as Git tags - they create a reference to a specific version of your translations, that you can change on the fly without changing application code.
+
+## Creating Releases
+
+Create a release and assign an existing versions:
+
+1. Navigate to your project's **Releases** tab
+2. Click **Create Release**
+3. Select the **namespace**
+4. Select the **version** from namespace
+5. Repeat steps 3-4 if you have multiple namespaces
+6. Enter **release name** (e.g., `1.2.0`)
+7. Add **release description** (optional)
+8. Click **Create Release**
+
+### Release Numbering
+
+Releases support various numbering schemes:
+
+**Semantic Versioning (Recommended):**
+
+```
+1.0.0     # Initial release
+1.0.1     # Patch release
+1.1.0     # Minor release
+2.0.0     # Major release
+```
+
+**Date-based Versioning:**
+
+```
+2024.01.15    # Release date
+2024-Q1       # Quarterly release
+2024-W03      # Weekly release
+```
+
+**Named Releases:**
+
+```
+winter-2024       # Seasonal release
+mobile-launch     # Feature release
+hotfix-jan        # Emergency release
+```
+
+## Release Management
+
+### Editing Releases
+
+You can modify certain aspects of published releases:
+
+1. **Description**: Update description (it won't affect any usage)
+2. **Namespaces and Versions**: You can modify selected namespaces and versions
+
+### Deleting Releases
+
+To delete a release:
+
+1. Go to the **Releases** tab
+2. Find the release to delete
+3. Click the **⋮** menu
+4. Select **Delete Release**
+5. Confirm the deletion
+
+<Danger>
+    Deleting a release immediately breaks any applications using that release number in their API calls. Ensure no
+    active integrations depend on the release before deletion.
+</Danger>
+
+## API Integration
+
+### Fetching Release Content
+
+Applications consume releases through the API:
+
+```javascript
+// Fetch specific release
+const translations = await fetch('/v1/translations', {
+    params: {
+        namespace: 'common',
+        release: '1.2.0', // Release name
+        lang: 'en',
+    },
+});
+```
+
+## Monitoring and Analytics
+
+### Release Usage
+
+Track how releases are being used:
+
+- **API calls per release**: Which releases are active
+- **Language distribution**: Most requested languages
+- **Namespace popularity**: Most accessed namespaces
+
+## Troubleshooting
+
+<AccordionGroup>
+
+    <Accordion title='Missing translations in release'>
+        - **Problem**:
+          - Release missing some expected translations.
+        - **Solutions**:
+          - Verify release name in API call
+          - Verify source version had complete translations
+          - Check if languages were properly included
+          - Ensure version wasn't modified during release creation
+          - Set updated version
+    </Accordion>
+
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='Versions' icon='folder-tree' href='/concepts/versions'>
+        Understand the relationship between versions and releases
+    </Card>
+    <Card title='API Reference' icon='code' href='/api-reference/translations/get-translations'>
+        Learn how to consume releases in your application
+    </Card>
+</CardGroup>

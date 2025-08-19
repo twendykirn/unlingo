@@ -175,7 +175,7 @@ export default function NamespaceVersionsPage() {
                             onClick={() => {
                                 router.push(`/dashboard/projects/${projectId}`);
                             }}
-                            className='w-10 h-10 p-0 text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer rounded-lg'>
+                            className='w-10 h-10 p-0 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg'>
                             <ArrowLeft className='h-4 w-4' />
                         </Button>
                         <div className='flex items-center space-x-3'>
@@ -200,7 +200,7 @@ export default function NamespaceVersionsPage() {
                         <Dialog open={isCreateVersionOpen} onOpenChange={setIsCreateVersionOpen}>
                             <DialogTrigger asChild>
                                 <Button
-                                    className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'
+                                    className='bg-white text-black hover:bg-gray-200 transition-all'
                                     disabled={versions.length >= workspaceQuery.limits.versionsPerNamespace}>
                                     <Plus className='h-4 w-4 mr-2' />
                                     Create Version
@@ -260,13 +260,13 @@ export default function NamespaceVersionsPage() {
                                 setNewVersionNumber('');
                                 setCopyFromVersion('');
                             }}
-                            className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
+                            className='border-gray-700 text-gray-300 hover:bg-gray-800'>
                             Cancel
                         </Button>
                         <Button
                             onClick={handleCreateVersion}
                             disabled={!newVersionNumber.trim()}
-                            className='bg-blue-500 text-white hover:bg-blue-600 cursor-pointer'>
+                            className='bg-blue-500 text-white hover:bg-blue-600'>
                             Create Version
                         </Button>
                     </DialogFooter>
@@ -295,10 +295,17 @@ export default function NamespaceVersionsPage() {
                                             <p className='text-xs text-gray-400 font-medium'>Version</p>
                                         </div>
                                     </div>
+                                    <Button
+                                        size='sm'
+                                        variant='ghost'
+                                        className='p-2 text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'
+                                        onClick={e => handleMoreVerticalClick(e, version)}>
+                                        <MoreVertical className='h-4 w-4' />
+                                    </Button>
                                 </div>
 
                                 {/* Stats Section */}
-                                <div className='space-y-3 mb-4'>
+                                <div className='space-y-3'>
                                     <div className='flex items-center justify-between text-xs'>
                                         <span className='text-gray-400'>Languages</span>
                                         <div className='flex items-center space-x-1'>
@@ -314,22 +321,6 @@ export default function NamespaceVersionsPage() {
                                             {new Date(version._creationTime).toLocaleDateString()}
                                         </span>
                                     </div>
-                                    <div className='flex items-center justify-between text-xs'>
-                                        <span className='text-gray-400'>Status</span>
-                                        <span className='text-emerald-400 font-medium'>Active</span>
-                                    </div>
-                                </div>
-
-                                {/* Actions Section */}
-                                <div className='flex items-center justify-between pt-4 border-t border-gray-800/50'>
-                                    <div className='text-xs text-gray-400'>Click to manage</div>
-                                    <Button
-                                        size='sm'
-                                        variant='ghost'
-                                        className='p-2 text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'
-                                        onClick={e => handleMoreVerticalClick(e, version)}>
-                                        <MoreVertical className='h-4 w-4' />
-                                    </Button>
                                 </div>
                             </div>
                         ))}
@@ -341,7 +332,7 @@ export default function NamespaceVersionsPage() {
                             <Button
                                 onClick={() => loadMore(20)}
                                 variant='outline'
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
+                                className='border-gray-700 text-gray-300 hover:bg-gray-800'>
                                 Load More Versions
                             </Button>
                         </div>
@@ -440,7 +431,7 @@ export default function NamespaceVersionsPage() {
                                 setIsDeleteVersionOpen(true);
                                 setIsEditVersionOpen(false);
                             }}
-                            className='border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 cursor-pointer transition-all'>
+                            className='border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 transition-all'>
                             <Trash2 className='h-4 w-4 mr-2' />
                             Delete Version
                         </Button>
@@ -448,13 +439,13 @@ export default function NamespaceVersionsPage() {
                             <Button
                                 variant='ghost'
                                 onClick={() => setIsEditVersionOpen(false)}
-                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleUpdateVersion}
                                 disabled={!editVersionNumber.trim() || selectedVersionName === editVersionNumber.trim()}
-                                className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                className='bg-white text-black hover:bg-gray-200 transition-all px-6'>
                                 <Save className='h-4 w-4 mr-2' />
                                 Save Changes
                             </Button>
@@ -508,12 +499,12 @@ export default function NamespaceVersionsPage() {
                         <Button
                             variant='ghost'
                             onClick={() => setIsDeleteVersionOpen(false)}
-                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                             Cancel
                         </Button>
                         <Button
                             onClick={handleDeleteVersion}
-                            className='bg-red-600 text-white hover:bg-red-700 cursor-pointer transition-all px-6'>
+                            className='bg-red-600 text-white hover:bg-red-700 transition-all px-6'>
                             <Trash2 className='h-4 w-4 mr-2' />
                             Delete Version
                         </Button>

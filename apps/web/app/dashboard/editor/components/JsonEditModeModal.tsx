@@ -102,7 +102,7 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
 
             nodes$.set(newNodes);
             hasUnsavedChanges$.set(true);
-            
+
             // Update the selected node if it exists in the new structure
             const currentSelectedNode = selectedNode$.get();
             if (currentSelectedNode) {
@@ -114,7 +114,7 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
                     selectedNode$.set(null);
                 }
             }
-            
+
             setIsOpen(false);
             setRawJsonEdit('');
             setOriginalJson('');
@@ -135,7 +135,7 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
                 }
             }}>
             <DialogTrigger asChild>
-                <Button variant='outline' size='sm' onClick={openDialog} className='cursor-pointer'>
+                <Button variant='outline' size='sm' onClick={openDialog}>
                     <Code className='h-4 w-4 mr-2' />
                     JSON Mode
                 </Button>
@@ -207,13 +207,13 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
                         <Button
                             variant='ghost'
                             onClick={() => setIsOpen(false)}
-                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                             Cancel
                         </Button>
                         <Button
                             onClick={saveJsonEdit}
                             disabled={!isValidJson(rawJsonEdit) || hasEmptyKeys || rawJsonEdit === originalJson}
-                            className={`bg-purple-600 text-white hover:bg-purple-700 cursor-pointer transition-all px-6 ${
+                            className={`bg-purple-600 text-white hover:bg-purple-700 transition-all px-6 ${
                                 !isValidJson(rawJsonEdit) || hasEmptyKeys ? 'cursor-not-allowed opacity-50' : ''
                             }`}>
                             <Code className='h-4 w-4 mr-2' />

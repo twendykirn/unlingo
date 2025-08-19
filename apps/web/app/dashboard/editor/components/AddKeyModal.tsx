@@ -839,7 +839,7 @@ export default function AddKeyModal({
                         type='button'
                         variant='ghost'
                         onClick={handleClose}
-                        className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                        className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                         Cancel
                     </Button>
                     <Button
@@ -884,7 +884,7 @@ export default function AddKeyModal({
                             })() ||
                             !hasValidObjectKeys()
                                 ? 'cursor-not-allowed opacity-50'
-                                : 'cursor-pointer'
+                                : ''
                         }`}>
                         <Plus className='h-4 w-4 mr-2' />
                         Add Key

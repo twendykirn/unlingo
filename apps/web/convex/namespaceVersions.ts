@@ -157,7 +157,7 @@ export const createNamespaceVersion = action({
                 // Update language count for this version if we copied languages
                 if (sourceLanguages.length > 0) {
                     await ctx.runMutation(internal.internalNamespaces.internalUpdateVersionUsage, {
-                        versionId: versionId,
+                        versionId,
                         languageCount: sourceLanguages.length,
                     });
                 }

@@ -74,15 +74,15 @@ http.route({
 
         // Extract query parameters
         const url = new URL(request.url);
-        const version = url.searchParams.get('version'); // Release version
+        const releaseTag = url.searchParams.get('release'); // Release name
         const namespace = url.searchParams.get('namespace'); // Namespace name
         const lang = url.searchParams.get('lang'); // Language code
 
-        if (!version || !namespace || !lang) {
+        if (!releaseTag || !namespace || !lang) {
             return new Response(
                 JSON.stringify({
-                    error: 'Missing required parameters: version, namespace, and lang are required',
-                    example: '/api/v1/translations?version=1.0.0&namespace=common&lang=en',
+                    error: 'Missing required parameters: release, namespace, and lang are required',
+                    example: '/api/v1/translations?release=1.0.0&namespace=common&lang=en',
                 }),
                 {
                     status: 400,
@@ -123,17 +123,17 @@ http.route({
                 );
             }
 
-            // Find the release by version and project using the efficient index query
-            const release = await ctx.runQuery(internal.releases.getReleaseByVersion, {
+            // Find the release by tag and project using the efficient index query
+            const release = await ctx.runQuery(internal.releases.getReleaseByTag, {
                 projectId: apiKeyInfo.projectId,
                 workspaceId: apiKeyInfo.workspaceId,
-                version: version,
+                tag: releaseTag,
             });
 
             if (!release) {
                 return new Response(
                     JSON.stringify({
-                        error: `Release version '${version}' not found`,
+                        error: `Release tag '${releaseTag}' not found`,
                     }),
                     {
                         status: 404,
@@ -160,7 +160,7 @@ http.route({
             if (!targetNamespaceVersion) {
                 return new Response(
                     JSON.stringify({
-                        error: `Namespace '${namespace}' not found in release '${version}'`,
+                        error: `Namespace '${namespace}' not found in release '${releaseTag}'`,
                     }),
                     {
                         status: 404,
@@ -179,7 +179,7 @@ http.route({
             if (!language || !language.fileId) {
                 return new Response(
                     JSON.stringify({
-                        error: `Language '${lang}' not found for namespace '${namespace}' in version '${version}'`,
+                        error: `Language '${lang}' not found for namespace '${namespace}' in version '${releaseTag}'`,
                     }),
                     {
                         status: 404,

@@ -1,8 +1,8 @@
 'use client';
 
-import { Key, GitBranch, Globe, Settings, ArrowLeft } from 'lucide-react';
+import { Key, GitBranch, Globe, Settings, ArrowLeft, Image } from 'lucide-react';
 import React, { use, useState } from 'react';
-import { UserButton, useUser, useOrganization } from '@clerk/nextjs';
+import { useUser, useOrganization } from '@clerk/nextjs';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import { Id } from '../../../../convex/_generated/dataModel';
@@ -12,6 +12,7 @@ import { NamespacesTab } from './components/NamespacesTab';
 import { ReleasesTab } from './components/ReleasesTab';
 import { ApiKeysTab } from './components/ApiKeysTab';
 import { SettingsTab } from './components/SettingsTab';
+import { ScreenshotsTab } from './components/ScreenshotsTab';
 
 const sidebarItems = [
     {
@@ -34,6 +35,17 @@ const sidebarItems = [
             gradient: 'from-green-500/20 to-emerald-500/20',
             border: 'border-green-500/30',
             icon: 'text-green-400',
+        },
+    },
+    {
+        icon: Image,
+        label: 'Screenshots',
+        href: '/screenshots',
+        description: 'Visual translation mapping with screenshots',
+        colors: {
+            gradient: 'from-pink-500/20 to-rose-500/20',
+            border: 'border-pink-500/30',
+            icon: 'text-pink-400',
         },
     },
     {
@@ -135,7 +147,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                         Please complete your workspace setup by providing a contact email.
                     </p>
                     <Link href='/dashboard/settings'>
-                        <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer'>Complete Setup</Button>
+                        <Button className='bg-white text-black hover:bg-gray-200'>Complete Setup</Button>
                     </Link>
                 </div>
             </div>
@@ -151,7 +163,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                         The project you're looking for doesn't exist or you don't have access to it.
                     </p>
                     <Link href='/dashboard'>
-                        <Button variant='outline' className='cursor-pointer'>
+                        <Button variant='outline'>
                             <ArrowLeft className='h-4 w-4 mr-2' />
                             Back to Dashboard
                         </Button>
@@ -224,25 +236,13 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                         ))}
                     </div>
                 </nav>
-
-                {/* Footer Stats */}
-                <div className='p-4 border-t border-gray-800/50'>
-                    <div className='bg-gray-800/30 rounded-lg p-3'>
-                        <div className='flex items-center space-x-2 mb-2'>
-                            <div className='w-2 h-2 bg-emerald-400 rounded-full'></div>
-                            <span className='text-xs text-emerald-400 font-medium'>Project Active</span>
-                        </div>
-                        <div className='text-xs text-gray-400'>
-                            Created {new Date(project._creationTime).toLocaleDateString()}
-                        </div>
-                    </div>
-                </div>
             </div>
 
             {/* Main Content */}
             <main className='flex-1 flex flex-col p-4'>
                 {activeTab === 'namespaces' && <NamespacesTab project={project} workspace={workspace} />}
                 {activeTab === 'releases' && <ReleasesTab />}
+                {activeTab === 'screenshots' && <ScreenshotsTab project={project} workspace={workspace} />}
                 {activeTab === 'api keys' && <ApiKeysTab project={project} workspace={workspace} />}
                 {activeTab === 'settings' && <SettingsTab project={project} workspace={workspace} />}
             </main>

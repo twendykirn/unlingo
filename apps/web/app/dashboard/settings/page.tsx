@@ -249,7 +249,7 @@ export default function WorkspaceSettings() {
                                                             !contactEmail.trim() ||
                                                             isSaving
                                                         }
-                                                        className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'>
+                                                        className='bg-white text-black hover:bg-gray-200 transition-all'>
                                                         <Save className='h-4 w-4 mr-2' />
                                                         {isSaving
                                                             ? 'Saving...'
@@ -262,7 +262,7 @@ export default function WorkspaceSettings() {
                                                             variant='outline'
                                                             onClick={handleCancel}
                                                             disabled={isSaving}
-                                                            className='border-gray-600 hover:bg-gray-800 cursor-pointer transition-all'>
+                                                            className='border-gray-600 hover:bg-gray-800 transition-all'>
                                                             <X className='h-4 w-4 mr-2' />
                                                             Cancel
                                                         </Button>
@@ -281,7 +281,7 @@ export default function WorkspaceSettings() {
                                                     onClick={() => setIsEditing(true)}
                                                     variant='outline'
                                                     size='sm'
-                                                    className='border-gray-600 hover:bg-gray-800 cursor-pointer transition-all'>
+                                                    className='border-gray-600 hover:bg-gray-800 transition-all'>
                                                     <Edit className='h-4 w-4 mr-2' />
                                                     Edit
                                                 </Button>

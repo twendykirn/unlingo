@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
 import { dark } from '@clerk/themes';
 import { ClerkProvider } from '@clerk/nextjs';
+import { Databuddy } from '@databuddy/sdk';
 
 const geist = Geist({ subsets: ['latin'] });
 
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
         'global',
         'API',
     ],
-    authors: [{ name: 'Unlingo Team' }],
+    authors: [{ name: 'Unlingo Team', url: 'https://unlingo.com' }],
     creator: 'Unlingo',
     publisher: 'Unlingo',
     formatDetection: {
@@ -40,7 +41,7 @@ export const metadata: Metadata = {
         siteName: 'Unlingo',
         images: [
             {
-                url: '/og-image.png',
+                url: '/og.png',
                 width: 1200,
                 height: 630,
                 alt: 'Unlingo - Developer Platform for Modern Internationalization',
@@ -53,7 +54,7 @@ export const metadata: Metadata = {
         card: 'summary_large_image',
         title: 'Unlingo - Developer Platform for Modern Internationalization',
         description: 'The simplest way to host, manage, and deliver translations for your applications.',
-        images: ['/og-image.png'],
+        images: ['/og.png'],
         creator: '@unlingo',
     },
     robots: {
@@ -67,42 +68,20 @@ export const metadata: Metadata = {
             'max-snippet': -1,
         },
     },
+    icons: {
+        icon: '/favicon.ico',
+        shortcut: '/favicon.ico',
+        apple: '/favicon.ico',
+        other: { rel: 'icon', url: '/favicon.ico' },
+    },
 };
+
+const isDevelopment = process.env.NODE_ENV === 'development';
+const isProduction = process.env.NODE_ENV === 'production';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang='en' className='dark'>
-            <head>
-                <link rel='icon' href='/favicon.ico' sizes='any' />
-                <link rel='icon' href='/icon.svg' type='image/svg+xml' />
-                <link rel='apple-touch-icon' href='/apple-touch-icon.png' />
-                <link rel='manifest' href='/manifest.json' />
-                <meta name='theme-color' content='#000000' />
-                <script
-                    type='application/ld+json'
-                    dangerouslySetInnerHTML={{
-                        __html: JSON.stringify({
-                            '@context': 'https://schema.org',
-                            '@type': 'SoftwareApplication',
-                            name: 'Unlingo',
-                            description:
-                                'Developer platform for modern internationalization with global low latency, i18next compatibility, and automatic caching.',
-                            url: 'https://unlingo.com',
-                            applicationCategory: 'DeveloperApplication',
-                            operatingSystem: 'Web',
-                            offers: {
-                                '@type': 'Offer',
-                                price: '0',
-                                priceCurrency: 'USD',
-                            },
-                            author: {
-                                '@type': 'Organization',
-                                name: 'Unlingo',
-                            },
-                        }),
-                    }}
-                />
-            </head>
             <body className={geist.className}>
                 <ClerkProvider
                     appearance={{
@@ -110,6 +89,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     }}>
                     {children}
                 </ClerkProvider>
+                <Databuddy
+                    clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID!}
+                    disabled={isDevelopment} // No tracking in development
+                    // Performance optimizations for production
+                    enableBatching={isProduction}
+                    samplingRate={isProduction ? 1.0 : 0.1}
+                    trackOutgoingLinks={true}
+                    trackInteractions={true}
+                    trackEngagement={true}
+                    trackScrollDepth={true}
+                />
+                ;
             </body>
         </html>
     );

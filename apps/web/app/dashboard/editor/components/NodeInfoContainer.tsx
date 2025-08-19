@@ -157,7 +157,7 @@ export default function NodeInfoContainer({
                                         }}
                                         className={
                                             isPrimaryLanguage
-                                                ? 'text-green-400 hover:text-green-300 hover:border-green-400 cursor-pointer'
+                                                ? 'text-green-400 hover:text-green-300 hover:border-green-400'
                                                 : 'text-gray-500 cursor-not-allowed opacity-50'
                                         }
                                         title={
@@ -173,7 +173,7 @@ export default function NodeInfoContainer({
                                         selectedNode$.set(null);
                                         setEditKey('');
                                     }}
-                                    className='text-gray-400 hover:text-white hover:border-gray-400 cursor-pointer'>
+                                    className='text-gray-400 hover:text-white hover:border-gray-400'>
                                     <X className='h-4 w-4' />
                                 </Button>
                                 <Button
@@ -183,7 +183,7 @@ export default function NodeInfoContainer({
                                     onClick={deleteSelectedKey}
                                     className={
                                         isPrimaryLanguage
-                                            ? 'text-red-400 hover:text-red-300 hover:border-red-400 cursor-pointer'
+                                            ? 'text-red-400 hover:text-red-300 hover:border-red-400'
                                             : 'text-gray-500 cursor-not-allowed opacity-50'
                                     }
                                     title={isPrimaryLanguage ? 'Delete key' : 'Only primary language can delete keys'}>
@@ -206,7 +206,7 @@ export default function NodeInfoContainer({
                                                 variant='outline'
                                                 size='sm'
                                                 onClick={() => copyToClipboard(selectedNode.key)}
-                                                className='text-gray-400 hover:text-white hover:border-gray-400 cursor-pointer h-6 w-6 p-0'>
+                                                className='text-gray-400 hover:text-white hover:border-gray-400 h-6 w-6 p-0'>
                                                 <Copy className='h-3 w-3' />
                                             </Button>
                                         </div>
@@ -231,7 +231,7 @@ export default function NodeInfoContainer({
                                                             variant='outline'
                                                             size='sm'
                                                             onClick={() => copyToClipboard(parentPath)}
-                                                            className='text-gray-400 hover:text-white hover:border-gray-400 cursor-pointer h-6 w-6 p-0'>
+                                                            className='text-gray-400 hover:text-white hover:border-gray-400 h-6 w-6 p-0'>
                                                             <Copy className='h-3 w-3' />
                                                         </Button>
                                                     </div>
@@ -252,7 +252,7 @@ export default function NodeInfoContainer({
                                                 variant='outline'
                                                 size='sm'
                                                 onClick={() => copyToClipboard(editKey)}
-                                                className='text-gray-400 hover:text-white hover:border-gray-400 cursor-pointer h-6 w-6 p-0'>
+                                                className='text-gray-400 hover:text-white hover:border-gray-400 h-6 w-6 p-0'>
                                                 <Copy className='h-3 w-3' />
                                             </Button>
                                         </div>

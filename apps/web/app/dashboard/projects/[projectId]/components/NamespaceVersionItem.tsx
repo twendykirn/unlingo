@@ -1,10 +1,10 @@
 import { useQuery } from 'convex/react';
 import { NamespaceVersion } from '../types';
-import { api } from '../../../../../convex/_generated/api';
+import { api } from '@/convex/_generated/api';
 import { useEffect } from 'react';
 import { Package, Tag, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Id } from '../../../../../convex/_generated/dataModel';
+import { Id } from '@/convex/_generated/dataModel';
 
 const NamespaceVersionItem = ({
     namespaceVersion,

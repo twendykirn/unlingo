@@ -1,0 +1,272 @@
+---
+title: 'Screenshots'
+description: 'Learn how to use visual screenshots to map translations directly onto your UI elements'
+---
+
+## Overview
+
+Screenshots in Unlingo provide a visual approach to translation management by allowing you to upload images of your application's interface and map translation keys directly to UI elements. This creates an intuitive bridge between your visual design and your translation content.
+
+This feature is particularly powerful for design teams, non-technical users, and complex interfaces where the relationship between translation keys and UI elements needs to be clearly visualized.
+
+## Key Concepts
+
+### Visual Translation Mapping
+
+Screenshots enable you to:
+
+- **Upload UI images**: Capture screens from your application
+- **Place containers**: Mark translatable areas on the interface
+- **Assign keys**: Connect translation keys to visual elements
+- **Edit content**: Update translations directly in visual context
+- **Collaborate**: Share visual context with team members
+
+### Screenshot Structure
+
+Each screenshot contains:
+
+- **Image file**: The actual screenshot (PNG, JPG, JPEG)
+- **Containers**: Colored boxes marking translatable areas
+- **Key mappings**: Links between containers and translation keys
+- **Metadata**: Name, description, upload date, dimensions
+
+## Working Modes
+
+Screenshots support two distinct working modes:
+
+### Edit Mode
+
+**Purpose**: Container placement and configuration
+**Use case**: Setting up the visual mapping structure
+
+**Features**:
+
+- Place containers on UI elements
+- Resize and position containers precisely
+- Customize container colors for organization
+- Add descriptions for context
+- Delete or modify containers
+
+**Workflow**:
+
+1. Switch to Edit Mode
+2. Click "Add Container"
+3. Click on the screenshot to place containers
+4. Drag edges to resize containers
+5. Add descriptions for clarity
+
+### Translate Mode
+
+**Purpose**: Translation key assignment and content editing
+**Use case**: Actual translation work
+
+**Features**:
+
+- Select namespace, version, and language
+- Assign translation keys to containers
+- Edit translation values inline
+- Save changes back to language files
+
+**Workflow**:
+
+1. Select translation context (namespace/version/language)
+2. Click containers to select them
+3. Assign translation keys from the language file
+4. Edit values directly in the interface
+5. Save changes to update translations
+
+## Screenshot Management
+
+### Uploading Screenshots
+
+1. Navigate to the **Screenshots** tab in your project
+2. Click **Add Screenshot**
+3. Select an image file (PNG, JPG, JPEG up to 10MB)
+4. Enter a descriptive name
+5. Add an optional description
+6. Click **Upload**
+
+### Screenshot Grid
+
+The screenshot overview displays:
+
+- **Thumbnail preview**: Visual preview of each screenshot
+- **Name and description**: Identifying information
+- **Metadata**: Dimensions, file size, upload date
+- **Quick actions**: Edit, Translate, Delete buttons
+
+## Container System
+
+### Creating Containers
+
+#### In Edit Mode:
+
+1. Select container color from color picker
+2. Click **Add Container**
+3. Click on the screenshot where you want to place the container
+4. Container appears with default size
+5. Drag handles to resize as needed
+
+#### Container Properties:
+
+- **Position**: X, Y coordinates (percentage-based)
+- **Size**: Width and height (percentage-based)
+- **Color**: Background color for visual organization
+- **Description**: Optional context for team members
+
+### Container Interaction
+
+#### Resizing Containers
+
+- Drag corner handles to resize proportionally
+- Drag edge handles to resize width or height only
+- Minimum size constraints prevent overly small containers
+- Maximum size constraints prevent containers exceeding image bounds
+- Click and drag container body to reposition
+
+#### Container Colors
+
+Organize containers by color-coding:
+
+```css
+/* Common color schemes */
+Blue (#3b82f6)    - Headers and titles
+Green (#10b981)   - Success messages and buttons
+Red (#ef4444)     - Error messages and warnings
+Purple (#8b5cf6)  - Navigation and links
+Yellow (#f59e0b)  - Input fields and forms
+Gray (#6b7280)    - Secondary content
+```
+
+### Container Descriptions
+
+Add context to help translators understand the purpose:
+
+```
+Examples:
+"Main page heading - should be concise and impactful"
+"Error message for invalid email format"
+"Call-to-action button - keep under 20 characters"
+"Navigation menu item for user profile section"
+```
+
+## Translation Workflow
+
+### Setting Up Translation Context
+
+Before assigning keys, establish the translation context:
+
+1. **Select Namespace**: Choose the namespace containing your translations
+2. **Select Version**: Pick the version you're working with
+3. **Select Language**: Choose the target language for translation
+4. **Lock Context**: System locks selections to prevent accidents
+
+The workflow selector provides a step-by-step process ensuring you select all required elements before enabling translation features.
+
+### Assigning Translation Keys
+
+#### Key Assignment Process:
+
+1. Click on a container to select it
+2. Click **Assign Key** button
+3. Search available translation keys
+4. Select the appropriate key from the list
+5. Key is automatically mapped to the container
+
+#### Key Search and Selection:
+
+- **Search functionality**: Find keys by name or content
+- **Type indicators**: Visual badges show data types
+- **Key preview**: See current values before assignment
+
+### Value Editing
+
+#### Inline Editing:
+
+1. Click on a mapped container
+2. View assigned keys in the sidebar
+3. Click on a key's value to edit
+4. Make changes inline
+5. Changes are tracked as "pending"
+6. Save all changes when ready
+
+#### Change Management:
+
+- **Pending changes**: Yellow highlighting indicates unsaved edits
+- **Change counter**: Shows number of modified values
+
+## Advanced Features
+
+### Multi-Language Support
+
+Work with multiple languages in the same screenshot:
+
+1. Set up containers in Edit Mode
+2. Switch to Translate Mode for first language
+3. Assign keys and edit values
+4. Change language selection
+5. Same containers, different language values
+
+## Performance Optimization
+
+### Image Optimization
+
+Optimize screenshots for better performance:
+
+- **File size**: Compress images without losing clarity
+- **Dimensions**: Use appropriate resolution for display
+- **Format**: Choose optimal format (PNG for UI, JPEG for photos)
+
+### Container Efficiency
+
+Optimize container management:
+
+- **Minimize containers**: Don't over-map every element
+- **Strategic placement**: Focus on translatable content only
+
+## Troubleshooting
+
+<AccordionGroup>
+    <Accordion title='Screenshots not uploading'>
+        - **Problem**: 
+          - Image upload fails or hangs. 
+        - **Solutions**: 
+          - Check file size (must be under 10MB) 
+          - Verify image format (PNG, JPG, JPEG only) 
+          - Test with smaller image first 
+          - Check internet connection stability 
+          - Try different browser if issues persist
+    </Accordion>
+
+    <Accordion title='Containers not positioning correctly'>
+        - **Problem**:
+          - Containers appear in wrong locations.
+        - **Solutions**:
+          - Ensure click coordinates are within image bounds
+          - Try using a different zoom level
+          - Refresh page and try again
+    </Accordion>
+
+    <Accordion title='Missing translation keys in selector'>
+        - **Problem**:
+          - Expected keys don't appear in key selection.
+        - **Solutions**:
+          - Verify correct language is selected
+          - Check if keys exist in the selected version
+          - Ensure translation context is properly locked
+          - Try refreshing the language data
+          - Verify key naming and structure
+    </Accordion>
+
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='i18next' icon='code' href='/integrations/i18next'>
+        Integrate with i18next
+    </Card>
+    <Card title='next-intl' icon='code' href='/integrations/next-intl'>
+        Integrate with next-intl
+    </Card>
+</CardGroup>

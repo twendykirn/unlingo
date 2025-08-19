@@ -207,7 +207,7 @@ export default function NewOrganizationPage() {
                             <Button
                                 type='submit'
                                 disabled={!isOrgFormValid}
-                                className='w-full bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed py-3 cursor-pointer'>
+                                className='w-full bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed py-3'>
                                 <div className='flex items-center justify-center space-x-2'>
                                     <span>Continue</span>
                                     <ArrowRight className='h-4 w-4' />
@@ -263,14 +263,14 @@ export default function NewOrganizationPage() {
                                     variant='outline'
                                     onClick={() => setCurrentStep(1)}
                                     disabled={isCompletingSetup}
-                                    className='flex-1 border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white cursor-pointer'>
+                                    className='flex-1 border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white'>
                                     <ArrowLeft className='h-4 w-4 mr-2' />
                                     Back
                                 </Button>
                                 <Button
                                     type='submit'
                                     disabled={!isEmailFormValid || isCompletingSetup}
-                                    className='flex-1 bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer'>
+                                    className='flex-1 bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed'>
                                     {isCompletingSetup ? (
                                         <div className='flex items-center justify-center space-x-2'>
                                             <div className='w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin'></div>

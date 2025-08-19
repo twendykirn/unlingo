@@ -146,7 +146,7 @@ export default function VersionLanguagesPage() {
                             onClick={() => {
                                 router.push(`/dashboard/projects/${projectId}/namespaces/${namespaceId}`);
                             }}
-                            className='w-10 h-10 p-0 text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer rounded-lg'>
+                            className='w-10 h-10 p-0 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg'>
                             <ArrowLeft className='h-4 w-4' />
                         </Button>
                         <div className='flex items-center space-x-3'>
@@ -187,7 +187,7 @@ export default function VersionLanguagesPage() {
                         <Dialog open={isCreateLanguageOpen} onOpenChange={setIsCreateLanguageOpen}>
                             <DialogTrigger asChild>
                                 <Button
-                                    className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'
+                                    className='bg-white text-black hover:bg-gray-200 transition-all'
                                     disabled={languages.length >= workspaceQuery.limits.languagesPerVersion}>
                                     <Plus className='h-4 w-4 mr-2' />
                                     Add Language
@@ -278,13 +278,13 @@ export default function VersionLanguagesPage() {
                                     setIsCreateLanguageOpen(false);
                                     setNewLanguageCode('');
                                 }}
-                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleCreateLanguage}
                                 disabled={!newLanguageCode.trim()}
-                                className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                className='bg-white text-black hover:bg-gray-200 transition-all px-6'>
                                 <Plus className='h-4 w-4 mr-2' />
                                 Create Language
                             </Button>
@@ -380,7 +380,7 @@ export default function VersionLanguagesPage() {
                                         className={`p-2 ${
                                             versionQuery.primaryLanguageId === language._id
                                                 ? 'text-gray-500 cursor-not-allowed hover:bg-transparent'
-                                                : 'text-gray-400 hover:text-red-400 hover:bg-red-500/10 cursor-pointer transition-all'
+                                                : 'text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all'
                                         }`}>
                                         <Trash2 className='h-3 w-3' />
                                     </Button>
@@ -395,7 +395,7 @@ export default function VersionLanguagesPage() {
                             <Button
                                 onClick={() => loadMore(20)}
                                 variant='outline'
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
+                                className='border-gray-700 text-gray-300 hover:bg-gray-800'>
                                 Load More Languages
                             </Button>
                         </div>

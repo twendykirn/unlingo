@@ -1,0 +1,561 @@
+---
+title: 'next-intl'
+description: 'Integrate Unlingo with Next.js applications using next-intl'
+---
+
+## Overview
+
+This guide shows how to integrate Unlingo with Next.js applications using next-intl.
+
+## Prerequisites
+
+- Next.js 13+ application
+- Basic knowledge of Next.js
+- An Unlingo project with translations
+
+## Installation
+
+Install the required dependencies:
+
+<CodeGroup>
+
+```bash npm
+npm install next-intl
+```
+
+```bash yarn
+yarn add next-intl
+```
+
+```bash pnpm
+pnpm add next-intl
+```
+
+</CodeGroup>
+
+## Project Structure
+
+Set up your Next.js project structure for internationalization:
+
+```
+src/
+├── app/
+│   ├── [locale]/
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   └── dashboard/
+│   │       └── page.tsx
+│   └── layout.tsx
+├── i18n/
+│   ├── request.ts
+│   └── routing.ts
+└── middleware.ts
+```
+
+## Routing Configuration
+
+Configure your locales and routing:
+
+<CodeGroup>
+
+```typescript i18n/routing.ts
+import { defineRouting } from 'next-intl/routing';
+
+export const routing = defineRouting({
+    // A list of all locales that are supported
+    locales: ['en', 'es', 'fr', 'de'],
+
+    // Used when no locale matches
+    defaultLocale: 'en',
+});
+```
+
+```javascript i18n/routing.js
+import { defineRouting } from 'next-intl/routing';
+
+export const routing = defineRouting({
+    // A list of all locales that are supported
+    locales: ['en', 'es', 'fr', 'de'],
+
+    // Used when no locale matches
+    defaultLocale: 'en',
+});
+```
+
+</CodeGroup>
+
+## Request Configuration
+
+Create a request configuration that fetches translations from Unlingo:
+
+<CodeGroup>
+
+```typescript i18n/request.ts
+import { getRequestConfig } from 'next-intl/server';
+import { hasLocale } from 'next-intl';
+import { routing } from './routing';
+
+export default getRequestConfig(async ({ requestLocale }) => {
+    // This typically corresponds to the `[locale]` segment
+    const requested = await requestLocale;
+    const locale = hasLocale(routing.locales, requested) ? requested : routing.defaultLocale;
+
+    try {
+        // Fetch translations from Unlingo
+        const url = new URL('/v1/translations', 'https://api.unlingo.com');
+        url.searchParams.set('release', process.env.UNLINGO_RELEASE_TAG);
+        url.searchParams.set('namespace', process.env.UNLINGO_NAMESPACE);
+        url.searchParams.set('lang', locale);
+
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${process.env.UNLINGO_API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            // Cache for 5 minutes
+            next: { revalidate: 300 },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const messages = await response.json();
+
+        return {
+            locale,
+            messages,
+        };
+    } catch (error) {
+        console.error('Failed to load translations:', error);
+
+        // Fallback to empty messages or default translations
+        return {
+            locale,
+            messages: {},
+        };
+    }
+});
+```
+
+```javascript i18n/request.js
+import { getRequestConfig } from 'next-intl/server';
+import { hasLocale } from 'next-intl';
+import { routing } from './routing';
+
+export default getRequestConfig(async ({ requestLocale }) => {
+    const requested = await requestLocale;
+    const locale = hasLocale(routing.locales, requested) ? requested : routing.defaultLocale;
+
+    try {
+        // Fetch translations from Unlingo
+        const url = new URL('/v1/translations', 'https://api.unlingo.com');
+        url.searchParams.set('release', process.env.UNLINGO_RELEASE_TAG);
+        url.searchParams.set('namespace', process.env.UNLINGO_NAMESPACE);
+        url.searchParams.set('lang', locale);
+
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${process.env.UNLINGO_API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            // Cache for 5 minutes
+            next: { revalidate: 300 },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const messages = await response.json();
+
+        return {
+            locale,
+            messages,
+        };
+    } catch (error) {
+        console.error('Failed to load translations:', error);
+
+        return {
+            locale,
+            messages: {},
+        };
+    }
+});
+```
+
+</CodeGroup>
+
+## Environment Variables
+
+Add your Unlingo credentials to your environment file:
+
+```env .env.local
+UNLINGO_API_KEY=your_api_key_here
+UNLINGO_RELEASE_TAG=1.0.0
+UNLINGO_NAMESPACE=translation
+```
+
+## Middleware Configuration
+
+Set up middleware to handle locale detection and routing:
+
+<CodeGroup>
+
+```typescript middleware.ts
+import createMiddleware from 'next-intl/middleware';
+import { routing } from './src/i18n/routing';
+
+export default createMiddleware(routing);
+
+export const config = {
+    // Match only internationalized pathnames
+    matcher: ['/', '/(de|en|es|fr)/:path*'],
+};
+```
+
+```javascript middleware.js
+import createMiddleware from 'next-intl/middleware';
+import { routing } from './src/i18n/routing';
+
+export default createMiddleware(routing);
+
+export const config = {
+    // Match only internationalized pathnames
+    matcher: ['/', '/(de|en|es|fr)/:path*'],
+};
+```
+
+</CodeGroup>
+
+## Next.js Configuration
+
+Update your `next.config.js` to include the internationalization plugin:
+
+<CodeGroup>
+
+```javascript next.config.js
+const withNextIntl = require('next-intl/plugin')(
+    // This is the default (also the `src` folder is supported out of the box)
+    './src/i18n/request.ts'
+);
+
+module.exports = withNextIntl({
+    // Other Next.js configuration
+});
+```
+
+```typescript next.config.ts
+import withNextIntl from 'next-intl/plugin';
+
+const withNextIntlConfig = withNextIntl('./src/i18n/request.ts');
+
+export default withNextIntlConfig({
+    // Other Next.js configuration
+});
+```
+
+</CodeGroup>
+
+## Root Layout
+
+Set up the root layout:
+
+<CodeGroup>
+
+```typescript src/app/layout.tsx
+import { ReactNode } from 'react';
+
+type Props = {
+    children: ReactNode;
+};
+
+// Since we have a `not-found.tsx` page on the root, a layout file
+// is required, even if it's just passing children through.
+export default function RootLayout({ children }: Props) {
+    return children;
+}
+```
+
+```javascript src/app/layout.js
+// Since we have a `not-found.tsx` page on the root, a layout file
+// is required, even if it's just passing children through.
+export default function RootLayout({ children }) {
+    return children;
+}
+```
+
+</CodeGroup>
+
+## Locale Layout
+
+Create a layout for your localized pages:
+
+<CodeGroup>
+
+```typescript src/app/[locale]/layout.tsx
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
+import { notFound } from 'next/navigation';
+import { routing } from '@/i18n/routing';
+
+export default async function LocaleLayout({
+  children,
+  params: { locale }
+}: {
+  children: React.ReactNode;
+  params: { locale: string };
+}) {
+  // Ensure that the incoming `locale` is valid
+  if (!routing.locales.includes(locale as any)) {
+    notFound();
+  }
+
+  // Providing all messages to the client
+  // side is the easiest way to get started
+  const messages = await getMessages();
+
+  return (
+    <html lang={locale}>
+      <body>
+        <NextIntlClientProvider messages={messages}>
+          {children}
+        </NextIntlClientProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+```javascript src/app/[locale]/layout.js
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
+import { notFound } from 'next/navigation';
+import { routing } from '@/i18n/routing';
+
+export default async function LocaleLayout({ children, params: { locale } }) {
+    // Ensure that the incoming `locale` is valid
+    if (!routing.locales.includes(locale)) {
+        notFound();
+    }
+
+    // Providing all messages to the client
+    // side is the easiest way to get started
+    const messages = await getMessages();
+
+    return (
+        <html lang={locale}>
+            <body>
+                <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+            </body>
+        </html>
+    );
+}
+```
+
+</CodeGroup>
+
+## Using Translations in Server Components
+
+### Basic Usage
+
+<CodeGroup>
+
+```typescript src/app/[locale]/page.tsx
+import { getTranslations } from 'next-intl/server';
+
+export default async function HomePage() {
+  const t = await getTranslations('common');
+
+  return (
+    <div>
+      <h1>{t('welcome')}</h1>
+      <p>{t('description')}</p>
+    </div>
+  );
+}
+```
+
+```javascript src/app/[locale]/page.js
+import { getTranslations } from 'next-intl/server';
+
+export default async function HomePage() {
+    const t = await getTranslations('common');
+
+    return (
+        <div>
+            <h1>{t('welcome')}</h1>
+            <p>{t('description')}</p>
+        </div>
+    );
+}
+```
+
+</CodeGroup>
+
+### With Interpolation
+
+```typescript
+import { getTranslations } from 'next-intl/server';
+
+export default async function UserPage({ params }: { params: { userId: string } }) {
+  const t = await getTranslations('user');
+  const user = await getUserById(params.userId);
+
+  return (
+    <div>
+      <h1>{t('greeting', { name: user.name })}</h1>
+      <p>{t('lastSeen', { date: new Date(user.lastSeen) })}</p>
+    </div>
+  );
+}
+```
+
+## Using Translations in Client Components
+
+For client components, use the `useTranslations` hook:
+
+<CodeGroup>
+
+```typescript components/LanguageSwitcher.tsx
+'use client';
+
+import { useLocale, useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
+
+export default function LanguageSwitcher() {
+  const t = useTranslations('common');
+  const locale = useLocale();
+  const router = useRouter();
+
+  const languages = [
+    { code: 'en', name: 'English' },
+    { code: 'es', name: 'Español' },
+    { code: 'fr', name: 'Français' },
+    { code: 'de', name: 'Deutsch' }
+  ];
+
+  const changeLanguage = (newLocale: string) => {
+    router.push(`/${newLocale}`);
+  };
+
+  return (
+    <div className="language-switcher">
+      <label>{t('selectLanguage')}</label>
+      <select
+        value={locale}
+        onChange={(e) => changeLanguage(e.target.value)}
+      >
+        {languages.map((lang) => (
+          <option key={lang.code} value={lang.code}>
+            {lang.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+```
+
+```javascript components/LanguageSwitcher.js
+'use client';
+
+import { useLocale, useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
+
+export default function LanguageSwitcher() {
+    const t = useTranslations('common');
+    const locale = useLocale();
+    const router = useRouter();
+
+    const languages = [
+        { code: 'en', name: 'English' },
+        { code: 'es', name: 'Español' },
+        { code: 'fr', name: 'Français' },
+        { code: 'de', name: 'Deutsch' },
+    ];
+
+    const changeLanguage = newLocale => {
+        router.push(`/${newLocale}`);
+    };
+
+    return (
+        <div className='language-switcher'>
+            <label>{t('selectLanguage')}</label>
+            <select value={locale} onChange={e => changeLanguage(e.target.value)}>
+                {languages.map(lang => (
+                    <option key={lang.code} value={lang.code}>
+                        {lang.name}
+                    </option>
+                ))}
+            </select>
+        </div>
+    );
+}
+```
+
+</CodeGroup>
+
+## Advanced Features
+
+### Multiple Namespaces
+
+Configure multiple namespaces in your request configuration:
+
+```typescript
+// Enhanced i18n/request.ts
+export default getRequestConfig(async ({ requestLocale }) => {
+    const requested = await requestLocale;
+    const locale = hasLocale(routing.locales, requested) ? requested : routing.defaultLocale;
+
+    const namespaces = ['common', 'navigation', 'dashboard', 'auth'];
+    const messages = {};
+
+    // Fetch all namespaces in parallel
+    await Promise.all(
+        namespaces.map(async namespace => {
+            try {
+                const url = new URL('/v1/translations', 'https://api.unlingo.com');
+                url.searchParams.set('release', process.env.UNLINGO_RELEASE_TAG);
+                url.searchParams.set('namespace', namespace);
+                url.searchParams.set('lang', locale);
+
+                const response = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${process.env.UNLINGO_API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    next: { revalidate: 300 },
+                });
+
+                if (response.ok) {
+                    const namespaceMessages = await response.json();
+                    messages[namespace] = namespaceMessages;
+                }
+            } catch (error) {
+                console.error(`Failed to load ${namespace} namespace:`, error);
+                messages[namespace] = {};
+            }
+        })
+    );
+
+    return {
+        locale,
+        messages,
+    };
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='i18next' icon='code' href='/integrations/i18next'>
+        Integrate applications using i18next
+    </Card>
+    <Card title='Get Translation' icon='bolt' href='/api-reference/translations/get-translations'>
+        Explore the API reference
+    </Card>
+</CardGroup>

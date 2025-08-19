@@ -3,6 +3,8 @@ import { v } from 'convex/values';
 import { Id } from './_generated/dataModel';
 import { polar } from './polar';
 import { internal } from './_generated/api';
+import { customersDelete } from '@polar-sh/sdk/funcs/customersDelete.js';
+import { customersGetExternal } from '@polar-sh/sdk/funcs/customersGetExternal.js';
 
 // Personal workspaces are no longer supported - only organization workspaces
 
@@ -40,9 +42,20 @@ export const createOrganizationWorkspace = mutation({
     },
 });
 
-export const cancelWorkspaceSubscription = internalAction({
-    handler: async ctx => {
-        await polar.cancelSubscription(ctx, { revokeImmediately: true });
+export const deletePolarCustomer = internalAction({
+    args: {
+        workspaceId: v.id('workspaces'),
+    },
+    handler: async (_, args) => {
+        const customer = await customersGetExternal(polar.polar, {
+            externalId: args.workspaceId,
+        });
+
+        if (customer.ok) {
+            await customersDelete(polar.polar, {
+                id: customer.value.id,
+            });
+        }
     },
 });
 
@@ -72,16 +85,12 @@ export const deleteOrganizationWorkspace = internalMutation({
 async function deleteWorkspaceAndRelatedData(ctx: MutationCtx, workspaceId: Id<'workspaces'>) {
     // Cancel any active Polar subscriptions first
     try {
-        const currentSubscription = await polar.getCurrentSubscription(ctx, {
-            userId: workspaceId,
+        await ctx.scheduler.runAfter(0, internal.workspaces.deletePolarCustomer, {
+            workspaceId,
         });
-
-        if (currentSubscription && currentSubscription.status === 'active') {
-            await ctx.scheduler.runAfter(0, internal.workspaces.cancelWorkspaceSubscription);
-            console.log(`Cancelled active subscription for workspace ${workspaceId}`);
-        }
+        console.log(`Delete Polar customer for workspace ${workspaceId}`);
     } catch (error) {
-        console.warn(`Failed to cancel subscription for workspace ${workspaceId}:`, error);
+        console.warn(`Failed to delete Polar customer for workspace ${workspaceId}:`, error);
         // Continue with deletion even if subscription cancellation fails
     }
 
@@ -112,6 +121,43 @@ async function deleteWorkspaceAndRelatedData(ctx: MutationCtx, workspaceId: Id<'
             await ctx.db.delete(release._id);
         }
 
+        // Delete screenshots and related data
+        const screenshots = await ctx.db
+            .query('screenshots')
+            .withIndex('by_project', q => q.eq('projectId', project._id))
+            .collect();
+
+        for (const screenshot of screenshots) {
+            // Delete screenshot containers and their mappings
+            const containers = await ctx.db
+                .query('screenshotContainers')
+                .withIndex('by_screenshot', q => q.eq('screenshotId', screenshot._id))
+                .collect();
+
+            for (const container of containers) {
+                // Delete key mappings for this container
+                const mappings = await ctx.db
+                    .query('screenshotKeyMappings')
+                    .withIndex('by_container', q => q.eq('containerId', container._id))
+                    .collect();
+
+                for (const mapping of mappings) {
+                    await ctx.db.delete(mapping._id);
+                }
+
+                // Delete the container
+                await ctx.db.delete(container._id);
+            }
+
+            // Delete the screenshot image file from Convex Storage
+            if (screenshot.imageFileId) {
+                await ctx.storage.delete(screenshot.imageFileId);
+            }
+
+            // Delete the screenshot
+            await ctx.db.delete(screenshot._id);
+        }
+
         // Delete namespaces and related data
         const namespaces = await ctx.db
             .query('namespaces')
@@ -133,11 +179,16 @@ async function deleteWorkspaceAndRelatedData(ctx: MutationCtx, workspaceId: Id<'
                     .collect();
 
                 for (const language of languages) {
-                    // Delete the file from Convex Storage
+                    // Delete the JSON file from Convex Storage
                     if (language.fileId) {
                         await ctx.storage.delete(language.fileId);
                     }
                     await ctx.db.delete(language._id);
+                }
+
+                // Delete the JSON schema file from Convex Storage
+                if (version.jsonSchemaFileId) {
+                    await ctx.storage.delete(version.jsonSchemaFileId);
                 }
 
                 await ctx.db.delete(version._id);

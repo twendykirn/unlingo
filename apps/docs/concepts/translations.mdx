@@ -1,0 +1,299 @@
+---
+title: 'Translations'
+description: "Learn how to create, edit, and manage translations using Unlingo's powerful editor interface"
+---
+
+## Overview
+
+Translations in Unlingo are the actual content that gets displayed to users in different languages. The translation system supports complex nested structures, various data types, and provides a powerful visual editor for managing your multilingual content.
+
+Unlingo's editor provides both tree view and JSON editing modes, making it accessible for both non-technical translators and developers who prefer working with code.
+
+## Translation Structure
+
+### Nested Keys
+
+Translations are organized in a hierarchical structure using dot notation:
+
+```json
+{
+    "common": {
+        "buttons": {
+            "save": "Save",
+            "cancel": "Cancel",
+            "submit": "Submit"
+        },
+        "navigation": {
+            "home": "Home",
+            "about": "About Us",
+            "contact": "Contact"
+        }
+    },
+    "auth": {
+        "login": {
+            "title": "Welcome Back",
+            "subtitle": "Please sign in to continue",
+            "form": {
+                "email": "Email Address",
+                "password": "Password",
+                "remember": "Remember me"
+            }
+        }
+    }
+}
+```
+
+**Accessing in code:**
+
+```javascript
+t('common.buttons.save'); // "Save"
+t('auth.login.title'); // "Welcome Back"
+t('auth.login.form.email'); // "Email Address"
+```
+
+### Data Types
+
+Unlingo supports all JSON data types for translation values:
+
+#### Strings
+
+```json
+{
+    "welcome": "Welcome to our application",
+    "description": "This is a longer description text",
+    "greeting": "Hello, {{name}}!"
+}
+```
+
+#### Numbers
+
+```json
+{
+    "maxItems": 100,
+    "price": 29.99,
+    "version": 2.1
+}
+```
+
+#### Booleans
+
+```json
+{
+    "isEnabled": true,
+    "showAdvanced": false,
+    "debugMode": false
+}
+```
+
+#### Arrays
+
+```json
+{
+    "header": [
+        {
+            "title": "Dashboard",
+            "subtitle": "Manage your account"
+        },
+        {
+            "title": "Analytics",
+            "subtitle": "Track your activity"
+        }
+    ]
+}
+```
+
+#### Objects
+
+```json
+{
+    "header": {
+        "title": "Dashboard",
+        "subtitle": "Manage your account"
+    }
+}
+```
+
+## Editor Interface
+
+### Tree View Mode
+
+The default tree view provides a hierarchical interface:
+
+- **Expandable nodes**: Click to expand/collapse sections
+- **Key organization**: See the structure of your translations
+- **Value editing**: Click values to edit directly
+- **Type indicators**: Visual indicators for different data types
+- **Search functionality**: Find keys quickly across the tree
+
+#### Adding Keys
+
+1. Click the **"+"** button in selected node or **"Add Key"** button at the top
+2. Choose parent key if needed (optional, by default new keys are added to root level)
+3. Enter key name and initial value
+4. Select data type (string, number, boolean)
+
+#### Deleting Keys
+
+1. Select the key to delete
+2. Click the trash icon
+3. Confirm deletion in the dialog
+4. Key and all children are removed
+
+<Warning>
+    Deleting a key removes it and all nested children. This action cannot be undone. Also all languages in selected
+    version will be affected after Save.
+</Warning>
+
+### JSON Edit Mode
+
+Switch to JSON mode for direct code editing:
+
+- **Error detection**: Real-time validation
+- **Auto-formatting**: Automatic code formatting
+- **Bulk editing**: Make large changes quickly
+
+#### JSON Mode Features
+
+- **Schema validation**: Ensures valid JSON structure
+- **Type checking**: Validates data types
+
+### Add Key Modal
+
+The Add Key modal provides a guided interface for creating new translations:
+
+#### Key Information
+
+- **Key Name**: The identifier for the translation
+- **Key Path**: Full dot notation path
+- **Parent Key**: Context within the hierarchy
+
+#### Value Configuration
+
+- **Data Type**: String, Number, Boolean, Object, Array
+- **Initial Value**: Starting content
+
+## Working with Translations
+
+### Creating Content
+
+#### Simple Text
+
+```json
+{
+    "welcome": "Welcome to our application"
+}
+```
+
+#### With Variables
+
+```json
+{
+    "greeting": "Hello, {{username}}! Welcome back.",
+    "itemCount": "You have {{count}} {{count, plural, one {item} other {items}}}"
+}
+```
+
+#### Nested Structure
+
+```json
+{
+    "dashboard": {
+        "header": {
+            "title": "Dashboard",
+            "subtitle": "Manage your account"
+        },
+        "sections": {
+            "overview": "Overview",
+            "analytics": "Analytics",
+            "settings": "Settings"
+        }
+    }
+}
+```
+
+### Editing Workflows
+
+#### In-Place Editing
+
+1. Navigate to the key in tree view
+2. Click the value to start editing
+3. Make changes in the inline editor
+4. Press Apply button
+
+#### Batch Editing
+
+1. Switch to JSON edit mode
+2. Make multiple changes to the JSON structure
+3. Validate changes with the syntax checker
+4. Save all changes at once
+
+#### Find and Replace
+
+1. Use the search bar to find specific text
+2. Use browser find (Ctrl+F) in JSON mode
+3. Replace values across multiple keys
+4. Filter results by key path or value content
+
+### Validation and Quality Control
+
+#### Automatic Validation
+
+- **JSON syntax**: Ensures valid structure
+- **Key naming**: Validates naming conventions
+- **Data types**: Checks type consistency
+- **Required fields**: Identifies missing values
+
+#### Translation Completeness
+
+- **Empty values**: Indicated with warnings
+
+## Troubleshooting
+
+<AccordionGroup>
+    <Accordion title='Changes not saving'>
+        - **Problem**: 
+          - Edits are not being persisted. 
+        - **Solutions**: 
+          - Check network connectivity
+          - Look for validation errors
+    </Accordion>
+
+    <Accordion title='JSON syntax errors'>
+        - **Problem**:
+          - Invalid JSON preventing saves.
+        - **Solutions**:
+          - Check for missing commas or brackets
+          - Use tree view mode for complex edits
+    </Accordion>
+
+    <Accordion title='Missing or broken keys'>
+        - **Problem**:
+          - Keys not appearing in application.
+        - **Solutions**:
+          - Verify key path matches code usage
+          - Check language and version selection
+          - Ensure release includes latest version
+          - Validate API integration
+    </Accordion>
+
+    <Accordion title='Performance issues with large translations'>
+        - **Problem**:
+          - Editor slow with many keys.
+        - **Solutions**:
+          - Use search/filter to narrow view
+          - Split large namespaces into smaller ones
+          - Edit in JSON mode for bulk changes
+    </Accordion>
+
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='Screenshots' icon='image' href='/concepts/screenshots'>
+        Learn visual translation mapping
+    </Card>
+    <Card title='Releases' icon='globe' href='/concepts/releases'>
+        Understand releases management
+    </Card>
+</CardGroup>

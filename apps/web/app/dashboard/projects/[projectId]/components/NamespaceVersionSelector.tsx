@@ -6,8 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NamespaceVersion } from '../types';
 import { useState } from 'react';
 import { usePaginatedQuery } from 'convex/react';
-import { api } from '../../../../../convex/_generated/api';
-import { Id } from '../../../../../convex/_generated/dataModel';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 interface Props {
     selectedVersions: NamespaceVersion[];
@@ -57,7 +57,11 @@ const NamespaceVersionSelector = ({
                 versionName: version.version,
             };
 
-            if (!selectedVersions.find(sv => sv.namespaceId === newSelection.namespaceId && sv.versionId === newSelection.versionId)) {
+            if (
+                !selectedVersions.find(
+                    sv => sv.namespaceId === newSelection.namespaceId && sv.versionId === newSelection.versionId
+                )
+            ) {
                 setSelectedVersions([...selectedVersions, newSelection]);
             }
 
@@ -84,10 +88,12 @@ const NamespaceVersionSelector = ({
             <Label className='text-sm font-medium text-gray-300'>Namespace Versions</Label>
             <div className='space-y-3'>
                 <div className='flex gap-3'>
-                    <Select value={selectedNamespace} onValueChange={v => {
-                        setSelectedNamespace(v);
-                        setSelectedVersion('');
-                    }}>
+                    <Select
+                        value={selectedNamespace}
+                        onValueChange={v => {
+                            setSelectedNamespace(v);
+                            setSelectedVersion('');
+                        }}>
                         <SelectTrigger className='bg-black/30 border-gray-700/50 text-white h-11'>
                             <SelectValue placeholder='Select namespace' />
                         </SelectTrigger>
@@ -133,7 +139,7 @@ const NamespaceVersionSelector = ({
                     <Button
                         onClick={addNamespaceVersion}
                         disabled={!selectedNamespace || !selectedVersion}
-                        className='bg-white text-black hover:bg-gray-200 h-11'>
+                        className='bg-white text-black hover:bg-gray-200'>
                         <Plus className='h-4 w-4' />
                     </Button>
                 </div>

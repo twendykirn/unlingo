@@ -20,7 +20,7 @@ export default function PrivacyPolicy() {
 
                         {/* Back Button */}
                         <Link href='/'>
-                            <Button variant='ghost' size='sm' className='text-gray-300 hover:text-white cursor-pointer'>
+                            <Button variant='ghost' size='sm' className='text-gray-300 hover:text-white'>
                                 <ArrowLeft className='h-4 w-4 mr-2' />
                                 Back to Home
                             </Button>
@@ -232,21 +232,39 @@ export default function PrivacyPolicy() {
                         {/* Cookies and Tracking */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>
-                                8. Cookies and Tracking Technologies
+                                8. Analytics and Tracking Technologies
                             </h2>
                             <p className='text-gray-300 mb-4'>
-                                We use cookies and similar tracking technologies to enhance your experience with our
-                                Service. These technologies help us:
+                                We are committed to protecting your privacy and do not use cookies for tracking
+                                purposes. Our analytics approach is designed to be privacy-first and GDPR compliant:
                             </p>
                             <ul className='list-disc list-inside text-gray-300 space-y-2 ml-4'>
-                                <li>Remember your preferences and settings</li>
-                                <li>Analyze usage patterns and improve our Service</li>
-                                <li>Provide personalized content and features</li>
-                                <li>Measure the effectiveness of our communications</li>
+                                <li>
+                                    <strong>Cookieless Analytics:</strong> We use privacy-focused analytics that do not
+                                    require cookies or personal identifiers
+                                </li>
+                                <li>
+                                    <strong>GDPR Compliant:</strong> Our analytics tools comply with GDPR and do not
+                                    track individual users
+                                </li>
+                                <li>
+                                    <strong>Essential Cookies Only:</strong> We only use strictly necessary cookies
+                                    required for authentication and service functionality
+                                </li>
+                                <li>
+                                    <strong>No Cross-Site Tracking:</strong> We do not track users across other websites
+                                    or services
+                                </li>
                             </ul>
                             <p className='text-gray-300 mt-4'>
-                                You can control cookies through your browser settings. However, disabling cookies may
-                                affect the functionality of our Service.
+                                <strong>Essential Cookies:</strong> The only cookies we use are essential for the
+                                operation of our Service, such as authentication tokens to keep you logged in. These are
+                                necessary for the Service to function properly.
+                            </p>
+                            <p className='text-gray-300 mt-4'>
+                                <strong>Analytics Data:</strong> We collect aggregated, anonymous usage data to improve
+                                our Service without using cookies or tracking individual users. This includes general
+                                usage patterns, performance metrics, and error reporting.
                             </p>
                         </section>
 
@@ -266,7 +284,7 @@ export default function PrivacyPolicy() {
                                 <li>Hosting and infrastructure (Vercel)</li>
                                 <li>Database services (Convex)</li>
                                 <li>Payment processing (Polar)</li>
-                                <li>Analytics services (TinyBird)</li>
+                                <li>Cookieless analytics services (Databuddy)</li>
                                 <li>Email services (Resend)</li>
                             </ul>
                         </section>

@@ -194,7 +194,7 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                             </div>
                             <Dialog open={isCreateNamespaceOpen} onOpenChange={setIsCreateNamespaceOpen}>
                                 <DialogTrigger asChild>
-                                    <Button className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'>
+                                    <Button className='bg-white text-black hover:bg-gray-200 transition-all'>
                                         <Plus className='h-4 w-4 mr-2' />
                                         Create Namespace
                                     </Button>
@@ -274,13 +274,13 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                                 <Button
                                     variant='ghost'
                                     onClick={() => setIsCreateNamespaceOpen(false)}
-                                    className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                    className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                                     Cancel
                                 </Button>
                                 <Button
                                     onClick={handleCreateNamespace}
                                     disabled={!newNamespaceName.trim()}
-                                    className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                    className='bg-white text-black hover:bg-gray-200 transition-all px-6'>
                                     <Plus className='h-4 w-4 mr-2' />
                                     Create Namespace
                                 </Button>
@@ -316,7 +316,7 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                         <Dialog open={isCreateNamespaceOpen} onOpenChange={setIsCreateNamespaceOpen}>
                             <DialogTrigger asChild>
                                 <Button
-                                    className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all'
+                                    className='bg-white text-black hover:bg-gray-200 transition-all'
                                     disabled={namespaces.length >= currentWorkspace.limits.namespacesPerProject}>
                                     <Plus className='h-4 w-4 mr-2' />
                                     Create Namespace
@@ -402,13 +402,13 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                             <Button
                                 variant='ghost'
                                 onClick={() => setIsCreateNamespaceOpen(false)}
-                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleCreateNamespace}
                                 disabled={!newNamespaceName.trim()}
-                                className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                className='bg-white text-black hover:bg-gray-200 transition-all px-6'>
                                 <Plus className='h-4 w-4 mr-2' />
                                 Create Namespace
                             </Button>
@@ -438,6 +438,13 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                                         <p className='text-xs text-gray-400 font-medium'>Namespace</p>
                                     </div>
                                 </div>
+                                <Button
+                                    size='sm'
+                                    variant='ghost'
+                                    className='p-2 text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'
+                                    onClick={e => handleMoreVerticalClick(e, namespace)}>
+                                    <MoreVertical className='h-4 w-4' />
+                                </Button>
                             </div>
 
                             {/* Stats Section */}
@@ -458,18 +465,6 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                                     </span>
                                 </div>
                             </div>
-
-                            {/* Actions Section */}
-                            <div className='flex items-center justify-between pt-4 border-t border-gray-800/50'>
-                                <div className='text-xs text-gray-400'>Click to manage</div>
-                                <Button
-                                    size='sm'
-                                    variant='ghost'
-                                    className='p-2 text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'
-                                    onClick={e => handleMoreVerticalClick(e, namespace)}>
-                                    <MoreVertical className='h-4 w-4' />
-                                </Button>
-                            </div>
                         </div>
                     ))}
                 </div>
@@ -480,7 +475,7 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                         <Button
                             onClick={() => loadMore(20)}
                             variant='outline'
-                            className='border-gray-700 text-gray-300 hover:bg-gray-800 cursor-pointer'>
+                            className='border-gray-700 text-gray-300 hover:bg-gray-800'>
                             Load More Namespaces
                         </Button>
                     </div>
@@ -553,7 +548,7 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                                 setIsDeleteNamespaceOpen(true);
                                 setIsEditNamespaceOpen(false);
                             }}
-                            className='border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 cursor-pointer transition-all'>
+                            className='border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 transition-all'>
                             <Trash2 className='h-4 w-4 mr-2' />
                             Delete Namespace
                         </Button>
@@ -561,7 +556,7 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                             <Button
                                 variant='ghost'
                                 onClick={() => setIsEditNamespaceOpen(false)}
-                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                                className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                                 Cancel
                             </Button>
                             <Button
@@ -569,7 +564,7 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                                 disabled={
                                     !editNamespaceName.trim() || selectedNamespaceName === editNamespaceName.trim()
                                 }
-                                className='bg-white text-black hover:bg-gray-200 cursor-pointer transition-all px-6'>
+                                className='bg-white text-black hover:bg-gray-200 transition-all px-6'>
                                 <Save className='h-4 w-4 mr-2' />
                                 Save Changes
                             </Button>
@@ -625,12 +620,12 @@ export function NamespacesTab({ project, workspace }: NamespacesTabProps) {
                         <Button
                             variant='ghost'
                             onClick={() => setIsDeleteNamespaceOpen(false)}
-                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 cursor-pointer transition-all'>
+                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all'>
                             Cancel
                         </Button>
                         <Button
                             onClick={handleDeleteNamespace}
-                            className='bg-red-600 text-white hover:bg-red-700 cursor-pointer transition-all px-6'>
+                            className='bg-red-600 text-white hover:bg-red-700 transition-all px-6'>
                             <Trash2 className='h-4 w-4 mr-2' />
                             Delete Namespace
                         </Button>
