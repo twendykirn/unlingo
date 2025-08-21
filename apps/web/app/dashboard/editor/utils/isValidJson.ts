@@ -1,4 +1,3 @@
-// Utility functions
 export const isValidJson = (str: string) => {
     try {
         JSON.parse(str);

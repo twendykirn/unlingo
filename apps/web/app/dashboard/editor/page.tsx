@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Plus, ArrowLeft, Code, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useQuery, useAction } from 'convex/react';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useOrganization } from '@clerk/nextjs';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { validateWithAjv } from '@/lib/zodSchemaGenerator';
@@ -25,7 +25,15 @@ import { collectEmptyValueNodes } from './utils/collectEmptyValueNodes';
 import NodeInfoContainer from './components/NodeInfoContainer';
 import AddKeyModal from './components/AddKeyModal';
 import { useObserve } from '@legendapp/state/react';
-import { expandedKeys$, filteredNodes$, hasUnsavedChanges$, nodes$, searchQuery$, selectedNode$ } from './store';
+import {
+    expandedKeys$,
+    filteredNodes$,
+    hasUnsavedChanges$,
+    nodes$,
+    originalJsonContent$,
+    searchQuery$,
+    selectedNode$,
+} from './store';
 import SaveButton from './components/SaveButton';
 import SearchField from './components/SearchField';
 
@@ -37,41 +45,32 @@ interface LanguageChanges {
 }
 
 export default function TranslationEditor() {
-    const { user } = useUser();
     const { organization } = useOrganization();
     const searchParams = useSearchParams();
     const router = useRouter();
 
-    // Extract URL parameters - only languageId is needed
     const languageId = searchParams.get('languageId') as Id<'languages'> | null;
+
+    const clerkId = organization?.id;
 
     const [showAddKeyModal, setShowAddKeyModal] = useState(false);
     const [addKeyParent, setAddKeyParent] = useState<string | null>(null);
     const [availableParents, setAvailableParents] = useState<{ id: string; key: string }[]>([]);
     const [emptyValueNodes, setEmptyValueNodes] = useState<TranslationNode[]>([]);
 
-    // JSON Schema state for primary language validation
     const [primaryLanguageSchema, setPrimaryLanguageSchema] = useState<any | null>(null);
-
-    // Primary language content for AI translations
     const [primaryLanguageContent, setPrimaryLanguageContent] = useState<any>({});
 
     const [isSaving, setIsSaving] = useState(false);
-
-    // Track original content for change detection
-    const [originalJsonContent, setOriginalJsonContent] = useState<string>('');
-
     const [didInit, setDidInit] = useState(false);
     const [loadingContent, setLoadingContent] = useState(false);
 
-    // Backend queries and mutations
     const applyChangeOperations = useAction(api.languages.applyChangeOperations);
+    const getLanguageContent = useAction(api.languages.getLanguageContent);
+    const getJsonSchema = useAction(api.languages.getJsonSchema);
 
-    // Get current workspace
-    const clerkId = organization?.id || user?.id;
     const currentWorkspace = useQuery(api.workspaces.getWorkspaceWithSubscription, clerkId ? { clerkId } : 'skip');
 
-    // Get language details with workspace ownership verification
     const language = useQuery(
         api.languages.getLanguageWithContext,
         languageId && currentWorkspace
@@ -82,25 +81,12 @@ export default function TranslationEditor() {
             : 'skip'
     );
 
-    // Get language content as JSON object directly
-    const getLanguageContent = useAction(api.languages.getLanguageContent);
-
-    const getJsonSchema = useAction(api.languages.getJsonSchema);
-
-    // Derive current values from backend data
     const selectedLanguage = language?.languageCode || 'en';
-
-    // Check if this is the primary language
     const isPrimaryLanguage = !!language?.isPrimary;
-
-    // Check if workspace has premium subscription
     const isPremium = !!currentWorkspace?.isPremium;
 
-    // Generate changes using json-diff for primary language saves
     const generateLanguageChanges = (oldJson: any, newJson: any): LanguageChanges => {
         const fullDiff = diff.diff(oldJson, newJson, { full: true });
-
-        // Create structured changes with precise array indexing
         const changes = createStructuredChanges(fullDiff);
 
         return {
@@ -111,21 +97,17 @@ export default function TranslationEditor() {
         };
     };
 
-    // Navigation function to go back
     const handleGoBack = () => {
         if (hasUnsavedChanges$.get()) {
             const confirmSwitch = window.confirm('You have unsaved changes. Going back will discard them. Continue?');
             if (!confirmSwitch) return;
         }
 
-        if (language) {
-            // Navigate back to the language's version page
-            router.push(
-                `/dashboard/projects/${language.projectId}/namespaces/${language.namespaceId}/versions/${language.namespaceVersionId}`
-            );
-        } else {
-            router.push('/dashboard');
-        }
+        if (!language) return;
+
+        router.push(
+            `/dashboard/projects/${language.projectId}/namespaces/${language.namespaceId}/versions/${language.namespaceVersionId}`
+        );
     };
 
     const getContentOnInit = async () => {
@@ -148,7 +130,6 @@ export default function TranslationEditor() {
                 setPrimaryLanguageSchema(JSON.parse(primarySchema));
             }
 
-            // If this is not the primary language, fetch primary language content
             if (!isPrimaryLanguage && language.primaryLanguageId) {
                 try {
                     const primaryContent = await getLanguageContent({
@@ -162,43 +143,26 @@ export default function TranslationEditor() {
                 }
             }
 
-            // languageContent is already parsed JSON object from the query
-            // It will be {} (empty object) if no content exists, which is fine
             const initialNodes = createNodesFromJson(languageContent);
             nodes$.set(initialNodes);
-            hasUnsavedChanges$.set(false);
 
-            // Initialize original content for change detection
-            setOriginalJsonContent(JSON.stringify(languageContent, null, 2));
+            originalJsonContent$.set(JSON.stringify(languageContent, null, 2));
             setDidInit(true);
         } catch (error) {
             console.error('Failed to process language content:', error);
-            // Fallback to empty state if content is invalid
             nodes$.set([]);
-            hasUnsavedChanges$.set(false);
         } finally {
             setLoadingContent(false);
         }
     };
 
-    // Load language content from backend using the new query
-    useEffect(() => {
-        if (!didInit && languageId && currentWorkspace?._id && language) {
-            getContentOnInit();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [languageId, currentWorkspace, didInit, language]);
-
-    // Navigate to and select an empty value node
     const navigateToEmptyValue = (nodeId: string) => {
         const nodes = nodes$.get();
         const node = nodes.find(n => n.id === nodeId);
         if (!node) return;
 
-        // Select the node
         selectedNode$.set(node);
 
-        // Expand parent nodes to make sure the node is visible
         const keyParts = node.key.split('.');
         const newExpandedKeys = new Set(expandedKeys$.get());
 
@@ -215,7 +179,6 @@ export default function TranslationEditor() {
     const onNodeDelete = (newNodes: TranslationNode[]) => {
         nodes$.set(newNodes);
         selectedNode$.set(null);
-        hasUnsavedChanges$.set(true);
     };
 
     const onAddParentNode = (nodeId: string) => {
@@ -234,7 +197,6 @@ export default function TranslationEditor() {
 
         const nodes = nodes$.get();
 
-        // Validate before saving
         const isValid = validateNodes(nodes);
         if (!isValid) {
             alert(`Cannot save: ${emptyValueNodes.length} empty values found. Please fill in all required fields.`);
@@ -244,10 +206,8 @@ export default function TranslationEditor() {
         setIsSaving(true);
 
         try {
-            // Convert nodes back to JSON structure
             const jsonContent = convertNodesToJson(nodes);
 
-            // Validate against JSON schema if available (for non-primary languages)
             if (!isPrimaryLanguage && primaryLanguageSchema) {
                 const validation = validateWithAjv(jsonContent, primaryLanguageSchema);
 
@@ -262,26 +222,22 @@ export default function TranslationEditor() {
                         `Schema validation failed:\n${errorMessage}${validation.errors && validation.errors.length > 3 ? '\n... and more errors' : ''}`
                     );
                     setIsSaving(false);
-                    return; // Don't save if validation fails
+                    return;
                 }
             }
 
-            // Generate changes using json-diff for primary language saves
+            const originalJsonContent = originalJsonContent$.get();
+
             const originalJson = originalJsonContent ? JSON.parse(originalJsonContent) : {};
             const languageChanges = generateLanguageChanges(originalJson, jsonContent);
 
-            // Save with changes for backend sync - only send changes for primary language
             await applyChangeOperations({
                 languageId,
                 workspaceId: currentWorkspace._id,
                 ...(languageChanges.changes !== undefined ? { languageChanges } : {}),
             });
 
-            // Update original content for next time
-            setOriginalJsonContent(JSON.stringify(jsonContent, null, 2));
-
-            // Update the original state to reflect saved changes
-            hasUnsavedChanges$.set(false);
+            originalJsonContent$.set(JSON.stringify(jsonContent, null, 2));
         } catch (error) {
             console.error('Failed to save changes:', error);
             alert('Failed to save changes. Please try again.');
@@ -290,14 +246,11 @@ export default function TranslationEditor() {
         }
     };
 
-    // Add new key functionality
-    const addNewKey = (keyName: string, finalValue: string, addKeyMode: 'ui' | 'json', uiData: any) => {
+    const addNewKey = (keyName: string, finalValue: string) => {
         try {
-            // Validate and parse the value
             let parsedValue;
             let nodeType: 'object' | 'string' | 'array' | 'number' | 'boolean' = 'string';
 
-            // Check if it's valid JSON
             if (isValidJson(finalValue)) {
                 try {
                     parsedValue = JSON.parse(finalValue);
@@ -324,20 +277,17 @@ export default function TranslationEditor() {
             const nodes = nodes$.get();
 
             if (addKeyParent) {
-                // Adding to a parent node
                 const parentNode = nodes.find(n => n.id === addKeyParent);
                 if (!parentNode) {
                     alert('Parent node not found');
                     return;
                 }
 
-                // Check if parent is an object type
                 if (parentNode.type !== 'object') {
                     alert('Can only add keys to object nodes');
                     return;
                 }
 
-                // Check if key already exists at this level
                 const newNodeKey = `${parentNode.key}.${keyName.trim()}`;
                 const existingNode = nodes.find(n => n.key === newNodeKey);
                 if (existingNode) {
@@ -356,7 +306,6 @@ export default function TranslationEditor() {
                     children: [],
                 };
 
-                // Only create child nodes for objects (not for strings or arrays)
                 const newNodes = [newNode];
                 if (nodeType === 'object') {
                     const childNodes = createNodesFromJson(parsedValue);
@@ -370,55 +319,40 @@ export default function TranslationEditor() {
                     newNode.children = updatedChildNodes.map(child => child.id);
                 }
 
-                // Update the parent's children array
                 nodes$.set(prev => [
                     ...prev.map(node =>
                         node.id === addKeyParent ? { ...node, children: [...node.children, newNodeId] } : node
                     ),
                     ...newNodes,
                 ]);
-
-                // Mark as unsaved
-                hasUnsavedChanges$.set(true);
             } else {
-                // Adding to root level - merge with existing JSON structure
                 const rootKeyName = keyName.trim();
-
-                // Check if key already exists at root level
                 const existingRootNode = nodes.find(n => !n.parent && n.key === rootKeyName);
+
                 if (existingRootNode) {
                     alert('A key with this name already exists at the root level');
                     return;
                 }
 
-                // Get current JSON structure
                 const currentJson = convertNodesToJson(nodes);
 
-                // Add new key to the structure
                 const updatedJson = {
                     ...currentJson,
                     [rootKeyName]: parsedValue,
                 };
 
-                // Rebuild all nodes from the merged JSON
                 const newNodes = createNodesFromJson(updatedJson);
                 nodes$.set(newNodes);
-
-                // Mark as unsaved
-                hasUnsavedChanges$.set(true);
             }
 
-            // Reset modal state
             setShowAddKeyModal(false);
             setAvailableParents([]);
             setAddKeyParent(null);
-            hasUnsavedChanges$.set(true);
         } catch {
             alert('Failed to add key. Please check your input.');
         }
     };
 
-    // Search and filter functionality
     const filterNodes = (query: string): TranslationNode[] => {
         const nodes = nodes$.get();
         if (!query.trim()) return nodes;
@@ -426,7 +360,6 @@ export default function TranslationEditor() {
         const lowerQuery = query.toLowerCase();
         const matchingNodes = new Set<string>();
 
-        // Find nodes that match the search query
         nodes.forEach(node => {
             const keyMatches = node.key.toLowerCase().includes(lowerQuery);
             let valueMatches = false;
@@ -434,7 +367,6 @@ export default function TranslationEditor() {
             if (typeof node.value === 'string') {
                 valueMatches = node.value.toLowerCase().includes(lowerQuery);
             } else if (typeof node.value === 'object' && node.value !== null) {
-                // Search in translation values
                 const values = Object.values(node.value);
                 valueMatches = values.some(val => typeof val === 'string' && val.toLowerCase().includes(lowerQuery));
             }
@@ -442,14 +374,12 @@ export default function TranslationEditor() {
             if (keyMatches || valueMatches) {
                 matchingNodes.add(node.id);
 
-                // Include parent chain
                 let current = node;
                 while (current.parent) {
                     matchingNodes.add(current.parent);
                     current = nodes.find(n => n.id === current.parent)!;
                 }
 
-                // Include all children
                 const addChildren = (childId: string) => {
                     const node = nodes.find(n => n.id === childId);
                     if (node) {
@@ -459,6 +389,7 @@ export default function TranslationEditor() {
                         });
                     }
                 };
+
                 addChildren(node.id);
             }
         });
@@ -466,20 +397,24 @@ export default function TranslationEditor() {
         return nodes.filter(node => matchingNodes.has(node.id));
     };
 
-    // Update filtered nodes when search query or nodes change
-    useObserve(searchQuery$, ({ value }) => {
-        if (value !== undefined) {
-            const filtered = filterNodes(value);
-            filteredNodes$.set(filtered);
-        }
-    });
-
-    useObserve(nodes$, ({ value }) => {
-        if (value !== undefined) {
+    useObserve(() => {
+        const nodes = nodes$.get();
+        if (nodes !== undefined) {
             const searchQuery = searchQuery$.get();
             const filtered = filterNodes(searchQuery);
             filteredNodes$.set(filtered);
-            setEmptyValueNodes(collectEmptyValueNodes(value));
+            setEmptyValueNodes(collectEmptyValueNodes(nodes));
+
+            const jsonContent = convertNodesToJson(nodes);
+            const jsonContentString = JSON.stringify(jsonContent, null, 2);
+
+            const originalContent = originalJsonContent$.get();
+
+            if (jsonContentString !== originalContent) {
+                hasUnsavedChanges$.set(true);
+            } else {
+                hasUnsavedChanges$.set(false);
+            }
         }
     });
 
@@ -491,8 +426,14 @@ export default function TranslationEditor() {
         }
     });
 
-    // Handle loading and error states
-    if (!currentWorkspace && clerkId) {
+    useEffect(() => {
+        if (!didInit && languageId && currentWorkspace?._id && language) {
+            getContentOnInit();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [languageId, currentWorkspace, didInit, language]);
+
+    if (currentWorkspace === undefined) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
                 <div className='text-center'>
@@ -546,7 +487,6 @@ export default function TranslationEditor() {
 
     return (
         <div className='h-screen bg-black text-white flex flex-col overflow-hidden'>
-            {/* Elegant Header */}
             <header className='bg-gray-950/95 border-b border-gray-800/50 px-6 py-4 backdrop-blur-md'>
                 <div className='flex items-center justify-between'>
                     <div className='flex items-center space-x-6'>
@@ -675,7 +615,6 @@ export default function TranslationEditor() {
                 </div>
             </header>
 
-            {/* Enhanced Toolbar */}
             <div className='bg-gray-900/50 border-b border-gray-800/50 px-6 py-4 backdrop-blur-sm'>
                 <div className='flex items-center justify-between'>
                     <div className='flex items-center space-x-4'>
@@ -714,9 +653,7 @@ export default function TranslationEditor() {
                 </div>
             </div>
 
-            {/* Main Content */}
             <div className='flex flex-1 min-h-0'>
-                {/* Tree View */}
                 <ScrollArea className='flex-1 bg-gray-900/30'>
                     <TreeView />
                 </ScrollArea>
@@ -732,7 +669,6 @@ export default function TranslationEditor() {
                 />
             </div>
 
-            {/* Elegant Add Key Dialog */}
             <AddKeyModal
                 isOpen={showAddKeyModal}
                 onClose={() => setShowAddKeyModal(false)}

@@ -1,39 +1,14 @@
 import { internalMutation, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
 
-// Internal function to increment workspace request usage
-export const incrementRequestUsage = internalMutation({
-    args: {
-        workspaceId: v.id('workspaces'),
-    },
-    handler: async (ctx, args) => {
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
-        }
-
-        const currentRequests = workspace.currentUsage.requests;
-        const newRequestCount = currentRequests + 1;
-
-        await ctx.db.patch(workspace._id, {
-            currentUsage: {
-                ...workspace.currentUsage,
-                requests: newRequestCount,
-            },
-        });
-
-        return {
-            currentRequests: newRequestCount,
-            limit: workspace.limits.requests,
-            exceedsLimit: newRequestCount > workspace.limits.requests * 1.5, // 1.5x buffer
-            nearLimit: newRequestCount > workspace.limits.requests * 0.8, // 80% warning
-            exceedsHardLimit: newRequestCount > workspace.limits.requests, // At limit
-        };
-    },
-});
+// Helper function to get current month string
+function getCurrentMonth(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
 
 // Internal function to check if workspace is at or near request limits
-export const checkRequestLimits = internalQuery({
+export const checkAndUpdateRequestUsage = internalMutation({
     args: {
         workspaceId: v.id('workspaces'),
     },
@@ -43,38 +18,72 @@ export const checkRequestLimits = internalQuery({
             throw new Error('Workspace not found');
         }
 
-        const currentRequests = workspace.currentUsage.requests;
+        const usage = await ctx.db.get(workspace.workspaceUsageId);
+        if (!usage) {
+            throw new Error('Usage record not found');
+        }
+
         const limit = workspace.limits.requests;
+        const currentMonth = getCurrentMonth();
+        const hardLimit = Math.round(limit * 1.3);
+
+        let isRequestAllowed = true;
+        let shouldSendHardLimitEmail = false;
+        let currentRequests = 1;
+
+        if (usage.month === currentMonth) {
+            currentRequests = usage.requests + 1;
+
+            if (currentRequests === hardLimit) {
+                shouldSendHardLimitEmail = true;
+            } else if (currentRequests > hardLimit) {
+                isRequestAllowed = false;
+                currentRequests = usage.requests;
+            }
+        }
+
+        if (isRequestAllowed) {
+            await ctx.db.patch(usage._id, {
+                requests: currentRequests,
+                month: currentMonth,
+                updatedAt: Date.now(),
+            });
+        }
 
         return {
             currentRequests,
             limit,
-            exceedsLimit: currentRequests >= limit * 1.5, // Block at 1.5x
-            nearLimit: currentRequests >= limit * 0.8, // Warning at 80%
-            exceedsHardLimit: currentRequests >= limit, // At 100% of plan limit
+            exceedsHardLimit: currentRequests === hardLimit, // Block at 130%
+            shouldSendHardLimitEmail, // Send email at 130%
+            isRequestAllowed, // Allow request
+            nearLimit: currentRequests === Math.round(limit * 0.8), // Warning at 80%
+            exceedsLimit: currentRequests === limit, // At 100% of plan limit
             workspace,
         };
     },
 });
 
-// Internal function to reset monthly usage (called by scheduled job)
-export const resetMonthlyUsage = internalMutation({
+// Internal function to get current usage for dashboard display
+export const getCurrentUsage = internalQuery({
     args: {
-        workspaceId: v.id('workspaces'),
+        workspaceUsageId: v.id('workspaceUsage'),
     },
     handler: async (ctx, args) => {
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
+        const currentMonth = getCurrentMonth();
+        const usage = await ctx.db.get(args.workspaceUsageId);
+
+        if (!usage) {
+            throw new Error('Usage record not found');
         }
 
-        await ctx.db.patch(workspace._id, {
-            currentUsage: {
-                ...workspace.currentUsage,
-                requests: 0,
-            },
-        });
+        let requests = 0;
+        if (usage.month === currentMonth) {
+            requests = usage.requests;
+        }
 
-        return { success: true };
+        return {
+            requests,
+            month: currentMonth,
+        };
     },
 });

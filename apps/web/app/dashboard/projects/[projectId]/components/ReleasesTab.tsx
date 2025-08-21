@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useQuery, useMutation, usePaginatedQuery } from 'convex/react';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useMutation, usePaginatedQuery } from 'convex/react';
 import { GitBranch, Plus, MoreVertical, Trash2, Copy, Check, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,38 +13,20 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from '@/components/ui/dialog';
 import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import { Doc } from '@/convex/_generated/dataModel';
 import { NamespaceVersion } from '../types';
 import NamespaceVersionSelector from './NamespaceVersionSelector';
 
 interface ReleasesTabProps {
-    project?: {
-        _id: Id<'projects'>;
-        name: string;
-        description?: string;
-        workspaceId: Id<'workspaces'>;
-    };
-    workspace?: {
-        _id: Id<'workspaces'>;
-        limits: {
-            releasesPerProject: number;
-        };
-    };
+    project: Doc<'projects'>;
+    workspace: Doc<'workspaces'>;
 }
 
 export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
-    const { user } = useUser();
-    const { organization } = useOrganization();
-    const params = useParams();
-    const projectId = params?.projectId as Id<'projects'>;
-
-    const clerkId = organization?.id || user?.id;
-
     const [isCreateReleaseOpen, setIsCreateReleaseOpen] = useState(false);
-    const [selectedRelease, setSelectedRelease] = useState<any | null>(null);
+    const [selectedRelease, setSelectedRelease] = useState<Doc<'releases'> | null>(null);
     const [newReleaseName, setNewReleaseName] = useState('');
     const [newReleaseTag, setNewReleaseTag] = useState('');
     const [selectedNamespaceVersions, setSelectedNamespaceVersions] = useState<NamespaceVersion[]>([]);
@@ -61,36 +41,16 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
     const updateRelease = useMutation(api.releases.updateRelease);
     const deleteRelease = useMutation(api.releases.deleteRelease);
 
-    const workspaceQuery = useQuery(
-        api.workspaces.getWorkspaceWithSubscription,
-        clerkId && !workspace ? { clerkId } : 'skip'
-    );
-
-    const projectQuery = useQuery(
-        api.projects.getProject,
-        workspaceQuery && projectId && !project
-            ? {
-                  projectId,
-                  workspaceId: workspaceQuery._id,
-              }
-            : 'skip'
-    );
-
-    const currentWorkspace = workspace || workspaceQuery;
-    const currentProject = project || projectQuery;
-
     const {
         results: releases,
         status,
         loadMore,
     } = usePaginatedQuery(
         api.releases.getReleases,
-        currentWorkspace && currentProject
-            ? {
-                  projectId: currentProject._id,
-                  workspaceId: currentWorkspace._id,
-              }
-            : 'skip',
+        {
+            projectId: project._id,
+            workspaceId: workspace._id,
+        },
         { initialNumItems: 20 }
     );
 
@@ -100,33 +60,20 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
         loadMore: loadMoreNamespaces,
     } = usePaginatedQuery(
         api.namespaces.getNamespaces,
-        currentWorkspace && currentProject
-            ? {
-                  projectId: currentProject._id,
-                  workspaceId: currentWorkspace._id,
-              }
-            : 'skip',
+        {
+            projectId: project._id,
+            workspaceId: workspace._id,
+        },
         { initialNumItems: 50 }
     );
 
-    if (!currentWorkspace || !currentProject) {
-        return (
-            <div className='flex items-center justify-center py-12'>
-                <div className='text-center'>
-                    <div className='w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4'></div>
-                    <p className='text-gray-400'>Loading...</p>
-                </div>
-            </div>
-        );
-    }
-
     const handleCreateRelease = async () => {
-        if (!newReleaseName.trim() || !newReleaseTag.trim() || !currentProject || !currentWorkspace) return;
+        if (!newReleaseName.trim() || !newReleaseTag.trim()) return;
 
         try {
             await createRelease({
-                projectId: currentProject._id,
-                workspaceId: currentWorkspace._id,
+                projectId: project._id,
+                workspaceId: workspace._id,
                 name: newReleaseName.trim(),
                 tag: newReleaseTag.trim(),
                 namespaceVersions: selectedNamespaceVersions.map(nv => ({
@@ -142,19 +89,14 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
     };
 
     const handleEditRelease = async () => {
-        if (
-            !editReleaseName.trim() ||
-            !editReleaseTag.trim() ||
-            !selectedRelease ||
-            !currentProject ||
-            !currentWorkspace
-        )
+        if (!editReleaseName.trim() || !editReleaseTag.trim() || !selectedRelease) {
             return;
+        }
 
         try {
             await updateRelease({
-                releaseId: selectedRelease._id as Id<'releases'>,
-                workspaceId: currentWorkspace._id,
+                releaseId: selectedRelease._id,
+                workspaceId: workspace._id,
                 name: editReleaseName.trim(),
                 tag: editReleaseTag.trim(),
                 namespaceVersions: editNamespaceVersions.map(nv => ({
@@ -172,12 +114,12 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
     };
 
     const handleDeleteRelease = async () => {
-        if (!selectedRelease || !currentWorkspace) return;
+        if (!selectedRelease) return;
 
         try {
             await deleteRelease({
-                releaseId: selectedRelease._id as Id<'releases'>,
-                workspaceId: currentWorkspace._id,
+                releaseId: selectedRelease._id,
+                workspaceId: workspace._id,
             });
             setSelectedRelease(null);
             setIsDeleteReleaseOpen(false);
@@ -203,13 +145,13 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
         }
     };
 
-    const handleMoreVerticalClick = (e: React.MouseEvent, release: any) => {
+    const handleMoreVerticalClick = (e: React.MouseEvent, release: Doc<'releases'>) => {
         e.stopPropagation();
         setSelectedRelease(release);
         setEditReleaseName(release.name);
         setEditReleaseTag(release.tag);
 
-        const namespaceVersionsWithNames: NamespaceVersion[] = (release.namespaceVersions || []).map((nv: any) => {
+        const namespaceVersionsWithNames: NamespaceVersion[] = release.namespaceVersions.map(nv => {
             const namespace = namespaces?.find(ns => ns._id === nv.namespaceId);
             return {
                 namespaceId: nv.namespaceId,
@@ -222,6 +164,14 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
         setEditNamespaceVersions(namespaceVersionsWithNames);
         setIsEditReleaseOpen(true);
     };
+
+    if (status === 'LoadingFirstPage' || status === 'LoadingMore') {
+        return (
+            <div className='flex items-center justify-center py-12'>
+                <div className='w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin'></div>
+            </div>
+        );
+    }
 
     if (!releases || releases.length === 0) {
         return (
@@ -238,14 +188,12 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                             </div>
                         </div>
                         <div className='flex items-center space-x-3'>
-                            <Dialog open={isCreateReleaseOpen} onOpenChange={setIsCreateReleaseOpen}>
-                                <DialogTrigger asChild>
-                                    <Button className='bg-white text-black hover:bg-gray-200 transition-all'>
-                                        <Plus className='h-4 w-4 mr-2' />
-                                        Create Release
-                                    </Button>
-                                </DialogTrigger>
-                            </Dialog>
+                            <Button
+                                className='bg-white text-black hover:bg-gray-200 transition-all'
+                                onClick={() => setIsCreateReleaseOpen(true)}>
+                                <Plus className='h-4 w-4 mr-2' />
+                                Create Release
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -256,7 +204,7 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                     </div>
                     <h3 className='text-xl font-semibold text-white mb-2'>No releases yet</h3>
                     <p className='text-gray-400 mb-6'>
-                        Create your first release to bundle translations for {currentProject.name}.
+                        Create your first release to bundle translations for {project.name}.
                     </p>
                 </div>
 
@@ -294,7 +242,7 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                             <NamespaceVersionSelector
                                 selectedVersions={selectedNamespaceVersions}
                                 setSelectedVersions={setSelectedNamespaceVersions}
-                                workspaceId={currentWorkspace._id}
+                                workspaceId={workspace._id}
                                 namespaces={namespaces || []}
                                 loadMoreNamespaces={loadMoreNamespaces}
                                 namespacesStatus={namespacesStatus}
@@ -337,14 +285,12 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                         </div>
                     </div>
                     <div className='flex items-center space-x-3'>
-                        <Dialog open={isCreateReleaseOpen} onOpenChange={setIsCreateReleaseOpen}>
-                            <DialogTrigger asChild>
-                                <Button className='bg-white text-black hover:bg-gray-200 transition-all'>
-                                    <Plus className='h-4 w-4 mr-2' />
-                                    Create Release
-                                </Button>
-                            </DialogTrigger>
-                        </Dialog>
+                        <Button
+                            className='bg-white text-black hover:bg-gray-200 transition-all'
+                            onClick={() => setIsCreateReleaseOpen(true)}>
+                            <Plus className='h-4 w-4 mr-2' />
+                            Create Release
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -419,13 +365,6 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                     </Button>
                 </div>
             )}
-            {status === 'LoadingMore' && (
-                <div className='flex justify-center'>
-                    <Button disabled variant='outline' className='border-gray-700 text-gray-300'>
-                        Loading...
-                    </Button>
-                </div>
-            )}
 
             <Dialog open={isCreateReleaseOpen} onOpenChange={setIsCreateReleaseOpen}>
                 <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-2xl backdrop-blur-md'>
@@ -461,7 +400,7 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                         <NamespaceVersionSelector
                             selectedVersions={selectedNamespaceVersions}
                             setSelectedVersions={setSelectedNamespaceVersions}
-                            workspaceId={currentWorkspace._id}
+                            workspaceId={workspace._id}
                             namespaces={namespaces || []}
                             loadMoreNamespaces={loadMoreNamespaces}
                             namespacesStatus={namespacesStatus}
@@ -519,7 +458,7 @@ export function ReleasesTab({ project, workspace }: ReleasesTabProps) {
                         <NamespaceVersionSelector
                             selectedVersions={editNamespaceVersions}
                             setSelectedVersions={setEditNamespaceVersions}
-                            workspaceId={currentWorkspace._id}
+                            workspaceId={workspace._id}
                             namespaces={namespaces || []}
                             loadMoreNamespaces={loadMoreNamespaces}
                             namespacesStatus={namespacesStatus}

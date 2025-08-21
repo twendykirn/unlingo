@@ -1,39 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, usePaginatedQuery, useAction } from 'convex/react';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useOrganization } from '@clerk/nextjs';
 import { ArrowLeft, Plus, Languages, Star, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Id } from '@/convex/_generated/dataModel';
 import { api } from '@/convex/_generated/api';
 
 export default function VersionLanguagesPage() {
-    const { user } = useUser();
     const { organization } = useOrganization();
     const router = useRouter();
     const params = useParams();
+
     const projectId = params?.projectId as Id<'projects'>;
     const namespaceId = params?.namespaceId as Id<'namespaces'>;
     const versionId = params?.versionId as Id<'namespaceVersions'>;
 
-    // Get the current workspace identifier (user or organization)
-    const clerkId = organization?.id || user?.id;
+    const clerkId = organization?.id;
 
-    // Local state
     const [isCreateLanguageOpen, setIsCreateLanguageOpen] = useState(false);
     const [newLanguageCode, setNewLanguageCode] = useState('');
 
-    // Mutations
     const createLanguage = useAction(api.languages.createLanguage);
     const deleteLanguage = useMutation(api.languages.deleteLanguage);
     const setPrimaryLanguage = useMutation(api.namespaces.setPrimaryLanguage);
 
-    // Queries
     const workspaceQuery = useQuery(api.workspaces.getWorkspaceWithSubscription, clerkId ? { clerkId } : 'skip');
 
     const projectQuery = useQuery(
@@ -56,7 +52,6 @@ export default function VersionLanguagesPage() {
             : 'skip'
     );
 
-    // Paginated query for languages
     const {
         results: languages,
         status,
@@ -72,8 +67,18 @@ export default function VersionLanguagesPage() {
         { initialNumItems: 20 }
     );
 
-    // Loading states
-    if (!workspaceQuery || !projectQuery || !versionQuery) {
+    const primaryLanguage = useMemo(() => {
+        if (!versionQuery || !languages) return null;
+        return languages.find(l => l._id === versionQuery.primaryLanguageId);
+    }, [versionQuery, languages]);
+
+    if (
+        !workspaceQuery ||
+        !projectQuery ||
+        !versionQuery ||
+        status === 'LoadingFirstPage' ||
+        status === 'LoadingMore'
+    ) {
         return (
             <div className='flex items-center justify-center py-12'>
                 <div className='text-center'>
@@ -84,7 +89,6 @@ export default function VersionLanguagesPage() {
         );
     }
 
-    // Handlers
     const handleCreateLanguage = async () => {
         if (!newLanguageCode.trim() || !versionId || !workspaceQuery) return;
 
@@ -129,14 +133,12 @@ export default function VersionLanguagesPage() {
         }
     };
 
-    const handleEditLanguage = (language: any) => {
-        // Navigate to editor page
-        router.push(`/dashboard/editor?languageId=${language._id}`);
+    const handleEditLanguage = (languageId: Id<'languages'>) => {
+        router.push(`/dashboard/editor?languageId=${languageId}`);
     };
 
     return (
         <div className='p-6 space-y-6'>
-            {/* Elegant Header with Combined Actions */}
             <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
                 <div className='flex items-center justify-between'>
                     <div className='flex items-center space-x-4'>
@@ -156,22 +158,17 @@ export default function VersionLanguagesPage() {
                             <div>
                                 <div className='flex items-center space-x-3 mb-1'>
                                     <h1 className='text-2xl font-semibold text-white'>{versionQuery.version}</h1>
-                                    {versionQuery?.primaryLanguageId && (
+                                    {primaryLanguage ? (
                                         <>
                                             <div className='w-1 h-1 bg-gray-600 rounded-full'></div>
                                             <div className='flex items-center space-x-1 bg-yellow-400/10 border border-yellow-400/20 rounded-full px-2 py-1'>
                                                 <Star className='h-3 w-3 text-yellow-400 fill-yellow-400' />
                                                 <span className='text-xs font-medium text-yellow-400'>
-                                                    {(() => {
-                                                        const primaryLang = languages.find(
-                                                            l => l._id === versionQuery.primaryLanguageId
-                                                        );
-                                                        return primaryLang?.languageCode.toUpperCase() || 'Unknown';
-                                                    })()}
+                                                    {primaryLanguage.languageCode.toUpperCase() || 'Unknown'}
                                                 </span>
                                             </div>
                                         </>
-                                    )}
+                                    ) : null}
                                 </div>
                                 <p className='text-gray-400 text-sm'>Manage languages for this version</p>
                             </div>
@@ -184,24 +181,19 @@ export default function VersionLanguagesPage() {
                             </span>
                             <span>languages</span>
                         </div>
-                        <Dialog open={isCreateLanguageOpen} onOpenChange={setIsCreateLanguageOpen}>
-                            <DialogTrigger asChild>
-                                <Button
-                                    className='bg-white text-black hover:bg-gray-200 transition-all'
-                                    disabled={languages.length >= workspaceQuery.limits.languagesPerVersion}>
-                                    <Plus className='h-4 w-4 mr-2' />
-                                    Add Language
-                                </Button>
-                            </DialogTrigger>
-                        </Dialog>
+                        <Button
+                            className='bg-white text-black hover:bg-gray-200 transition-all'
+                            disabled={languages.length >= workspaceQuery.limits.languagesPerVersion}
+                            onClick={() => setIsCreateLanguageOpen(true)}>
+                            <Plus className='h-4 w-4 mr-2' />
+                            Add Language
+                        </Button>
                     </div>
                 </div>
             </div>
 
-            {/* Elegant Create Language Dialog */}
             <Dialog open={isCreateLanguageOpen} onOpenChange={setIsCreateLanguageOpen}>
                 <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
-                    {/* Header with Icon */}
                     <div className='flex items-center space-x-4 pb-6 border-b border-gray-800/50'>
                         <div className='w-12 h-12 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-xl flex items-center justify-center border border-emerald-500/30'>
                             <Languages className='h-6 w-6 text-emerald-400' />
@@ -217,7 +209,6 @@ export default function VersionLanguagesPage() {
                     </div>
 
                     <div className='space-y-6 py-6'>
-                        {/* Language Code Input */}
                         <div className='space-y-3'>
                             <Label htmlFor='language-code' className='text-sm font-medium text-gray-300'>
                                 Language Code
@@ -249,7 +240,6 @@ export default function VersionLanguagesPage() {
                             </div>
                         </div>
 
-                        {/* Auto-copy Feature */}
                         {languages.length > 0 && (
                             <div className='bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 rounded-xl p-4'>
                                 <div className='flex items-center space-x-2 mb-2'>
@@ -266,7 +256,6 @@ export default function VersionLanguagesPage() {
                         )}
                     </div>
 
-                    {/* Footer Actions */}
                     <div className='flex items-center justify-between pt-6 border-t border-gray-800/50'>
                         <div className='text-xs text-gray-500'>
                             {languages?.length || 0} / {workspaceQuery.limits.languagesPerVersion} languages
@@ -293,16 +282,14 @@ export default function VersionLanguagesPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Languages List */}
             {languages.length > 0 ? (
                 <div className='space-y-4'>
                     <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
-                        {languages.map((language: any) => (
+                        {languages.map(language => (
                             <div
                                 key={language._id}
                                 className='group bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 hover:border-gray-600/50 hover:bg-gray-900/70 transition-all duration-300 backdrop-blur-sm cursor-pointer'
-                                onClick={() => handleEditLanguage(language)}>
-                                {/* Header Section */}
+                                onClick={() => handleEditLanguage(language._id)}>
                                 <div className='flex items-center justify-between mb-6'>
                                     <div className='flex items-center space-x-3'>
                                         <div
@@ -347,9 +334,7 @@ export default function VersionLanguagesPage() {
                                     </div>
                                 </div>
 
-                                {/* Actions Section */}
                                 <div className='flex items-center justify-between pt-4 border-t border-gray-800/50'>
-                                    {/* Left side - Status and Primary indicator */}
                                     <div className='flex items-center space-x-2'>
                                         {versionQuery.primaryLanguageId === language._id ? (
                                             <div className='flex items-center space-x-1 text-yellow-400'>
@@ -389,7 +374,6 @@ export default function VersionLanguagesPage() {
                         ))}
                     </div>
 
-                    {/* Load More Button */}
                     {status === 'CanLoadMore' && (
                         <div className='flex justify-center mt-6'>
                             <Button
@@ -397,13 +381,6 @@ export default function VersionLanguagesPage() {
                                 variant='outline'
                                 className='border-gray-700 text-gray-300 hover:bg-gray-800'>
                                 Load More Languages
-                            </Button>
-                        </div>
-                    )}
-                    {status === 'LoadingMore' && (
-                        <div className='flex justify-center mt-6'>
-                            <Button disabled variant='outline' className='border-gray-700 text-gray-300'>
-                                Loading...
                             </Button>
                         </div>
                     )}

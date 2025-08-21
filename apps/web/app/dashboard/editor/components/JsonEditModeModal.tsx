@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Code, X } from 'lucide-react';
+import { Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { validateWithAjv } from '@/lib/zodSchemaGenerator';
 import { convertNodesToJson } from '../utils/convertNodesToJson';
 import { createNodesFromJson } from '../utils/createNodesFromJson';
 import { Textarea } from '@/components/ui/textarea';
-import { hasUnsavedChanges$, nodes$, selectedNode$ } from '../store';
+import { nodes$, selectedNode$ } from '../store';
 import { isValidJson } from '../utils/isValidJson';
 
 interface Props {
@@ -22,7 +22,6 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
     const [rawJsonEdit, setRawJsonEdit] = useState('');
     const [hasEmptyKeys, setHasEmptyKeys] = useState(false);
 
-    // Function to check for empty keys in JSON object recursively
     const checkForEmptyKeys = (obj: any): boolean => {
         if (typeof obj !== 'object' || obj === null) return false;
 
@@ -36,7 +35,6 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
         });
     };
 
-    // Handle JSON text changes with validation
     const handleJsonChange = (value: string) => {
         setRawJsonEdit(value);
 
@@ -69,7 +67,6 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
         try {
             const parsedJson = JSON.parse(rawJsonEdit);
 
-            // Validate against JSON schema (mandatory for non-primary languages)
             if (!isPrimaryLanguage && !primaryLanguageSchema) {
                 alert(
                     'Cannot save: Primary language schema not available. Please ensure the primary language has been saved first.'
@@ -93,7 +90,7 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
                         `Schema validation failed:\n${errorMessage}${validation.errors && validation.errors.length > 3 ? '\n... and more errors' : ''}`
                     );
                     console.groupEnd();
-                    return; // Don't save if validation fails
+                    return;
                 }
                 console.groupEnd();
             }
@@ -101,16 +98,13 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
             const newNodes = createNodesFromJson(parsedJson);
 
             nodes$.set(newNodes);
-            hasUnsavedChanges$.set(true);
 
-            // Update the selected node if it exists in the new structure
             const currentSelectedNode = selectedNode$.get();
             if (currentSelectedNode) {
                 const updatedSelectedNode = newNodes.find(node => node.key === currentSelectedNode.key);
                 if (updatedSelectedNode) {
                     selectedNode$.set(updatedSelectedNode);
                 } else {
-                    // If the selected node no longer exists, clear selection
                     selectedNode$.set(null);
                 }
             }
@@ -170,7 +164,6 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
                             }}
                         />
 
-                        {/* JSON Validation Indicator */}
                         <div className='absolute top-3 right-3 z-10'>
                             {rawJsonEdit.trim() ? (
                                 isValidJson(rawJsonEdit) && !hasEmptyKeys ? (
@@ -193,7 +186,6 @@ export default function JsonEditModeModal({ isPrimaryLanguage, primaryLanguageSc
                         </div>
                     </div>
 
-                    {/* Error message for empty keys */}
                     {hasEmptyKeys && (
                         <div className='px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl'>
                             <p className='text-sm text-red-400'>

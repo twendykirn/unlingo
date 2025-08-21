@@ -14,10 +14,8 @@ import {
     Save,
     Languages,
     Search,
-    Lock,
     Unlock,
     Edit3,
-    Palette,
     Globe,
     GitBranch,
     Check,
@@ -27,7 +25,6 @@ import { usePaginatedQuery, useQuery, useMutation, useAction } from 'convex/reac
 import { useUser, useOrganization } from '@clerk/nextjs';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { cn } from '@/lib/utils';
 
 interface Container {
     _id: Id<'screenshotContainers'>;

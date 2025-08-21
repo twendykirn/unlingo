@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,18 +5,14 @@ import { Button } from '@/components/ui/button';
 export default function TermsOfService() {
     return (
         <main className='min-h-screen bg-black text-white'>
-            {/* Navigation Header */}
             <nav className='fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-gray-800'>
                 <div className='max-w-7xl mx-auto px-6 py-4'>
                     <div className='flex items-center justify-between'>
-                        {/* Logo */}
                         <Link href='/' className='text-2xl font-bold'>
                             <span className='bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent'>
                                 Unlingo
                             </span>
                         </Link>
-
-                        {/* Back Button */}
                         <Link href='/'>
                             <Button variant='ghost' size='sm' className='text-gray-300 hover:text-white'>
                                 <ArrowLeft className='h-4 w-4 mr-2' />
@@ -29,7 +23,6 @@ export default function TermsOfService() {
                 </div>
             </nav>
 
-            {/* Content */}
             <div className='pt-24 pb-16 px-6'>
                 <div className='max-w-4xl mx-auto'>
                     <div className='mb-12'>
@@ -38,7 +31,6 @@ export default function TermsOfService() {
                     </div>
 
                     <div className='prose prose-invert prose-lg max-w-none space-y-8'>
-                        {/* Introduction */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>1. Introduction</h2>
                             <p className='text-gray-300 mb-4'>
@@ -52,7 +44,6 @@ export default function TermsOfService() {
                             </p>
                         </section>
 
-                        {/* Acceptance of Terms */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>2. Acceptance of Terms</h2>
                             <p className='text-gray-300 mb-4'>
@@ -66,7 +57,6 @@ export default function TermsOfService() {
                             </ul>
                         </section>
 
-                        {/* Description of Service */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>3. Description of Service</h2>
                             <p className='text-gray-300 mb-4'>
@@ -81,7 +71,6 @@ export default function TermsOfService() {
                             </ul>
                         </section>
 
-                        {/* User Accounts */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>4. User Accounts</h2>
                             <p className='text-gray-300 mb-4'>
@@ -96,7 +85,6 @@ export default function TermsOfService() {
                             </ul>
                         </section>
 
-                        {/* Acceptable Use */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>5. Acceptable Use</h2>
                             <p className='text-gray-300 mb-4'>You agree not to use the Service:</p>
@@ -122,7 +110,6 @@ export default function TermsOfService() {
                             </ul>
                         </section>
 
-                        {/* Billing and Payments */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>6. Billing and Payments</h2>
                             <div className='space-y-4'>
@@ -156,7 +143,6 @@ export default function TermsOfService() {
                             </div>
                         </section>
 
-                        {/* Intellectual Property */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>7. Intellectual Property Rights</h2>
                             <p className='text-gray-300 mb-4'>
@@ -171,7 +157,6 @@ export default function TermsOfService() {
                             </p>
                         </section>
 
-                        {/* Privacy Policy */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>8. Privacy Policy</h2>
                             <p className='text-gray-300'>
@@ -185,7 +170,6 @@ export default function TermsOfService() {
                             </p>
                         </section>
 
-                        {/* Service Availability */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>9. Service Availability</h2>
                             <p className='text-gray-300'>
@@ -196,7 +180,6 @@ export default function TermsOfService() {
                             </p>
                         </section>
 
-                        {/* Termination */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>10. Termination</h2>
                             <p className='text-gray-300 mb-4'>
@@ -210,7 +193,6 @@ export default function TermsOfService() {
                             </p>
                         </section>
 
-                        {/* Disclaimer */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>11. Disclaimer</h2>
                             <p className='text-gray-300'>
@@ -220,7 +202,6 @@ export default function TermsOfService() {
                             </p>
                         </section>
 
-                        {/* Limitation of Liability */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>12. Limitation of Liability</h2>
                             <p className='text-gray-300'>
@@ -231,7 +212,6 @@ export default function TermsOfService() {
                             </p>
                         </section>
 
-                        {/* Governing Law */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>13. Governing Law</h2>
                             <p className='text-gray-300'>
@@ -240,7 +220,6 @@ export default function TermsOfService() {
                             </p>
                         </section>
 
-                        {/* Changes to Terms */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>14. Changes to Terms</h2>
                             <p className='text-gray-300'>
@@ -250,7 +229,6 @@ export default function TermsOfService() {
                             </p>
                         </section>
 
-                        {/* Contact Information */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>15. Contact Us</h2>
                             <p className='text-gray-300'>

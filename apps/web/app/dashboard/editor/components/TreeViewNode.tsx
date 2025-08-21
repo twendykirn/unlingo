@@ -30,7 +30,6 @@ export default function TreeViewNode({ id, level, toggleExpanded }: Props) {
         if (node === undefined) return;
 
         if (node.type === 'object') {
-            // Count actual child nodes instead of relying on node.value
             const childCount = node.children.length;
             return `{${childCount} keys}`;
         } else if (node.type === 'array') {
@@ -40,24 +39,21 @@ export default function TreeViewNode({ id, level, toggleExpanded }: Props) {
         return node.value === false ? 'false' : String(node.value || '');
     };
 
-    // Helper function to get display key (handles array indices)
     const getDisplayKey = () => {
         if (!node) return;
         const keyParts = node.key.split('.');
         const lastPart = keyParts[keyParts.length - 1];
 
-        // Check if this is an array item (contains [index])
         if (lastPart?.includes('[') && lastPart?.includes(']')) {
             const match = lastPart.match(/^(.+)\[(\d+)\]$/);
             if (match) {
-                return `[${match[2]}]`; // Just show the index like [0], [1], etc.
+                return `[${match[2]}]`;
             }
         }
 
         return lastPart || node.key;
     };
 
-    // Check if this node has empty values for highlighting
     const hasEmptyValue = node ? node.type === 'string' && isEmptyValue(node.value) : false;
 
     if (!node) return null;
@@ -70,7 +66,7 @@ export default function TreeViewNode({ id, level, toggleExpanded }: Props) {
                 } ${hasEmptyValue ? 'border-l-2 border-yellow-500 bg-yellow-900/20' : ''}`}
                 style={{ marginLeft: level * 20 }}
                 onClick={handleNodeClick}>
-                {hasChildren && (
+                {hasChildren ? (
                     <button
                         onClick={e => {
                             e.stopPropagation();
@@ -81,8 +77,8 @@ export default function TreeViewNode({ id, level, toggleExpanded }: Props) {
                             className={`h-4 w-4 transition-transform ${isExpanded ? 'transform rotate-90' : ''}`}
                         />
                     </button>
-                )}
-                {!hasChildren && <div className='w-6 mr-2' />}
+                ) : null}
+                {!hasChildren ? <div className='w-6 mr-2' /> : null}
 
                 <div className='flex-1 min-w-0'>
                     <div className='flex items-center justify-between'>
@@ -95,7 +91,7 @@ export default function TreeViewNode({ id, level, toggleExpanded }: Props) {
                 </div>
             </div>
 
-            {hasChildren && isExpanded && (
+            {hasChildren && isExpanded ? (
                 <div>
                     {node.children.map(childNode => (
                         <TreeViewNode
@@ -106,7 +102,7 @@ export default function TreeViewNode({ id, level, toggleExpanded }: Props) {
                         />
                     ))}
                 </div>
-            )}
+            ) : null}
         </div>
     );
 }

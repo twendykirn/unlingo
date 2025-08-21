@@ -6,19 +6,15 @@ import { Package, Tag, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Id } from '@/convex/_generated/dataModel';
 
-const NamespaceVersionItem = ({
-    namespaceVersion,
-    workspaceId,
-    index,
-    onRemove,
-    onVersionNameUpdate,
-}: {
+interface Props {
     namespaceVersion: NamespaceVersion;
     workspaceId: Id<'workspaces'>;
     index: number;
     onRemove: (index: number) => void;
     onVersionNameUpdate: (index: number, versionName: string) => void;
-}) => {
+}
+
+const NamespaceVersionItem = ({ namespaceVersion, workspaceId, index, onRemove, onVersionNameUpdate }: Props) => {
     const version = useQuery(
         api.namespaceVersions.getNamespaceVersion,
         namespaceVersion.versionName === 'Loading...' && workspaceId
@@ -33,7 +29,8 @@ const NamespaceVersionItem = ({
         if (version && namespaceVersion.versionName === 'Loading...') {
             onVersionNameUpdate(index, version.version);
         }
-    }, [version, namespaceVersion.versionName, index, onVersionNameUpdate]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [version, namespaceVersion.versionName, index]);
 
     return (
         <div className='flex items-center justify-between bg-gray-900/50 border border-gray-800/50 rounded-lg p-3'>

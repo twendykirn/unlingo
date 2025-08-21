@@ -1,18 +1,18 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { FolderOpen, Plus, Globe, Clock, Settings, House, User, ChartLine, Building2, X, Loader2 } from 'lucide-react';
+import { FolderOpen, Plus, Globe, Settings, House, User, ChartLine, Building2, Loader2 } from 'lucide-react';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useQuery, usePaginatedQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { api } from '@/convex/_generated/api';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Dock from '@/components/ui/dock';
 
 export default function Dashboard() {
@@ -21,7 +21,6 @@ export default function Dashboard() {
     const { openOrganizationProfile, openUserProfile } = useClerk();
     const router = useRouter();
 
-    // Create Project Dialog State
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [projectName, setProjectName] = useState('');
     const [projectDescription, setProjectDescription] = useState('');
@@ -36,16 +35,11 @@ export default function Dashboard() {
         { icon: <User size={18} />, label: 'Profile', onClick: () => openUserProfile() },
     ];
 
-    // Get the current workspace identifier (organization only)
     const clerkId = organization?.id;
 
-    // Query workspace with subscription info
     const workspace = useQuery(api.workspaces.getWorkspaceWithSubscription, clerkId ? { clerkId } : 'skip');
-
-    // Create project mutation
     const createProject = useMutation(api.projects.createProject);
 
-    // Query projects with pagination using usePaginatedQuery
     const {
         results: projects,
         status,
@@ -54,14 +48,6 @@ export default function Dashboard() {
         initialNumItems: 12,
     });
 
-    // Ensure user has an organization for org-only mode
-    useEffect(() => {
-        if (user && !organization) {
-            router.push('/select-org');
-        }
-    }, [user, organization, router]);
-
-    // Loading state
     if (!user || !organization || !clerkId) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
@@ -73,7 +59,6 @@ export default function Dashboard() {
         );
     }
 
-    // Workspace loading state
     if (workspace === undefined) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
@@ -85,7 +70,6 @@ export default function Dashboard() {
         );
     }
 
-    // No workspace found (shouldn't happen if webhooks are set up correctly)
     if (!workspace) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
@@ -116,17 +100,11 @@ export default function Dashboard() {
             return;
         }
 
-        if (!workspace.contactEmail) {
-            router.push('/dashboard/settings');
-            return;
-        }
-
         if (!projectName.trim()) {
             setCreateError('Project name is required');
             return;
         }
 
-        // Check limits at the time of submission
         if (workspace.currentUsage.projects >= workspace.limits.projects) {
             setCreateError('Cannot create project. Please check your subscription limits.');
             return;
@@ -142,13 +120,11 @@ export default function Dashboard() {
                 description: projectDescription.trim() || undefined,
             });
 
-            // Reset form and close dialog
-            setProjectName('');
-            setProjectDescription('');
-            setIsCreateDialogOpen(false);
-
-            // Redirect to the new project
-            router.push(`/dashboard/projects/${projectId}`);
+            if (projectId) {
+                setProjectName('');
+                setProjectDescription('');
+                setIsCreateDialogOpen(false);
+            }
         } catch (err) {
             setCreateError(err instanceof Error ? err.message : 'Failed to create project');
         } finally {
@@ -165,18 +141,15 @@ export default function Dashboard() {
 
     return (
         <div className='min-h-screen bg-black text-white'>
-            {/* Sticky Header */}
             <header className='fixed top-0 left-0 right-0 z-50 bg-black/95 border-b border-gray-800/50 px-6 py-4 backdrop-blur-md'>
                 <div className='flex items-center justify-between'>
                     <div className='flex items-center space-x-4'>
-                        {/* Logo */}
                         <h1 className='text-2xl font-bold'>
                             <span className='bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent'>
                                 Unlingo
                             </span>
                         </h1>
 
-                        {/* Workspace Name */}
                         {organization && (
                             <>
                                 <div className='h-6 w-px bg-gray-600/50' />
@@ -193,7 +166,6 @@ export default function Dashboard() {
                         )}
                     </div>
 
-                    {/* Projects Info */}
                     {hasProjects && (
                         <div className='flex items-center space-x-3'>
                             <div className='text-right'>
@@ -207,9 +179,7 @@ export default function Dashboard() {
                 </div>
             </header>
 
-            {/* Main Content */}
             {!hasProjects ? (
-                // Empty State - No Projects
                 <div className='flex-1 flex items-center justify-center min-h-[calc(100vh-80px)] pt-20'>
                     <div className='text-center max-w-md'>
                         <div className='mb-8'>
@@ -221,19 +191,15 @@ export default function Dashboard() {
                         </div>
 
                         {canCreateProject ? (
-                            <Dialog
-                                open={isCreateDialogOpen}
-                                onOpenChange={open => {
-                                    setIsCreateDialogOpen(open);
-                                    if (!open) resetCreateForm();
+                            <Button
+                                className='bg-white text-black hover:bg-gray-200 text-lg px-8 py-4'
+                                onClick={() => {
+                                    resetCreateForm();
+                                    setIsCreateDialogOpen(true);
                                 }}>
-                                <DialogTrigger asChild>
-                                    <Button className='bg-white text-black hover:bg-gray-200 text-lg px-8 py-4'>
-                                        <Plus className='h-5 w-5 mr-2' />
-                                        Create Your First Project
-                                    </Button>
-                                </DialogTrigger>
-                            </Dialog>
+                                <Plus className='h-5 w-5 mr-2' />
+                                Create Your First Project
+                            </Button>
                         ) : (
                             <div className='space-y-4'>
                                 <Button
@@ -254,28 +220,21 @@ export default function Dashboard() {
                     </div>
                 </div>
             ) : (
-                // Projects List View
                 <div className='p-6 pt-24'>
-                    {/* Create Project Button */}
                     {canCreateProject && (
                         <div className='flex justify-end mb-8'>
-                            <Dialog
-                                open={isCreateDialogOpen}
-                                onOpenChange={open => {
-                                    setIsCreateDialogOpen(open);
-                                    if (!open) resetCreateForm();
+                            <Button
+                                className='bg-white text-black hover:bg-gray-200'
+                                onClick={() => {
+                                    resetCreateForm();
+                                    setIsCreateDialogOpen(true);
                                 }}>
-                                <DialogTrigger asChild>
-                                    <Button className='bg-white text-black hover:bg-gray-200'>
-                                        <Plus className='h-4 w-4 mr-2' />
-                                        New Project
-                                    </Button>
-                                </DialogTrigger>
-                            </Dialog>
+                                <Plus className='h-4 w-4 mr-2' />
+                                New Project
+                            </Button>
                         </div>
                     )}
 
-                    {/* Projects Grid */}
                     <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
                         {projects?.map((project, index) => (
                             <motion.div
@@ -286,7 +245,6 @@ export default function Dashboard() {
                                 className='group cursor-pointer'>
                                 <Link href={`/dashboard/projects/${project._id}`}>
                                     <div className='bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 transition-all duration-300 hover:border-gray-600/50 hover:bg-gray-900/70 backdrop-blur-sm'>
-                                        {/* Header Section */}
                                         <div className='flex items-center justify-between mb-6'>
                                             <div className='flex items-center space-x-3'>
                                                 <div className='w-12 h-12 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-xl flex items-center justify-center border border-gray-700/30 group-hover:border-blue-500/50 transition-all'>
@@ -303,7 +261,6 @@ export default function Dashboard() {
                                             </div>
                                         </div>
 
-                                        {/* Description Section */}
                                         <div className='mb-4'>
                                             {project.description ? (
                                                 <p className='text-gray-400 text-sm leading-relaxed line-clamp-2'>
@@ -314,7 +271,6 @@ export default function Dashboard() {
                                             )}
                                         </div>
 
-                                        {/* Stats Section */}
                                         <div className='space-y-3 mb-4'>
                                             <div className='flex items-center justify-between text-xs'>
                                                 <span className='text-gray-400'>Created</span>
@@ -329,7 +285,6 @@ export default function Dashboard() {
                         ))}
                     </div>
 
-                    {/* Load More Button */}
                     {status === 'CanLoadMore' && (
                         <div className='text-center mt-8'>
                             <Button variant='outline' onClick={handleLoadMore} className='px-8'>
@@ -348,12 +303,10 @@ export default function Dashboard() {
                 </div>
             )}
 
-            {/* Create Project Dialog */}
             <Dialog
                 open={isCreateDialogOpen}
                 onOpenChange={open => {
                     setIsCreateDialogOpen(open);
-                    if (!open) resetCreateForm();
                 }}>
                 <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
                     <DialogHeader className='pb-6 border-b border-gray-800/50'>
@@ -372,7 +325,6 @@ export default function Dashboard() {
                         </div>
                     </DialogHeader>
 
-                    {/* Limits Info */}
                     {workspace && (
                         <div className='bg-gray-800/30 border border-gray-700/50 rounded-xl p-4 mb-6'>
                             <div className='flex items-center justify-between text-sm'>

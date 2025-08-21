@@ -10,7 +10,7 @@ import { getUIValueAsJSON } from '../utils/getUIValueAsJson';
 import { createNodesFromJson } from '../utils/createNodesFromJson';
 import { buildJsonFromNodes } from '../utils/buildJsonFromNodes';
 import { Textarea } from '@/components/ui/textarea';
-import { hasUnsavedChanges$, nodes$, selectedNode$ } from '../store';
+import { nodes$, selectedNode$ } from '../store';
 import { use$ } from '@legendapp/state/react';
 import { TranslationNode } from '../types';
 import { useAction } from 'convex/react';
@@ -51,10 +51,8 @@ export default function SelectedNodeEditArea({
 
     const selectedNode = use$(selectedNode$);
 
-    // Convex action for translation
     const translateContent = useAction(api.translation.translateContent);
 
-    // Wrapper functions to track changes when UI arrays/objects are modified
     const setEditUIArrayItemsWithChange = (items: typeof editUIArrayItems) => {
         setEditUIArrayItems(items);
         setIsChanged(true);
@@ -65,14 +63,11 @@ export default function SelectedNodeEditArea({
         setIsChanged(true);
     };
 
-    // Validation function to check if all object keys are filled
     const hasValidObjectKeys = () => {
-        // Check UI mode object keys
         if (editUIValueType === 'object') {
             return editUIObjectKeys.every(entry => entry.key.trim() !== '');
         }
 
-        // Check JSON mode for empty object keys
         if (editValue && isValidJson(editValue)) {
             try {
                 const parsed = JSON.parse(editValue);
@@ -87,13 +82,11 @@ export default function SelectedNodeEditArea({
         return true;
     };
 
-    // Handle AI translation
     const handleAITranslation = async () => {
         if (!selectedNode || isTranslating || isPrimaryLanguage || !workspaceId) return;
 
         setIsTranslating(true);
         try {
-            // Get the primary language value for this key
             const getPrimaryValueByKey = (obj: any, key: string): any => {
                 const keys = key.split('.');
                 let current = obj;
@@ -123,7 +116,6 @@ export default function SelectedNodeEditArea({
 
             const { translatedValue } = result;
 
-            // Update the edit value with the translated content
             const jsonValue = JSON.stringify(translatedValue, null, 2);
             setEditValue(jsonValue);
             setEditUIValuesFromJSON(jsonValue);
@@ -136,16 +128,13 @@ export default function SelectedNodeEditArea({
         }
     };
 
-    // Apply current edit changes
     const applyEdit = () => {
         if (!selectedNode) return;
 
         try {
             let newValue: any;
 
-            // Get the value based on the current edit mode
             if (editMode === 'ui') {
-                // Use UI values to construct the new value
                 const jsonValue = getUIValueAsJSON({
                     uiValueType: editUIValueType,
                     uiStringValue: editUIStringValue,
@@ -156,14 +145,12 @@ export default function SelectedNodeEditArea({
                 });
                 newValue = JSON.parse(jsonValue);
             } else {
-                // Use JSON mode value
                 if (!editValue.trim()) return;
                 newValue = JSON.parse(editValue);
             }
 
             const nodes = nodes$.get();
 
-            // Determine the new type based on the new value
             let newType: 'object' | 'string' | 'array' | 'number' | 'boolean' = 'string';
             if (Array.isArray(newValue)) {
                 newType = 'array';
@@ -175,21 +162,17 @@ export default function SelectedNodeEditArea({
                 newType = 'boolean';
             }
 
-            // Update the selected node's value and type
             const updatedNodes = nodes.map(node =>
                 node.id === selectedNode.id ? { ...node, value: newValue, type: newType } : node
             );
 
-            // If the node is or becomes an object/array, we need to update or recreate its children based on the new value
             let finalNodes: TranslationNode[];
 
             if (newType === 'object' || newType === 'array' || selectedNode.children.length > 0) {
-                // Remove existing children of this node
                 const filteredNodes = updatedNodes.filter(
                     node => !isDescendantOf(node.id, selectedNode.id, updatedNodes)
                 );
 
-                // Create new child nodes from the new value
                 if (
                     newType === 'object' &&
                     typeof newValue === 'object' &&
@@ -201,7 +184,6 @@ export default function SelectedNodeEditArea({
                         childKey => `node-${selectedNode.key}.${childKey}`
                     );
 
-                    // Update the parent node's children array
                     const parentNodeIndex = filteredNodes.findIndex(node => node.id === selectedNode.id);
                     if (parentNodeIndex !== -1) {
                         filteredNodes[parentNodeIndex] = {
@@ -215,13 +197,11 @@ export default function SelectedNodeEditArea({
                     filteredNodes.push(...childNodes);
                 } else if (newType === 'array' && Array.isArray(newValue)) {
                     const childNodes = createNodesFromJson({ temp: newValue }, selectedNode.key, selectedNode.id);
-                    // Filter out the temporary parent node and adjust the children
                     const arrayChildNodes = childNodes.filter(node => node.id !== `node-${selectedNode.key}.temp`);
                     const directChildren = arrayChildNodes
                         .filter(node => node.parent === selectedNode.id)
                         .map(node => node.id);
 
-                    // Update the parent node's children array
                     const parentNodeIndex = filteredNodes.findIndex(node => node.id === selectedNode.id);
                     if (parentNodeIndex !== -1) {
                         filteredNodes[parentNodeIndex] = {
@@ -234,7 +214,6 @@ export default function SelectedNodeEditArea({
 
                     filteredNodes.push(...arrayChildNodes);
                 } else {
-                    // Node is becoming a primitive type (string, number, boolean) - clear any existing children
                     const parentNodeIndex = filteredNodes.findIndex(node => node.id === selectedNode.id);
                     if (parentNodeIndex !== -1) {
                         filteredNodes[parentNodeIndex] = {
@@ -248,22 +227,18 @@ export default function SelectedNodeEditArea({
 
                 finalNodes = filteredNodes;
             } else {
-                // Simple primitive value update with no children - just use the updated nodes
                 finalNodes = updatedNodes;
             }
 
-            // Update ancestor nodes to reflect the changes
             const finalNodesWithUpdatedAncestors = updateAncestorNodes(selectedNode.id, finalNodes);
 
             nodes$.set(finalNodesWithUpdatedAncestors);
 
-            // Update selectedNode$ with the updated node to trigger useEffect
             const updatedSelectedNode = finalNodesWithUpdatedAncestors.find(node => node.id === selectedNode.id);
             if (updatedSelectedNode) {
                 selectedNode$.set(updatedSelectedNode);
             }
 
-            hasUnsavedChanges$.set(true);
             setIsChanged(false);
         } catch (error) {
             console.error('Failed to apply edit:', error);
@@ -271,7 +246,6 @@ export default function SelectedNodeEditArea({
         }
     };
 
-    // Helper function to check if a node is a descendant of another node
     const isDescendantOf = (nodeId: string, ancestorId: string, nodes: TranslationNode[]): boolean => {
         const node = nodes.find(n => n.id === nodeId);
         if (!node || !node.parent) return false;
@@ -279,48 +253,40 @@ export default function SelectedNodeEditArea({
         return isDescendantOf(node.parent, ancestorId, nodes);
     };
 
-    // Function to update all ancestor nodes with their rebuilt values
     const updateAncestorNodes = (nodeId: string, nodes: TranslationNode[]): TranslationNode[] => {
         const updatedNodes = [...nodes];
         const node = updatedNodes.find(n => n.id === nodeId);
 
         if (!node || !node.parent) return updatedNodes;
 
-        // Find the parent node
         const parentNode = updatedNodes.find(n => n.id === node.parent);
         if (!parentNode) return updatedNodes;
 
-        // Rebuild the parent's value from its children
         const rebuiltValue = buildJsonFromNodes({
             nodes: updatedNodes,
             nodeId: parentNode.id,
             action: '',
         });
 
-        // Update the parent node's value
         const parentIndex = updatedNodes.findIndex(n => n.id === parentNode.id);
         if (parentIndex !== -1) {
             updatedNodes[parentIndex] = { ...parentNode, value: rebuiltValue };
         }
 
-        // Recursively update grandparents
         return updateAncestorNodes(parentNode.id, updatedNodes);
     };
 
-    // Real-time JSON editing with validation and visual feedback
     const handleJsonValueChange = (newJsonValue: string, isUserEdit = true) => {
         setEditValue(newJsonValue);
         if (isUserEdit) {
             setIsChanged(true);
         }
 
-        // Sync with edit UI values when in JSON mode
         if (editMode === 'json') {
             setEditUIValuesFromJSON(newJsonValue);
         }
     };
 
-    // Handle mode switching for Edit
     const switchToEditUIMode = () => {
         if (isValidJson(editValue) || !editValue.trim()) {
             setEditUIValuesFromJSON(editValue);
@@ -341,7 +307,6 @@ export default function SelectedNodeEditArea({
         setEditMode('json');
     };
 
-    // Convert JSON string to Edit UI values
     const setEditUIValuesFromJSON = (jsonString: string) => {
         if (!jsonString.trim()) {
             setEditUIValueType('string');
@@ -406,7 +371,6 @@ export default function SelectedNodeEditArea({
         }
     };
 
-    // Handle UI value changes and sync with JSON
     const handleEditUIValueChange = () => {
         if (editMode === 'ui') {
             const jsonValue = getUIValueAsJSON({
@@ -418,11 +382,10 @@ export default function SelectedNodeEditArea({
                 uiObjectKeys: editUIObjectKeys,
             });
             setEditValue(jsonValue);
-            handleJsonValueChange(jsonValue, false); // false because this is internal sync, not user edit
+            handleJsonValueChange(jsonValue, false);
         }
     };
 
-    // Handle UI value changes for uncommitted tracking (without auto-applying)
     const handleEditUIValueChangeUncommitted = () => {
         if (editMode === 'ui' && selectedNode) {
             const jsonValue = getUIValueAsJSON({
@@ -440,12 +403,9 @@ export default function SelectedNodeEditArea({
 
     useEffect(() => {
         if (selectedNode) {
-            // Initialize editValue with the current node's value for JSON editing
             const jsonValue = JSON.stringify(selectedNode.value, null, 2);
             setEditValue(jsonValue);
-            // Initialize edit UI values
             setEditUIValuesFromJSON(jsonValue);
-            // Reset change tracking
             setIsChanged(false);
         }
 
@@ -478,7 +438,6 @@ export default function SelectedNodeEditArea({
                 </Button>
             </div>
             <div className='space-y-4'>
-                {/* Mode Selector for Edit */}
                 <div className='flex space-x-2'>
                     <Button
                         type='button'
@@ -508,8 +467,7 @@ export default function SelectedNodeEditArea({
 
                 {editMode === 'ui' ? (
                     <div className='mb-2'>
-                        {/* Value Input Based on Type */}
-                        {editUIValueType === 'string' && (
+                        {editUIValueType === 'string' ? (
                             <input
                                 type='text'
                                 value={editUIStringValue}
@@ -520,9 +478,9 @@ export default function SelectedNodeEditArea({
                                 className='w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
                                 placeholder='Enter string value...'
                             />
-                        )}
+                        ) : null}
 
-                        {editUIValueType === 'number' && (
+                        {editUIValueType === 'number' ? (
                             <input
                                 type='number'
                                 value={editUINumberValue}
@@ -533,9 +491,9 @@ export default function SelectedNodeEditArea({
                                 className='w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
                                 placeholder='Enter number value...'
                             />
-                        )}
+                        ) : null}
 
-                        {editUIValueType === 'boolean' && (
+                        {editUIValueType === 'boolean' ? (
                             <Select
                                 value={editUIBooleanValue.toString()}
                                 onValueChange={value => {
@@ -550,14 +508,13 @@ export default function SelectedNodeEditArea({
                                     <SelectItem value='false'>false</SelectItem>
                                 </SelectContent>
                             </Select>
-                        )}
+                        ) : null}
 
-                        {editUIValueType === 'array' && (
+                        {editUIValueType === 'array' ? (
                             <div className='space-y-2'>
                                 <label className='text-xs text-gray-500'>Array Items</label>
                                 {editUIArrayItems.map((item, index) => (
                                     <div key={index} className='space-y-1'>
-                                        {/* Type selector */}
                                         <div className='flex items-center space-x-2'>
                                             <label className='text-xs text-gray-500 w-8 flex-shrink-0'>Type:</label>
                                             <Select
@@ -605,7 +562,6 @@ export default function SelectedNodeEditArea({
                                                 <X className='h-3 w-3' />
                                             </Button>
                                         </div>
-                                        {/* Value input */}
                                         <div className='flex items-center space-x-2'>
                                             <label className='text-xs text-gray-500 w-8 flex-shrink-0'>Val:</label>
                                             {item.type === 'boolean' ? (
@@ -656,10 +612,9 @@ export default function SelectedNodeEditArea({
                                                 />
                                             )}
                                         </div>
-                                        {/* Separator */}
-                                        {index < editUIArrayItems.length - 1 && (
+                                        {index < editUIArrayItems.length - 1 ? (
                                             <div className='border-t border-gray-700'></div>
-                                        )}
+                                        ) : null}
                                     </div>
                                 ))}
                                 <Button
@@ -676,14 +631,13 @@ export default function SelectedNodeEditArea({
                                     + Add Item
                                 </Button>
                             </div>
-                        )}
+                        ) : null}
 
-                        {editUIValueType === 'object' && (
+                        {editUIValueType === 'object' ? (
                             <div className='space-y-2'>
                                 <label className='text-xs text-gray-500'>Object Properties</label>
                                 {editUIObjectKeys.map((entry, index) => (
                                     <div key={index} className='space-y-1'>
-                                        {/* Property Key */}
                                         <div className='flex items-center space-x-2'>
                                             <label className='text-xs text-gray-500 w-8 flex-shrink-0'>Key:</label>
                                             <input
@@ -725,7 +679,6 @@ export default function SelectedNodeEditArea({
                                                 <X className='h-3 w-3' />
                                             </Button>
                                         </div>
-                                        {/* Value Type */}
                                         <div className='flex items-center space-x-2'>
                                             <label className='text-xs text-gray-500 w-8 flex-shrink-0'>Type:</label>
                                             <Select
@@ -752,7 +705,6 @@ export default function SelectedNodeEditArea({
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        {/* Property Value */}
                                         <div className='flex items-center space-x-2'>
                                             <label className='text-xs text-gray-500 w-8 flex-shrink-0'>Val:</label>
                                             {entry.type === 'boolean' ? (
@@ -801,10 +753,9 @@ export default function SelectedNodeEditArea({
                                                 />
                                             )}
                                         </div>
-                                        {/* Separator line except for last item */}
-                                        {index < editUIObjectKeys.length - 1 && (
+                                        {index < editUIObjectKeys.length - 1 ? (
                                             <div className='border-t border-gray-700'></div>
-                                        )}
+                                        ) : null}
                                     </div>
                                 ))}
                                 <Button
@@ -825,7 +776,7 @@ export default function SelectedNodeEditArea({
                                     + Add Property
                                 </Button>
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 ) : (
                     <div className='mb-2 relative'>
@@ -839,14 +790,13 @@ export default function SelectedNodeEditArea({
                             }`}
                             placeholder='Edit JSON value...'
                         />
-                        {editValue && !isValidJson(editValue) && (
+                        {editValue && !isValidJson(editValue) ? (
                             <div className='absolute top-2 right-2'>
                                 <div className='w-2 h-2 bg-red-500 rounded-full'></div>
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 )}
-                {/* Apply button for UI mode */}
                 <div className='flex items-center justify-between mt-4'>
                     <div
                         className={`text-xs ${
@@ -857,7 +807,7 @@ export default function SelectedNodeEditArea({
                             : 'Apply changes to update the value'}
                     </div>
                     <div className='flex items-center space-x-2'>
-                        {!isPrimaryLanguage && isPremium && (
+                        {!isPrimaryLanguage && isPremium ? (
                             <Button
                                 size='sm'
                                 onClick={handleAITranslation}
@@ -872,7 +822,7 @@ export default function SelectedNodeEditArea({
                                 )}
                                 AI
                             </Button>
-                        )}
+                        ) : null}
                         <Button
                             size='sm'
                             onClick={applyEdit}

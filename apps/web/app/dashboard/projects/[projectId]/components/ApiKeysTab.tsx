@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { usePaginatedQuery, useMutation } from 'convex/react';
 import { Key, Copy, Trash2, Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { api } from '../../../../../convex/_generated/api';
-import { Id } from '../../../../../convex/_generated/dataModel';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 interface ApiKeysTabProps {
     project: {
@@ -93,7 +93,7 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
         try {
             await navigator.clipboard.writeText(text);
             setCopySuccess(true);
-            setTimeout(() => setCopySuccess(false), 2000);
+            setTimeout(() => setCopySuccess(false), 600);
         } catch (error) {
             console.error('Failed to copy to clipboard:', error);
         }
@@ -107,7 +107,7 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
         return `${prefix}_${'*'.repeat(20)}`;
     };
 
-    if (status === 'LoadingFirstPage') {
+    if (status === 'LoadingFirstPage' || status === 'LoadingMore') {
         return (
             <div className='flex items-center justify-center py-12'>
                 <div className='w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin'></div>
@@ -130,14 +130,12 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
                             </div>
                         </div>
                         <div className='flex items-center space-x-3'>
-                            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                                <DialogTrigger asChild>
-                                    <Button className='bg-white text-black hover:bg-gray-200 transition-all'>
-                                        <Plus className='h-4 w-4 mr-2' />
-                                        Generate Key
-                                    </Button>
-                                </DialogTrigger>
-                            </Dialog>
+                            <Button
+                                className='bg-white text-black hover:bg-gray-200 transition-all'
+                                onClick={() => setIsCreateOpen(true)}>
+                                <Plus className='h-4 w-4 mr-2' />
+                                Generate Key
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -222,14 +220,12 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
                         </div>
                     </div>
                     <div className='flex items-center'>
-                        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                            <DialogTrigger asChild>
-                                <Button className='bg-white text-black hover:bg-gray-200 transition-all'>
-                                    <Plus className='h-4 w-4 mr-2' />
-                                    Generate Key
-                                </Button>
-                            </DialogTrigger>
-                        </Dialog>
+                        <Button
+                            className='bg-white text-black hover:bg-gray-200 transition-all'
+                            onClick={() => setIsCreateOpen(true)}>
+                            <Plus className='h-4 w-4 mr-2' />
+                            Generate Key
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -348,7 +344,7 @@ export function ApiKeysTab({ project, workspace }: ApiKeysTabProps) {
                                     API Key Generated
                                 </DialogTitle>
                                 <DialogDescription className='text-gray-400 text-sm'>
-                                    Copy this key now. You won't see it again.
+                                    Copy this key now. You won&apos;t see it again.
                                 </DialogDescription>
                             </div>
                         </div>

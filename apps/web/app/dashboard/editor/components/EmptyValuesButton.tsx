@@ -5,6 +5,7 @@ import { ChevronRight, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TranslationNode } from '../types';
+import { Button } from '@/components/ui/button';
 
 interface Props {
     emptyNodes: TranslationNode[];
@@ -14,13 +15,11 @@ interface Props {
 export default function EmptyValuesButton({ emptyNodes, onNavigateToEmptyValue }: Props) {
     const [showEmptyValuesDialog, setShowEmptyValuesDialog] = useState(false);
 
-    // Navigate to and select an empty value node
     const navigateToEmptyValue = (nodeId: string) => {
         setShowEmptyValuesDialog(false);
 
         onNavigateToEmptyValue(nodeId);
 
-        // Scroll to the node
         setTimeout(() => {
             const element = document.querySelector(`[data-node-id="${nodeId}"]`);
             if (element) {
@@ -37,16 +36,17 @@ export default function EmptyValuesButton({ emptyNodes, onNavigateToEmptyValue }
 
     return (
         <>
-            {emptyNodes.length > 0 && (
-                <button
+            {emptyNodes.length > 0 ? (
+                <Button
+                    size='sm'
                     onClick={() => setShowEmptyValuesDialog(true)}
-                    className='flex items-center space-x-2 px-4 py-2 bg-amber-600/20 border border-amber-500/30 rounded-xl hover:bg-amber-600/30 transition-all cursor-pointer'>
+                    className='bg-amber-600/20 border border-amber-500/30 hover:bg-amber-600/30 transition-all'>
                     <AlertTriangle className='h-4 w-4 text-amber-400' />
                     <span className='text-sm font-medium text-amber-300'>
                         {emptyNodes.length} Issue{emptyNodes.length !== 1 ? 's' : ''}
                     </span>
-                </button>
-            )}
+                </Button>
+            ) : null}
             <Dialog open={showEmptyValuesDialog} onOpenChange={setShowEmptyValuesDialog}>
                 <DialogContent className='max-w-lg max-h-[70vh] bg-gray-950/95 border-gray-800/50 overflow-hidden flex flex-col backdrop-blur-md'>
                     <DialogHeader className='flex-shrink-0 pb-4 border-b border-gray-800/50'>
@@ -56,7 +56,9 @@ export default function EmptyValuesButton({ emptyNodes, onNavigateToEmptyValue }
                             </div>
                             <div>
                                 <h3 className='text-lg font-semibold'>Translation Issues</h3>
-                                <p className='text-sm text-gray-400 font-normal'>{emptyNodes.length} empty value{emptyNodes.length !== 1 ? 's' : ''} found</p>
+                                <p className='text-sm text-gray-400 font-normal'>
+                                    {emptyNodes.length} empty value{emptyNodes.length !== 1 ? 's' : ''} found
+                                </p>
                             </div>
                         </DialogTitle>
                     </DialogHeader>
@@ -79,7 +81,9 @@ export default function EmptyValuesButton({ emptyNodes, onNavigateToEmptyValue }
                                                     {node.key}
                                                 </div>
                                                 <div className='text-xs text-gray-500 mt-1 flex items-center space-x-2'>
-                                                    <span className='px-2 py-1 bg-gray-700/50 rounded-md'>{node.type}</span>
+                                                    <span className='px-2 py-1 bg-gray-700/50 rounded-md'>
+                                                        {node.type}
+                                                    </span>
                                                     <span>Empty value</span>
                                                 </div>
                                             </div>
@@ -88,12 +92,12 @@ export default function EmptyValuesButton({ emptyNodes, onNavigateToEmptyValue }
                                     </button>
                                 ))}
 
-                                {emptyNodes.length === 0 && (
+                                {emptyNodes.length === 0 ? (
                                     <div className='text-center py-8 text-gray-500'>
                                         <AlertTriangle className='h-12 w-12 mx-auto mb-3 text-gray-600' />
                                         <p>No empty values found</p>
                                     </div>
-                                )}
+                                ) : null}
                             </ScrollArea>
                         </div>
                     </div>

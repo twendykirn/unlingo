@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useOrganizationList, useUser } from '@clerk/nextjs';
+import { useOrganization, useOrganizationList, useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,52 +10,44 @@ import { motion } from 'motion/react';
 import { Building2, ArrowRight, Mail, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import slugify from 'slugify';
 
 export default function NewOrganizationPage() {
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(1);
 
-    // Step 1: Organization details
     const [name, setName] = useState('');
     const [slug, setSlug] = useState('');
-
-    // Step 2: Contact email
     const [contactEmail, setContactEmail] = useState('');
     const [isCompletingSetup, setIsCompletingSetup] = useState(false);
 
     const { user } = useUser();
+    const { organization } = useOrganization();
     const { createOrganization, setActive } = useOrganizationList();
 
     const createWorkspaceMutation = useMutation(api.workspaces.createOrganizationWorkspace);
 
-    // Auto-populate email with user's primary email
     useEffect(() => {
         if (user?.primaryEmailAddress?.emailAddress && !contactEmail) {
             setContactEmail(user.primaryEmailAddress.emailAddress);
         }
     }, [user, contactEmail]);
 
-    // Generate slug from name
     const handleNameChange = (value: string) => {
         setName(value);
-        // Auto-generate slug from name
-        const generatedSlug = value
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-            .replace(/\s+/g, '-') // Replace spaces with dashes
-            .replace(/--+/g, '-') // Replace multiple dashes with single dash
-            .replace(/^-|-$/g, ''); // Remove leading/trailing dashes
+        const generatedSlug = slugify(value, {
+            lower: true,
+            replacement: '-',
+        });
         setSlug(generatedSlug);
     };
 
     const handleSlugChange = (value: string) => {
-        // Ensure slug follows naming conventions
-        const cleanSlug = value
-            .toLowerCase()
-            .replace(/[^a-z0-9-]/g, '') // Only allow letters, numbers, and dashes
-            .replace(/--+/g, '-') // Replace multiple dashes with single dash
-            .replace(/^-|-$/g, ''); // Remove leading/trailing dashes
-        setSlug(cleanSlug);
+        const generatedSlug = slugify(value, {
+            lower: true,
+            replacement: '-',
+        });
+        setSlug(generatedSlug);
     };
 
     const handleOrgSubmit = async (e: React.FormEvent) => {
@@ -84,13 +76,11 @@ export default function NewOrganizationPage() {
             });
 
             if (organization) {
-                // Create the Convex workspace with both organization ID and contact email
                 await createWorkspaceMutation({
                     clerkOrgId: organization.id,
                     contactEmail: contactEmail.trim(),
                 });
 
-                // Set the newly created organization as active
                 await setActive?.({ organization: organization.id });
                 router.push('/dashboard');
             }
@@ -108,6 +98,14 @@ export default function NewOrganizationPage() {
         { number: 2, title: 'Contact Email', description: 'Set up contact details' },
     ];
 
+    if (organization?.id) {
+        return (
+            <div className='flex items-center justify-center py-12'>
+                <div className='w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin'></div>
+            </div>
+        );
+    }
+
     return (
         <div className='min-h-screen bg-black text-white flex items-center justify-center p-6'>
             <motion.div
@@ -115,7 +113,6 @@ export default function NewOrganizationPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
                 className='w-full max-w-md space-y-8'>
-                {/* Stepper */}
                 <div className='flex items-center justify-center space-x-4 mb-8'>
                     {stepperItems.map((item, index) => (
                         <div key={item.number} className='flex items-center'>
@@ -149,13 +146,11 @@ export default function NewOrganizationPage() {
                     ))}
                 </div>
 
-                {/* Step 1: Organization Creation */}
-                {currentStep === 1 && (
+                {currentStep === 1 ? (
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.3 }}>
-                        {/* Header */}
                         <div className='text-center mb-8'>
                             <div className='mx-auto w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mb-6'>
                                 <Building2 className='h-8 w-8 text-white' />
@@ -164,9 +159,7 @@ export default function NewOrganizationPage() {
                             <p className='text-gray-400'>Set up your organization details</p>
                         </div>
 
-                        {/* Form */}
                         <form onSubmit={handleOrgSubmit} className='space-y-6'>
-                            {/* Organization Name */}
                             <div className='space-y-2'>
                                 <Label htmlFor='name' className='text-sm font-medium text-gray-300'>
                                     Organization Name
@@ -183,7 +176,6 @@ export default function NewOrganizationPage() {
                                 />
                             </div>
 
-                            {/* Organization Slug */}
                             <div className='space-y-2'>
                                 <Label htmlFor='slug' className='text-sm font-medium text-gray-300'>
                                     Organization URL
@@ -203,7 +195,6 @@ export default function NewOrganizationPage() {
                                 </p>
                             </div>
 
-                            {/* Submit Button */}
                             <Button
                                 type='submit'
                                 disabled={!isOrgFormValid}
@@ -215,15 +206,13 @@ export default function NewOrganizationPage() {
                             </Button>
                         </form>
                     </motion.div>
-                )}
+                ) : null}
 
-                {/* Step 2: Contact Email */}
-                {currentStep === 2 && (
+                {currentStep === 2 ? (
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.3 }}>
-                        {/* Header */}
                         <div className='text-center mb-8'>
                             <div className='mx-auto w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mb-6'>
                                 <Mail className='h-8 w-8 text-white' />
@@ -232,9 +221,7 @@ export default function NewOrganizationPage() {
                             <p className='text-gray-400'>We need your contact email to complete the setup</p>
                         </div>
 
-                        {/* Form */}
                         <form onSubmit={handleCompleteSetup} className='space-y-6'>
-                            {/* Contact Email */}
                             <div className='space-y-2'>
                                 <Label htmlFor='contactEmail' className='text-sm font-medium text-gray-300'>
                                     Contact Email
@@ -256,7 +243,6 @@ export default function NewOrganizationPage() {
                                 </p>
                             </div>
 
-                            {/* Action Buttons */}
                             <div className='flex space-x-3'>
                                 <Button
                                     type='button'
@@ -286,7 +272,7 @@ export default function NewOrganizationPage() {
                             </div>
                         </form>
                     </motion.div>
-                )}
+                ) : null}
             </motion.div>
         </div>
     );

@@ -55,17 +55,13 @@ export const createNamespaceVersionContext = internalMutation({
             );
         }
 
-        // Validate version format (semantic versioning or special names)
-        if (args.version !== 'main' && !/^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$/.test(args.version)) {
-            throw new Error(
-                'Version must follow semantic versioning format (e.g., "1.0.0", "1.2.3-beta.1") or be "main"'
-            );
-        }
-
         // Create the namespace version
         const versionId = await ctx.db.insert('namespaceVersions', {
             namespaceId: args.namespaceId,
             version: args.version,
+            usage: {
+                languages: 0,
+            },
         });
 
         // Update namespace usage counter
@@ -105,7 +101,7 @@ export const internalInsertLanguage = internalMutation({
         await ctx.db.insert('languages', {
             namespaceVersionId: args.namespaceVersionId,
             languageCode: args.languageCode,
-            fileId: args.fileId ?? undefined,
+            fileId: args.fileId,
             fileSize: args.fileSize,
         });
     },

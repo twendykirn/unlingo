@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, usePaginatedQuery, useAction } from 'convex/react';
-import { useUser, useOrganization } from '@clerk/nextjs';
-import { ArrowLeft, Plus, MoreVertical, GitBranch, Tag, Trash2, Save } from 'lucide-react';
+import { useOrganization } from '@clerk/nextjs';
+import { ArrowLeft, Plus, MoreVertical, GitBranch, Trash2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,26 +15,22 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import { Doc, Id } from '@/convex/_generated/dataModel';
 
 export default function NamespaceVersionsPage() {
-    const { user } = useUser();
     const { organization } = useOrganization();
     const router = useRouter();
     const params = useParams();
     const projectId = params?.projectId as Id<'projects'>;
     const namespaceId = params?.namespaceId as Id<'namespaces'>;
 
-    // Get the current workspace identifier (user or organization)
-    const clerkId = organization?.id || user?.id;
+    const clerkId = organization?.id;
 
-    // Local state
     const [isCreateVersionOpen, setIsCreateVersionOpen] = useState(false);
-    const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
+    const [selectedVersion, setSelectedVersion] = useState<Id<'namespaceVersions'> | null>(null);
     const [newVersionNumber, setNewVersionNumber] = useState('');
     const [copyFromVersion, setCopyFromVersion] = useState('');
     const [isEditVersionOpen, setIsEditVersionOpen] = useState(false);
@@ -42,12 +38,10 @@ export default function NamespaceVersionsPage() {
     const [editVersionNumber, setEditVersionNumber] = useState('');
     const [selectedVersionName, setSelectedVersionName] = useState('');
 
-    // Mutations
     const createVersion = useAction(api.namespaceVersions.createNamespaceVersion);
     const updateVersion = useMutation(api.namespaceVersions.updateNamespaceVersion);
     const deleteVersion = useMutation(api.namespaceVersions.deleteNamespaceVersion);
 
-    // Queries
     const workspaceQuery = useQuery(api.workspaces.getWorkspaceWithSubscription, clerkId ? { clerkId } : 'skip');
 
     const projectQuery = useQuery(
@@ -71,7 +65,6 @@ export default function NamespaceVersionsPage() {
             : 'skip'
     );
 
-    // Paginated query for versions
     const {
         results: versions,
         status,
@@ -88,7 +81,13 @@ export default function NamespaceVersionsPage() {
     );
 
     // Loading states
-    if (!workspaceQuery || !projectQuery || !namespaceQuery) {
+    if (
+        !workspaceQuery ||
+        !projectQuery ||
+        !namespaceQuery ||
+        status === 'LoadingFirstPage' ||
+        status === 'LoadingMore'
+    ) {
         return (
             <div className='flex items-center justify-center py-12'>
                 <div className='text-center'>
@@ -123,7 +122,7 @@ export default function NamespaceVersionsPage() {
 
         try {
             await updateVersion({
-                versionId: selectedVersion as Id<'namespaceVersions'>,
+                versionId: selectedVersion,
                 workspaceId: workspaceQuery._id,
                 version: editVersionNumber.trim(),
             });
@@ -141,7 +140,7 @@ export default function NamespaceVersionsPage() {
 
         try {
             await deleteVersion({
-                versionId: selectedVersion as Id<'namespaceVersions'>,
+                versionId: selectedVersion,
                 workspaceId: workspaceQuery._id,
             });
             setSelectedVersion(null);
@@ -151,11 +150,11 @@ export default function NamespaceVersionsPage() {
         }
     };
 
-    const handleVersionCardClick = (version: any) => {
-        router.push(`/dashboard/projects/${projectId}/namespaces/${namespaceId}/versions/${version._id}`);
+    const handleVersionCardClick = (versionId: Id<'namespaceVersions'>) => {
+        router.push(`/dashboard/projects/${projectId}/namespaces/${namespaceId}/versions/${versionId}`);
     };
 
-    const handleMoreVerticalClick = (e: React.MouseEvent, version: any) => {
+    const handleMoreVerticalClick = (e: React.MouseEvent, version: Doc<'namespaceVersions'>) => {
         e.stopPropagation();
         setSelectedVersion(version._id);
         setEditVersionNumber(version.version);
@@ -165,7 +164,6 @@ export default function NamespaceVersionsPage() {
 
     return (
         <div className='p-6 space-y-6'>
-            {/* Elegant Header with Combined Actions */}
             <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
                 <div className='flex items-center justify-between'>
                     <div className='flex items-center space-x-4'>
@@ -197,21 +195,17 @@ export default function NamespaceVersionsPage() {
                             </span>
                             <span>versions</span>
                         </div>
-                        <Dialog open={isCreateVersionOpen} onOpenChange={setIsCreateVersionOpen}>
-                            <DialogTrigger asChild>
-                                <Button
-                                    className='bg-white text-black hover:bg-gray-200 transition-all'
-                                    disabled={versions.length >= workspaceQuery.limits.versionsPerNamespace}>
-                                    <Plus className='h-4 w-4 mr-2' />
-                                    Create Version
-                                </Button>
-                            </DialogTrigger>
-                        </Dialog>
+                        <Button
+                            className='bg-white text-black hover:bg-gray-200 transition-all'
+                            disabled={versions.length >= workspaceQuery.limits.versionsPerNamespace}
+                            onClick={() => setIsCreateVersionOpen(true)}>
+                            <Plus className='h-4 w-4 mr-2' />
+                            Create Version
+                        </Button>
                     </div>
                 </div>
             </div>
 
-            {/* Hidden Create Version Dialog */}
             <Dialog open={isCreateVersionOpen} onOpenChange={setIsCreateVersionOpen}>
                 <DialogContent className='bg-gray-950 border-gray-800 text-white'>
                     <DialogHeader>
@@ -233,7 +227,7 @@ export default function NamespaceVersionsPage() {
                             />
                         </div>
 
-                        {versions && versions.length > 0 && (
+                        {versions && versions.length > 0 ? (
                             <div>
                                 <Label htmlFor='copy-from'>Copy from existing version (optional)</Label>
                                 <Select value={copyFromVersion} onValueChange={setCopyFromVersion}>
@@ -241,7 +235,7 @@ export default function NamespaceVersionsPage() {
                                         <SelectValue placeholder='Select version to copy from' />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {versions.map((version: any) => (
+                                        {versions.map(version => (
                                             <SelectItem key={version._id} value={version._id}>
                                                 {version.version}
                                             </SelectItem>
@@ -249,7 +243,7 @@ export default function NamespaceVersionsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                        )}
+                        ) : null}
                     </div>
 
                     <DialogFooter>
@@ -273,7 +267,6 @@ export default function NamespaceVersionsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Versions List */}
             {versions && versions.length > 0 ? (
                 <div className='space-y-6'>
                     <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
@@ -281,8 +274,7 @@ export default function NamespaceVersionsPage() {
                             <div
                                 key={version._id}
                                 className='group bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 cursor-pointer transition-all duration-300 hover:border-gray-600/50 hover:bg-gray-900/70 backdrop-blur-sm'
-                                onClick={() => handleVersionCardClick(version)}>
-                                {/* Header Section */}
+                                onClick={() => handleVersionCardClick(version._id)}>
                                 <div className='flex items-center justify-between mb-4'>
                                     <div className='flex items-center space-x-3'>
                                         <div className='w-12 h-12 bg-gradient-to-br from-pink-500/20 to-purple-600/20 rounded-xl flex items-center justify-center border border-pink-500/30 group-hover:border-pink-500/50 transition-all'>
@@ -304,7 +296,6 @@ export default function NamespaceVersionsPage() {
                                     </Button>
                                 </div>
 
-                                {/* Stats Section */}
                                 <div className='space-y-3'>
                                     <div className='flex items-center justify-between text-xs'>
                                         <span className='text-gray-400'>Languages</span>
@@ -326,7 +317,6 @@ export default function NamespaceVersionsPage() {
                         ))}
                     </div>
 
-                    {/* Load More Button */}
                     {status === 'CanLoadMore' && (
                         <div className='flex justify-center'>
                             <Button
@@ -334,13 +324,6 @@ export default function NamespaceVersionsPage() {
                                 variant='outline'
                                 className='border-gray-700 text-gray-300 hover:bg-gray-800'>
                                 Load More Versions
-                            </Button>
-                        </div>
-                    )}
-                    {status === 'LoadingMore' && (
-                        <div className='flex justify-center'>
-                            <Button disabled variant='outline' className='border-gray-700 text-gray-300'>
-                                Loading...
                             </Button>
                         </div>
                     )}
@@ -357,10 +340,8 @@ export default function NamespaceVersionsPage() {
                 </div>
             )}
 
-            {/* Elegant Edit Version Dialog */}
             <Dialog open={isEditVersionOpen} onOpenChange={setIsEditVersionOpen}>
                 <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
-                    {/* Header with Icon */}
                     <div className='flex items-center space-x-4 pb-6 border-b border-gray-800/50'>
                         <div className='w-12 h-12 bg-gradient-to-br from-pink-500/20 to-purple-600/20 rounded-xl flex items-center justify-center border border-pink-500/30'>
                             <GitBranch className='h-6 w-6 text-pink-400' />
@@ -374,7 +355,6 @@ export default function NamespaceVersionsPage() {
                     </div>
 
                     <div className='space-y-6 py-6'>
-                        {/* Version Name Input */}
                         <div className='space-y-3'>
                             <Label htmlFor='edit-version-number' className='text-sm font-medium text-gray-300'>
                                 Version Name
@@ -408,7 +388,6 @@ export default function NamespaceVersionsPage() {
                             </div>
                         </div>
 
-                        {/* Warning Notice */}
                         <div className='bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-4'>
                             <div className='flex items-center space-x-1 mb-2'>
                                 <div className='w-5 h-5 flex items-center justify-center'>
@@ -423,7 +402,6 @@ export default function NamespaceVersionsPage() {
                         </div>
                     </div>
 
-                    {/* Footer Actions */}
                     <div className='flex items-center justify-between pt-6 border-t border-gray-800/50'>
                         <Button
                             variant='outline'
@@ -454,10 +432,8 @@ export default function NamespaceVersionsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Elegant Delete Version Confirmation Dialog */}
             <Dialog open={isDeleteVersionOpen} onOpenChange={setIsDeleteVersionOpen}>
                 <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-lg backdrop-blur-md'>
-                    {/* Header with Warning Icon */}
                     <div className='flex items-center space-x-4 pb-6 border-b border-gray-800/50'>
                         <div className='w-12 h-12 bg-gradient-to-br from-red-500/20 to-red-600/20 rounded-xl flex items-center justify-center border border-red-500/30'>
                             <Trash2 className='h-6 w-6 text-red-400' />
@@ -470,7 +446,6 @@ export default function NamespaceVersionsPage() {
                         </div>
                     </div>
 
-                    {/* Warning Content */}
                     <div className='py-6 space-y-4'>
                         <div className='bg-gradient-to-r from-red-500/10 to-red-600/10 border border-red-500/20 rounded-xl p-4'>
                             <div className='flex items-center space-x-2 mb-3'>
@@ -494,7 +469,6 @@ export default function NamespaceVersionsPage() {
                         </div>
                     </div>
 
-                    {/* Footer Actions */}
                     <div className='flex items-center justify-end space-x-3 pt-6 border-t border-gray-800/50'>
                         <Button
                             variant='ghost'

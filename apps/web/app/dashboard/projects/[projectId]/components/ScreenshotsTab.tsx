@@ -5,22 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Plus, Upload, Image as ImageIcon, Trash2, Edit3, Calendar, HardDrive, Languages } from 'lucide-react';
 import { usePaginatedQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Doc, Id } from '@/convex/_generated/dataModel';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useRouter } from 'next/navigation';
 import NextImage from 'next/image';
 
 interface ScreenshotsTabProps {
-    project: any;
-    workspace: any;
+    project: Doc<'projects'>;
+    workspace: Doc<'workspaces'>;
 }
 
 export function ScreenshotsTab({ project, workspace }: ScreenshotsTabProps) {
     const router = useRouter();
 
-    // Upload states
     const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -29,12 +28,10 @@ export function ScreenshotsTab({ project, workspace }: ScreenshotsTabProps) {
         description: '',
     });
 
-    // Delete states
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [screenshotToDelete, setScreenshotToDelete] = useState<Id<'screenshots'> | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // Get screenshots with pagination
     const {
         results: screenshots,
         status,
@@ -50,16 +47,15 @@ export function ScreenshotsTab({ project, workspace }: ScreenshotsTabProps) {
         { initialNumItems: 12 }
     );
 
-    // Mutations
     const generateUploadUrl = useMutation(api.screenshots.generateUploadUrl);
     const createScreenshot = useMutation(api.screenshots.createScreenshot);
     const deleteScreenshot = useMutation(api.screenshots.deleteScreenshot);
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
+
         if (file && file.type.startsWith('image/')) {
             setSelectedFile(file);
-            // Auto-fill name from filename
             if (!uploadForm.name) {
                 const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, '');
                 setUploadForm(prev => ({ ...prev, name: nameWithoutExtension }));
@@ -76,10 +72,8 @@ export function ScreenshotsTab({ project, workspace }: ScreenshotsTabProps) {
 
         setIsUploading(true);
         try {
-            // Generate upload URL
             const uploadUrl = await generateUploadUrl();
 
-            // Upload file to Convex storage
             const result = await fetch(uploadUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': selectedFile.type },
@@ -92,7 +86,6 @@ export function ScreenshotsTab({ project, workspace }: ScreenshotsTabProps) {
 
             const { storageId } = await result.json();
 
-            // Get image dimensions
             const dimensions = await new Promise<{ width: number; height: number }>(resolve => {
                 const img = new Image();
                 img.onload = () => {
@@ -101,7 +94,6 @@ export function ScreenshotsTab({ project, workspace }: ScreenshotsTabProps) {
                 img.src = URL.createObjectURL(selectedFile);
             });
 
-            // Create screenshot record
             await createScreenshot({
                 projectId: project._id,
                 workspaceId: workspace._id,
@@ -113,7 +105,6 @@ export function ScreenshotsTab({ project, workspace }: ScreenshotsTabProps) {
                 dimensions,
             });
 
-            // Reset form and close dialog
             setUploadForm({ name: '', description: '' });
             setSelectedFile(null);
             setIsUploadDialogOpen(false);
@@ -165,20 +156,16 @@ export function ScreenshotsTab({ project, workspace }: ScreenshotsTabProps) {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     };
 
-    if (!project || !workspace) {
+    if (status === 'LoadingFirstPage' || status === 'LoadingMore') {
         return (
-            <div className='flex items-center justify-center h-64'>
-                <div className='text-center'>
-                    <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto mb-4'></div>
-                    <p className='text-gray-400'>Loading screenshots...</p>
-                </div>
+            <div className='flex items-center justify-center py-12'>
+                <div className='w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin'></div>
             </div>
         );
     }
 
     return (
         <div className='space-y-6'>
-            {/* Elegant Header */}
             <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
                 <div className='flex items-center justify-between'>
                     <div className='flex items-center space-x-4'>
@@ -193,23 +180,120 @@ export function ScreenshotsTab({ project, workspace }: ScreenshotsTabProps) {
                         </div>
                     </div>
                     <div className='flex items-center space-x-3'>
-                        <div className='flex items-center space-x-2 text-xs text-gray-400'>
-                            <span>{screenshots?.length || 0}</span>
-                            <span>screenshots</span>
-                        </div>
-                        <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button className='bg-white text-black hover:bg-gray-200 transition-all'>
-                                    <Plus className='h-4 w-4 mr-2' />
-                                    Add Screenshot
-                                </Button>
-                            </DialogTrigger>
-                        </Dialog>
+                        <Button
+                            className='bg-white text-black hover:bg-gray-200 transition-all'
+                            onClick={() => setIsUploadDialogOpen(true)}>
+                            <Plus className='h-4 w-4 mr-2' />
+                            Add Screenshot
+                        </Button>
                     </div>
                 </div>
             </div>
 
-            {/* Upload Dialog */}
+            {screenshots && screenshots.length > 0 ? (
+                <div className='space-y-6'>
+                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
+                        {screenshots.map(screenshot => (
+                            <div
+                                key={screenshot._id}
+                                className='group bg-gray-800/50 rounded-xl overflow-hidden border border-gray-700/50 hover:border-pink-500/30 transition-all duration-200 hover:shadow-lg hover:shadow-pink-500/10'>
+                                <div className='aspect-video bg-gray-900/50 flex items-center justify-center relative overflow-hidden'>
+                                    {screenshot.imageUrl ? (
+                                        <NextImage
+                                            src={screenshot.imageUrl}
+                                            alt={screenshot.name}
+                                            width={320}
+                                            height={180}
+                                            className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-200'
+                                        />
+                                    ) : (
+                                        <ImageIcon className='h-12 w-12 text-gray-600' />
+                                    )}
+
+                                    <div className='absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center space-x-2'>
+                                        <Button
+                                            size='sm'
+                                            onClick={() => openScreenshotEditor(screenshot._id, 'edit')}
+                                            className='bg-blue-600 hover:bg-blue-700 text-white'>
+                                            <Edit3 className='h-4 w-4 mr-1' />
+                                            Edit
+                                        </Button>
+                                        <Button
+                                            size='sm'
+                                            onClick={() => openScreenshotEditor(screenshot._id, 'translate')}
+                                            className='bg-pink-600 hover:bg-pink-700 text-white'>
+                                            <Languages className='h-4 w-4 mr-1' />
+                                            Translate
+                                        </Button>
+                                        <Button
+                                            size='sm'
+                                            variant='destructive'
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                setScreenshotToDelete(screenshot._id);
+                                                setDeleteConfirmOpen(true);
+                                            }}
+                                            className='bg-red-600 hover:bg-red-700 text-white'>
+                                            <Trash2 className='h-4 w-4' />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className='p-4'>
+                                    <h3 className='font-semibold text-white mb-2 truncate group-hover:text-pink-300 transition-colors'>
+                                        {screenshot.name}
+                                    </h3>
+
+                                    {screenshot.description && (
+                                        <p className='text-sm text-gray-400 mb-3 line-clamp-2'>
+                                            {screenshot.description}
+                                        </p>
+                                    )}
+
+                                    <div className='space-y-2'>
+                                        <div className='flex items-center justify-between text-xs text-gray-500'>
+                                            <span className='flex items-center'>
+                                                <ImageIcon className='h-3 w-3 mr-1' />
+                                                {screenshot.dimensions.width} × {screenshot.dimensions.height}
+                                            </span>
+                                            <span className='flex items-center'>
+                                                <HardDrive className='h-3 w-3 mr-1' />
+                                                {formatFileSize(screenshot.imageSize)}
+                                            </span>
+                                        </div>
+                                        <div className='flex items-center text-xs text-gray-500'>
+                                            <Calendar className='h-3 w-3 mr-1' />
+                                            {formatDate(screenshot.uploadedAt)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {status === 'CanLoadMore' && (
+                        <div className='flex justify-center pt-6'>
+                            <Button
+                                onClick={() => loadMore(12)}
+                                variant='outline'
+                                className='border-gray-700 text-gray-300 hover:bg-gray-800'>
+                                Load More Screenshots
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className='text-center py-16 bg-gray-900/30 border border-gray-800/50 rounded-xl backdrop-blur-sm'>
+                    <div className='w-16 h-16 bg-gradient-to-br from-pink-500/10 to-rose-500/10 rounded-xl flex items-center justify-center border border-gray-700/30 mx-auto mb-6'>
+                        <ImageIcon className='h-8 w-8 text-pink-400' />
+                    </div>
+                    <h3 className='text-xl font-semibold text-white mb-2'>No screenshots yet</h3>
+                    <p className='text-gray-400 mb-6'>
+                        Upload your first screenshot to start creating visual translation mappings.
+                    </p>
+                </div>
+            )}
+
             <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
                 <DialogContent className='bg-gray-900 border-gray-800 text-white max-w-md'>
                     <DialogHeader>
@@ -296,130 +380,6 @@ export function ScreenshotsTab({ project, workspace }: ScreenshotsTabProps) {
                 </DialogContent>
             </Dialog>
 
-            {/* Screenshots Grid */}
-            {screenshots && screenshots.length > 0 ? (
-                <div className='space-y-6'>
-                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
-                        {screenshots.map(screenshot => (
-                            <div
-                                key={screenshot._id}
-                                className='group bg-gray-800/50 rounded-xl overflow-hidden border border-gray-700/50 hover:border-pink-500/30 transition-all duration-200 hover:shadow-lg hover:shadow-pink-500/10'>
-                                {/* Screenshot Preview */}
-                                <div className='aspect-video bg-gray-900/50 flex items-center justify-center relative overflow-hidden'>
-                                    {screenshot.imageUrl ? (
-                                        <NextImage
-                                            src={screenshot.imageUrl}
-                                            alt={screenshot.name}
-                                            width={320}
-                                            height={180}
-                                            className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-200'
-                                        />
-                                    ) : (
-                                        <ImageIcon className='h-12 w-12 text-gray-600' />
-                                    )}
-
-                                    {/* Overlay Actions */}
-                                    <div className='absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center space-x-2'>
-                                        <Button
-                                            size='sm'
-                                            onClick={() => openScreenshotEditor(screenshot._id, 'edit')}
-                                            className='bg-blue-600 hover:bg-blue-700 text-white'>
-                                            <Edit3 className='h-4 w-4 mr-1' />
-                                            Edit
-                                        </Button>
-                                        <Button
-                                            size='sm'
-                                            onClick={() => openScreenshotEditor(screenshot._id, 'translate')}
-                                            className='bg-pink-600 hover:bg-pink-700 text-white'>
-                                            <Languages className='h-4 w-4 mr-1' />
-                                            Translate
-                                        </Button>
-                                        <Button
-                                            size='sm'
-                                            variant='destructive'
-                                            onClick={e => {
-                                                e.stopPropagation();
-                                                setScreenshotToDelete(screenshot._id);
-                                                setDeleteConfirmOpen(true);
-                                            }}
-                                            className='bg-red-600 hover:bg-red-700 text-white'>
-                                            <Trash2 className='h-4 w-4' />
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* Screenshot Info */}
-                                <div className='p-4'>
-                                    <h3 className='font-semibold text-white mb-2 truncate group-hover:text-pink-300 transition-colors'>
-                                        {screenshot.name}
-                                    </h3>
-
-                                    {screenshot.description && (
-                                        <p className='text-sm text-gray-400 mb-3 line-clamp-2'>
-                                            {screenshot.description}
-                                        </p>
-                                    )}
-
-                                    <div className='space-y-2'>
-                                        <div className='flex items-center justify-between text-xs text-gray-500'>
-                                            <span className='flex items-center'>
-                                                <ImageIcon className='h-3 w-3 mr-1' />
-                                                {screenshot.dimensions.width} × {screenshot.dimensions.height}
-                                            </span>
-                                            <span className='flex items-center'>
-                                                <HardDrive className='h-3 w-3 mr-1' />
-                                                {formatFileSize(screenshot.imageSize)}
-                                            </span>
-                                        </div>
-                                        <div className='flex items-center text-xs text-gray-500'>
-                                            <Calendar className='h-3 w-3 mr-1' />
-                                            {formatDate(screenshot.uploadedAt)}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Load More Button */}
-                    {status === 'CanLoadMore' && (
-                        <div className='flex justify-center pt-6'>
-                            <Button
-                                onClick={() => loadMore(12)}
-                                variant='outline'
-                                className='border-gray-700 text-gray-300 hover:bg-gray-800'>
-                                Load More Screenshots
-                            </Button>
-                        </div>
-                    )}
-
-                    {status === 'LoadingMore' && (
-                        <div className='flex justify-center pt-6'>
-                            <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500'></div>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                /* Empty State */
-                <div className='flex flex-col items-center justify-center py-16 px-4'>
-                    <div className='w-20 h-20 bg-gradient-to-br from-pink-500/20 to-rose-500/20 rounded-2xl flex items-center justify-center mb-6 border border-pink-500/20'>
-                        <ImageIcon className='h-10 w-10 text-pink-400' />
-                    </div>
-                    <h3 className='text-xl font-semibold text-gray-300 mb-3'>No screenshots yet</h3>
-                    <p className='text-gray-400 text-center mb-8 max-w-md'>
-                        Upload your first screenshot to start creating visual translation mappings. This will help you
-                        map translation keys directly onto your UI elements.
-                    </p>
-                    <Button
-                        onClick={() => setIsUploadDialogOpen(true)}
-                        className='bg-pink-600 hover:bg-pink-700 text-white'>
-                        <Plus className='h-4 w-4 mr-2' />
-                        Add Your First Screenshot
-                    </Button>
-                </div>
-            )}
-
-            {/* Delete Confirmation Dialog */}
             <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
                 <DialogContent className='bg-gray-900 border-gray-800 text-white max-w-md'>
                     <DialogHeader>

@@ -55,7 +55,7 @@ export const metadata: Metadata = {
         title: 'Unlingo - Developer Platform for Modern Internationalization',
         description: 'The simplest way to host, manage, and deliver translations for your applications.',
         images: ['/og.png'],
-        creator: '@unlingo',
+        creator: '@twendykirn',
     },
     robots: {
         index: true,

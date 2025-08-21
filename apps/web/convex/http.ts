@@ -5,6 +5,7 @@ import { internal } from './_generated/api';
 import { httpAction } from './_generated/server';
 import { polar } from './polar';
 import { Id } from './_generated/dataModel';
+import { resend } from './resend';
 
 async function validateRequest(req: Request): Promise<WebhookEvent | null> {
     const payloadString = await req.text();
@@ -20,6 +21,23 @@ async function validateRequest(req: Request): Promise<WebhookEvent | null> {
         console.error('Error verifying webhook event', error);
         return null;
     }
+}
+
+// Helper function to determine request limits based on product ID
+function getRequestLimitFromProduct(productId?: string): number | undefined {
+    if (!productId) return undefined;
+
+    const requestLimits: Record<string, number> = {
+        [process.env.POLAR_PRO_250K_PRODUCT_ID!]: 250000,
+        [process.env.POLAR_PRO_500K_PRODUCT_ID!]: 500000,
+        [process.env.POLAR_PRO_1M_PRODUCT_ID!]: 1000000,
+        [process.env.POLAR_PRO_2M_PRODUCT_ID!]: 2000000,
+        [process.env.POLAR_PRO_10M_PRODUCT_ID!]: 10000000,
+        [process.env.POLAR_PRO_50M_PRODUCT_ID!]: 50000000,
+        [process.env.POLAR_PRO_100M_PRODUCT_ID!]: 100000000,
+    };
+
+    return requestLimits[productId] || 250000; // Default to 250k if unknown
 }
 
 const http = httpRouter();
@@ -39,7 +57,20 @@ http.route({
         console.log(`HTTP Action: Received Clerk event: ${evt.type} (ID: ${svixId})`);
 
         try {
+            let primaryEmail;
             switch (evt.type) {
+                case 'user.created':
+                    primaryEmail = evt.data.email_addresses.find(e => e.id === evt.data.primary_email_address_id);
+
+                    if (primaryEmail) {
+                        await ctx.scheduler.runAfter(0, internal.resend.sendWelcomeEmail, {
+                            userFirstName: evt.data.first_name || '',
+                            userEmail: primaryEmail.email_address,
+                        });
+                    } else {
+                        console.log('Not found primary email address for user: ', evt.data.id);
+                    }
+                    break;
                 case 'organization.deleted':
                     await ctx.runMutation(internal.workspaces.deleteOrganizationWorkspace, {
                         clerkOrgId: evt.data.id,
@@ -101,14 +132,34 @@ http.route({
                 });
             }
 
-            // Check rate limits BEFORE processing the request
-            const limitCheck = await ctx.runQuery(internal.internalWorkspaces.checkRequestLimits, {
+            // Track usage successful request
+            const limitCheck = await ctx.runMutation(internal.internalWorkspaces.checkAndUpdateRequestUsage, {
                 workspaceId: apiKeyInfo.workspaceId,
             });
 
+            // Check if we should send notifications after usage increment
+            if (limitCheck.nearLimit) {
+                await ctx.scheduler.runAfter(0, internal.resend.sendLimitsEmail, {
+                    userEmail: limitCheck.workspace.contactEmail,
+                    currentUsage: 80,
+                });
+            }
+
+            if (limitCheck.exceedsHardLimit && limitCheck.shouldSendHardLimitEmail) {
+                await ctx.scheduler.runAfter(0, internal.resend.sendLimitsEmail, {
+                    userEmail: limitCheck.workspace.contactEmail,
+                    currentUsage: 130,
+                });
+            }
+
             if (limitCheck.exceedsLimit) {
-                // TODO: Send email notification for exceeded limits
-                // TODO: Include limit details in response for better user experience
+                await ctx.scheduler.runAfter(0, internal.resend.sendLimitsEmail, {
+                    userEmail: limitCheck.workspace.contactEmail,
+                    currentUsage: 100,
+                });
+            }
+
+            if (!limitCheck.isRequestAllowed) {
                 return new Response(
                     JSON.stringify({
                         error: 'Request limit exceeded. Please upgrade your plan or wait for the monthly reset.',
@@ -144,7 +195,7 @@ http.route({
 
             // Find the namespace in the release by checking each namespace version
             let targetNamespaceVersion = null;
-            for (const nv of release.namespaceVersions || []) {
+            for (const nv of release.namespaceVersions) {
                 const namespaceDoc = await ctx.runQuery(internal.namespaces.getNamespaceInternal, {
                     namespaceId: nv.namespaceId,
                     projectId: apiKeyInfo.projectId,
@@ -199,26 +250,6 @@ http.route({
                         status: 500,
                         headers: { 'Content-Type': 'application/json' },
                     }
-                );
-            }
-
-            // Track usage AFTER successful request
-            const usageUpdate = await ctx.runMutation(internal.internalWorkspaces.incrementRequestUsage, {
-                workspaceId: apiKeyInfo.workspaceId,
-            });
-
-            // Check if we should send notifications after usage increment
-            if (usageUpdate.nearLimit && !usageUpdate.exceedsHardLimit) {
-                // TODO: Send email notification for approaching limits (80% of plan)
-                console.log(
-                    `Workspace ${apiKeyInfo.workspaceId} is near request limit: ${usageUpdate.currentRequests}/${usageUpdate.limit}`
-                );
-            }
-
-            if (usageUpdate.exceedsHardLimit && !usageUpdate.exceedsLimit) {
-                // TODO: Send email notification for exceeding plan limits but still in buffer zone
-                console.log(
-                    `Workspace ${apiKeyInfo.workspaceId} has exceeded plan limit but is in buffer zone: ${usageUpdate.currentRequests}/${usageUpdate.limit}`
                 );
             }
 
@@ -282,21 +313,12 @@ polar.registerRoutes(http, {
     },
 });
 
-// Helper function to determine request limits based on product ID
-function getRequestLimitFromProduct(productId?: string): number | undefined {
-    if (!productId) return undefined;
-
-    const requestLimits: Record<string, number> = {
-        [process.env.POLAR_PRO_250K_PRODUCT_ID!]: 250000,
-        [process.env.POLAR_PRO_500K_PRODUCT_ID!]: 500000,
-        [process.env.POLAR_PRO_1M_PRODUCT_ID!]: 1000000,
-        [process.env.POLAR_PRO_2M_PRODUCT_ID!]: 2000000,
-        [process.env.POLAR_PRO_10M_PRODUCT_ID!]: 10000000,
-        [process.env.POLAR_PRO_50M_PRODUCT_ID!]: 50000000,
-        [process.env.POLAR_PRO_100M_PRODUCT_ID!]: 100000000,
-    };
-
-    return requestLimits[productId] || 250000; // Default to 250k if unknown
-}
+http.route({
+    path: '/resend-webhook',
+    method: 'POST',
+    handler: httpAction(async (ctx, req) => {
+        return await resend.handleResendEventWebhook(ctx, req);
+    }),
+});
 
 export default http;

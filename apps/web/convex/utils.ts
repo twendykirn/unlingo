@@ -21,12 +21,10 @@ export function applyJsonDiffToContent(originalContent: any, structuredChangesDa
 export function applyStructuredChange(content: any, change: any): any {
     const pathParts = parseJSONPath(change.path);
 
-    if (change.type === 'add') {
+    if (change.type === 'add' || change.type === 'modify') {
         return setValueAtJSONPath(content, pathParts, change.newValue, change.arrayIndex);
     } else if (change.type === 'delete') {
         return deleteValueAtJSONPath(content, pathParts, change.arrayIndex);
-    } else if (change.type === 'modify') {
-        return setValueAtJSONPath(content, pathParts, change.newValue, change.arrayIndex);
     }
 
     return content;
@@ -220,4 +218,10 @@ export function applyStructuralOperations(existingContent: any, operations: any[
     }
 
     return result;
+}
+
+// Helper function to get current month string
+export function getCurrentMonth(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }

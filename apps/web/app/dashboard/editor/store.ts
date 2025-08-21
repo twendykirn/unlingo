@@ -7,3 +7,4 @@ export const selectedNode$ = observable<TranslationNode | null>(null);
 export const hasUnsavedChanges$ = observable(false);
 export const filteredNodes$ = observable<TranslationNode[]>([]);
 export const searchQuery$ = observable('');
+export const originalJsonContent$ = observable('');

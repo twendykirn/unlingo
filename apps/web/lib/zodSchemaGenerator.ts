@@ -65,9 +65,6 @@ export function generateZodSchema(obj: JsonValue): z.ZodType<any> {
 }
 
 /**
- * Generates both Zod and JSON schemas from a JSON object
- */
-/**
  * Post-processes JSON schema to fix tuple validation issues with AJV
  */
 function fixJsonSchemaForAjv(schema: any): any {
@@ -125,11 +122,8 @@ export function generateSchemas(obj: JsonValue): {
         const zodSchema = generateZodSchema(obj);
         const rawJsonSchema = z.toJSONSchema(zodSchema);
 
-        // Remove $schema property that causes AJV issues
-        const cleanJsonSchema = rawJsonSchema;
-
-        // Fix tuple validation issues for AJV
-        const jsonSchema = fixJsonSchemaForAjv(cleanJsonSchema);
+        // Fix tuple validation issues for AJV and remove $schema property
+        const jsonSchema = fixJsonSchemaForAjv(rawJsonSchema);
 
         const result = zodSchema.safeParse(obj);
 
@@ -143,11 +137,10 @@ export function generateSchemas(obj: JsonValue): {
         console.error('Schema generation failed:', error);
         const fallbackSchema = z.unknown();
         const rawFallbackSchema = z.toJSONSchema(fallbackSchema);
-        const cleanFallbackSchema = rawFallbackSchema;
 
         return {
             zodSchema: fallbackSchema,
-            jsonSchema: fixJsonSchemaForAjv(cleanFallbackSchema),
+            jsonSchema: fixJsonSchemaForAjv(rawFallbackSchema),
             isValid: false,
             errors: new z.ZodError([
                 {
@@ -158,22 +151,6 @@ export function generateSchemas(obj: JsonValue): {
             ]),
         };
     }
-}
-
-/**
- * Validates a JSON object against its generated schema
- */
-export function validateWithGeneratedSchema(obj: JsonValue): {
-    isValid: boolean;
-    schema: z.ZodType<any>;
-    errors?: z.ZodError;
-} {
-    const result = generateSchemas(obj);
-    return {
-        isValid: result.isValid,
-        schema: result.zodSchema,
-        errors: result.errors,
-    };
 }
 
 /**
@@ -201,45 +178,4 @@ export function validateWithAjv(
         errors: validate.errors || null,
         ajvInstance: ajv,
     };
-}
-
-/**
- * Debug function that logs both Zod and JSON schemas to console
- */
-export function debugZodSchema(
-    obj: JsonValue,
-    label?: string
-): {
-    zodSchema: z.ZodType<any>;
-    jsonSchema: any;
-} {
-    console.group(`🔍 Schema Debug${label ? ` - ${label}` : ''}`);
-
-    try {
-        const schemas = generateSchemas(obj);
-
-        console.log('📄 Input JSON:', obj);
-        console.log('📋 Generated JSON Schema:', schemas.jsonSchema);
-        console.log('✅ Schema Validation:', schemas.isValid ? 'PASSED' : 'FAILED');
-
-        if (!schemas.isValid && schemas.errors) {
-            console.error('❌ Validation Errors:', schemas.errors);
-        }
-
-        console.log('📊 Zod Schema Object:', schemas.zodSchema);
-
-        console.groupEnd();
-        return {
-            zodSchema: schemas.zodSchema,
-            jsonSchema: schemas.jsonSchema,
-        };
-    } catch (error) {
-        console.error('💥 Schema Debug Failed:', error);
-        console.groupEnd();
-        const fallbackSchema = z.unknown();
-        return {
-            zodSchema: fallbackSchema,
-            jsonSchema: z.toJSONSchema(fallbackSchema),
-        };
-    }
 }

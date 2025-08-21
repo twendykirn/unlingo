@@ -1,11 +1,11 @@
 'use client';
 
 import { Key, GitBranch, Globe, Settings, ArrowLeft, Image } from 'lucide-react';
-import React, { use, useState } from 'react';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useState } from 'react';
+import { useOrganization } from '@clerk/nextjs';
 import { useQuery } from 'convex/react';
-import { api } from '../../../../convex/_generated/api';
-import { Id } from '../../../../convex/_generated/dataModel';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { NamespacesTab } from './components/NamespacesTab';
@@ -13,6 +13,7 @@ import { ReleasesTab } from './components/ReleasesTab';
 import { ApiKeysTab } from './components/ApiKeysTab';
 import { SettingsTab } from './components/SettingsTab';
 import { ScreenshotsTab } from './components/ScreenshotsTab';
+import { useParams } from 'next/navigation';
 
 const sidebarItems = [
     {
@@ -72,39 +73,28 @@ const sidebarItems = [
     },
 ];
 
-interface ProjectPageProps {
-    params: Promise<{
-        projectId: string;
-    }>;
-}
-
-export default function ProjectPage({ params }: ProjectPageProps) {
-    const { user } = useUser();
+export default function ProjectPage() {
+    const params = useParams();
     const { organization } = useOrganization();
     const [activeTab, setActiveTab] = useState('namespaces');
 
-    // Unwrap params Promise for Next.js 15
-    const { projectId } = use(params);
+    const projectId = params?.projectId as Id<'projects'>;
 
-    // Get the current workspace identifier (user or organization)
-    const clerkId = organization?.id || user?.id;
+    const clerkId = organization?.id;
 
-    // Query workspace
     const workspace = useQuery(api.workspaces.getWorkspaceWithSubscription, clerkId ? { clerkId } : 'skip');
 
-    // Query project
     const project = useQuery(
         api.projects.getProject,
         workspace && projectId
             ? {
-                  projectId: projectId as Id<'projects'>,
+                  projectId,
                   workspaceId: workspace._id,
               }
             : 'skip'
     );
 
-    // Loading states
-    if (!user || !clerkId) {
+    if (!clerkId) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
                 <div className='text-center'>
@@ -137,30 +127,13 @@ export default function ProjectPage({ params }: ProjectPageProps) {
         );
     }
 
-    // Check if contactEmail is required
-    if (workspace && !workspace.contactEmail) {
-        return (
-            <div className='min-h-screen bg-black text-white flex items-center justify-center'>
-                <div className='text-center max-w-md'>
-                    <h2 className='text-2xl font-bold mb-4'>Setup Required</h2>
-                    <p className='text-gray-400 mb-6'>
-                        Please complete your workspace setup by providing a contact email.
-                    </p>
-                    <Link href='/dashboard/settings'>
-                        <Button className='bg-white text-black hover:bg-gray-200'>Complete Setup</Button>
-                    </Link>
-                </div>
-            </div>
-        );
-    }
-
     if (!workspace || !project) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
                 <div className='text-center'>
                     <h2 className='text-2xl font-bold mb-4'>Project not found</h2>
                     <p className='text-gray-400 mb-6'>
-                        The project you're looking for doesn't exist or you don't have access to it.
+                        The project you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.
                     </p>
                     <Link href='/dashboard'>
                         <Button variant='outline'>
@@ -175,9 +148,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
     return (
         <div className='min-h-screen bg-black text-white flex'>
-            {/* Elegant Sidebar */}
             <div className='w-72 bg-gray-950/50 border-r border-gray-800/50 flex flex-col backdrop-blur-sm'>
-                {/* Project Header */}
                 <div className='p-6 border-b border-gray-800/50'>
                     <div className='flex items-center space-x-4 mb-4'>
                         <div className='w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/30'>
@@ -190,12 +161,11 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                             <p className='text-xs text-gray-400 font-medium'>Translation Project</p>
                         </div>
                     </div>
-                    {project.description && (
+                    {project.description ? (
                         <p className='text-sm text-gray-400 leading-relaxed line-clamp-2'>{project.description}</p>
-                    )}
+                    ) : null}
                 </div>
 
-                {/* Navigation */}
                 <nav className='flex-1 p-4'>
                     <div className='space-y-2'>
                         {sidebarItems.map(item => (
@@ -238,10 +208,9 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 </nav>
             </div>
 
-            {/* Main Content */}
             <main className='flex-1 flex flex-col p-4'>
                 {activeTab === 'namespaces' && <NamespacesTab project={project} workspace={workspace} />}
-                {activeTab === 'releases' && <ReleasesTab />}
+                {activeTab === 'releases' && <ReleasesTab project={project} workspace={workspace} />}
                 {activeTab === 'screenshots' && <ScreenshotsTab project={project} workspace={workspace} />}
                 {activeTab === 'api keys' && <ApiKeysTab project={project} workspace={workspace} />}
                 {activeTab === 'settings' && <SettingsTab project={project} workspace={workspace} />}

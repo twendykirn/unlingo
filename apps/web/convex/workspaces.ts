@@ -5,10 +5,8 @@ import { polar } from './polar';
 import { internal } from './_generated/api';
 import { customersDelete } from '@polar-sh/sdk/funcs/customersDelete.js';
 import { customersGetExternal } from '@polar-sh/sdk/funcs/customersGetExternal.js';
+import { getCurrentMonth } from './utils';
 
-// Personal workspaces are no longer supported - only organization workspaces
-
-// Create a team workspace for a new organization
 export const createOrganizationWorkspace = mutation({
     args: {
         clerkOrgId: v.string(),
@@ -20,12 +18,20 @@ export const createOrganizationWorkspace = mutation({
             throw new Error('Not authenticated');
         }
 
+        const currentMonth = getCurrentMonth();
+
+        // Create workspace usage record
+        const workspaceUsageId = await ctx.db.insert('workspaceUsage', {
+            month: currentMonth,
+            requests: 0,
+            updatedAt: Date.now(),
+        });
+
         // Create team workspace
         const workspaceId = await ctx.db.insert('workspaces', {
             clerkId: args.clerkOrgId,
             contactEmail: args.contactEmail,
             currentUsage: {
-                requests: 0,
                 projects: 0,
             },
             limits: {
@@ -35,6 +41,7 @@ export const createOrganizationWorkspace = mutation({
                 languagesPerVersion: 5,
                 versionsPerNamespace: 1, // Allow 1 version (main) for free tier
             },
+            workspaceUsageId,
         });
 
         console.log(`Created team workspace for organization ${args.clerkOrgId} by user ${identity.issuer}`);
@@ -59,7 +66,6 @@ export const deletePolarCustomer = internalAction({
     },
 });
 
-// Delete an organization's workspace and all related data
 export const deleteOrganizationWorkspace = internalMutation({
     args: {
         clerkOrgId: v.string(),
@@ -76,13 +82,17 @@ export const deleteOrganizationWorkspace = internalMutation({
             return;
         }
 
-        await deleteWorkspaceAndRelatedData(ctx, workspace._id);
+        await deleteWorkspaceAndRelatedData(ctx, workspace._id, workspace.workspaceUsageId);
         console.log(`Deleted workspace for organization ${args.clerkOrgId}`);
     },
 });
 
 // Helper function to delete workspace and all related data
-async function deleteWorkspaceAndRelatedData(ctx: MutationCtx, workspaceId: Id<'workspaces'>) {
+async function deleteWorkspaceAndRelatedData(
+    ctx: MutationCtx,
+    workspaceId: Id<'workspaces'>,
+    workspaceUsageId: Id<'workspaceUsage'>
+) {
     // Cancel any active Polar subscriptions first
     try {
         await ctx.scheduler.runAfter(0, internal.workspaces.deletePolarCustomer, {
@@ -103,6 +113,9 @@ async function deleteWorkspaceAndRelatedData(ctx: MutationCtx, workspaceId: Id<'
     for (const apiKey of apiKeys) {
         await ctx.db.delete(apiKey._id);
     }
+
+    // Delete workspace usage record
+    await ctx.db.delete(workspaceUsageId);
 
     // Delete projects and related data
     const projects = await ctx.db
@@ -222,34 +235,6 @@ export const getWorkspaceInfo = internalQuery({
         }
 
         return workspace;
-    },
-});
-
-// Query to get workspace by organization ID
-export const getWorkspaceByClerkId = query({
-    args: {
-        clerkId: v.string(),
-    },
-    handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            throw new Error('Not authenticated');
-        }
-
-        // Handle race condition: during org creation, Clerk's token might not have updated yet
-        // Allow query if either identity.org matches OR if the user just created this org
-        const hasOrgAccess = identity.org === args.clerkId;
-
-        if (!hasOrgAccess) {
-            // For race condition during org creation, return null instead of throwing
-            // This allows the frontend to handle the "not yet available" state gracefully
-            return null;
-        }
-
-        return await ctx.db
-            .query('workspaces')
-            .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkId))
-            .first();
     },
 });
 
@@ -383,5 +368,40 @@ export const updateWorkspaceLimits = internalMutation({
 
         console.log(`Updated limits for workspace ${workspace._id}, premium: ${args.isPremium}`);
         return { success: true };
+    },
+});
+
+// Separate query for current usage data to avoid re-rendering workspace queries
+export const getCurrentUsage = query({
+    args: {
+        clerkId: v.string(), // Clerk organization ID
+        workspaceUsageId: v.id('workspaceUsage'),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error('Not authenticated');
+        }
+
+        // Handle race condition: during org creation, Clerk's token might not have updated yet
+        const hasOrgAccess = identity.org === args.clerkId;
+
+        if (!hasOrgAccess) {
+            return null;
+        }
+
+        // Get current month's usage from separate usage table
+        const currentMonth = getCurrentMonth();
+        const usage = await ctx.db.get(args.workspaceUsageId);
+
+        let currentRequests = 0;
+        if (usage && usage.month === currentMonth) {
+            currentRequests = usage.requests;
+        }
+
+        return {
+            requests: currentRequests,
+            month: currentMonth,
+        };
     },
 });

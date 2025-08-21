@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, X, Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,23 +10,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { isValidJson } from '../utils/isValidJson';
 import { getUIValueAsJSON } from '../utils/getUIValueAsJson';
+import AddKeyFooterNote from './AddKeyFooterNote';
 
 interface AddKeyModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAddKey: (keyName: string, finalValue: string, addKeyMode: 'ui' | 'json', uiData: UIData) => void;
+    onAddKey: (keyName: string, finalValue: string) => void;
     availableParents: { id: string; key: string }[];
     addKeyParent: string | null;
     onAddKeyParentChange: (parentId: string | null) => void;
-}
-
-interface UIData {
-    uiValueType: 'string' | 'number' | 'boolean' | 'array' | 'object';
-    uiStringValue: string;
-    uiNumberValue: string;
-    uiBooleanValue: boolean;
-    uiArrayItems: { value: string; type: 'string' | 'number' | 'boolean' | 'object' | 'array' }[];
-    uiObjectKeys: { key: string; value: string; type: 'string' | 'number' | 'boolean' | 'object' | 'array' }[];
 }
 
 export default function AddKeyModal({
@@ -53,7 +45,6 @@ export default function AddKeyModal({
     const [parentSelectorOpen, setParentSelectorOpen] = useState(false);
     const [filteredParents, setFilteredParents] = useState<{ id: string; key: string }[]>([]);
 
-    // Convert JSON string to UI values
     const setUIValuesFromJSON = (jsonString: string) => {
         if (!jsonString.trim()) {
             setUiValueType('string');
@@ -112,7 +103,6 @@ export default function AddKeyModal({
         }
     };
 
-    // Handle mode switching for Add Key
     const switchToUIMode = () => {
         if (isValidJson(newKeyValue) || !newKeyValue.trim()) {
             setUIValuesFromJSON(newKeyValue);
@@ -139,7 +129,6 @@ export default function AddKeyModal({
             return;
         }
 
-        // Get the value based on current mode
         let finalValue;
         if (addKeyMode === 'ui') {
             finalValue = getUIValueAsJSON({
@@ -159,21 +148,11 @@ export default function AddKeyModal({
             return;
         }
 
-        const uiData: UIData = {
-            uiValueType,
-            uiStringValue,
-            uiNumberValue,
-            uiBooleanValue,
-            uiArrayItems,
-            uiObjectKeys,
-        };
-
-        onAddKey(newKeyName, finalValue, addKeyMode, uiData);
+        onAddKey(newKeyName, finalValue);
         handleClose();
     };
 
     const handleClose = () => {
-        // Reset all state
         setNewKeyName('');
         setNewKeyValue('');
         setAddKeyMode('ui');
@@ -186,14 +165,11 @@ export default function AddKeyModal({
         onClose();
     };
 
-    // Validation function to check if all object keys are filled
     const hasValidObjectKeys = () => {
-        // Check UI mode object keys
         if (uiValueType === 'object') {
             return uiObjectKeys.every(entry => entry.key.trim() !== '');
         }
 
-        // Check JSON mode for empty object keys
         if (newKeyValue && isValidJson(newKeyValue)) {
             try {
                 const parsed = JSON.parse(newKeyValue);
@@ -219,7 +195,38 @@ export default function AddKeyModal({
         setFilteredParents(filteredItems);
     };
 
-    // Limit parent options to first 20 for performance
+    const isSaveButtonDisabled = useMemo(() => {
+        if (!newKeyName.trim() || !hasValidObjectKeys()) {
+            return true;
+        }
+
+        if (addKeyMode === 'ui') {
+            const uiValue = getUIValueAsJSON({
+                uiValueType,
+                uiStringValue,
+                uiNumberValue,
+                uiBooleanValue,
+                uiArrayItems,
+                uiObjectKeys,
+            });
+            const isEmptyContainer = uiValue === '{}' || uiValue === '[]';
+            return (!uiValue.trim() && !isEmptyContainer) || !isValidJson(uiValue);
+        } else {
+            return !newKeyValue.trim() || !isValidJson(newKeyValue);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        addKeyMode,
+        newKeyName,
+        newKeyValue,
+        uiArrayItems,
+        uiBooleanValue,
+        uiNumberValue,
+        uiObjectKeys,
+        uiStringValue,
+        uiValueType,
+    ]);
+
     const limitedParents = filteredParents.slice(0, 20);
 
     useEffect(() => {
@@ -250,12 +257,10 @@ export default function AddKeyModal({
                 </DialogHeader>
 
                 <div className='space-y-6 py-6'>
-                    {/* Parent Selector with Command */}
-                    {availableParents.length > 0 && (
+                    {availableParents.length > 0 ? (
                         <div className='space-y-2'>
                             <label className='block text-sm font-medium text-gray-300'>Parent Location</label>
 
-                            {/* Optimization Hint - Always Visible */}
                             <div className='bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-3'>
                                 <div className='flex items-start space-x-2'>
                                     <span className='text-amber-400 text-sm'>💡</span>
@@ -330,7 +335,7 @@ export default function AddKeyModal({
                             </Popover>
                             <p className='text-xs text-gray-500'>Choose where to add your new translation key</p>
                         </div>
-                    )}
+                    ) : null}
 
                     <div className='space-y-2'>
                         <label className='block text-sm font-medium text-gray-300'>Key Name</label>
@@ -347,7 +352,6 @@ export default function AddKeyModal({
                         </p>
                     </div>
 
-                    {/* Mode Selector */}
                     <div className='space-y-3'>
                         <label className='block text-sm font-medium text-gray-300'>Input Mode</label>
                         <div className='flex p-1 bg-gray-800/50 rounded-xl border border-gray-700/50'>
@@ -386,20 +390,17 @@ export default function AddKeyModal({
                         </p>
                     </div>
 
-                    {/* Value Input */}
                     <div className='space-y-4'>
                         <label className='block text-sm font-medium text-gray-300'>Translation Value</label>
 
                         {addKeyMode === 'ui' ? (
                             <div className='space-y-4'>
-                                {/* Type Selector */}
                                 <div className='space-y-2'>
                                     <label className='text-sm font-medium text-gray-400'>Value Type</label>
                                     <Select
                                         value={uiValueType}
                                         onValueChange={value => {
                                             setUiValueType(value as typeof uiValueType);
-                                            // Reset all UI values when type changes
                                             setUiStringValue('');
                                             setUiNumberValue('');
                                             setUiBooleanValue(true);
@@ -429,9 +430,8 @@ export default function AddKeyModal({
                                     </Select>
                                 </div>
 
-                                {/* Value Input Based on Type */}
                                 <div className='space-y-2'>
-                                    {uiValueType === 'string' && (
+                                    {uiValueType === 'string' ? (
                                         <>
                                             <input
                                                 type='text'
@@ -444,9 +444,9 @@ export default function AddKeyModal({
                                                 Simple text value like "Welcome" or "Click here"
                                             </p>
                                         </>
-                                    )}
+                                    ) : null}
 
-                                    {uiValueType === 'number' && (
+                                    {uiValueType === 'number' ? (
                                         <>
                                             <input
                                                 type='number'
@@ -457,9 +457,9 @@ export default function AddKeyModal({
                                             />
                                             <p className='text-xs text-gray-500'>Numeric value like 42, 3.14, or -10</p>
                                         </>
-                                    )}
+                                    ) : null}
 
-                                    {uiValueType === 'boolean' && (
+                                    {uiValueType === 'boolean' ? (
                                         <>
                                             <Select
                                                 value={uiBooleanValue.toString()}
@@ -478,10 +478,10 @@ export default function AddKeyModal({
                                             </Select>
                                             <p className='text-xs text-gray-500'>Boolean value for toggles and flags</p>
                                         </>
-                                    )}
+                                    ) : null}
                                 </div>
 
-                                {uiValueType === 'array' && (
+                                {uiValueType === 'array' ? (
                                     <div className='space-y-3'>
                                         <div className='text-xs text-gray-500 flex items-center space-x-2'>
                                             <span>📋 Array Items</span>
@@ -491,7 +491,6 @@ export default function AddKeyModal({
                                             <div
                                                 key={index}
                                                 className='space-y-2 p-3 bg-gray-800/50 rounded-md border border-gray-700'>
-                                                {/* Type selector */}
                                                 <div className='flex items-center space-x-2'>
                                                     <label className='text-xs text-gray-500 w-12 flex-shrink-0'>
                                                         Type:
@@ -538,7 +537,6 @@ export default function AddKeyModal({
                                                         ✕
                                                     </Button>
                                                 </div>
-                                                {/* Value input */}
                                                 <div className='flex items-center space-x-2'>
                                                     <label className='text-xs text-gray-500 w-12 flex-shrink-0'>
                                                         Value:
@@ -599,16 +597,15 @@ export default function AddKeyModal({
                                             + Add Item
                                         </Button>
                                     </div>
-                                )}
+                                ) : null}
 
-                                {uiValueType === 'object' && (
+                                {uiValueType === 'object' ? (
                                     <div className='space-y-3'>
                                         <label className='text-xs text-gray-500'>Object Properties</label>
                                         {uiObjectKeys.map((entry, index) => (
                                             <div
                                                 key={index}
                                                 className='space-y-2 p-3 bg-gray-800/50 rounded-md border border-gray-700'>
-                                                {/* Property Key */}
                                                 <div className='flex items-center space-x-2'>
                                                     <label className='text-xs text-gray-500 w-12 flex-shrink-0'>
                                                         Key:
@@ -637,7 +634,6 @@ export default function AddKeyModal({
                                                                 );
                                                                 setUiObjectKeys(newEntries);
                                                             } else {
-                                                                // Clear the values if it's the only item
                                                                 const newEntries = [...uiObjectKeys];
                                                                 newEntries[index] = {
                                                                     key: '',
@@ -651,7 +647,6 @@ export default function AddKeyModal({
                                                         <X className='h-4 w-4' />
                                                     </Button>
                                                 </div>
-                                                {/* Value Type selector */}
                                                 <div className='flex items-center space-x-2'>
                                                     <label className='text-xs text-gray-500 w-12 flex-shrink-0'>
                                                         Type:
@@ -679,12 +674,11 @@ export default function AddKeyModal({
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
-                                                {/* Property Value based on type */}
                                                 <div className='flex items-center space-x-2'>
                                                     <label className='text-xs text-gray-500 w-12 flex-shrink-0'>
                                                         Value:
                                                     </label>
-                                                    {entry.type === 'string' && (
+                                                    {entry.type === 'string' ? (
                                                         <input
                                                             type='text'
                                                             value={entry.value}
@@ -698,8 +692,8 @@ export default function AddKeyModal({
                                                             className='flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
                                                             placeholder='Enter string value...'
                                                         />
-                                                    )}
-                                                    {entry.type === 'number' && (
+                                                    ) : null}
+                                                    {entry.type === 'number' ? (
                                                         <input
                                                             type='number'
                                                             value={entry.value}
@@ -713,8 +707,8 @@ export default function AddKeyModal({
                                                             className='flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
                                                             placeholder='Enter number...'
                                                         />
-                                                    )}
-                                                    {entry.type === 'boolean' && (
+                                                    ) : null}
+                                                    {entry.type === 'boolean' ? (
                                                         <Select
                                                             value={entry.value || 'true'}
                                                             onValueChange={value => {
@@ -732,8 +726,8 @@ export default function AddKeyModal({
                                                                 <SelectItem value='false'>false</SelectItem>
                                                             </SelectContent>
                                                         </Select>
-                                                    )}
-                                                    {(entry.type === 'array' || entry.type === 'object') && (
+                                                    ) : null}
+                                                    {entry.type === 'array' || entry.type === 'object' ? (
                                                         <input
                                                             type='text'
                                                             value={entry.value}
@@ -751,7 +745,7 @@ export default function AddKeyModal({
                                                                     : 'Enter valid JSON object: {"key": "value"}'
                                                             }
                                                         />
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                             </div>
                                         ))}
@@ -769,7 +763,7 @@ export default function AddKeyModal({
                                             + Add Property
                                         </Button>
                                     </div>
-                                )}
+                                ) : null}
                             </div>
                         ) : (
                             <div className='relative'>
@@ -785,41 +779,25 @@ export default function AddKeyModal({
                                     }`}
                                     placeholder={`Enter valid JSON value...\n\nExamples:\n- "Hello World" (string)\n- {"en": "Hello", "es": "Hola"} (object)\n- ["item1", "item2"] (array)\n- 42 (number)\n- true (boolean)`}
                                 />
-                                {newKeyValue.trim() && isValidJson(newKeyValue) && (
+                                {newKeyValue.trim() && isValidJson(newKeyValue) ? (
                                     <div className='absolute top-2 right-2'>
                                         <div className='w-2 h-2 bg-green-500 rounded-full' title='Valid JSON'></div>
                                     </div>
-                                )}
+                                ) : null}
                             </div>
                         )}
                     </div>
 
-                    {/* Validation Messages */}
                     <div className='text-xs text-gray-500'>
                         {addKeyMode === 'ui' ? (
-                            (() => {
-                                const uiValue = getUIValueAsJSON({
-                                    uiValueType,
-                                    uiStringValue,
-                                    uiNumberValue,
-                                    uiBooleanValue,
-                                    uiArrayItems,
-                                    uiObjectKeys,
-                                });
-                                // Allow empty objects {} and arrays [] as valid values
-                                const isEmptyContainer = uiValue === '{}' || uiValue === '[]';
-                                return !uiValue.trim() && !isEmptyContainer ? (
-                                    <p className='text-red-400'>
-                                        ⚠ Value is required - please fill in the required fields
-                                    </p>
-                                ) : !isValidJson(uiValue) ? (
-                                    <p className='text-red-400'>⚠ Invalid configuration - please check your input</p>
-                                ) : (
-                                    <p>
-                                        <strong>Preview:</strong> {uiValue}
-                                    </p>
-                                );
-                            })()
+                            <AddKeyFooterNote
+                                uiValueType={uiValueType}
+                                uiStringValue={uiStringValue}
+                                uiNumberValue={uiNumberValue}
+                                uiBooleanValue={uiBooleanValue}
+                                uiArrayItems={uiArrayItems}
+                                uiObjectKeys={uiObjectKeys}
+                            />
                         ) : !newKeyValue.trim() ? (
                             <p className='text-red-400'>⚠ Value is required - please enter a valid JSON value</p>
                         ) : newKeyValue.trim() && !isValidJson(newKeyValue) ? (
@@ -844,47 +822,9 @@ export default function AddKeyModal({
                     </Button>
                     <Button
                         onClick={handleSubmit}
-                        disabled={
-                            !newKeyName.trim() ||
-                            (() => {
-                                if (addKeyMode === 'ui') {
-                                    const uiValue = getUIValueAsJSON({
-                                        uiValueType,
-                                        uiStringValue,
-                                        uiNumberValue,
-                                        uiBooleanValue,
-                                        uiArrayItems,
-                                        uiObjectKeys,
-                                    });
-                                    const isEmptyContainer = uiValue === '{}' || uiValue === '[]';
-                                    return (!uiValue.trim() && !isEmptyContainer) || !isValidJson(uiValue);
-                                } else {
-                                    return !newKeyValue.trim() || !isValidJson(newKeyValue);
-                                }
-                            })() ||
-                            !hasValidObjectKeys()
-                        }
+                        disabled={isSaveButtonDisabled}
                         className={`bg-green-600 text-white hover:bg-green-700 transition-all px-6 ${
-                            !newKeyName.trim() ||
-                            (() => {
-                                if (addKeyMode === 'ui') {
-                                    const uiValue = getUIValueAsJSON({
-                                        uiValueType,
-                                        uiStringValue,
-                                        uiNumberValue,
-                                        uiBooleanValue,
-                                        uiArrayItems,
-                                        uiObjectKeys,
-                                    });
-                                    const isEmptyContainer = uiValue === '{}' || uiValue === '[]';
-                                    return (!uiValue.trim() && !isEmptyContainer) || !isValidJson(uiValue);
-                                } else {
-                                    return !newKeyValue.trim() || !isValidJson(newKeyValue);
-                                }
-                            })() ||
-                            !hasValidObjectKeys()
-                                ? 'cursor-not-allowed opacity-50'
-                                : ''
+                            isSaveButtonDisabled ? 'cursor-not-allowed opacity-50' : ''
                         }`}>
                         <Plus className='h-4 w-4 mr-2' />
                         Add Key

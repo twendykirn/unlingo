@@ -157,6 +157,9 @@ export const createNamespace = mutation({
         await ctx.db.insert('namespaceVersions', {
             namespaceId: namespaceId,
             version: 'main',
+            usage: {
+                languages: 0,
+            },
         });
 
         // Update project usage counter

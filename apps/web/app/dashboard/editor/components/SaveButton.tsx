@@ -37,7 +37,6 @@ export default function SaveButton({ isSaving, emptyValueNodesLength, onSave }: 
             ) : hasUnsavedChanges ? (
                 hasErrors ? (
                     <>
-                        <span className='w-4 h-4 mr-2'>⚠️</span>
                         Fix {emptyValueNodesLength} Error{emptyValueNodesLength !== 1 ? 's' : ''}
                     </>
                 ) : (

@@ -1,39 +1,20 @@
 'use client';
 
-import { Edit, Trash2, Settings, Save } from 'lucide-react';
+import { Trash2, Settings, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect } from 'react';
 import { useMutation } from 'convex/react';
-import { api } from '../../../../../convex/_generated/api';
+import { api } from '@/convex/_generated/api';
 import { useRouter } from 'next/navigation';
-import { Id } from '../../../../../convex/_generated/dataModel';
-
-interface Project {
-    _id: Id<'projects'>;
-    _creationTime: number;
-    name: string;
-    description?: string;
-}
-
-interface Workspace {
-    _id: Id<'workspaces'>;
-}
+import { Doc } from '@/convex/_generated/dataModel';
 
 interface SettingsTabProps {
-    project: Project;
-    workspace: Workspace;
+    project: Doc<'projects'>;
+    workspace: Doc<'workspaces'>;
 }
 
 export function SettingsTab({ project, workspace }: SettingsTabProps) {
@@ -100,7 +81,7 @@ export function SettingsTab({ project, workspace }: SettingsTabProps) {
             <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
                 <div className='flex items-center justify-between'>
                     <div className='flex items-center space-x-4'>
-                        <div className='w-12 h-12 bg-gradient-to-br from-orange-500/20 to-amber-500/20 rounded-xl flex items-center justify-center border border-orange-500/30'>
+                        <div className='w-12 h-12 bg-gradient-to-br from-orange-500/20 to-amber-500/20 rounded-xl flex items-center justify-center border border-gray-700/30'>
                             <Settings className='h-6 w-6 text-orange-400' />
                         </div>
                         <div>

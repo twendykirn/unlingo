@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useCallback, useState } from 'react';
-import { Stage, Layer, Image as KonvaImage, Rect, Text, Transformer } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Rect, Transformer } from 'react-konva';
 import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
@@ -34,13 +34,11 @@ interface KonvaContainerProps {
     isSelected: boolean;
     onSelect: () => void;
     onUpdate: (position: Container['position']) => void;
-    onDelete: () => void;
     stageRef: React.RefObject<any>;
     mode: 'edit' | 'translate';
-    mappings?: KeyMapping[]; // Only used in translate mode
 }
 
-const KonvaContainer = ({ container, isSelected, onSelect, onUpdate, onDelete, stageRef, mode, mappings = [] }: KonvaContainerProps) => {
+const KonvaContainer = ({ container, isSelected, onSelect, onUpdate, stageRef, mode }: KonvaContainerProps) => {
     const rectRef = useRef<any>(null);
     const textRef = useRef<any>(null);
     const transformerRef = useRef<any>(null);
@@ -70,7 +68,7 @@ const KonvaContainer = ({ container, isSelected, onSelect, onUpdate, onDelete, s
         // Apply the scale to the size and reset scale to prevent accumulation
         const newWidth = rectNode.width() * rectNode.scaleX();
         const newHeight = rectNode.height() * rectNode.scaleY();
-        
+
         rectNode.size({ width: newWidth, height: newHeight });
         rectNode.scaleX(1);
         rectNode.scaleY(1);
@@ -79,11 +77,11 @@ const KonvaContainer = ({ container, isSelected, onSelect, onUpdate, onDelete, s
         if (textNode && mode === 'translate') {
             textNode.position({
                 x: rectNode.x(),
-                y: rectNode.y()
+                y: rectNode.y(),
             });
             textNode.size({
                 width: newWidth,
-                height: newHeight
+                height: newHeight,
             });
         }
 
@@ -117,10 +115,15 @@ const KonvaContainer = ({ container, isSelected, onSelect, onUpdate, onDelete, s
 
     // Determine colors based on mode and selection
     const backgroundColor = container.backgroundColor || '#3b82f6';
-    const fillColor = mode === 'edit' 
-        ? (isSelected ? `${backgroundColor}50` : `${backgroundColor}30`) // More transparent in edit mode
-        : (isSelected ? `${backgroundColor}80` : `${backgroundColor}60`); // Less transparent in translate mode
-    
+    const fillColor =
+        mode === 'edit'
+            ? isSelected
+                ? `${backgroundColor}50`
+                : `${backgroundColor}30` // More transparent in edit mode
+            : isSelected
+              ? `${backgroundColor}80`
+              : `${backgroundColor}60`; // Less transparent in translate mode
+
     const strokeColor = isSelected ? backgroundColor : `${backgroundColor}90`;
 
     return (
@@ -139,8 +142,6 @@ const KonvaContainer = ({ container, isSelected, onSelect, onUpdate, onDelete, s
                 onDragEnd={mode === 'edit' ? handleTransform : undefined}
                 onTransformEnd={mode === 'edit' ? handleTransform : undefined}
             />
-            
-            {/* Small indicator for containers with descriptions */}
             {container.description && (
                 <Rect
                     x={(container.position.x / 100) * imageWidth + 2}
@@ -154,7 +155,6 @@ const KonvaContainer = ({ container, isSelected, onSelect, onUpdate, onDelete, s
                     listening={false}
                 />
             )}
-            
             {isSelected && mode === 'edit' && (
                 <Transformer
                     ref={transformerRef}
@@ -181,10 +181,8 @@ interface ScreenshotCanvasProps {
     selectedContainerId?: Id<'screenshotContainers'> | null;
     onContainerSelect?: (id: Id<'screenshotContainers'>) => void;
     onContainerUpdate?: (containerId: Id<'screenshotContainers'>, position: Container['position']) => void;
-    onContainerDelete?: (containerId: Id<'screenshotContainers'>) => void;
     // Translate mode props
     selectedKey?: any;
-    keyMappings?: KeyMapping[];
     onClearSelection: () => void;
 }
 
@@ -197,9 +195,7 @@ export default function ScreenshotCanvas({
     selectedContainerId,
     onContainerSelect,
     onContainerUpdate,
-    onContainerDelete,
     selectedKey,
-    keyMappings = [],
     onClearSelection,
 }: ScreenshotCanvasProps) {
     const stageRef = useRef<any>(null);
@@ -305,9 +301,7 @@ export default function ScreenshotCanvas({
                         {mode === 'edit' ? 'Edit Containers' : 'Translate Mode'}
                     </h3>
                     {mode === 'edit' && isAddingContainer && (
-                        <p className='text-sm text-blue-400'>
-                            Click on the screenshot to place a new container
-                        </p>
+                        <p className='text-sm text-blue-400'>Click on the screenshot to place a new container</p>
                     )}
                     {mode === 'translate' && selectedKey && (
                         <p className='text-sm text-blue-400'>
@@ -353,15 +347,10 @@ export default function ScreenshotCanvas({
                     draggable={!(mode === 'edit' && isAddingContainer)}
                     onClick={handleCanvasClick}
                     onWheel={handleWheel}
-                    style={{ cursor: (mode === 'edit' && isAddingContainer) ? 'crosshair' : 'grab' }}>
+                    style={{ cursor: mode === 'edit' && isAddingContainer ? 'crosshair' : 'grab' }}>
                     <Layer>
                         <KonvaImage image={canvasImage} width={canvasImage.width} height={canvasImage.height} />
                         {containers.map(container => {
-                            // Get mappings for this container if in translate mode
-                            const containerMappings = mode === 'translate' 
-                                ? keyMappings.filter(m => m.containerId === container._id)
-                                : [];
-                            
                             return (
                                 <KonvaContainer
                                     key={container._id}
@@ -369,10 +358,8 @@ export default function ScreenshotCanvas({
                                     isSelected={selectedContainerId === container._id}
                                     onSelect={() => onContainerSelect?.(container._id)}
                                     onUpdate={position => onContainerUpdate?.(container._id, position)}
-                                    onDelete={() => onContainerDelete?.(container._id)}
                                     stageRef={stageRef}
                                     mode={mode}
-                                    mappings={containerMappings}
                                 />
                             );
                         })}
@@ -381,10 +368,9 @@ export default function ScreenshotCanvas({
             </div>
 
             <div className='mt-2 text-xs text-gray-500 text-center'>
-                {mode === 'edit' 
+                {mode === 'edit'
                     ? 'Use mouse wheel to zoom • Drag to pan • Click and drag containers to reposition'
-                    : 'Use mouse wheel to zoom • Drag to pan • Click containers to select and assign keys'
-                }
+                    : 'Use mouse wheel to zoom • Drag to pan • Click containers to select and assign keys'}
             </div>
         </div>
     );

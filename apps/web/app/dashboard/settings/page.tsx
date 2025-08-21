@@ -27,48 +27,31 @@ export default function WorkspaceSettings() {
         { icon: <User size={18} />, label: 'Profile', onClick: () => openUserProfile() },
     ];
 
-    // Form state
     const [contactEmail, setContactEmail] = useState('');
     const [originalContactEmail, setOriginalContactEmail] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Get the current workspace identifier
     const clerkId = organization?.id;
 
-    // Query workspace info
     const workspace = useQuery(api.workspaces.getWorkspaceWithSubscription, clerkId ? { clerkId } : 'skip');
 
-    const products = useQuery(api.polar.getConfiguredProducts);
+    const usageData = useQuery(
+        api.workspaces.getCurrentUsage,
+        clerkId && workspace ? { clerkId, workspaceUsageId: workspace.workspaceUsageId } : 'skip'
+    );
 
-    // Update contact email mutation
+    const products = useQuery(api.polar.getConfiguredProducts, !clerkId ? 'skip' : undefined);
+
     const updateContactEmail = useMutation(api.workspaces.updateWorkspaceContactEmail);
 
-    // Ensure user has an organization
-    useEffect(() => {
-        if (user && !organization) {
-            router.push('/select-org');
-        }
-    }, [user, organization, router]);
-
-    // Initialize form when workspace loads
     useEffect(() => {
         if (workspace) {
-            if (workspace.contactEmail) {
-                setContactEmail(workspace.contactEmail);
-                setOriginalContactEmail(workspace.contactEmail);
-            } else {
-                // Auto-start editing if no contact email
-                setIsEditing(true);
-                // Pre-populate with user's primary email
-                if (user?.primaryEmailAddress?.emailAddress) {
-                    setContactEmail(user.primaryEmailAddress.emailAddress);
-                }
-            }
+            setContactEmail(workspace.contactEmail);
+            setOriginalContactEmail(workspace.contactEmail);
         }
     }, [workspace, user]);
 
-    // Loading state
     if (!user || !organization || !clerkId) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
@@ -80,7 +63,6 @@ export default function WorkspaceSettings() {
         );
     }
 
-    // Workspace loading state
     if (workspace === undefined) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
@@ -92,7 +74,6 @@ export default function WorkspaceSettings() {
         );
     }
 
-    // No workspace found
     if (!workspace) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
@@ -116,12 +97,6 @@ export default function WorkspaceSettings() {
                 contactEmail: contactEmail.trim(),
             });
 
-            // If this was initial setup (no original email), redirect to dashboard
-            if (!originalContactEmail) {
-                router.push('/dashboard');
-                return;
-            }
-
             setOriginalContactEmail(contactEmail.trim());
             setIsEditing(false);
         } catch (error) {
@@ -132,7 +107,6 @@ export default function WorkspaceSettings() {
     };
 
     const handleCancel = () => {
-        // Don't allow cancel if no original email (required setup)
         if (!originalContactEmail) return;
 
         setContactEmail(originalContactEmail);
@@ -140,23 +114,18 @@ export default function WorkspaceSettings() {
     };
 
     const hasChanges = contactEmail.trim() !== originalContactEmail;
-    const isRequiredSetup = !originalContactEmail;
 
     return (
         <>
             <div className='min-h-screen bg-black text-white'>
-                {/* Sticky Header */}
                 <header className='fixed top-0 left-0 right-0 z-50 bg-black border-b border-gray-800 px-6 py-4 backdrop-blur-sm'>
                     <div className='flex items-center space-x-4'>
-                        {/* Logo */}
                         <h1 className='text-2xl font-bold'>
                             <span className='bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent'>
                                 Unlingo
                             </span>
                         </h1>
-
                         <div className='h-6 w-px bg-gray-600' />
-
                         <div className='flex items-center space-x-2'>
                             <Settings className='h-5 w-5 text-gray-400' />
                             <h2 className='text-xl font-semibold text-white'>Settings</h2>
@@ -164,7 +133,6 @@ export default function WorkspaceSettings() {
                     </div>
                 </header>
 
-                {/* Main Content - Full Screen Grid Layout */}
                 <div className='flex-1 p-8 pt-24 pb-30'>
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -172,7 +140,6 @@ export default function WorkspaceSettings() {
                         transition={{ duration: 0.5 }}
                         className='max-w-7xl mx-auto'>
                         <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'>
-                            {/* Organization Info */}
                             <div className='bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
                                 <h3 className='text-lg font-semibold mb-6 text-white'>Organization Information</h3>
 
@@ -203,25 +170,10 @@ export default function WorkspaceSettings() {
                                 </div>
                             </div>
 
-                            {/* Contact Email Settings */}
                             <div className='bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
                                 <div className='flex items-center justify-between mb-6'>
                                     <h3 className='text-lg font-semibold text-white'>Contact Information</h3>
-                                    {isRequiredSetup && (
-                                        <span className='text-xs bg-red-500/20 border border-red-500/30 text-red-400 px-3 py-1 rounded-full'>
-                                            Required
-                                        </span>
-                                    )}
                                 </div>
-
-                                {isRequiredSetup && (
-                                    <div className='bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6'>
-                                        <p className='text-red-400 text-sm'>
-                                            <strong>Setup Required:</strong> Please provide your contact email to
-                                            complete your workspace setup and start using Unlingo.
-                                        </p>
-                                    </div>
-                                )}
 
                                 <div className='space-y-4'>
                                     <div>
@@ -244,29 +196,19 @@ export default function WorkspaceSettings() {
                                                 <div className='flex space-x-3'>
                                                     <Button
                                                         onClick={handleSave}
-                                                        disabled={
-                                                            (!hasChanges && !isRequiredSetup) ||
-                                                            !contactEmail.trim() ||
-                                                            isSaving
-                                                        }
+                                                        disabled={!hasChanges || !contactEmail.trim() || isSaving}
                                                         className='bg-white text-black hover:bg-gray-200 transition-all'>
                                                         <Save className='h-4 w-4 mr-2' />
-                                                        {isSaving
-                                                            ? 'Saving...'
-                                                            : isRequiredSetup
-                                                              ? 'Complete Setup'
-                                                              : 'Save'}
+                                                        {isSaving ? 'Saving...' : 'Save'}
                                                     </Button>
-                                                    {!isRequiredSetup && (
-                                                        <Button
-                                                            variant='outline'
-                                                            onClick={handleCancel}
-                                                            disabled={isSaving}
-                                                            className='border-gray-600 hover:bg-gray-800 transition-all'>
-                                                            <X className='h-4 w-4 mr-2' />
-                                                            Cancel
-                                                        </Button>
-                                                    )}
+                                                    <Button
+                                                        variant='outline'
+                                                        onClick={handleCancel}
+                                                        disabled={isSaving}
+                                                        className='border-gray-600 hover:bg-gray-800 transition-all'>
+                                                        <X className='h-4 w-4 mr-2' />
+                                                        Cancel
+                                                    </Button>
                                                 </div>
                                             </div>
                                         ) : (
@@ -295,7 +237,6 @@ export default function WorkspaceSettings() {
                             </div>
                         </div>
                         <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8'>
-                            {/* Usage Information - Spans multiple columns */}
                             <div className='lg:col-span-2 xl:col-span-3 bg-gray-900/50 border border-gray-800/50 rounded-xl p-8 backdrop-blur-sm'>
                                 <div className='flex items-center justify-between mb-8'>
                                     <h3 className='text-xl font-semibold text-white'>Usage & Limits</h3>
@@ -310,7 +251,6 @@ export default function WorkspaceSettings() {
                                 </div>
 
                                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8'>
-                                    {/* Projects Usage */}
                                     <div className='bg-black/20 border border-gray-700/30 rounded-xl p-6 hover:border-gray-600/50 transition-all'>
                                         <div className='flex items-center justify-between mb-4'>
                                             <div className='text-sm font-medium text-gray-300'>Projects</div>
@@ -334,34 +274,32 @@ export default function WorkspaceSettings() {
                                         </div>
                                     </div>
 
-                                    {/* Requests Usage */}
-                                    <div className='bg-black/20 border border-gray-700/30 rounded-xl p-6 hover:border-gray-600/50 transition-all'>
-                                        <div className='flex items-center justify-between mb-4'>
-                                            <div className='text-sm font-medium text-gray-300'>
-                                                Translation Requests
+                                    {usageData ? (
+                                        <div className='bg-black/20 border border-gray-700/30 rounded-xl p-6 hover:border-gray-600/50 transition-all'>
+                                            <div className='flex items-center justify-between mb-4'>
+                                                <div className='text-sm font-medium text-gray-300'>
+                                                    Translation Requests
+                                                </div>
+                                                <div className='text-2xl font-bold text-white'>
+                                                    {usageData.requests.toLocaleString()}
+                                                </div>
                                             </div>
-                                            <div className='text-2xl font-bold text-white'>
-                                                {workspace.currentUsage.requests.toLocaleString()}
+                                            <div className='w-full bg-gray-800/50 rounded-full h-2'>
+                                                <div
+                                                    className='bg-gradient-to-r from-emerald-500 to-cyan-500 h-2 rounded-full transition-all duration-500'
+                                                    style={{
+                                                        width: `${Math.min((usageData.requests / workspace.limits.requests) * 100, 100)}%`,
+                                                    }}></div>
+                                            </div>
+                                            <div className='text-xs text-gray-400 mt-2'>
+                                                {workspace.limits.requests.toLocaleString()} limit •{' '}
+                                                {Math.round((usageData.requests / workspace.limits.requests) * 100)}%
+                                                used • {usageData.month || 'Current month'}
                                             </div>
                                         </div>
-                                        <div className='w-full bg-gray-800/50 rounded-full h-2'>
-                                            <div
-                                                className='bg-gradient-to-r from-emerald-500 to-cyan-500 h-2 rounded-full transition-all duration-500'
-                                                style={{
-                                                    width: `${Math.min((workspace.currentUsage.requests / workspace.limits.requests) * 100, 100)}%`,
-                                                }}></div>
-                                        </div>
-                                        <div className='text-xs text-gray-400 mt-2'>
-                                            {workspace.limits.requests.toLocaleString()} limit •{' '}
-                                            {Math.round(
-                                                (workspace.currentUsage.requests / workspace.limits.requests) * 100
-                                            )}
-                                            % used
-                                        </div>
-                                    </div>
+                                    ) : null}
                                 </div>
 
-                                {/* Plan Limits */}
                                 <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                                     <div className='bg-black/10 rounded-lg p-4 border border-gray-700/20'>
                                         <div className='text-xs font-medium text-gray-400 uppercase tracking-wide mb-1'>
@@ -392,7 +330,6 @@ export default function WorkspaceSettings() {
                                 </div>
                             </div>
 
-                            {/* Billing & Subscription - Spans multiple columns */}
                             <div className='lg:col-span-2 xl:col-span-3 bg-gray-900/50 border border-gray-800/50 rounded-xl p-8 backdrop-blur-sm'>
                                 <h3 className='text-xl font-semibold mb-8 text-white'>Billing & Subscription</h3>
 
@@ -438,9 +375,9 @@ export default function WorkspaceSettings() {
                                             </div>
                                         </div>
 
-                                        {products && (
+                                        {products ? (
                                             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                                                {products.pro250kRequests && (
+                                                {products.pro250kRequests ? (
                                                     <div className='bg-black/20 border border-gray-700/30 rounded-xl p-6 hover:border-gray-600/50 transition-all'>
                                                         <h5 className='font-semibold text-white mb-2'>Pro 250K Plan</h5>
                                                         <p className='text-sm text-gray-300 mb-4'>
@@ -455,9 +392,9 @@ export default function WorkspaceSettings() {
                                                             Upgrade to Pro 250K
                                                         </CheckoutLink>
                                                     </div>
-                                                )}
+                                                ) : null}
 
-                                                {products.pro500kRequests && (
+                                                {products.pro500kRequests ? (
                                                     <div className='bg-black/20 border border-gray-700/30 rounded-xl p-6 hover:border-gray-600/50 transition-all'>
                                                         <h5 className='font-semibold text-white mb-2'>Pro 500K Plan</h5>
                                                         <p className='text-sm text-gray-300 mb-4'>
@@ -472,7 +409,7 @@ export default function WorkspaceSettings() {
                                                             Upgrade to Pro 500K
                                                         </CheckoutLink>
                                                     </div>
-                                                )}
+                                                ) : null}
 
                                                 <div className='md:col-span-2 bg-black/20 border border-gray-700/30 rounded-xl p-6 hover:border-gray-600/50 transition-all'>
                                                     <h5 className='font-semibold text-white mb-2'>Pro 1M+ Plans</h5>
@@ -480,50 +417,50 @@ export default function WorkspaceSettings() {
                                                         1M+ translation requests, unlimited everything
                                                     </p>
                                                     <div className='flex flex-wrap gap-3'>
-                                                        {products.pro1mRequests && (
+                                                        {products.pro1mRequests ? (
                                                             <CheckoutLink
                                                                 polarApi={api.polar}
                                                                 productIds={[products.pro1mRequests.id]}
                                                                 className='inline-flex items-center px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-lg transition-all cursor-pointer font-medium'>
                                                                 1M Requests
                                                             </CheckoutLink>
-                                                        )}
-                                                        {products.pro2mRequests && (
+                                                        ) : null}
+                                                        {products.pro2mRequests ? (
                                                             <CheckoutLink
                                                                 polarApi={api.polar}
                                                                 productIds={[products.pro2mRequests.id]}
                                                                 className='inline-flex items-center px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-lg transition-all cursor-pointer font-medium'>
                                                                 2M Requests
                                                             </CheckoutLink>
-                                                        )}
-                                                        {products.pro10mRequests && (
+                                                        ) : null}
+                                                        {products.pro10mRequests ? (
                                                             <CheckoutLink
                                                                 polarApi={api.polar}
                                                                 productIds={[products.pro10mRequests.id]}
                                                                 className='inline-flex items-center px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-lg transition-all cursor-pointer font-medium'>
                                                                 10M Requests
                                                             </CheckoutLink>
-                                                        )}
-                                                        {products.pro50mRequests && (
+                                                        ) : null}
+                                                        {products.pro50mRequests ? (
                                                             <CheckoutLink
                                                                 polarApi={api.polar}
                                                                 productIds={[products.pro50mRequests.id]}
                                                                 className='inline-flex items-center px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-lg transition-all cursor-pointer font-medium'>
                                                                 50M Requests
                                                             </CheckoutLink>
-                                                        )}
-                                                        {products.pro100mRequests && (
+                                                        ) : null}
+                                                        {products.pro100mRequests ? (
                                                             <CheckoutLink
                                                                 polarApi={api.polar}
                                                                 productIds={[products.pro100mRequests.id]}
                                                                 className='inline-flex items-center px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-lg transition-all cursor-pointer font-medium'>
                                                                 100M Requests
                                                             </CheckoutLink>
-                                                        )}
+                                                        ) : null}
                                                     </div>
                                                 </div>
                                             </div>
-                                        )}
+                                        ) : null}
                                     </div>
                                 )}
                             </div>

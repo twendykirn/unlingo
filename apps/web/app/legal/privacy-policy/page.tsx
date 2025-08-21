@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,18 +5,14 @@ import { Button } from '@/components/ui/button';
 export default function PrivacyPolicy() {
     return (
         <main className='min-h-screen bg-black text-white'>
-            {/* Navigation Header */}
             <nav className='fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-gray-800'>
                 <div className='max-w-7xl mx-auto px-6 py-4'>
                     <div className='flex items-center justify-between'>
-                        {/* Logo */}
                         <Link href='/' className='text-2xl font-bold'>
                             <span className='bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent'>
                                 Unlingo
                             </span>
                         </Link>
-
-                        {/* Back Button */}
                         <Link href='/'>
                             <Button variant='ghost' size='sm' className='text-gray-300 hover:text-white'>
                                 <ArrowLeft className='h-4 w-4 mr-2' />
@@ -29,7 +23,6 @@ export default function PrivacyPolicy() {
                 </div>
             </nav>
 
-            {/* Content */}
             <div className='pt-24 pb-16 px-6'>
                 <div className='max-w-4xl mx-auto'>
                     <div className='mb-12'>
@@ -38,7 +31,6 @@ export default function PrivacyPolicy() {
                     </div>
 
                     <div className='prose prose-invert prose-lg max-w-none space-y-8'>
-                        {/* Introduction */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>1. Introduction</h2>
                             <p className='text-gray-300 mb-4'>
@@ -51,8 +43,6 @@ export default function PrivacyPolicy() {
                                 Privacy Policy, please do not access the Service.
                             </p>
                         </section>
-
-                        {/* Information We Collect */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>2. Information We Collect</h2>
 
@@ -98,8 +88,6 @@ export default function PrivacyPolicy() {
                                 </div>
                             </div>
                         </section>
-
-                        {/* How We Use Information */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>3. How We Use Your Information</h2>
                             <p className='text-gray-300 mb-4'>We use the information we collect to:</p>
@@ -114,8 +102,6 @@ export default function PrivacyPolicy() {
                                 <li>Comply with legal obligations</li>
                             </ul>
                         </section>
-
-                        {/* Information Sharing */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>4. How We Share Your Information</h2>
                             <p className='text-gray-300 mb-4'>
@@ -153,8 +139,6 @@ export default function PrivacyPolicy() {
                                 </div>
                             </div>
                         </section>
-
-                        {/* Data Security */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>5. Data Security</h2>
                             <p className='text-gray-300 mb-4'>
@@ -174,8 +158,6 @@ export default function PrivacyPolicy() {
                                 information, we cannot guarantee absolute security.
                             </p>
                         </section>
-
-                        {/* Data Retention */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>6. Data Retention</h2>
                             <p className='text-gray-300 mb-4'>
@@ -192,8 +174,6 @@ export default function PrivacyPolicy() {
                                 except where retention is required by law.
                             </p>
                         </section>
-
-                        {/* Your Rights */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>7. Your Rights</h2>
                             <p className='text-gray-300 mb-4'>
@@ -228,8 +208,6 @@ export default function PrivacyPolicy() {
                                 your request within 30 days.
                             </p>
                         </section>
-
-                        {/* Cookies and Tracking */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>
                                 8. Analytics and Tracking Technologies
@@ -267,8 +245,6 @@ export default function PrivacyPolicy() {
                                 usage patterns, performance metrics, and error reporting.
                             </p>
                         </section>
-
-                        {/* Third-Party Services */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>9. Third-Party Services</h2>
                             <p className='text-gray-300 mb-4'>
@@ -284,12 +260,10 @@ export default function PrivacyPolicy() {
                                 <li>Hosting and infrastructure (Vercel)</li>
                                 <li>Database services (Convex)</li>
                                 <li>Payment processing (Polar)</li>
-                                <li>Cookieless analytics services (Databuddy)</li>
+                                <li>Analytics services (Databuddy and TinyBird)</li>
                                 <li>Email services (Resend)</li>
                             </ul>
                         </section>
-
-                        {/* International Transfers */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>10. International Data Transfers</h2>
                             <p className='text-gray-300'>
@@ -299,8 +273,6 @@ export default function PrivacyPolicy() {
                                 your information in accordance with applicable privacy laws.
                             </p>
                         </section>
-
-                        {/* Children's Privacy */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>11. Children's Privacy</h2>
                             <p className='text-gray-300'>
@@ -310,8 +282,6 @@ export default function PrivacyPolicy() {
                                 to remove such information.
                             </p>
                         </section>
-
-                        {/* Changes to Privacy Policy */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>
                                 12. Changes to This Privacy Policy
@@ -322,8 +292,6 @@ export default function PrivacyPolicy() {
                                 date. We encourage you to review this Privacy Policy periodically for any changes.
                             </p>
                         </section>
-
-                        {/* Contact Information */}
                         <section>
                             <h2 className='text-2xl font-semibold mb-4 text-white'>13. Contact Us</h2>
                             <p className='text-gray-300 mb-4'>

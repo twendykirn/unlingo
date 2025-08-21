@@ -317,7 +317,6 @@ export const assignKeyToContainer = mutation({
                 translationKey: args.translationKey,
                 valueType: args.valueType,
                 currentValue: args.currentValue,
-                createdAt: now,
                 updatedAt: now,
                 createdBy: identity.subject,
             });
@@ -443,7 +442,6 @@ export const createContainer = mutation({
             throw new Error('Not authenticated');
         }
 
-        // Verify screenshot access
         const screenshot = await ctx.db.get(args.screenshotId);
         if (!screenshot) {
             throw new Error('Screenshot not found');
@@ -459,14 +457,12 @@ export const createContainer = mutation({
             throw new Error('Access denied');
         }
 
-        const now = Date.now();
         const containerId = await ctx.db.insert('screenshotContainers', {
             screenshotId: args.screenshotId,
             position: args.position,
             backgroundColor: args.backgroundColor,
             description: args.description,
-            createdAt: now,
-            updatedAt: now,
+            updatedAt: Date.now(),
             createdBy: identity.subject,
         });
 

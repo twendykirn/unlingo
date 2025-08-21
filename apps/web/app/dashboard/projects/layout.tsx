@@ -1,17 +1,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
+import { useClerk } from '@clerk/nextjs';
 import { Settings, House, User, ChartLine, Building2 } from 'lucide-react';
 import Dock from '@/components/ui/dock';
 
-export default function ProjectsLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
-    const { user } = useUser();
-    const { organization } = useOrganization();
+export default function ProjectsLayout({ children }: { children: React.ReactNode }) {
     const { openOrganizationProfile, openUserProfile } = useClerk();
     const router = useRouter();
 

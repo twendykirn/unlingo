@@ -2,7 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
 const isProtectedRoute = createRouteMatcher(['/dashboard(.*)']);
-const isOrgSelectionRoute = createRouteMatcher(['/select-org', '/dashboard/new']);
+const isOrgSelectionRoute = createRouteMatcher(['/select-org']);
 
 export default clerkMiddleware(async (auth, req) => {
     const { userId, orgId } = await auth();
@@ -12,7 +12,7 @@ export default clerkMiddleware(async (auth, req) => {
         await auth.protect();
 
         // If user is accessing dashboard directly, redirect to org selection
-        if (userId && !orgId && req.nextUrl.pathname === '/dashboard') {
+        if (userId && !orgId && req.nextUrl.pathname !== '/dashboard/new') {
             return NextResponse.redirect(new URL('/select-org', req.url));
         }
     }

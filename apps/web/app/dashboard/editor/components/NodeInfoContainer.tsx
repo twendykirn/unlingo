@@ -10,7 +10,7 @@ import { copyToClipboard } from '../utils/copyToClipboard';
 import { buildJsonFromNodes } from '../utils/buildJsonFromNodes';
 import SelectedNodeEditArea from './SelectedNodeEditArea';
 import { use$ } from '@legendapp/state/react';
-import { hasUnsavedChanges$, nodes$, selectedNode$ } from '../store';
+import { nodes$, selectedNode$ } from '../store';
 
 interface Props {
     isPrimaryLanguage: boolean;
@@ -35,16 +35,17 @@ export default function NodeInfoContainer({
 
     const selectedNode = use$(selectedNode$);
 
+    const keyParts = selectedNode ? selectedNode.key.split('.') : [];
+    const parentPath = keyParts.slice(0, -1).join('.');
+
     const deleteSelectedKey = () => {
         if (!selectedNode) return;
         const nodes = nodes$.get();
-        // Build complete JSON from all root nodes
         const completeJson: any = {};
         const rootNodes = nodes.filter(node => !node.parent);
 
         rootNodes.forEach(rootNode => {
             if (rootNode.id !== selectedNode.id) {
-                // Skip if root is being deleted
                 const key = rootNode.key.split('.').pop() || rootNode.key;
                 const result = buildJsonFromNodes({
                     nodes,
@@ -58,23 +59,19 @@ export default function NodeInfoContainer({
             }
         });
 
-        // Rebuild the entire node structure from the updated JSON
         const newNodes = createNodesFromJson(completeJson);
         onDeleteNode(newNodes);
         setEditKey('');
     };
 
-    // Handle key renaming
     const handleKeyChange = (newKeyName: string) => {
         if (!selectedNode) return;
-        // Build new key path
         const keyParts = selectedNode.key.split('.');
         keyParts[keyParts.length - 1] = newKeyName.trim();
         const newKey = keyParts.join('.');
 
         const nodes = nodes$.get();
 
-        // Check if key already exists at the same level
         const parentPath = keyParts.slice(0, -1).join('.');
         const sameLevelNodes = nodes.filter(n => {
             const nParts = n.key.split('.');
@@ -104,10 +101,8 @@ export default function NodeInfoContainer({
             });
         });
 
-        // Rebuild nodes and find the renamed node
         const newNodes = createNodesFromJson(completeJson);
 
-        // Find and select the renamed node
         const renamedNode = newNodes.find(n => n.key === newKey);
         if (renamedNode) {
             selectedNode$.set(renamedNode);
@@ -115,16 +110,13 @@ export default function NodeInfoContainer({
         }
 
         nodes$.set(newNodes);
-        hasUnsavedChanges$.set(true);
     };
 
     useEffect(() => {
         if (selectedNode) {
-            // Initialize editKey with just the node's name (not the full path)
             const lastKeyPart = selectedNode.key.split('.').pop() || selectedNode.key;
-            // For array items, don't allow editing the key (it's just an index)
             if (lastKeyPart.includes('[') && lastKeyPart.includes(']')) {
-                setEditKey(''); // Array items don't have editable keys
+                setEditKey('');
             } else {
                 setEditKey(lastKeyPart);
             }
@@ -135,7 +127,6 @@ export default function NodeInfoContainer({
         <div className='w-80 bg-gray-950 border-l border-gray-800 flex flex-col'>
             {selectedNode ? (
                 <div className='flex flex-col h-full'>
-                    {/* Fixed header */}
                     <div className='p-6 flex-shrink-0 border-b border-gray-800'>
                         <div className='flex items-center justify-between'>
                             <h3 className='text-lg font-semibold'>Selected Key</h3>
@@ -193,104 +184,82 @@ export default function NodeInfoContainer({
                         </div>
                     </div>
 
-                    {/* Scrollable content area */}
                     <div className='flex-1 overflow-y-auto p-6 pt-4'>
-                        {(() => {
-                            return (
-                                <div className='space-y-6 flex-1'>
-                                    {/* Full Path */}
-                                    <div>
-                                        <div className='flex items-center justify-between mb-2'>
-                                            <label className='text-sm font-medium text-gray-400'>Full Path</label>
-                                            <Button
-                                                variant='outline'
-                                                size='sm'
-                                                onClick={() => copyToClipboard(selectedNode.key)}
-                                                className='text-gray-400 hover:text-white hover:border-gray-400 h-6 w-6 p-0'>
-                                                <Copy className='h-3 w-3' />
-                                            </Button>
-                                        </div>
-                                        <div className='px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm font-mono text-gray-300 break-all'>
-                                            {selectedNode.key}
-                                        </div>
-                                    </div>
-
-                                    {/* Parent Path */}
-                                    {(() => {
-                                        const keyParts = selectedNode.key.split('.');
-                                        const parentPath = keyParts.slice(0, -1).join('.');
-
-                                        if (parentPath) {
-                                            return (
-                                                <div>
-                                                    <div className='flex items-center justify-between mb-2'>
-                                                        <label className='text-sm font-medium text-gray-400'>
-                                                            Parents
-                                                        </label>
-                                                        <Button
-                                                            variant='outline'
-                                                            size='sm'
-                                                            onClick={() => copyToClipboard(parentPath)}
-                                                            className='text-gray-400 hover:text-white hover:border-gray-400 h-6 w-6 p-0'>
-                                                            <Copy className='h-3 w-3' />
-                                                        </Button>
-                                                    </div>
-                                                    <div className='px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm font-mono text-gray-300 break-all'>
-                                                        {parentPath}
-                                                    </div>
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    })()}
-
-                                    {/* Editable Key Name */}
-                                    <div>
-                                        <div className='flex items-center justify-between mb-2'>
-                                            <label className='text-sm font-medium text-gray-400'>Key</label>
-                                            <Button
-                                                variant='outline'
-                                                size='sm'
-                                                onClick={() => copyToClipboard(editKey)}
-                                                className='text-gray-400 hover:text-white hover:border-gray-400 h-6 w-6 p-0'>
-                                                <Copy className='h-3 w-3' />
-                                            </Button>
-                                        </div>
-                                        <input
-                                            type='text'
-                                            value={editKey}
-                                            onChange={e => setEditKey(e.target.value)}
-                                            onBlur={() => handleKeyChange(editKey)}
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    handleKeyChange(editKey);
-                                                }
-                                            }}
-                                            className='w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm font-mono text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
-                                            placeholder='Enter key name'
-                                        />
-                                    </div>
-
-                                    {/* Type */}
-                                    <div>
-                                        <label className='block text-sm font-medium text-gray-400 mb-2'>Type</label>
-                                        <div className='px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm text-gray-300'>
-                                            {selectedNode.type}
-                                        </div>
-                                    </div>
-
-                                    {/* Value */}
-                                    <SelectedNodeEditArea
-                                        isPrimaryLanguage={isPrimaryLanguage}
-                                        primaryLanguageContent={primaryLanguageContent}
-                                        selectedLanguage={selectedLanguage}
-                                        isPremium={isPremium}
-                                        workspaceId={workspaceId}
-                                    />
+                        <div className='space-y-6 flex-1'>
+                            <div>
+                                <div className='flex items-center justify-between mb-2'>
+                                    <label className='text-sm font-medium text-gray-400'>Full Path</label>
+                                    <Button
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={() => copyToClipboard(selectedNode.key)}
+                                        className='text-gray-400 hover:text-white hover:border-gray-400 h-6 w-6 p-0'>
+                                        <Copy className='h-3 w-3' />
+                                    </Button>
                                 </div>
-                            );
-                        })()}
+                                <div className='px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm font-mono text-gray-300 break-all'>
+                                    {selectedNode.key}
+                                </div>
+                            </div>
+                            {parentPath ? (
+                                <div>
+                                    <div className='flex items-center justify-between mb-2'>
+                                        <label className='text-sm font-medium text-gray-400'>Parents</label>
+                                        <Button
+                                            variant='outline'
+                                            size='sm'
+                                            onClick={() => copyToClipboard(parentPath)}
+                                            className='text-gray-400 hover:text-white hover:border-gray-400 h-6 w-6 p-0'>
+                                            <Copy className='h-3 w-3' />
+                                        </Button>
+                                    </div>
+                                    <div className='px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm font-mono text-gray-300 break-all'>
+                                        {parentPath}
+                                    </div>
+                                </div>
+                            ) : null}
+                            <div>
+                                <div className='flex items-center justify-between mb-2'>
+                                    <label className='text-sm font-medium text-gray-400'>Key</label>
+                                    <Button
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={() => copyToClipboard(editKey)}
+                                        className='text-gray-400 hover:text-white hover:border-gray-400 h-6 w-6 p-0'>
+                                        <Copy className='h-3 w-3' />
+                                    </Button>
+                                </div>
+                                <input
+                                    type='text'
+                                    value={editKey}
+                                    onChange={e => setEditKey(e.target.value)}
+                                    onBlur={() => handleKeyChange(editKey)}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleKeyChange(editKey);
+                                        }
+                                    }}
+                                    className='w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm font-mono text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                    placeholder='Enter key name'
+                                />
+                            </div>
+
+                            <div>
+                                <label className='block text-sm font-medium text-gray-400 mb-2'>Type</label>
+                                <div className='px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm text-gray-300'>
+                                    {selectedNode.type}
+                                </div>
+                            </div>
+
+                            <SelectedNodeEditArea
+                                isPrimaryLanguage={isPrimaryLanguage}
+                                primaryLanguageContent={primaryLanguageContent}
+                                selectedLanguage={selectedLanguage}
+                                isPremium={isPremium}
+                                workspaceId={workspaceId}
+                            />
+                        </div>
                     </div>
                 </div>
             ) : (

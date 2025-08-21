@@ -1,7 +1,6 @@
 import { Polar } from '@convex-dev/polar';
 import { components, internal } from './_generated/api';
 import { Id } from './_generated/dataModel';
-import { action } from './_generated/server';
 
 export const polar = new Polar(components.polar, {
     products: {
@@ -21,13 +20,6 @@ export const polar = new Polar(components.polar, {
             userId: workspace._id,
             email: workspace.contactEmail,
         };
-    },
-});
-
-export const syncProducts = action({
-    args: {},
-    handler: async ctx => {
-        await polar.syncProducts(ctx);
     },
 });
 

@@ -7,16 +7,13 @@ import { NamespaceVersion } from '../types';
 import { useState } from 'react';
 import { usePaginatedQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import { Doc, Id } from '@/convex/_generated/dataModel';
 
 interface Props {
     selectedVersions: NamespaceVersion[];
     setSelectedVersions: (versions: NamespaceVersion[]) => void;
     workspaceId: Id<'workspaces'>;
-    namespaces: {
-        _id: Id<'namespaces'>;
-        name: string;
-    }[];
+    namespaces: Doc<'namespaces'>[];
     loadMoreNamespaces: (num: number) => void;
     namespacesStatus: 'CanLoadMore' | 'LoadingFirstPage' | 'LoadingMore' | 'Exhausted';
 }
