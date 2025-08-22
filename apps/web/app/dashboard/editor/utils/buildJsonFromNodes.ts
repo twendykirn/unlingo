@@ -3,22 +3,18 @@ import { TranslationNode } from '../types';
 interface Params {
     nodes: TranslationNode[];
     nodeId: string;
-    action: 'rename' | 'delete' | '';
+    action: 'delete' | '';
     selectedNodeId?: string;
-    newKeyName?: string;
 }
 
 export const buildJsonFromNodes = (params: Params): any => {
-    const { nodes, nodeId, action, selectedNodeId, newKeyName } = params;
+    const { nodes, nodeId, action, selectedNodeId } = params;
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return null;
 
     if (action === 'delete' && node.id === selectedNodeId) return null; // Skip deleted node
 
-    if (action === 'rename' && node.id === selectedNodeId) {
-        // Use the renamed key for the selected node
-        return node.value;
-    } else if (node.type === 'object') {
+    if (node.type === 'object') {
         const obj: any = {};
         node.children.forEach(childId => {
             // Skip deleted child
@@ -26,9 +22,6 @@ export const buildJsonFromNodes = (params: Params): any => {
                 const childNode = nodes.find(n => n.id === childId);
                 if (childNode) {
                     let key = childNode.key.split('.').pop() || childNode.key;
-                    if (action === 'rename' && childNode.id === selectedNodeId && newKeyName) {
-                        key = newKeyName.trim();
-                    }
                     obj[key] = buildJsonFromNodes({ ...params, nodeId: childId });
                 }
             }

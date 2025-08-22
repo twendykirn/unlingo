@@ -82,7 +82,9 @@ export default function NewOrganizationPage() {
                 });
 
                 await setActive?.({ organization: organization.id });
-                router.push('/dashboard');
+                setTimeout(() => {
+                    router.push('/dashboard');
+                }, 500);
             }
         } catch (error) {
             console.error('Failed to complete setup:', error);

@@ -1,4 +1,4 @@
-import type { WebhookEvent } from '@clerk/backend';
+import { createClerkClient, type WebhookEvent } from '@clerk/backend';
 import { httpRouter } from 'convex/server';
 import { Webhook } from 'svix';
 import { internal } from './_generated/api';
@@ -64,11 +64,16 @@ http.route({
 
                     if (primaryEmail) {
                         await ctx.scheduler.runAfter(0, internal.resend.sendWelcomeEmail, {
-                            userFirstName: evt.data.first_name || '',
                             userEmail: primaryEmail.email_address,
                         });
                     } else {
                         console.log('Not found primary email address for user: ', evt.data.id);
+                    }
+                    break;
+                case 'organizationMembership.deleted':
+                    if (evt.data.organization.members_count === 0) {
+                        const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
+                        await clerk.organizations.deleteOrganization(evt.data.organization.id);
                     }
                     break;
                 case 'organization.deleted':

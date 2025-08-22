@@ -64,54 +64,6 @@ export default function NodeInfoContainer({
         setEditKey('');
     };
 
-    const handleKeyChange = (newKeyName: string) => {
-        if (!selectedNode) return;
-        const keyParts = selectedNode.key.split('.');
-        keyParts[keyParts.length - 1] = newKeyName.trim();
-        const newKey = keyParts.join('.');
-
-        const nodes = nodes$.get();
-
-        const parentPath = keyParts.slice(0, -1).join('.');
-        const sameLevelNodes = nodes.filter(n => {
-            const nParts = n.key.split('.');
-            const nParentPath = nParts.slice(0, -1).join('.');
-            return nParentPath === parentPath && n.id !== selectedNode.id;
-        });
-
-        if (sameLevelNodes.some(n => n.key === newKey)) {
-            alert('A key with this name already exists at this level');
-            return;
-        }
-
-        const completeJson: any = {};
-        const rootNodes = nodes.filter(node => !node.parent);
-
-        rootNodes.forEach(rootNode => {
-            let key = rootNode.key.split('.').pop() || rootNode.key;
-            if (rootNode.id === selectedNode.id) {
-                key = newKeyName.trim();
-            }
-            completeJson[key] = buildJsonFromNodes({
-                nodes,
-                nodeId: rootNode.id,
-                action: 'rename',
-                selectedNodeId: selectedNode.id,
-                newKeyName: newKeyName.trim(),
-            });
-        });
-
-        const newNodes = createNodesFromJson(completeJson);
-
-        const renamedNode = newNodes.find(n => n.key === newKey);
-        if (renamedNode) {
-            selectedNode$.set(renamedNode);
-            setEditKey(newKeyName.trim());
-        }
-
-        nodes$.set(newNodes);
-    };
-
     useEffect(() => {
         if (selectedNode) {
             const lastKeyPart = selectedNode.key.split('.').pop() || selectedNode.key;
@@ -219,30 +171,21 @@ export default function NodeInfoContainer({
                                 </div>
                             ) : null}
                             <div>
-                                <div className='flex items-center justify-between mb-2'>
-                                    <label className='text-sm font-medium text-gray-400'>Key</label>
-                                    <Button
-                                        variant='outline'
-                                        size='sm'
-                                        onClick={() => copyToClipboard(editKey)}
-                                        className='text-gray-400 hover:text-white hover:border-gray-400 h-6 w-6 p-0'>
-                                        <Copy className='h-3 w-3' />
-                                    </Button>
+                                <div>
+                                    <div className='flex items-center justify-between mb-2'>
+                                        <label className='text-sm font-medium text-gray-400'>Key</label>
+                                        <Button
+                                            variant='outline'
+                                            size='sm'
+                                            onClick={() => copyToClipboard(editKey)}
+                                            className='text-gray-400 hover:text-white hover:border-gray-400 h-6 w-6 p-0'>
+                                            <Copy className='h-3 w-3' />
+                                        </Button>
+                                    </div>
+                                    <div className='px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm font-mono text-gray-300 break-all'>
+                                        {editKey}
+                                    </div>
                                 </div>
-                                <input
-                                    type='text'
-                                    value={editKey}
-                                    onChange={e => setEditKey(e.target.value)}
-                                    onBlur={() => handleKeyChange(editKey)}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            handleKeyChange(editKey);
-                                        }
-                                    }}
-                                    className='w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-sm font-mono text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
-                                    placeholder='Enter key name'
-                                />
                             </div>
 
                             <div>

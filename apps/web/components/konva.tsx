@@ -1,263 +1,131 @@
 'use client';
 
-import { useRef, useEffect, useCallback, useState } from 'react';
-import { Stage, Layer, Image as KonvaImage, Rect, Transformer } from 'react-konva';
-import { Id } from '@/convex/_generated/dataModel';
+import { useRef, useEffect, useState } from 'react';
+import { Stage, Layer, Image as KonvaImage } from 'react-konva';
+import { Doc, Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
-
-interface Container {
-    _id: Id<'screenshotContainers'>;
-    position: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    };
-    backgroundColor?: string;
-    description?: string;
-    createdAt: number;
-    updatedAt: number;
-}
-
-interface KeyMapping {
-    _id: Id<'screenshotKeyMappings'>;
-    containerId: Id<'screenshotContainers'>;
-    translationKey: string;
-    valueType: 'string' | 'number' | 'boolean';
-    currentValue: string | number | boolean | null;
-    updatedAt: number;
-}
-
-interface KonvaContainerProps {
-    container: Container;
-    isSelected: boolean;
-    onSelect: () => void;
-    onUpdate: (position: Container['position']) => void;
-    stageRef: React.RefObject<any>;
-    mode: 'edit' | 'translate';
-}
-
-const KonvaContainer = ({ container, isSelected, onSelect, onUpdate, stageRef, mode }: KonvaContainerProps) => {
-    const rectRef = useRef<any>(null);
-    const textRef = useRef<any>(null);
-    const transformerRef = useRef<any>(null);
-
-    useEffect(() => {
-        if (isSelected && rectRef.current && transformerRef.current) {
-            transformerRef.current.nodes([rectRef.current]);
-            transformerRef.current.getLayer().batchDraw();
-        }
-    }, [isSelected]);
-
-    const handleTransform = useCallback(() => {
-        if (!rectRef.current || !stageRef.current) return;
-
-        const rectNode = rectRef.current;
-        const textNode = textRef.current;
-        const stage = stageRef.current;
-        const layer = stage.findOne('Layer');
-        const image = layer.findOne('Image');
-
-        if (!image) return;
-
-        // Get image dimensions (original size)
-        const imageWidth = image.width();
-        const imageHeight = image.height();
-
-        // Apply the scale to the size and reset scale to prevent accumulation
-        const newWidth = rectNode.width() * rectNode.scaleX();
-        const newHeight = rectNode.height() * rectNode.scaleY();
-
-        rectNode.size({ width: newWidth, height: newHeight });
-        rectNode.scaleX(1);
-        rectNode.scaleY(1);
-
-        // Update text position and size to match rect (only in translate mode)
-        if (textNode && mode === 'translate') {
-            textNode.position({
-                x: rectNode.x(),
-                y: rectNode.y(),
-            });
-            textNode.size({
-                width: newWidth,
-                height: newHeight,
-            });
-        }
-
-        // Convert to percentage for storage
-        const x = (rectNode.x() / imageWidth) * 100;
-        const y = (rectNode.y() / imageHeight) * 100;
-        const width = (newWidth / imageWidth) * 100;
-        const height = (newHeight / imageHeight) * 100;
-
-        onUpdate({ x, y, width, height });
-    }, [onUpdate, stageRef, mode]);
-
-    const handleClick = useCallback(
-        (e: any) => {
-            onSelect();
-        },
-        [onSelect]
-    );
-
-    if (!stageRef.current) return null;
-
-    const stage = stageRef.current;
-    const layer = stage.findOne('Layer');
-    const image = layer?.findOne('Image');
-
-    if (!image) return null;
-
-    // Use the original image dimensions for positioning
-    const imageWidth = image.width();
-    const imageHeight = image.height();
-
-    // Determine colors based on mode and selection
-    const backgroundColor = container.backgroundColor || '#3b82f6';
-    const fillColor =
-        mode === 'edit'
-            ? isSelected
-                ? `${backgroundColor}50`
-                : `${backgroundColor}30` // More transparent in edit mode
-            : isSelected
-              ? `${backgroundColor}80`
-              : `${backgroundColor}60`; // Less transparent in translate mode
-
-    const strokeColor = isSelected ? backgroundColor : `${backgroundColor}90`;
-
-    return (
-        <>
-            <Rect
-                ref={rectRef}
-                x={(container.position.x / 100) * imageWidth}
-                y={(container.position.y / 100) * imageHeight}
-                width={(container.position.width / 100) * imageWidth}
-                height={(container.position.height / 100) * imageHeight}
-                fill={fillColor}
-                stroke={strokeColor}
-                strokeWidth={2}
-                draggable={isSelected && mode === 'edit'} // Only draggable in edit mode
-                onClick={handleClick}
-                onDragEnd={mode === 'edit' ? handleTransform : undefined}
-                onTransformEnd={mode === 'edit' ? handleTransform : undefined}
-            />
-            {container.description && (
-                <Rect
-                    x={(container.position.x / 100) * imageWidth + 2}
-                    y={(container.position.y / 100) * imageHeight + 2}
-                    width={8}
-                    height={8}
-                    fill='rgba(255, 255, 255, 0.8)'
-                    stroke='rgba(0, 0, 0, 0.3)'
-                    strokeWidth={1}
-                    cornerRadius={2}
-                    listening={false}
-                />
-            )}
-            {isSelected && mode === 'edit' && (
-                <Transformer
-                    ref={transformerRef}
-                    rotateEnabled={false} // Disable rotation
-                    boundBoxFunc={(oldBox, newBox) => {
-                        if (newBox.width < 50 || newBox.height < 30) {
-                            return oldBox;
-                        }
-                        return newBox;
-                    }}
-                />
-            )}
-        </>
-    );
-};
+import {
+    isAddingContainer$,
+    selectedContainerId$,
+} from '@/app/dashboard/projects/[projectId]/screenshots/[screenshotId]/store';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import KonvaContainer from './konva-container';
+import { use$ } from '@legendapp/state/react';
 
 interface ScreenshotCanvasProps {
+    workspaceId: Id<'workspaces'>;
+    screenshotId: Id<'screenshots'>;
     canvasImage: HTMLImageElement;
     mode: 'edit' | 'translate';
-    // Edit mode props
-    isAddingContainer?: boolean;
     onCanvasClick?: (e: any) => void;
-    containers?: Container[];
-    selectedContainerId?: Id<'screenshotContainers'> | null;
-    onContainerSelect?: (id: Id<'screenshotContainers'>) => void;
-    onContainerUpdate?: (containerId: Id<'screenshotContainers'>, position: Container['position']) => void;
-    // Translate mode props
-    selectedKey?: any;
-    onClearSelection: () => void;
+    containers?: Doc<'screenshotContainers'>[];
 }
 
 export default function ScreenshotCanvas({
+    workspaceId,
+    screenshotId,
     canvasImage,
     mode,
-    isAddingContainer,
-    onCanvasClick,
     containers = [],
-    selectedContainerId,
-    onContainerSelect,
-    onContainerUpdate,
-    selectedKey,
-    onClearSelection,
 }: ScreenshotCanvasProps) {
+    const selectedContainerId = use$(selectedContainerId$);
+    const isAddingContainer = use$(isAddingContainer$);
+
     const stageRef = useRef<any>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const stageContainerRef = useRef<HTMLDivElement>(null);
+    const topBarRef = useRef<HTMLDivElement>(null);
+
     const [scale, setScale] = useState(1);
     const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
 
-    // Calculate canvas size based on container
-    useEffect(() => {
-        const updateSize = () => {
-            if (containerRef.current) {
-                const container = containerRef.current;
-                const containerWidth = Math.min(container.clientWidth - 48, 1200); // Max 1200px width, account for padding
-                const containerHeight = Math.min(600, window.innerHeight * 0.6); // Max 600px or 60vh
+    const updateContainer = useMutation(api.screenshots.updateContainer);
+    const createContainer = useMutation(api.screenshots.createContainer);
 
-                setCanvasSize({ width: containerWidth, height: containerHeight });
+    const handleContainerUpdate = async (
+        containerId: Id<'screenshotContainers'>,
+        position: Doc<'screenshotContainers'>['position']
+    ) => {
+        try {
+            await updateContainer({
+                containerId,
+                position,
+                workspaceId,
+            });
+        } catch (error) {
+            console.error('Failed to update container:', error);
+        }
+    };
 
-                // Auto-fit image to canvas initially
-                if (canvasImage) {
-                    const scaleX = containerWidth / canvasImage.width;
-                    const scaleY = containerHeight / canvasImage.height;
-                    const initialScale = Math.min(scaleX, scaleY, 0.8); // Don't scale up initially, leave some margin
-                    setScale(initialScale);
-                }
-            }
-        };
+    const handleAddContainer = async (x: number, y: number) => {
+        try {
+            await createContainer({
+                screenshotId,
+                position: {
+                    x: Math.max(0, Math.min(85, x - 7.5)),
+                    y: Math.max(0, Math.min(90, y - 5)),
+                    width: 15,
+                    height: 10,
+                },
+                backgroundColor: '#3b82f6',
+                workspaceId,
+            });
 
-        updateSize();
-        window.addEventListener('resize', updateSize);
-        return () => window.removeEventListener('resize', updateSize);
-    }, [canvasImage]);
+            isAddingContainer$.set(false);
+        } catch (error) {
+            console.error('Failed to create container:', error);
+            alert(error instanceof Error ? error.message : 'Failed to create container');
+        }
+    };
 
     const handleCanvasClick = (e: any) => {
-        if (mode === 'edit' && isAddingContainer && onCanvasClick) {
-            onCanvasClick(e);
+        if (mode === 'edit' && isAddingContainer) {
+            const stage = e.target.getStage();
+            const layer = stage.findOne('Layer');
+            const image = layer?.findOne('Image');
+
+            if (!image) return;
+
+            const pointer = stage.getPointerPosition();
+
+            const transform = stage.getAbsoluteTransform().copy();
+            transform.invert();
+            const pos = transform.point(pointer);
+
+            const imageWidth = image.width();
+            const imageHeight = image.height();
+
+            const x = (pos.x / imageWidth) * 100;
+            const y = (pos.y / imageHeight) * 100;
+
+            handleAddContainer(x, y);
         } else {
-            // Check if click target is the Stage or Image (empty canvas area)
             const clickedOnEmpty = e.target === e.target.getStage() || e.target.getType() === 'Image';
             if (clickedOnEmpty && selectedContainerId) {
-                onClearSelection();
+                selectedContainerId$.set(null);
             }
         }
     };
 
     const handleZoomIn = () => {
-        setScale(prev => Math.min(prev * 1.2, 3)); // Max 3x zoom
+        setScale(prev => Math.min(prev * 1.2, 3));
     };
 
     const handleZoomOut = () => {
-        setScale(prev => Math.max(prev / 1.2, 0.1)); // Min 0.1x zoom
+        setScale(prev => Math.max(prev / 1.2, 0.1));
     };
 
     const handleResetZoom = () => {
-        if (canvasImage && containerRef.current) {
-            const containerWidth = Math.min(containerRef.current.clientWidth - 48, 1200);
-            const containerHeight = Math.min(600, window.innerHeight * 0.6);
-            const scaleX = containerWidth / canvasImage.width;
-            const scaleY = containerHeight / canvasImage.height;
-            const initialScale = Math.min(scaleX, scaleY, 0.8);
+        if (canvasImage && stageContainerRef.current) {
+            const width = Math.max(200, stageContainerRef.current.clientWidth);
+            const height = Math.max(200, stageContainerRef.current.clientHeight);
+            const scaleX = width / canvasImage.width;
+            const scaleY = height / canvasImage.height;
+            const initialScale = Math.min(scaleX, scaleY, 1);
             setScale(initialScale);
 
-            // Reset stage position to center
             if (stageRef.current) {
                 stageRef.current.position({ x: 0, y: 0 });
                 stageRef.current.batchDraw();
@@ -293,24 +161,53 @@ export default function ScreenshotCanvas({
         stage.batchDraw();
     };
 
+    useEffect(() => {
+        if (!stageContainerRef.current) return;
+        const element = stageContainerRef.current;
+        const observer = new ResizeObserver(entries => {
+            const [obsEntry] = entries;
+            if (!obsEntry) return;
+            const width = Math.max(200, Math.floor(obsEntry.contentRect.width));
+            const height = Math.max(200, Math.floor(obsEntry.contentRect.height));
+            setCanvasSize({ width, height });
+
+            if (canvasImage) {
+                const scaleX = width / canvasImage.width;
+                const scaleY = height / canvasImage.height;
+                const initialScale = Math.min(scaleX, scaleY, 1);
+                setScale(initialScale);
+            }
+        });
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, [canvasImage]);
+
+    useEffect(() => {
+        if (containerRef.current) {
+            containerRef.current.focus();
+        }
+    }, []);
+
+    useEffect(() => {
+        if (mode === 'translate') {
+            isAddingContainer$.set(false);
+        }
+    }, [mode]);
+
     return (
-        <div ref={containerRef} className='bg-gray-950/50 border border-gray-800/50 rounded-2xl p-6 backdrop-blur-sm'>
-            <div className='mb-4 flex items-center justify-between'>
-                <div>
-                    <h3 className='text-lg font-semibold text-white mb-2'>
-                        {mode === 'edit' ? 'Edit Containers' : 'Translate Mode'}
-                    </h3>
-                    {mode === 'edit' && isAddingContainer && (
-                        <p className='text-sm text-blue-400'>Click on the screenshot to place a new container</p>
-                    )}
-                    {mode === 'translate' && selectedKey && (
-                        <p className='text-sm text-blue-400'>
-                            Select a container to assign the key "{selectedKey.key}"
-                        </p>
-                    )}
+        <div
+            ref={containerRef}
+            className='bg-gray-950/50 border border-gray-800/50 rounded-2xl p-4 sm:p-6 backdrop-blur-sm flex h-full flex-col'
+            tabIndex={0}>
+            <div ref={topBarRef} className='mb-2 sm:mb-4 flex items-center justify-between'>
+                <div className='text-sm text-blue-400'>
+                    {mode === 'edit'
+                        ? isAddingContainer
+                            ? 'Click on the screenshot to place a new container'
+                            : 'Use wheel to zoom • Drag to pan • Click and drag containers to reposition'
+                        : 'Use wheel to zoom • Drag to pan • Click containers to select and assign keys'}
                 </div>
 
-                {/* Zoom Controls */}
                 <div className='flex items-center space-x-2'>
                     <Button
                         onClick={handleZoomOut}
@@ -337,7 +234,9 @@ export default function ScreenshotCanvas({
                 </div>
             </div>
 
-            <div className='border border-gray-700/50 rounded-xl overflow-hidden bg-gray-900'>
+            <div
+                ref={stageContainerRef}
+                className='border border-gray-700/50 rounded-xl overflow-hidden bg-gray-900 flex-1 min-h-0'>
                 <Stage
                     ref={stageRef}
                     width={canvasSize.width}
@@ -356,8 +255,8 @@ export default function ScreenshotCanvas({
                                     key={container._id}
                                     container={container}
                                     isSelected={selectedContainerId === container._id}
-                                    onSelect={() => onContainerSelect?.(container._id)}
-                                    onUpdate={position => onContainerUpdate?.(container._id, position)}
+                                    onSelect={() => selectedContainerId$.set(container._id)}
+                                    onUpdate={position => handleContainerUpdate(container._id, position)}
                                     stageRef={stageRef}
                                     mode={mode}
                                 />
@@ -365,12 +264,6 @@ export default function ScreenshotCanvas({
                         })}
                     </Layer>
                 </Stage>
-            </div>
-
-            <div className='mt-2 text-xs text-gray-500 text-center'>
-                {mode === 'edit'
-                    ? 'Use mouse wheel to zoom • Drag to pan • Click and drag containers to reposition'
-                    : 'Use mouse wheel to zoom • Drag to pan • Click containers to select and assign keys'}
             </div>
         </div>
     );

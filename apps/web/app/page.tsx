@@ -449,7 +449,7 @@ export default function Page() {
                             {/* Code Editor */}
                             <div className='relative overflow-hidden'>
                                 <div
-                                    className='max-h-[500px] overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-track-gray-800/30 scrollbar-thumb-gray-600/50 hover:scrollbar-thumb-gray-500/70 scrollbar-thumb-rounded-full scrollbar-track-rounded-full'
+                                    className='max-h-[500px] overflow-y-auto overflow-x-auto'
                                     style={{
                                         scrollbarWidth: 'thin',
                                         scrollbarColor: 'rgba(75, 85, 99, 0.5) rgba(31, 41, 55, 0.3)',

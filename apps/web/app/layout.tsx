@@ -100,7 +100,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     trackEngagement={true}
                     trackScrollDepth={true}
                 />
-                ;
             </body>
         </html>
     );

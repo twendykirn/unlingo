@@ -20,7 +20,6 @@ export default defineSchema({
     workspaceUsage: defineTable({
         month: v.string(), // Format: "YYYY-MM" (e.g., "2024-08")
         requests: v.number(),
-        updatedAt: v.number(),
     }),
     projects: defineTable({
         workspaceId: v.id('workspaces'),
@@ -57,7 +56,6 @@ export default defineSchema({
         version: v.string(), // e.g., "1.0.0", "1.1.0"
         jsonSchemaFileId: v.optional(v.id('_storage')), // reference to JSON schema file in Convex storage (created later)
         jsonSchemaSize: v.optional(v.number()), // size of JSON schema file in bytes
-        schemaUpdatedAt: v.optional(v.number()), // timestamp of last schema update
         primaryLanguageId: v.optional(v.id('languages')), // Primary/fallback language ID for faster lookup
         usage: v.object({
             languages: v.number(), // current language count for this version
@@ -112,18 +110,12 @@ export default defineSchema({
         }),
         backgroundColor: v.optional(v.string()), // hex color for background (default: blue)
         description: v.optional(v.string()), // optional description for the container
-        updatedAt: v.number(), // when this container was last modified
-        createdBy: v.string(), // Clerk user ID who created this container
     }).index('by_screenshot', ['screenshotId']),
     screenshotKeyMappings: defineTable({
         containerId: v.id('screenshotContainers'),
         namespaceVersionId: v.id('namespaceVersions'),
         languageId: v.id('languages'),
         translationKey: v.string(), // full dot-notation key path (e.g., "welcome.title")
-        valueType: v.union(v.literal('string'), v.literal('number'), v.literal('boolean')), // only simple types allowed
-        currentValue: v.union(v.string(), v.number(), v.boolean(), v.null()), // cached current value for quick display
-        updatedAt: v.number(),
-        createdBy: v.string(), // Clerk user ID who created this mapping
     })
         .index('by_container', ['containerId'])
         .index('by_container_namespace_language', ['containerId', 'namespaceVersionId', 'languageId']) // main query index

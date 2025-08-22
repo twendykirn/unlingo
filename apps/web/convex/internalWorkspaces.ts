@@ -46,7 +46,6 @@ export const checkAndUpdateRequestUsage = internalMutation({
             await ctx.db.patch(usage._id, {
                 requests: currentRequests,
                 month: currentMonth,
-                updatedAt: Date.now(),
             });
         }
 

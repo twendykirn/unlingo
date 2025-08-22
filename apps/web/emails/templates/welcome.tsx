@@ -14,29 +14,31 @@ import {
     Section,
     Text,
     Tailwind,
+    pixelBasedPreset,
 } from '@react-email/components';
 import * as React from 'react';
 
 interface WelcomeEmailProps {
-    userFirstName?: string;
     dashboardUrl?: string;
     docsUrl?: string;
     supportEmail?: string;
 }
 
 export const WelcomeEmail = ({
-    userFirstName = 'there',
     dashboardUrl = `https://${process.env.BASE_URL}/dashboard`,
     docsUrl = 'https://docs.unlingo.com',
     supportEmail = 'support@unlingo.com',
 }: WelcomeEmailProps) => {
-    const previewText = `Hey ${userFirstName}! Igor here from Unlingo. Let's get you started with translation management that actually works.`;
+    const previewText = `Hey there! Igor here from Unlingo. Let's get you started with translation management that actually works.`;
 
     return (
         <Html>
             <Head />
             <Preview>{previewText}</Preview>
-            <Tailwind>
+            <Tailwind
+                config={{
+                    presets: [pixelBasedPreset],
+                }}>
                 <Body className='bg-gray-950 font-sans'>
                     <Container className='mx-auto py-5 pb-12 max-w-xl'>
                         {/* Header */}
@@ -46,7 +48,7 @@ export const WelcomeEmail = ({
                                     <Img
                                         src='https://o2xjkxudhl.ufs.sh/f/k57kIptYxTsA0qgsaMx85ghWLOa4qM3fDtsCpikFTn7Aw2Gm'
                                         width='120'
-                                        height='36'
+                                        height='120'
                                         alt='Unlingo'
                                         className='mx-auto block'
                                     />
@@ -56,7 +58,7 @@ export const WelcomeEmail = ({
 
                         {/* Main Content */}
                         <Section className='px-5'>
-                            <Heading className='text-white text-2xl font-bold mb-6'>Hey {userFirstName}! 👋</Heading>
+                            <Heading className='text-white text-2xl font-bold mb-6'>Hey there! 👋</Heading>
 
                             <Text className='text-gray-300 text-base leading-7 my-4'>
                                 Igor here, creator of Unlingo. I'm personally excited to welcome you to our platform!
@@ -131,7 +133,7 @@ export const WelcomeEmail = ({
                             <Section className='text-center my-8'>
                                 <Button
                                     href={dashboardUrl}
-                                    className='bg-white text-gray-950 rounded-lg text-base no-underline text-center inline-block py-3 px-6 font-semibold hover:bg-gray-100'>
+                                    className='bg-white text-gray-950 rounded-lg text-base no-underline text-center inline-block py-3 px-6 font-semibold'>
                                     Jump into your dashboard →
                                 </Button>
                             </Section>

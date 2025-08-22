@@ -244,8 +244,6 @@ export const assignKeyToContainer = mutation({
         namespaceVersionId: v.id('namespaceVersions'),
         languageId: v.id('languages'),
         translationKey: v.string(),
-        valueType: v.union(v.literal('string'), v.literal('number'), v.literal('boolean')),
-        currentValue: v.union(v.string(), v.number(), v.boolean(), v.null()),
         workspaceId: v.id('workspaces'),
     },
     handler: async (ctx, args) => {
@@ -298,27 +296,14 @@ export const assignKeyToContainer = mutation({
             )
             .first();
 
-        const now = Date.now();
-
         if (existingMapping) {
-            // Update existing mapping
-            await ctx.db.patch(existingMapping._id, {
-                valueType: args.valueType,
-                currentValue: args.currentValue,
-                updatedAt: now,
-            });
             return existingMapping._id;
         } else {
-            // Create new mapping
             const mappingId = await ctx.db.insert('screenshotKeyMappings', {
                 containerId: args.containerId,
                 namespaceVersionId: args.namespaceVersionId,
                 languageId: args.languageId,
                 translationKey: args.translationKey,
-                valueType: args.valueType,
-                currentValue: args.currentValue,
-                updatedAt: now,
-                createdBy: identity.subject,
             });
             return mappingId;
         }
@@ -462,8 +447,6 @@ export const createContainer = mutation({
             position: args.position,
             backgroundColor: args.backgroundColor,
             description: args.description,
-            updatedAt: Date.now(),
-            createdBy: identity.subject,
         });
 
         return containerId;
@@ -513,7 +496,7 @@ export const updateContainer = mutation({
             throw new Error('Access denied');
         }
 
-        const updates: any = { updatedAt: Date.now() };
+        const updates: any = {};
         if (args.position) updates.position = args.position;
         if (args.backgroundColor !== undefined) updates.backgroundColor = args.backgroundColor;
         if (args.description !== undefined) updates.description = args.description;

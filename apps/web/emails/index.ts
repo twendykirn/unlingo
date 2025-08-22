@@ -10,7 +10,6 @@ export type EmailTemplate = 'welcome' | 'usage-warning-80' | 'usage-limit-reache
 
 // Common email props interface
 export interface BaseEmailProps {
-    userFirstName?: string;
     userEmail?: string;
     dashboardUrl?: string;
     supportEmail?: string;

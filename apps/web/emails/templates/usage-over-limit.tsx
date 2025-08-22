@@ -12,6 +12,7 @@ import {
     Section,
     Text,
     Tailwind,
+    pixelBasedPreset,
 } from '@react-email/components';
 import * as React from 'react';
 
@@ -30,7 +31,10 @@ export const UsageOverLimitEmail = ({
         <Html>
             <Head />
             <Preview>{previewText}</Preview>
-            <Tailwind>
+            <Tailwind
+                config={{
+                    presets: [pixelBasedPreset],
+                }}>
                 <Body className='bg-gray-950 font-sans'>
                     <Container className='mx-auto py-5 pb-12 max-w-xl'>
                         {/* Header */}
@@ -38,7 +42,7 @@ export const UsageOverLimitEmail = ({
                             <Img
                                 src='https://o2xjkxudhl.ufs.sh/f/k57kIptYxTsA0qgsaMx85ghWLOa4qM3fDtsCpikFTn7Aw2Gm'
                                 width='120'
-                                height='36'
+                                height='120'
                                 alt='Unlingo'
                                 className='mx-auto block'
                             />
@@ -120,7 +124,7 @@ export const UsageOverLimitEmail = ({
                                 <br />
                                 Igor
                                 <br />
-                                <span className='text-gray-500'>Founder, Unlingo</span>
+                                <span className='text-gray-500'>Founder & Creator, Unlingo</span>
                             </Text>
 
                             <Hr className='border-gray-700 my-5' />

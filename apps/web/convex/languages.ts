@@ -460,7 +460,6 @@ export const getLanguageContent = action({
                 _creationTime: number;
                 jsonSchemaFileId?: Id<'_storage'> | undefined;
                 jsonSchemaSize?: number | undefined;
-                schemaUpdatedAt?: number | undefined;
                 version: string;
                 namespaceId: Id<'namespaces'>;
             };
@@ -683,7 +682,6 @@ export const applyChangeOperations = action({
                     namespaceVersionId: language.namespaceVersionId,
                     jsonSchemaFileId: schemaStorageId,
                     jsonSchemaSize: schemaBlob.size,
-                    schemaUpdatedAt: Date.now(),
                 });
 
                 console.log('📋 JSON Schema always updated for primary language save');

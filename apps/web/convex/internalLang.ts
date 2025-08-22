@@ -118,13 +118,11 @@ export const languageUpdateSchema = internalMutation({
         namespaceVersionId: v.id('namespaceVersions'),
         jsonSchemaFileId: v.id('_storage'),
         jsonSchemaSize: v.number(),
-        schemaUpdatedAt: v.number(),
     },
     handler: async (ctx, args) => {
         await ctx.db.patch(args.namespaceVersionId, {
             jsonSchemaFileId: args.jsonSchemaFileId,
             jsonSchemaSize: args.jsonSchemaSize,
-            schemaUpdatedAt: args.schemaUpdatedAt,
         });
     },
 });

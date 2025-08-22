@@ -12,6 +12,7 @@ import {
     Section,
     Text,
     Tailwind,
+    pixelBasedPreset,
 } from '@react-email/components';
 import * as React from 'react';
 
@@ -34,7 +35,10 @@ export const UsageWarning80Email = ({
         <Html>
             <Head />
             <Preview>{previewText}</Preview>
-            <Tailwind>
+            <Tailwind
+                config={{
+                    presets: [pixelBasedPreset],
+                }}>
                 <Body className='bg-gray-950 font-sans'>
                     <Container className='mx-auto py-5 pb-12 max-w-xl'>
                         {/* Header */}
@@ -42,7 +46,7 @@ export const UsageWarning80Email = ({
                             <Img
                                 src='https://o2xjkxudhl.ufs.sh/f/k57kIptYxTsA0qgsaMx85ghWLOa4qM3fDtsCpikFTn7Aw2Gm'
                                 width='120'
-                                height='36'
+                                height='120'
                                 alt='Unlingo'
                                 className='mx-auto block'
                             />
@@ -78,7 +82,6 @@ export const UsageWarning80Email = ({
 
                             <Section className='my-6 bg-gray-900/50 rounded-lg p-4'>
                                 <Text className='text-gray-400 text-sm leading-6 my-2'>
-                                    <br />
                                     • API calls will continue working until around 130% usage
                                     <br />• You can still edit existing translations
                                 </Text>
@@ -124,7 +127,7 @@ export const UsageWarning80Email = ({
                                 <br />
                                 Igor
                                 <br />
-                                <span className='text-gray-500'>Founder, Unlingo</span>
+                                <span className='text-gray-500'>Founder & Creator, Unlingo</span>
                             </Text>
 
                             <Hr className='border-gray-700 my-5' />

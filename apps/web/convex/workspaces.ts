@@ -24,7 +24,6 @@ export const createOrganizationWorkspace = mutation({
         const workspaceUsageId = await ctx.db.insert('workspaceUsage', {
             month: currentMonth,
             requests: 0,
-            updatedAt: Date.now(),
         });
 
         // Create team workspace

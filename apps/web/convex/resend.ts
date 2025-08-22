@@ -11,13 +11,21 @@ export const resend: Resend = new Resend(components.resend, {
 
 export const sendWelcomeEmail = internalAction({
     args: {
-        userFirstName: v.string(),
         userEmail: v.string(),
     },
     handler: async (ctx, args) => {
-        const html = await renderEmail('welcome', {
-            userFirstName: args.userFirstName,
+        await fetch(`https://api.resend.com/audiences/${process.env.RESEND_AUDIENCE_ID!}/contacts`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${process.env.RESEND_API_KEY!}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: args.userEmail,
+            }),
         });
+
+        const html = await renderEmail('welcome', {});
 
         const subject = getEmailSubject('welcome');
 
