@@ -14,30 +14,21 @@ export const createNamespaceVersionContext = internalMutation({
             throw new Error('Not authenticated');
         }
 
-        // Get workspace to check limits
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
+        if (!workspace || identity.org !== workspace.clerkId) {
+            throw new Error('Workspace not found or access denied');
         }
 
-        // Verify user is in organization that owns this workspace
-        if (identity.org !== workspace.clerkId) {
-            throw new Error('Unauthorized: Can only create versions in organization workspaces');
-        }
-
-        // Verify namespace exists and user has access
         const namespace = await ctx.db.get(args.namespaceId);
         if (!namespace) {
             throw new Error('Namespace not found');
         }
 
-        // Get project to verify workspace ownership
         const project = await ctx.db.get(namespace.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied: Project does not belong to workspace');
+            throw new Error('Project not found or access denied');
         }
 
-        // Check if version already exists for this namespace
         const existingVersion = await ctx.db
             .query('namespaceVersions')
             .withIndex('by_namespace_version', q => q.eq('namespaceId', args.namespaceId).eq('version', args.version))
@@ -47,7 +38,6 @@ export const createNamespaceVersionContext = internalMutation({
             throw new Error(`Version '${args.version}' already exists for this namespace`);
         }
 
-        // Check if namespace has reached version limit using usage counter
         const currentVersionCount = namespace.usage?.versions ?? 0;
         if (currentVersionCount >= workspace.limits.versionsPerNamespace) {
             throw new Error(
@@ -55,7 +45,6 @@ export const createNamespaceVersionContext = internalMutation({
             );
         }
 
-        // Create the namespace version
         const versionId = await ctx.db.insert('namespaceVersions', {
             namespaceId: args.namespaceId,
             version: args.version,
@@ -64,14 +53,12 @@ export const createNamespaceVersionContext = internalMutation({
             },
         });
 
-        // Update namespace usage counter
         await ctx.db.patch(args.namespaceId, {
             usage: {
                 versions: currentVersionCount + 1,
             },
         });
 
-        // If copying from another version, copy all its languages
         if (args.copyFromVersionId) {
             const sourceLanguages = await ctx.db
                 .query('languages')

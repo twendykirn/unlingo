@@ -94,12 +94,10 @@ http.route({
     }),
 });
 
-// Language file retrieval API endpoint
 http.route({
     path: '/api/v1/translations',
     method: 'GET',
     handler: httpAction(async (ctx, request) => {
-        // Extract API key from header
         const apiKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '');
         if (!apiKey) {
             return new Response(JSON.stringify({ error: 'API key required' }), {
@@ -108,11 +106,10 @@ http.route({
             });
         }
 
-        // Extract query parameters
         const url = new URL(request.url);
-        const releaseTag = url.searchParams.get('release'); // Release name
-        const namespace = url.searchParams.get('namespace'); // Namespace name
-        const lang = url.searchParams.get('lang'); // Language code
+        const releaseTag = url.searchParams.get('release');
+        const namespace = url.searchParams.get('namespace');
+        const lang = url.searchParams.get('lang');
 
         if (!releaseTag || !namespace || !lang) {
             return new Response(
@@ -128,7 +125,6 @@ http.route({
         }
 
         try {
-            // Verify API key and get workspace info
             const apiKeyInfo = await ctx.runQuery(internal.apiKeys.verifyApiKey, { key: apiKey });
             if (!apiKeyInfo) {
                 return new Response(JSON.stringify({ error: 'Invalid API key' }), {
@@ -137,12 +133,10 @@ http.route({
                 });
             }
 
-            // Track usage successful request
             const limitCheck = await ctx.runMutation(internal.internalWorkspaces.checkAndUpdateRequestUsage, {
                 workspaceId: apiKeyInfo.workspaceId,
             });
 
-            // Check if we should send notifications after usage increment
             if (limitCheck.nearLimit) {
                 await ctx.scheduler.runAfter(0, internal.resend.sendLimitsEmail, {
                     userEmail: limitCheck.workspace.contactEmail,
@@ -179,7 +173,6 @@ http.route({
                 );
             }
 
-            // Find the release by tag and project using the efficient index query
             const release = await ctx.runQuery(internal.releases.getReleaseByTag, {
                 projectId: apiKeyInfo.projectId,
                 workspaceId: apiKeyInfo.workspaceId,
@@ -198,7 +191,6 @@ http.route({
                 );
             }
 
-            // Find the namespace in the release by checking each namespace version
             let targetNamespaceVersion = null;
             for (const nv of release.namespaceVersions) {
                 const namespaceDoc = await ctx.runQuery(internal.namespaces.getNamespaceInternal, {
@@ -225,7 +217,6 @@ http.route({
                 );
             }
 
-            // Get the specific language using the efficient index query
             const language = await ctx.runQuery(internal.languages.getLanguageByCode, {
                 namespaceVersionId: targetNamespaceVersion.versionId,
                 languageCode: lang,
@@ -244,7 +235,6 @@ http.route({
                 );
             }
 
-            // Get the file content from Convex storage
             const blob = await ctx.storage.get(language.fileId);
             if (!blob) {
                 return new Response(
@@ -260,12 +250,10 @@ http.route({
 
             const fileContent = await blob.text();
 
-            // Parse JSON to validate it before returning
             let parsedContent;
             try {
                 parsedContent = JSON.parse(fileContent);
             } catch {
-                // Return raw content if not valid JSON
                 parsedContent = fileContent;
             }
 
@@ -290,23 +278,19 @@ http.route({
 });
 
 polar.registerRoutes(http, {
-    // Optional custom path, default is "/polar/events"
     path: '/polar/events',
     onSubscriptionCreated: async (ctx, event) => {
-        // Handle new active subscriptions - upgrade workspace limits
-        const workspaceId = event.data.customerId;
+        const workspaceId = event.data.customer.externalId;
         if (workspaceId) {
             await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {
                 workspaceId: workspaceId as Id<'workspaces'>,
                 isPremium: true,
-                // Extract request limit from product metadata if available
                 requestLimit: getRequestLimitFromProduct(event.data.product?.id),
             });
         }
     },
     onSubscriptionUpdated: async (ctx, event) => {
-        // Handle subscription updates, including cancellations
-        const workspaceId = event.data.customerId;
+        const workspaceId = event.data.customer.externalId;
         if (workspaceId) {
             const isActive = event.data.status === 'active' && !event.data.customerCancellationReason;
             await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {

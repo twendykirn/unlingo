@@ -1,13 +1,11 @@
 import { internalMutation, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
 
-// Helper function to get current month string
 function getCurrentMonth(): string {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-// Internal function to check if workspace is at or near request limits
 export const checkAndUpdateRequestUsage = internalMutation({
     args: {
         workspaceId: v.id('workspaces'),
@@ -54,7 +52,7 @@ export const checkAndUpdateRequestUsage = internalMutation({
             limit,
             exceedsHardLimit: currentRequests === hardLimit, // Block at 130%
             shouldSendHardLimitEmail, // Send email at 130%
-            isRequestAllowed, // Allow request
+            isRequestAllowed,
             nearLimit: currentRequests === Math.round(limit * 0.8), // Warning at 80%
             exceedsLimit: currentRequests === limit, // At 100% of plan limit
             workspace,
@@ -62,7 +60,6 @@ export const checkAndUpdateRequestUsage = internalMutation({
     },
 });
 
-// Internal function to get current usage for dashboard display
 export const getCurrentUsage = internalQuery({
     args: {
         workspaceUsageId: v.id('workspaceUsage'),

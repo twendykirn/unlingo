@@ -13,15 +13,9 @@ export const languageChangesContext = internalQuery({
             throw new Error('Not authenticated');
         }
 
-        // Verify user has access to this workspace
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
-        }
-
-        // Only allow access to organization workspaces
-        if (identity.org !== workspace.clerkId) {
-            throw new Error('Unauthorized: Can only access organization workspaces');
+        if (!workspace || identity.org !== workspace.clerkId) {
+            throw new Error('Workspace not found or access denied');
         }
 
         const language = await ctx.db.get(args.languageId);
@@ -29,7 +23,6 @@ export const languageChangesContext = internalQuery({
             throw new Error('Language not found');
         }
 
-        // Verify access through the hierarchy
         const namespaceVersion = await ctx.db.get(language.namespaceVersionId);
         if (!namespaceVersion) {
             throw new Error('Namespace version not found');
@@ -42,7 +35,7 @@ export const languageChangesContext = internalQuery({
 
         const project = await ctx.db.get(namespace.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied: Project does not belong to workspace');
+            throw new Error('Project not found or access denied');
         }
 
         return {
@@ -63,17 +56,11 @@ export const schemaContext = internalQuery({
             throw new Error('Not authenticated');
         }
 
-        // Verify user has access to this workspace
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
+        if (!workspace || identity.org !== workspace.clerkId) {
+            throw new Error('Workspace not found or access denied');
         }
 
-        if (identity.org !== workspace.clerkId) {
-            throw new Error('Unauthorized: Can only access schemas in organization workspaces');
-        }
-
-        // Get namespace version and verify access
         const namespaceVersion = await ctx.db.get(args.namespaceVersionId);
         if (!namespaceVersion) {
             throw new Error('Namespace version not found');
@@ -86,7 +73,7 @@ export const schemaContext = internalQuery({
 
         const project = await ctx.db.get(namespace.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied: Project does not belong to workspace');
+            throw new Error('Project not found or access denied');
         }
 
         return namespaceVersion.jsonSchemaFileId;
@@ -99,13 +86,12 @@ export const internalVersionLanguages = internalQuery({
         primaryLanguageId: v.id('languages'),
     },
     handler: async (ctx, args) => {
-        // Get all other languages in this namespace version
         const allLanguages = await ctx.db
             .query('languages')
             .withIndex('by_namespace_version', q => q.eq('namespaceVersionId', args.namespaceVersionId))
             .collect();
 
-        const otherLanguages = allLanguages.filter((lang: any) => lang._id !== args.primaryLanguageId);
+        const otherLanguages = allLanguages.filter(lang => lang._id !== args.primaryLanguageId);
 
         return {
             otherLanguages,
@@ -146,7 +132,6 @@ export const createLanguageContext = internalQuery({
         namespaceVersionId: v.id('namespaceVersions'),
         workspaceId: v.id('workspaces'),
         languageCode: v.string(),
-        copyFromLanguage: v.optional(v.id('languages')),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -154,36 +139,26 @@ export const createLanguageContext = internalQuery({
             throw new Error('Not authenticated');
         }
 
-        // Get workspace to check limits
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
+        if (!workspace || identity.org !== workspace.clerkId) {
+            throw new Error('Workspace not found or access denied');
         }
 
-        // Verify user is in organization that owns this workspace
-        if (identity.org !== workspace.clerkId) {
-            throw new Error('Unauthorized: Can only create languages in organization workspaces');
-        }
-
-        // Verify namespace version exists and user has access
         const namespaceVersion = await ctx.db.get(args.namespaceVersionId);
         if (!namespaceVersion) {
             throw new Error('Namespace version not found');
         }
 
-        // Get namespace to verify project ownership
         const namespace = await ctx.db.get(namespaceVersion.namespaceId);
         if (!namespace) {
             throw new Error('Namespace not found');
         }
 
-        // Get project to verify workspace ownership
         const project = await ctx.db.get(namespace.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied: Project does not belong to workspace');
+            throw new Error('Project not found or access denied');
         }
 
-        // Check if language already exists for this namespace version
         const existingLanguage = await ctx.db
             .query('languages')
             .withIndex('by_namespace_version_language', q =>
@@ -195,7 +170,6 @@ export const createLanguageContext = internalQuery({
             throw new Error(`Language '${args.languageCode}' already exists for this namespace version`);
         }
 
-        // Check if namespace version has reached language limit using usage counter
         const currentLanguageCount = namespaceVersion.usage?.languages ?? 0;
         if (currentLanguageCount >= workspace.limits.languagesPerVersion) {
             throw new Error(
@@ -208,26 +182,11 @@ export const createLanguageContext = internalQuery({
             throw new Error('Language code must be in format: "en", "en-US", "fr", "pt-BR", etc.');
         }
 
-        // Check if this is the first language in this version using usage counter
         const isFirstLanguage = (namespaceVersion.usage?.languages ?? 0) === 0;
 
-        let sourceFileId: Id<'_storage'> | undefined = undefined;
         let primaryFileId: Id<'_storage'> | undefined = undefined;
 
-        if (args.copyFromLanguage) {
-            // Manual copy from specified language
-            const sourceLanguage = await ctx.db.get(args.copyFromLanguage);
-
-            // Validate that source language belongs to the same namespace version
-            if (!sourceLanguage || sourceLanguage.namespaceVersionId !== args.namespaceVersionId) {
-                throw new Error('Source language not found or belongs to different namespace version');
-            }
-
-            if (sourceLanguage.fileId) {
-                sourceFileId = sourceLanguage.fileId;
-            }
-        } else if (!isFirstLanguage && namespaceVersion.primaryLanguageId) {
-            // Auto-copy from primary language for 2nd, 3rd, etc. languages
+        if (!isFirstLanguage && namespaceVersion.primaryLanguageId) {
             const primaryLanguage = await ctx.db.get(namespaceVersion.primaryLanguageId);
 
             if (primaryLanguage && primaryLanguage.fileId) {
@@ -236,7 +195,6 @@ export const createLanguageContext = internalQuery({
         }
 
         return {
-            sourceFileId,
             primaryFileId,
             namespaceVersion,
             namespace,
@@ -258,7 +216,6 @@ export const internalCreateLanguageUpdate = internalMutation({
         versionUsage: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
-        // Create the language record (without file initially, unless copied from another language)
         const languageId = await ctx.db.insert('languages', {
             namespaceVersionId: args.namespaceVersionId,
             languageCode: args.languageCode,
@@ -266,7 +223,6 @@ export const internalCreateLanguageUpdate = internalMutation({
             fileSize: args.fileSize,
         });
 
-        // Update namespace version usage counter
         await ctx.db.patch(
             args.namespaceVersionId,
             args.isFirstLanguage

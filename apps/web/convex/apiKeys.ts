@@ -2,7 +2,6 @@ import { v } from 'convex/values';
 import { internalQuery, mutation, query } from './_generated/server';
 import { paginationOptsValidator } from 'convex/server';
 
-// Get paginated API keys for a project
 export const getApiKeys = query({
     args: {
         projectId: v.id('projects'),
@@ -15,19 +14,16 @@ export const getApiKeys = query({
             throw new Error('Not authenticated');
         }
 
-        // Verify user is in organization that owns the workspace
         const workspace = await ctx.db.get(args.workspaceId);
         if (!workspace || identity.org !== workspace.clerkId) {
             throw new Error('Workspace not found or access denied');
         }
 
-        // Verify project belongs to workspace
         const project = await ctx.db.get(args.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
             throw new Error('Project not found or access denied');
         }
 
-        // Get paginated API keys (excluding sensitive keyHash)
         return await ctx.db
             .query('apiKeys')
             .withIndex('by_project', q => q.eq('projectId', args.projectId))
@@ -36,7 +32,6 @@ export const getApiKeys = query({
     },
 });
 
-// Generate a secure API key
 export const generateApiKey = mutation({
     args: {
         projectId: v.id('projects'),
@@ -49,13 +44,11 @@ export const generateApiKey = mutation({
             throw new Error('Not authenticated');
         }
 
-        // Verify user is in organization that owns the workspace
         const workspace = await ctx.db.get(args.workspaceId);
         if (!workspace || identity.org !== workspace.clerkId) {
             throw new Error('Workspace not found or access denied');
         }
 
-        // Verify project belongs to workspace
         const project = await ctx.db.get(args.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
             throw new Error('Project not found or access denied');
@@ -98,7 +91,6 @@ export const generateApiKey = mutation({
     },
 });
 
-// Delete an API key
 export const deleteApiKey = mutation({
     args: {
         keyId: v.id('apiKeys'),
@@ -110,24 +102,20 @@ export const deleteApiKey = mutation({
             throw new Error('Not authenticated');
         }
 
-        // Verify user is in organization that owns the workspace
         const workspace = await ctx.db.get(args.workspaceId);
         if (!workspace || identity.org !== workspace.clerkId) {
             throw new Error('Workspace not found or access denied');
         }
 
-        // Get the API key
         const apiKey = await ctx.db.get(args.keyId);
         if (!apiKey || apiKey.workspaceId !== args.workspaceId) {
             throw new Error('API key not found or access denied');
         }
 
-        // Delete the API key
         await ctx.db.delete(args.keyId);
     },
 });
 
-// Function to verify API key (for API authentication)
 export const verifyApiKey = internalQuery({
     args: {
         key: v.string(),
@@ -150,7 +138,6 @@ export const verifyApiKey = internalQuery({
             return null;
         }
 
-        // Get workspace and project info
         const workspace = await ctx.db.get(apiKey.workspaceId);
         const project = await ctx.db.get(apiKey.projectId);
 
