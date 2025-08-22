@@ -133,6 +133,16 @@ http.route({
                 });
             }
 
+            const ingestBase = {
+                workspaceId: apiKeyInfo.workspaceId as unknown as string,
+                projectId: apiKeyInfo.projectId as unknown as string,
+                elementId: `ns:${namespace}`,
+                type: 'translations',
+                time: Date.now(),
+                apiCallName: 'api/v1/translations',
+                languageCode: lang,
+            };
+
             const limitCheck = await ctx.runMutation(internal.internalWorkspaces.checkAndUpdateRequestUsage, {
                 workspaceId: apiKeyInfo.workspaceId,
             });
@@ -159,6 +169,10 @@ http.route({
             }
 
             if (!limitCheck.isRequestAllowed) {
+                await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+                    ...ingestBase,
+                    deniedReason: 'limit_exceeded',
+                });
                 return new Response(
                     JSON.stringify({
                         error: 'Request limit exceeded. Please upgrade your plan or wait for the monthly reset.',
@@ -180,6 +194,10 @@ http.route({
             });
 
             if (!release) {
+                await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+                    ...ingestBase,
+                    deniedReason: 'release_not_found',
+                });
                 return new Response(
                     JSON.stringify({
                         error: `Release tag '${releaseTag}' not found`,
@@ -206,6 +224,10 @@ http.route({
             }
 
             if (!targetNamespaceVersion) {
+                await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+                    ...ingestBase,
+                    deniedReason: 'namespace_not_in_release',
+                });
                 return new Response(
                     JSON.stringify({
                         error: `Namespace '${namespace}' not found in release '${releaseTag}'`,
@@ -224,6 +246,10 @@ http.route({
             });
 
             if (!language || !language.fileId) {
+                await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+                    ...ingestBase,
+                    deniedReason: 'language_not_found',
+                });
                 return new Response(
                     JSON.stringify({
                         error: `Language '${lang}' not found for namespace '${namespace}' in version '${releaseTag}'`,
@@ -237,6 +263,10 @@ http.route({
 
             const blob = await ctx.storage.get(language.fileId);
             if (!blob) {
+                await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+                    ...ingestBase,
+                    deniedReason: 'storage_blob_missing',
+                });
                 return new Response(
                     JSON.stringify({
                         error: 'Failed to retrieve language file',
@@ -257,7 +287,14 @@ http.route({
                 parsedContent = fileContent;
             }
 
-            return new Response(JSON.stringify(parsedContent), {
+            const responseBody = JSON.stringify(parsedContent);
+            
+            await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+                ...ingestBase,
+                responseSize: new TextEncoder().encode(responseBody).length,
+            });
+
+            return new Response(responseBody, {
                 status: 200,
                 headers: { 'Content-Type': 'application/json' },
             });

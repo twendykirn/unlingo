@@ -1,35 +1,3 @@
-// Helper function to apply structured changes to JSON content with precise array indexing
-export function applyJsonDiffToContent(originalContent: any, structuredChangesData: any): any {
-    if (!structuredChangesData || !structuredChangesData.structuredChanges) {
-        return originalContent;
-    }
-
-    // Deep clone the original content
-    let result = JSON.parse(JSON.stringify(originalContent));
-
-    // Apply each structured change in order
-    const changes = structuredChangesData.structuredChanges;
-
-    for (const change of changes) {
-        result = applyStructuredChange(result, change);
-    }
-
-    return result;
-}
-
-// Apply a single structured change to the content
-export function applyStructuredChange(content: any, change: any): any {
-    const pathParts = parseJSONPath(change.path);
-
-    if (change.type === 'add' || change.type === 'modify') {
-        return setValueAtJSONPath(content, pathParts, change.newValue, change.arrayIndex);
-    } else if (change.type === 'delete') {
-        return deleteValueAtJSONPath(content, pathParts, change.arrayIndex);
-    }
-
-    return content;
-}
-
 // Parse JSON path with array indices (e.g., "items[2].title" -> ["items", 2, "title"])
 export function parseJSONPath(path: string): Array<string | number> {
     if (!path) return [];
@@ -115,6 +83,35 @@ export function deleteValueAtJSONPath(obj: any, pathParts: Array<string | number
         if (result[currentKey] !== undefined) {
             result[currentKey] = deleteValueAtJSONPath(result[currentKey], remainingPath, arrayIndex);
         }
+    }
+
+    return result;
+}
+
+// Apply a single structured change to the content
+export function applyStructuredChange(content: any, change: any): any {
+    const pathParts = parseJSONPath(change.path);
+
+    if (change.type === 'add' || change.type === 'modify') {
+        return setValueAtJSONPath(content, pathParts, change.newValue, change.arrayIndex);
+    } else if (change.type === 'delete') {
+        return deleteValueAtJSONPath(content, pathParts, change.arrayIndex);
+    }
+
+    return content;
+}
+
+// Helper function to apply structured changes to JSON content with precise array indexing
+export function applyJsonDiffToContent(originalContent: any, structuredChangesData: any): any {
+    if (!structuredChangesData || !structuredChangesData.structuredChanges) {
+        return originalContent;
+    }
+
+    let result = JSON.parse(JSON.stringify(originalContent));
+    const changes = structuredChangesData.structuredChanges;
+
+    for (const change of changes) {
+        result = applyStructuredChange(result, change);
     }
 
     return result;

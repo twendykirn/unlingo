@@ -28,9 +28,7 @@ export default defineSchema({
         usage: v.object({
             namespaces: v.number(),
         }),
-    })
-        .index('by_workspace', ['workspaceId'])
-        .index('by_workspace_name', ['workspaceId', 'name']),
+    }).index('by_workspace_name', ['workspaceId', 'name']),
     releases: defineTable({
         projectId: v.id('projects'),
         name: v.string(),
@@ -41,9 +39,7 @@ export default defineSchema({
                 versionId: v.id('namespaceVersions'),
             })
         ),
-    })
-        .index('by_project', ['projectId'])
-        .index('by_project_tag', ['projectId', 'tag']),
+    }).index('by_project_tag', ['projectId', 'tag']),
     namespaces: defineTable({
         projectId: v.id('projects'),
         name: v.string(),
@@ -53,53 +49,41 @@ export default defineSchema({
     }).index('by_project', ['projectId']),
     namespaceVersions: defineTable({
         namespaceId: v.id('namespaces'),
-        version: v.string(), // e.g., "1.0.0", "1.1.0"
-        jsonSchemaFileId: v.optional(v.id('_storage')), // reference to JSON schema file in Convex storage (created later)
-        jsonSchemaSize: v.optional(v.number()), // size of JSON schema file in bytes
-        primaryLanguageId: v.optional(v.id('languages')), // Primary/fallback language ID for faster lookup
+        version: v.string(),
+        jsonSchemaFileId: v.optional(v.id('_storage')),
+        jsonSchemaSize: v.optional(v.number()),
+        primaryLanguageId: v.optional(v.id('languages')),
         usage: v.object({
-            languages: v.number(), // current language count for this version
+            languages: v.number(),
         }),
-    })
-        .index('by_namespace', ['namespaceId'])
-        .index('by_namespace_version', ['namespaceId', 'version']),
+    }).index('by_namespace_version', ['namespaceId', 'version']),
     languages: defineTable({
         namespaceVersionId: v.id('namespaceVersions'),
-        languageCode: v.string(), // e.g., "en", "es", "fr"
-        fileId: v.optional(v.id('_storage')), // reference to JSON file in Convex storage (created later)
-        fileSize: v.optional(v.number()), // size of JSON file in bytes
-    })
-        .index('by_namespace_version', ['namespaceVersionId'])
-        .index('by_namespace_version_language', ['namespaceVersionId', 'languageCode'])
-        .index('by_language_code', ['languageCode']),
+        languageCode: v.string(),
+        fileId: v.optional(v.id('_storage')),
+        fileSize: v.optional(v.number()),
+    }).index('by_namespace_version_language', ['namespaceVersionId', 'languageCode']),
     apiKeys: defineTable({
         workspaceId: v.id('workspaces'),
         projectId: v.id('projects'),
-        name: v.string(), // user-friendly name for the key
-        keyHash: v.string(), // hashed API key for security
-        prefix: v.string(), // visible prefix (e.g., "uk_live_" or "uk_test_")
+        name: v.string(),
+        keyHash: v.string(),
+        prefix: v.string(), // visible prefix (e.g., "ulg_live_" or "ulg_test_")
     })
-        .index('by_workspace', ['workspaceId'])
-        .index('by_project', ['projectId'])
         .index('by_workspace_project', ['workspaceId', 'projectId'])
         .index('by_key_hash', ['keyHash']),
     screenshots: defineTable({
         projectId: v.id('projects'),
-        name: v.string(), // user-friendly name for the screenshot
+        name: v.string(),
         description: v.optional(v.string()),
-        imageFileId: v.id('_storage'), // reference to image file in Convex storage
+        imageFileId: v.id('_storage'),
         imageSize: v.number(), // size of image file in bytes
         imageMimeType: v.string(), // MIME type (image/png, image/jpeg, etc.)
         dimensions: v.object({
             width: v.number(), // original image width in pixels
             height: v.number(), // original image height in pixels
         }),
-        uploadedAt: v.number(), // timestamp when uploaded
-        uploadedBy: v.string(), // Clerk user ID who uploaded it
-    })
-        .index('by_project', ['projectId'])
-        .index('by_project_name', ['projectId', 'name'])
-        .index('by_uploaded_at', ['uploadedAt']),
+    }).index('by_project_name', ['projectId', 'name']),
     screenshotContainers: defineTable({
         screenshotId: v.id('screenshots'),
         position: v.object({
@@ -109,7 +93,7 @@ export default defineSchema({
             height: v.number(), // height of container (percentage of image height)
         }),
         backgroundColor: v.optional(v.string()), // hex color for background (default: blue)
-        description: v.optional(v.string()), // optional description for the container
+        description: v.optional(v.string()),
     }).index('by_screenshot', ['screenshotId']),
     screenshotKeyMappings: defineTable({
         containerId: v.id('screenshotContainers'),
@@ -117,9 +101,11 @@ export default defineSchema({
         languageId: v.id('languages'),
         translationKey: v.string(), // full dot-notation key path (e.g., "welcome.title")
     })
-        .index('by_container', ['containerId'])
-        .index('by_container_namespace_language', ['containerId', 'namespaceVersionId', 'languageId']) // main query index
-        .index('by_container_language_key', ['containerId', 'languageId', 'translationKey']) // unique constraint index
-        .index('by_language_key', ['languageId', 'translationKey']) // for quick key lookups
-        .index('by_namespace_key', ['namespaceVersionId', 'translationKey']), // for cross-language key lookups
+        .index('by_container_version_language_key', [
+            'containerId',
+            'namespaceVersionId',
+            'languageId',
+            'translationKey',
+        ])
+        .index('by_version_language_key', ['namespaceVersionId', 'languageId', 'translationKey']),
 });

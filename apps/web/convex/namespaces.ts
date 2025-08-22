@@ -2,7 +2,6 @@ import { paginationOptsValidator } from 'convex/server';
 import { mutation, query, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
 
-// Query to get namespaces for a project with pagination
 export const getNamespaces = query({
     args: {
         projectId: v.id('projects'),
@@ -15,18 +14,11 @@ export const getNamespaces = query({
             throw new Error('Not authenticated');
         }
 
-        // Verify user has access to this workspace
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
+        if (!workspace || identity.org !== workspace.clerkId) {
+            throw new Error('Workspace not found or access denied');
         }
 
-        // Only allow access to organization workspaces
-        if (identity.org !== workspace.clerkId) {
-            throw new Error('Unauthorized: Can only access organization workspaces');
-        }
-
-        // Verify project belongs to workspace
         const project = await ctx.db.get(args.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
             throw new Error('Project not found or access denied');
@@ -40,7 +32,6 @@ export const getNamespaces = query({
     },
 });
 
-// Query to get a single namespace by ID
 export const getNamespace = query({
     args: {
         namespaceId: v.id('namespaces'),
@@ -53,18 +44,11 @@ export const getNamespace = query({
             throw new Error('Not authenticated');
         }
 
-        // Verify user has access to this workspace
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
+        if (!workspace || identity.org !== workspace.clerkId) {
+            throw new Error('Workspace not found or access denied');
         }
 
-        // Only allow access to organization workspaces
-        if (identity.org !== workspace.clerkId) {
-            throw new Error('Unauthorized: Can only access organization workspaces');
-        }
-
-        // Verify project belongs to workspace
         const project = await ctx.db.get(args.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
             throw new Error('Project not found or access denied');
@@ -72,16 +56,14 @@ export const getNamespace = query({
 
         const namespace = await ctx.db.get(args.namespaceId);
 
-        // Verify the namespace belongs to the project
         if (!namespace || namespace.projectId !== args.projectId) {
-            return null;
+            throw new Error('Namespace not found or access denied');
         }
 
         return namespace;
     },
 });
 
-// Mutation to create a new namespace
 export const createNamespace = mutation({
     args: {
         projectId: v.id('projects'),
@@ -94,24 +76,16 @@ export const createNamespace = mutation({
             throw new Error('Not authenticated');
         }
 
-        // Get workspace to check limits
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
+        if (!workspace || identity.org !== workspace.clerkId) {
+            throw new Error('Workspace not found or access denied');
         }
 
-        // Verify user is in organization that owns this workspace
-        if (identity.org !== workspace.clerkId) {
-            throw new Error('Unauthorized: Can only create namespaces in organization workspaces');
-        }
-
-        // Verify project belongs to workspace
         const project = await ctx.db.get(args.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
             throw new Error('Project not found or access denied');
         }
 
-        // Check if namespace name already exists in project
         const existingNamespace = await ctx.db
             .query('namespaces')
             .withIndex('by_project', q => q.eq('projectId', args.projectId))
@@ -122,7 +96,6 @@ export const createNamespace = mutation({
             throw new Error('A namespace with this name already exists in this project');
         }
 
-        // Check if project has reached namespace limit using usage counter
         const currentNamespaceCount = project.usage?.namespaces ?? 0;
         if (currentNamespaceCount >= workspace.limits.namespacesPerProject) {
             throw new Error(
@@ -130,7 +103,6 @@ export const createNamespace = mutation({
             );
         }
 
-        // Validate namespace name
         if (!args.name.trim()) {
             throw new Error('Namespace name cannot be empty');
         }
@@ -144,16 +116,14 @@ export const createNamespace = mutation({
             throw new Error('Namespace name can only contain letters, numbers, hyphens, and underscores');
         }
 
-        // Create the namespace
         const namespaceId = await ctx.db.insert('namespaces', {
             projectId: args.projectId,
             name: args.name.trim(),
             usage: {
-                versions: 1, // Start with 1 version (main)
+                versions: 1,
             },
         });
 
-        // Automatically create a "main" version for the namespace
         await ctx.db.insert('namespaceVersions', {
             namespaceId: namespaceId,
             version: 'main',
@@ -162,7 +132,6 @@ export const createNamespace = mutation({
             },
         });
 
-        // Update project usage counter
         await ctx.db.patch(args.projectId, {
             usage: {
                 namespaces: currentNamespaceCount + 1,
@@ -173,7 +142,6 @@ export const createNamespace = mutation({
     },
 });
 
-// Mutation to update a namespace
 export const updateNamespace = mutation({
     args: {
         namespaceId: v.id('namespaces'),
@@ -187,17 +155,11 @@ export const updateNamespace = mutation({
             throw new Error('Not authenticated');
         }
 
-        // Verify user has access to this workspace
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
+        if (!workspace || identity.org !== workspace.clerkId) {
+            throw new Error('Workspace not found or access denied');
         }
 
-        if (identity.org !== workspace.clerkId) {
-            throw new Error('Unauthorized: Can only update namespaces in organization workspaces');
-        }
-
-        // Verify project belongs to workspace
         const project = await ctx.db.get(args.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
             throw new Error('Project not found or access denied');
@@ -205,12 +167,10 @@ export const updateNamespace = mutation({
 
         const namespace = await ctx.db.get(args.namespaceId);
 
-        // Verify the namespace belongs to the project
         if (!namespace || namespace.projectId !== args.projectId) {
             throw new Error('Namespace not found');
         }
 
-        // Validate namespace name
         if (!args.name.trim()) {
             throw new Error('Namespace name cannot be empty');
         }
@@ -224,7 +184,6 @@ export const updateNamespace = mutation({
             throw new Error('Namespace name can only contain letters, numbers, hyphens, and underscores');
         }
 
-        // If updating name, check for duplicates
         if (args.name.trim() !== namespace.name) {
             const existingNamespace = await ctx.db
                 .query('namespaces')
@@ -237,7 +196,6 @@ export const updateNamespace = mutation({
             }
         }
 
-        // Update the namespace
         await ctx.db.patch(args.namespaceId, {
             name: args.name.trim(),
         });
@@ -246,7 +204,6 @@ export const updateNamespace = mutation({
     },
 });
 
-// Mutation to delete a namespace
 export const deleteNamespace = mutation({
     args: {
         namespaceId: v.id('namespaces'),
@@ -259,17 +216,11 @@ export const deleteNamespace = mutation({
             throw new Error('Not authenticated');
         }
 
-        // Verify user has access to this workspace
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
+        if (!workspace || identity.org !== workspace.clerkId) {
+            throw new Error('Workspace not found or access denied');
         }
 
-        if (identity.org !== workspace.clerkId) {
-            throw new Error('Unauthorized: Can only delete namespaces from organization workspaces');
-        }
-
-        // Verify project belongs to workspace
         const project = await ctx.db.get(args.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
             throw new Error('Project not found or access denied');
@@ -277,27 +228,34 @@ export const deleteNamespace = mutation({
 
         const namespace = await ctx.db.get(args.namespaceId);
 
-        // Verify the namespace belongs to the project
         if (!namespace || namespace.projectId !== args.projectId) {
-            throw new Error('Namespace not found');
+            throw new Error('Namespace not found or access denied');
         }
 
-        // Delete all related data
         // 1. Delete namespace versions and languages
         const namespaceVersions = await ctx.db
             .query('namespaceVersions')
-            .withIndex('by_namespace', q => q.eq('namespaceId', args.namespaceId))
+            .withIndex('by_namespace_version', q => q.eq('namespaceId', args.namespaceId))
             .collect();
 
         for (const version of namespaceVersions) {
-            // Delete languages for this version
             const languages = await ctx.db
                 .query('languages')
-                .withIndex('by_namespace_version', q => q.eq('namespaceVersionId', version._id))
+                .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', version._id))
                 .collect();
 
             for (const language of languages) {
-                // Delete the file from Convex Storage
+                const mappings = await ctx.db
+                    .query('screenshotKeyMappings')
+                    .withIndex('by_version_language_key', q =>
+                        q.eq('namespaceVersionId', language.namespaceVersionId).eq('languageId', language._id)
+                    )
+                    .collect();
+
+                for (const mapping of mappings) {
+                    await ctx.db.delete(mapping._id);
+                }
+
                 if (language.fileId) {
                     await ctx.storage.delete(language.fileId);
                 }
@@ -310,7 +268,7 @@ export const deleteNamespace = mutation({
         // 2. Remove namespace from any releases
         const releases = await ctx.db
             .query('releases')
-            .withIndex('by_project', q => q.eq('projectId', args.projectId))
+            .withIndex('by_project_tag', q => q.eq('projectId', args.projectId))
             .collect();
 
         for (const release of releases) {
@@ -342,47 +300,6 @@ export const deleteNamespace = mutation({
     },
 });
 
-// Query to get namespace count for a project (useful for checking limits)
-export const getNamespaceCount = query({
-    args: {
-        projectId: v.id('projects'),
-        workspaceId: v.id('workspaces'),
-    },
-    handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            throw new Error('Not authenticated');
-        }
-
-        // Verify user has access to this workspace
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
-        }
-
-        // Only allow access to organization workspaces
-        if (identity.org !== workspace.clerkId) {
-            throw new Error('Unauthorized: Can only access organization workspaces');
-        }
-
-        // Verify project belongs to workspace
-        const project = await ctx.db.get(args.projectId);
-        if (!project || project.workspaceId !== args.workspaceId) {
-            throw new Error('Project not found or access denied');
-        }
-
-        // Get namespace count from project usage
-        const currentCount = project.usage?.namespaces ?? 0;
-
-        return {
-            count: currentCount,
-            limit: workspace.limits.namespacesPerProject,
-            canCreateMore: currentCount < workspace.limits.namespacesPerProject,
-        };
-    },
-});
-
-// Mutation to set primary language for a namespace
 export const setPrimaryLanguage = mutation({
     args: {
         namespaceId: v.id('namespaces'),
@@ -395,17 +312,11 @@ export const setPrimaryLanguage = mutation({
             throw new Error('Not authenticated');
         }
 
-        // Verify user has access to this workspace
         const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace) {
-            throw new Error('Workspace not found');
+        if (!workspace || identity.org !== workspace.clerkId) {
+            throw new Error('Workspace not found or access denied');
         }
 
-        if (identity.org !== workspace.clerkId) {
-            throw new Error('Unauthorized: Can only update namespaces in organization workspaces');
-        }
-
-        // Verify namespace exists and belongs to workspace
         const namespace = await ctx.db.get(args.namespaceId);
         if (!namespace) {
             throw new Error('Namespace not found');
@@ -416,19 +327,16 @@ export const setPrimaryLanguage = mutation({
             throw new Error('Project not found or access denied');
         }
 
-        // Verify language exists and belongs to this namespace
         const language = await ctx.db.get(args.languageId);
         if (!language) {
             throw new Error('Language not found');
         }
 
-        // Check if language belongs to any version of this namespace
         const namespaceVersion = await ctx.db.get(language.namespaceVersionId);
         if (!namespaceVersion || namespaceVersion.namespaceId !== args.namespaceId) {
             throw new Error('Language does not belong to this namespace');
         }
 
-        // Update the namespace with primary language
         await ctx.db.patch(language.namespaceVersionId, {
             primaryLanguageId: args.languageId,
         });
@@ -437,7 +345,6 @@ export const setPrimaryLanguage = mutation({
     },
 });
 
-// Internal query to get a single namespace by ID (for API access)
 export const getNamespaceInternal = internalQuery({
     args: {
         namespaceId: v.id('namespaces'),
@@ -445,13 +352,11 @@ export const getNamespaceInternal = internalQuery({
         workspaceId: v.id('workspaces'),
     },
     handler: async (ctx, args) => {
-        // Verify workspace exists
         const workspace = await ctx.db.get(args.workspaceId);
         if (!workspace) {
             throw new Error('Workspace not found');
         }
 
-        // Verify project belongs to workspace
         const project = await ctx.db.get(args.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
             throw new Error('Project not found or access denied');
@@ -459,9 +364,8 @@ export const getNamespaceInternal = internalQuery({
 
         const namespace = await ctx.db.get(args.namespaceId);
 
-        // Verify the namespace belongs to the project
         if (!namespace || namespace.projectId !== args.projectId) {
-            return null;
+            throw new Error('Namespace not found or access denied');
         }
 
         return namespace;

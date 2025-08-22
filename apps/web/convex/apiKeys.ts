@@ -26,7 +26,9 @@ export const getApiKeys = query({
 
         return await ctx.db
             .query('apiKeys')
-            .withIndex('by_project', q => q.eq('projectId', args.projectId))
+            .withIndex('by_workspace_project', q =>
+                q.eq('workspaceId', args.workspaceId).eq('projectId', args.projectId)
+            )
             .order('desc')
             .paginate(args.paginationOpts);
     },

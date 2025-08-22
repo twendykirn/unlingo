@@ -20,13 +20,11 @@ export const createOrganizationWorkspace = mutation({
 
         const currentMonth = getCurrentMonth();
 
-        // Create workspace usage record
         const workspaceUsageId = await ctx.db.insert('workspaceUsage', {
             month: currentMonth,
             requests: 0,
         });
 
-        // Create team workspace
         const workspaceId = await ctx.db.insert('workspaces', {
             clerkId: args.clerkOrgId,
             contactEmail: args.contactEmail,
@@ -34,11 +32,11 @@ export const createOrganizationWorkspace = mutation({
                 projects: 0,
             },
             limits: {
-                requests: 100000, // Free tier limits
+                requests: 100000,
                 projects: 1,
                 namespacesPerProject: 5,
                 languagesPerVersion: 5,
-                versionsPerNamespace: 1, // Allow 1 version (main) for free tier
+                versionsPerNamespace: 1,
             },
             workspaceUsageId,
         });
@@ -70,7 +68,6 @@ export const deleteOrganizationWorkspace = internalMutation({
         clerkOrgId: v.string(),
     },
     handler: async (ctx, args) => {
-        // Find workspace by Clerk organization ID
         const workspace = await ctx.db
             .query('workspaces')
             .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkOrgId))
@@ -86,13 +83,11 @@ export const deleteOrganizationWorkspace = internalMutation({
     },
 });
 
-// Helper function to delete workspace and all related data
 async function deleteWorkspaceAndRelatedData(
     ctx: MutationCtx,
     workspaceId: Id<'workspaces'>,
     workspaceUsageId: Id<'workspaceUsage'>
 ) {
-    // Cancel any active Polar subscriptions first
     try {
         await ctx.scheduler.runAfter(0, internal.workspaces.deletePolarCustomer, {
             workspaceId,
@@ -100,105 +95,91 @@ async function deleteWorkspaceAndRelatedData(
         console.log(`Delete Polar customer for workspace ${workspaceId}`);
     } catch (error) {
         console.warn(`Failed to delete Polar customer for workspace ${workspaceId}:`, error);
-        // Continue with deletion even if subscription cancellation fails
     }
 
-    // Delete API keys
-    const apiKeys = await ctx.db
-        .query('apiKeys')
-        .withIndex('by_workspace', q => q.eq('workspaceId', workspaceId))
-        .collect();
-
-    for (const apiKey of apiKeys) {
-        await ctx.db.delete(apiKey._id);
-    }
-
-    // Delete workspace usage record
     await ctx.db.delete(workspaceUsageId);
 
-    // Delete projects and related data
     const projects = await ctx.db
         .query('projects')
-        .withIndex('by_workspace', q => q.eq('workspaceId', workspaceId))
+        .withIndex('by_workspace_name', q => q.eq('workspaceId', workspaceId))
         .collect();
 
     for (const project of projects) {
-        // Delete releases
+        const apiKeys = await ctx.db
+            .query('apiKeys')
+            .withIndex('by_workspace_project', q =>
+                q.eq('workspaceId', project.workspaceId).eq('projectId', project._id)
+            )
+            .collect();
+
+        for (const apiKey of apiKeys) {
+            await ctx.db.delete(apiKey._id);
+        }
+
         const releases = await ctx.db
             .query('releases')
-            .withIndex('by_project', q => q.eq('projectId', project._id))
+            .withIndex('by_project_tag', q => q.eq('projectId', project._id))
             .collect();
 
         for (const release of releases) {
             await ctx.db.delete(release._id);
         }
 
-        // Delete screenshots and related data
         const screenshots = await ctx.db
             .query('screenshots')
-            .withIndex('by_project', q => q.eq('projectId', project._id))
+            .withIndex('by_project_name', q => q.eq('projectId', project._id))
             .collect();
 
         for (const screenshot of screenshots) {
-            // Delete screenshot containers and their mappings
             const containers = await ctx.db
                 .query('screenshotContainers')
                 .withIndex('by_screenshot', q => q.eq('screenshotId', screenshot._id))
                 .collect();
 
             for (const container of containers) {
-                // Delete key mappings for this container
                 const mappings = await ctx.db
                     .query('screenshotKeyMappings')
-                    .withIndex('by_container', q => q.eq('containerId', container._id))
+                    .withIndex('by_container_version_language_key', q => q.eq('containerId', container._id))
                     .collect();
 
                 for (const mapping of mappings) {
                     await ctx.db.delete(mapping._id);
                 }
 
-                // Delete the container
                 await ctx.db.delete(container._id);
             }
 
-            // Delete the screenshot image file from Convex Storage
             if (screenshot.imageFileId) {
                 await ctx.storage.delete(screenshot.imageFileId);
             }
 
-            // Delete the screenshot
             await ctx.db.delete(screenshot._id);
         }
 
-        // Delete namespaces and related data
         const namespaces = await ctx.db
             .query('namespaces')
             .withIndex('by_project', q => q.eq('projectId', project._id))
             .collect();
 
         for (const namespace of namespaces) {
-            // Delete namespace versions and languages
             const namespaceVersions = await ctx.db
                 .query('namespaceVersions')
-                .withIndex('by_namespace', q => q.eq('namespaceId', namespace._id))
+                .withIndex('by_namespace_version', q => q.eq('namespaceId', namespace._id))
                 .collect();
 
             for (const version of namespaceVersions) {
-                // Delete languages
                 const languages = await ctx.db
                     .query('languages')
-                    .withIndex('by_namespace_version', q => q.eq('namespaceVersionId', version._id))
+                    .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', version._id))
                     .collect();
 
                 for (const language of languages) {
-                    // Delete the JSON file from Convex Storage
                     if (language.fileId) {
                         await ctx.storage.delete(language.fileId);
                     }
                     await ctx.db.delete(language._id);
                 }
 
-                // Delete the JSON schema file from Convex Storage
                 if (version.jsonSchemaFileId) {
                     await ctx.storage.delete(version.jsonSchemaFileId);
                 }
@@ -212,7 +193,6 @@ async function deleteWorkspaceAndRelatedData(
         await ctx.db.delete(project._id);
     }
 
-    // Finally, delete the workspace
     await ctx.db.delete(workspaceId);
 }
 
@@ -237,7 +217,6 @@ export const getWorkspaceInfo = internalQuery({
     },
 });
 
-// Query to get workspace with subscription (organization only)
 export const getWorkspaceWithSubscription = query({
     args: {
         clerkId: v.string(),
@@ -248,7 +227,6 @@ export const getWorkspaceWithSubscription = query({
             throw new Error('Not authenticated');
         }
 
-        // Handle race condition: during org creation, Clerk's token might not have updated yet
         const hasOrgAccess = identity.org === args.clerkId;
 
         if (!hasOrgAccess) {
@@ -265,7 +243,6 @@ export const getWorkspaceWithSubscription = query({
             return null;
         }
 
-        // Get current subscription status from Polar
         try {
             const currentSubscription = await polar.getCurrentSubscription(ctx, {
                 userId: workspace._id,
@@ -295,7 +272,6 @@ export const getWorkspaceWithSubscription = query({
     },
 });
 
-// Update workspace contact email
 export const updateWorkspaceContactEmail = mutation({
     args: {
         clerkId: v.string(),
@@ -331,7 +307,6 @@ export const updateWorkspaceContactEmail = mutation({
     },
 });
 
-// Update workspace limits based on premium status
 export const updateWorkspaceLimits = internalMutation({
     args: {
         workspaceId: v.id('workspaces'),
@@ -347,19 +322,17 @@ export const updateWorkspaceLimits = internalMutation({
 
         const limits = args.isPremium
             ? {
-                  // Pro tier limits from pricing page
-                  requests: args.requestLimit || 250000, // Default to 250k requests
+                  requests: args.requestLimit || 250000,
                   projects: 30,
                   namespacesPerProject: 40,
                   versionsPerNamespace: 20,
                   languagesPerVersion: 35,
               }
             : {
-                  // Free tier limits
                   requests: 100000,
                   projects: 1,
                   namespacesPerProject: 5,
-                  versionsPerNamespace: 1, // Allow 1 version (main) for free tier
+                  versionsPerNamespace: 1,
                   languagesPerVersion: 5,
               };
 
@@ -370,10 +343,9 @@ export const updateWorkspaceLimits = internalMutation({
     },
 });
 
-// Separate query for current usage data to avoid re-rendering workspace queries
 export const getCurrentUsage = query({
     args: {
-        clerkId: v.string(), // Clerk organization ID
+        clerkId: v.string(),
         workspaceUsageId: v.id('workspaceUsage'),
     },
     handler: async (ctx, args) => {
@@ -389,7 +361,6 @@ export const getCurrentUsage = query({
             return null;
         }
 
-        // Get current month's usage from separate usage table
         const currentMonth = getCurrentMonth();
         const usage = await ctx.db.get(args.workspaceUsageId);
 

@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as analytics from "../analytics.js";
 import type * as apiKeys from "../apiKeys.js";
+import type * as clickhouse from "../clickhouse.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as internalLang from "../internalLang.js";
@@ -41,7 +43,9 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  analytics: typeof analytics;
   apiKeys: typeof apiKeys;
+  clickhouse: typeof clickhouse;
   crons: typeof crons;
   http: typeof http;
   internalLang: typeof internalLang;

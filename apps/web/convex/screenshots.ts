@@ -2,7 +2,6 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { paginationOptsValidator } from 'convex/server';
 
-// Query to get paginated screenshots for a project
 export const getScreenshotsForProject = query({
     args: {
         projectId: v.id('projects'),
@@ -15,26 +14,21 @@ export const getScreenshotsForProject = query({
             throw new Error('Not authenticated');
         }
 
-        // Verify workspace access
         const workspace = await ctx.db.get(args.workspaceId);
         if (!workspace || workspace.clerkId !== identity.org) {
-            throw new Error('Access denied: Workspace not found or access denied');
+            throw new Error('Workspace not found or access denied');
         }
 
-        // Verify project belongs to workspace
         const project = await ctx.db.get(args.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied: Project does not belong to workspace');
+            throw new Error('Project not found or access denied');
         }
 
         const result = await ctx.db
             .query('screenshots')
-            .withIndex('by_uploaded_at')
-            .order('desc')
-            .filter(q => q.eq(q.field('projectId'), args.projectId))
+            .withIndex('by_project_name', q => q.eq('projectId', args.projectId))
             .paginate(args.paginationOpts);
 
-        // Get image URLs for each screenshot
         const screenshotsWithUrls = await Promise.all(
             result.page.map(async screenshot => {
                 const imageUrl = await ctx.storage.getUrl(screenshot.imageFileId);
@@ -52,7 +46,6 @@ export const getScreenshotsForProject = query({
     },
 });
 
-// Mutation to create a new screenshot record after upload
 export const createScreenshot = mutation({
     args: {
         projectId: v.id('projects'),
@@ -73,19 +66,16 @@ export const createScreenshot = mutation({
             throw new Error('Not authenticated');
         }
 
-        // Verify workspace access
         const workspace = await ctx.db.get(args.workspaceId);
         if (!workspace || workspace.clerkId !== identity.org) {
-            throw new Error('Access denied: Workspace not found or access denied');
+            throw new Error('Workspace not found or access denied');
         }
 
-        // Verify project belongs to workspace
         const project = await ctx.db.get(args.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied: Project does not belong to workspace');
+            throw new Error('Project not found or access denied');
         }
 
-        // Check if screenshot name already exists in project
         const existingScreenshot = await ctx.db
             .query('screenshots')
             .withIndex('by_project_name', q => q.eq('projectId', args.projectId).eq('name', args.name))
@@ -103,15 +93,12 @@ export const createScreenshot = mutation({
             imageSize: args.imageSize,
             imageMimeType: args.imageMimeType,
             dimensions: args.dimensions,
-            uploadedAt: Date.now(),
-            uploadedBy: identity.subject,
         });
 
         return screenshotId;
     },
 });
 
-// Mutation to delete a screenshot and all its key mappings
 export const deleteScreenshot = mutation({
     args: {
         screenshotId: v.id('screenshots'),
@@ -123,57 +110,47 @@ export const deleteScreenshot = mutation({
             throw new Error('Not authenticated');
         }
 
-        // Get screenshot to verify access
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace || workspace.clerkId !== identity.org) {
+            throw new Error('Workspace not found or access denied');
+        }
+
         const screenshot = await ctx.db.get(args.screenshotId);
         if (!screenshot) {
             throw new Error('Screenshot not found');
         }
 
-        // Verify workspace access through project
         const project = await ctx.db.get(screenshot.projectId);
-        if (!project) {
-            throw new Error('Project not found');
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
         }
 
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.org || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied');
-        }
-
-        // First, get all containers for this screenshot
         const containers = await ctx.db
             .query('screenshotContainers')
             .withIndex('by_screenshot', q => q.eq('screenshotId', args.screenshotId))
             .collect();
 
-        // Delete all key mappings for each container
         for (const container of containers) {
             const keyMappings = await ctx.db
                 .query('screenshotKeyMappings')
-                .withIndex('by_container', q => q.eq('containerId', container._id))
+                .withIndex('by_container_version_language_key', q => q.eq('containerId', container._id))
                 .collect();
 
             for (const mapping of keyMappings) {
                 await ctx.db.delete(mapping._id);
             }
-        }
 
-        // Delete all containers for this screenshot
-        for (const container of containers) {
             await ctx.db.delete(container._id);
         }
 
-        // Delete the image file from storage
         await ctx.storage.delete(screenshot.imageFileId);
 
-        // Delete the screenshot record
         await ctx.db.delete(args.screenshotId);
 
         return { success: true };
     },
 });
 
-// Get mappings for a specific container and language
 export const getContainerMappings = query({
     args: {
         containerId: v.id('screenshotContainers'),
@@ -188,43 +165,38 @@ export const getContainerMappings = query({
             throw new Error('Not authenticated');
         }
 
-        // Verify container access
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace || workspace.clerkId !== identity.org) {
+            throw new Error('Workspace not found or access denied');
+        }
+
         const container = await ctx.db.get(args.containerId);
         if (!container) {
-            throw new Error('Container not found');
+            throw new Error('Container not found or access denied');
         }
 
         const screenshot = await ctx.db.get(container.screenshotId);
         if (!screenshot) {
-            throw new Error('Screenshot not found');
+            throw new Error('Screenshot not found or access denied');
         }
 
         const project = await ctx.db.get(screenshot.projectId);
-        if (!project) {
-            throw new Error('Project not found');
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
         }
 
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.org || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied');
-        }
-
-        // Get mappings for this container and language
-        const mappings = await ctx.db
+        return await ctx.db
             .query('screenshotKeyMappings')
-            .withIndex('by_container_namespace_language', q =>
+            .withIndex('by_container_version_language_key', q =>
                 q
                     .eq('containerId', args.containerId)
                     .eq('namespaceVersionId', args.namespaceVersionId)
                     .eq('languageId', args.languageId)
             )
             .paginate(args.paginationOpts);
-
-        return mappings;
     },
 });
 
-// Generate upload URL for screenshot
 export const generateUploadUrl = mutation({
     args: {},
     handler: async ctx => {
@@ -237,7 +209,6 @@ export const generateUploadUrl = mutation({
     },
 });
 
-// Assign a translation key to a container
 export const assignKeyToContainer = mutation({
     args: {
         containerId: v.id('screenshotContainers'),
@@ -252,45 +223,43 @@ export const assignKeyToContainer = mutation({
             throw new Error('Not authenticated');
         }
 
-        // Verify container access
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace || workspace.clerkId !== identity.org) {
+            throw new Error('Workspace not found or access denied');
+        }
+
         const container = await ctx.db.get(args.containerId);
         if (!container) {
-            throw new Error('Container not found');
+            throw new Error('Container not found or access denied');
         }
 
         const screenshot = await ctx.db.get(container.screenshotId);
         if (!screenshot) {
-            throw new Error('Screenshot not found');
+            throw new Error('Screenshot not found or access denied');
         }
 
         const project = await ctx.db.get(screenshot.projectId);
-        if (!project) {
-            throw new Error('Project not found');
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
         }
 
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.org || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied');
-        }
-
-        // Verify language and namespace version exist and are accessible
         const language = await ctx.db.get(args.languageId);
         const namespaceVersion = await ctx.db.get(args.namespaceVersionId);
 
         if (!language || language.namespaceVersionId !== args.namespaceVersionId) {
-            throw new Error('Invalid language selection');
+            throw new Error('Language not found or access denied');
         }
 
         if (!namespaceVersion) {
-            throw new Error('Namespace version not found');
+            throw new Error('Namespace version not found or access denied');
         }
 
-        // Check if mapping already exists for this specific container + language + key combination
         const existingMapping = await ctx.db
             .query('screenshotKeyMappings')
-            .withIndex('by_container_language_key', q =>
+            .withIndex('by_container_version_language_key', q =>
                 q
                     .eq('containerId', args.containerId)
+                    .eq('namespaceVersionId', args.namespaceVersionId)
                     .eq('languageId', args.languageId)
                     .eq('translationKey', args.translationKey)
             )
@@ -310,7 +279,6 @@ export const assignKeyToContainer = mutation({
     },
 });
 
-// Remove specific key assignment from a container
 export const removeKeyFromContainer = mutation({
     args: {
         containerId: v.id('screenshotContainers'),
@@ -324,33 +292,37 @@ export const removeKeyFromContainer = mutation({
             throw new Error('Not authenticated');
         }
 
-        // Verify container access
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace || workspace.clerkId !== identity.org) {
+            throw new Error('Workspace not found or access denied');
+        }
+
         const container = await ctx.db.get(args.containerId);
         if (!container) {
-            throw new Error('Container not found');
+            throw new Error('Container not found or access denied');
         }
 
         const screenshot = await ctx.db.get(container.screenshotId);
         if (!screenshot) {
-            throw new Error('Screenshot not found');
+            throw new Error('Screenshot not found or access denied');
         }
 
         const project = await ctx.db.get(screenshot.projectId);
-        if (!project) {
-            throw new Error('Project not found');
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
         }
 
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.org || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied');
+        const language = await ctx.db.get(args.languageId);
+        if (!language) {
+            throw new Error('Language not found or access denied');
         }
 
-        // Find and delete the specific mapping
         const mapping = await ctx.db
             .query('screenshotKeyMappings')
-            .withIndex('by_container_language_key', q =>
+            .withIndex('by_container_version_language_key', q =>
                 q
                     .eq('containerId', args.containerId)
+                    .eq('namespaceVersionId', language.namespaceVersionId)
                     .eq('languageId', args.languageId)
                     .eq('translationKey', args.translationKey)
             )
@@ -364,7 +336,6 @@ export const removeKeyFromContainer = mutation({
     },
 });
 
-// Delete a key mapping
 export const deleteKeyMapping = mutation({
     args: {
         mappingId: v.id('screenshotKeyMappings'),
@@ -376,12 +347,16 @@ export const deleteKeyMapping = mutation({
             throw new Error('Not authenticated');
         }
 
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace || workspace.clerkId !== identity.org) {
+            throw new Error('Workspace not found or access denied');
+        }
+
         const mapping = await ctx.db.get(args.mappingId);
         if (!mapping) {
             throw new Error('Mapping not found');
         }
 
-        // Verify access through container -> screenshot -> project -> workspace
         const container = await ctx.db.get(mapping.containerId);
         if (!container) {
             throw new Error('Container not found');
@@ -393,13 +368,8 @@ export const deleteKeyMapping = mutation({
         }
 
         const project = await ctx.db.get(screenshot.projectId);
-        if (!project) {
-            throw new Error('Project not found');
-        }
-
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.org || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied');
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
         }
 
         await ctx.db.delete(args.mappingId);
@@ -407,7 +377,6 @@ export const deleteKeyMapping = mutation({
     },
 });
 
-// Create a new container on a screenshot
 export const createContainer = mutation({
     args: {
         screenshotId: v.id('screenshots'),
@@ -427,19 +396,19 @@ export const createContainer = mutation({
             throw new Error('Not authenticated');
         }
 
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace || workspace.clerkId !== identity.org) {
+            throw new Error('Workspace not found or access denied');
+        }
+
         const screenshot = await ctx.db.get(args.screenshotId);
         if (!screenshot) {
-            throw new Error('Screenshot not found');
+            throw new Error('Screenshot not found or access denied');
         }
 
         const project = await ctx.db.get(screenshot.projectId);
-        if (!project) {
-            throw new Error('Project not found');
-        }
-
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.org || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied');
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
         }
 
         const containerId = await ctx.db.insert('screenshotContainers', {
@@ -453,7 +422,6 @@ export const createContainer = mutation({
     },
 });
 
-// Update container position and appearance
 export const updateContainer = mutation({
     args: {
         containerId: v.id('screenshotContainers'),
@@ -475,25 +443,24 @@ export const updateContainer = mutation({
             throw new Error('Not authenticated');
         }
 
-        const container = await ctx.db.get(args.containerId);
-        if (!container) {
-            throw new Error('Container not found');
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace || workspace.clerkId !== identity.org) {
+            throw new Error('Workspace not found or access denied');
         }
 
-        // Verify access through screenshot -> project -> workspace
+        const container = await ctx.db.get(args.containerId);
+        if (!container) {
+            throw new Error('Container not found or access denied');
+        }
+
         const screenshot = await ctx.db.get(container.screenshotId);
         if (!screenshot) {
-            throw new Error('Screenshot not found');
+            throw new Error('Screenshot not found or access denied');
         }
 
         const project = await ctx.db.get(screenshot.projectId);
-        if (!project) {
-            throw new Error('Project not found');
-        }
-
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.org || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied');
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
         }
 
         const updates: any = {};
@@ -506,7 +473,6 @@ export const updateContainer = mutation({
     },
 });
 
-// Delete a container and all its key mappings
 export const deleteContainer = mutation({
     args: {
         containerId: v.id('screenshotContainers'),
@@ -518,44 +484,40 @@ export const deleteContainer = mutation({
             throw new Error('Not authenticated');
         }
 
-        const container = await ctx.db.get(args.containerId);
-        if (!container) {
-            throw new Error('Container not found');
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace || workspace.clerkId !== identity.org) {
+            throw new Error('Workspace not found or access denied');
         }
 
-        // Verify access through screenshot -> project -> workspace
+        const container = await ctx.db.get(args.containerId);
+        if (!container) {
+            throw new Error('Container not found or access denied');
+        }
+
         const screenshot = await ctx.db.get(container.screenshotId);
         if (!screenshot) {
-            throw new Error('Screenshot not found');
+            throw new Error('Screenshot not found or access denied');
         }
 
         const project = await ctx.db.get(screenshot.projectId);
-        if (!project) {
-            throw new Error('Project not found');
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
         }
 
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.org || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied');
-        }
-
-        // Delete all key mappings for this container first
         const keyMappings = await ctx.db
             .query('screenshotKeyMappings')
-            .withIndex('by_container', q => q.eq('containerId', args.containerId))
+            .withIndex('by_container_version_language_key', q => q.eq('containerId', args.containerId))
             .collect();
 
         for (const mapping of keyMappings) {
             await ctx.db.delete(mapping._id);
         }
 
-        // Delete the container
         await ctx.db.delete(args.containerId);
         return { success: true };
     },
 });
 
-// Get containers for a screenshot
 export const getContainersForScreenshot = query({
     args: {
         screenshotId: v.id('screenshots'),
@@ -567,20 +529,19 @@ export const getContainersForScreenshot = query({
             throw new Error('Not authenticated');
         }
 
-        // Verify screenshot access
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace || workspace.clerkId !== identity.org) {
+            throw new Error('Workspace not found or access denied');
+        }
+
         const screenshot = await ctx.db.get(args.screenshotId);
         if (!screenshot) {
-            throw new Error('Screenshot not found');
+            throw new Error('Screenshot not found or access denied');
         }
 
         const project = await ctx.db.get(screenshot.projectId);
-        if (!project) {
-            throw new Error('Project not found');
-        }
-
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.org || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied');
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
         }
 
         const containers = await ctx.db
@@ -592,7 +553,6 @@ export const getContainersForScreenshot = query({
     },
 });
 
-// Get a single screenshot by ID
 export const getScreenshot = query({
     args: {
         screenshotId: v.id('screenshots'),
@@ -604,24 +564,21 @@ export const getScreenshot = query({
             throw new Error('Not authenticated');
         }
 
-        // Get screenshot and verify access
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace || workspace.clerkId !== identity.org) {
+            throw new Error('Workspace not found or access denied');
+        }
+
         const screenshot = await ctx.db.get(args.screenshotId);
         if (!screenshot) {
-            return null;
+            throw new Error('Screenshot not found or access denied');
         }
 
-        // Verify workspace access through project
         const project = await ctx.db.get(screenshot.projectId);
-        if (!project) {
-            return null;
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
         }
 
-        const workspace = await ctx.db.get(args.workspaceId);
-        if (!workspace || workspace.clerkId !== identity.org || project.workspaceId !== args.workspaceId) {
-            return null;
-        }
-
-        // Get image URL
         const imageUrl = await ctx.storage.getUrl(screenshot.imageFileId);
 
         return {
@@ -630,6 +587,3 @@ export const getScreenshot = query({
         };
     },
 });
-
-// Note: Position updates are now handled by updateContainer mutation
-// Key mappings no longer have positions in the new schema

@@ -62,7 +62,7 @@ export const createNamespaceVersionContext = internalMutation({
         if (args.copyFromVersionId) {
             const sourceLanguages = await ctx.db
                 .query('languages')
-                .withIndex('by_namespace_version', q => q.eq('namespaceVersionId', args.copyFromVersionId!))
+                .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', args.copyFromVersionId!))
                 .collect();
 
             return {

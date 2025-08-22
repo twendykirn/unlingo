@@ -88,7 +88,7 @@ export const internalVersionLanguages = internalQuery({
     handler: async (ctx, args) => {
         const allLanguages = await ctx.db
             .query('languages')
-            .withIndex('by_namespace_version', q => q.eq('namespaceVersionId', args.namespaceVersionId))
+            .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', args.namespaceVersionId))
             .collect();
 
         const otherLanguages = allLanguages.filter(lang => lang._id !== args.primaryLanguageId);

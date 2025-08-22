@@ -263,7 +263,7 @@ export function ScreenshotsTab({ project, workspace }: ScreenshotsTabProps) {
                                         </div>
                                         <div className='flex items-center text-xs text-gray-500'>
                                             <Calendar className='h-3 w-3 mr-1' />
-                                            {formatDate(screenshot.uploadedAt)}
+                                            {formatDate(screenshot._creationTime)}
                                         </div>
                                     </div>
                                 </div>
