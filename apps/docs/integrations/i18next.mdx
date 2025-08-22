@@ -43,7 +43,11 @@ Create a custom i18next backend that fetches translations from Unlingo:
 class UnlingoBackend {
     constructor() {
         this.type = 'backend';
+        // You can add own options if needed
+        this.init();
     }
+
+    init() {}
 
     async read(language, namespace, callback) {
         try {
@@ -78,17 +82,18 @@ export default UnlingoBackend;
 ```
 
 ```typescript unlingo-backend.ts
-import { BackendModule, ReadCallback, Services } from 'i18next';
-
-interface UnlingoBackendOptions {
-    apiKey: string;
-    version?: string;
-    baseUrl?: string;
-}
+import { BackendModule, ReadCallback } from 'i18next';
 
 class UnlingoBackend implements BackendModule {
     static type = 'backend' as const;
     type = 'backend' as const;
+
+    constructor() {
+        // You can add own options if needed
+        this.init();
+    }
+
+    init() {}
 
     async read(language: string, namespace: string, callback: ReadCallback) {
         try {

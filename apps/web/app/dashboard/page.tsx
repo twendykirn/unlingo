@@ -1,7 +1,18 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { FolderOpen, Plus, Globe, Settings, House, User, ChartLine, Building2, Loader2 } from 'lucide-react';
+import {
+    FolderOpen,
+    Plus,
+    Globe,
+    Settings,
+    House,
+    User,
+    ChartLine,
+    Building2,
+    Loader2,
+    ScrollText,
+} from 'lucide-react';
 import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
 import { useQuery, usePaginatedQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -29,6 +40,11 @@ export default function Dashboard() {
 
     const items = [
         { icon: <House size={18} />, label: 'Dashboard', onClick: () => router.push('/dashboard') },
+        {
+            icon: <ScrollText size={18} />,
+            label: 'Documentation',
+            onClick: () => router.push('https://docs.unlingo.com'),
+        },
         { icon: <ChartLine size={18} />, label: 'Analytics', onClick: () => router.push('/dashboard/analytics') },
         { icon: <Settings size={18} />, label: 'Settings', onClick: () => router.push('/dashboard/settings') },
         { icon: <Building2 size={18} />, label: 'Organization', onClick: () => openOrganizationProfile() },

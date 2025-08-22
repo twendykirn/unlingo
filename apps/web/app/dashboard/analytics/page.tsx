@@ -3,7 +3,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useOrganization, useClerk } from '@clerk/nextjs';
 import { motion } from 'motion/react';
-import { ChartLine, House, Settings, User, Building2, Loader2, Globe, Code, Activity, Database } from 'lucide-react';
+import {
+    ChartLine,
+    House,
+    Settings,
+    User,
+    Building2,
+    Loader2,
+    Globe,
+    Code,
+    Activity,
+    Database,
+    ScrollText,
+} from 'lucide-react';
 import Dock from '@/components/ui/dock';
 import { useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -16,6 +28,7 @@ import {
 } from '@/components/ui/chart';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { CartesianGrid, XAxis, YAxis, Bar, BarChart, Line, ComposedChart } from 'recharts';
+import { useRouter } from 'next/navigation';
 
 type MonthlyPoint = { time: string; success: number; total_requests: number };
 type NamespacePoint = { namespace: string; success: number };
@@ -23,6 +36,7 @@ type ApiCallPoint = { apiCallName: string; success: number; total_requests: numb
 type LanguagePoint = { languageCode: string; success: number };
 
 export default function AnalyticsPage() {
+    const router = useRouter();
     const { organization } = useOrganization();
     const { openOrganizationProfile, openUserProfile } = useClerk();
 
@@ -39,16 +53,21 @@ export default function AnalyticsPage() {
     const [topLanguages, setTopLanguages] = useState<LanguagePoint[]>([]);
 
     const items = [
-        { icon: <House size={18} />, label: 'Dashboard', onClick: () => window.location.assign('/dashboard') },
+        { icon: <House size={18} />, label: 'Dashboard', onClick: () => router.push('/dashboard') },
+        {
+            icon: <ScrollText size={18} />,
+            label: 'Documentation',
+            onClick: () => router.push('https://docs.unlingo.com'),
+        },
         {
             icon: <ChartLine size={18} />,
             label: 'Analytics',
-            onClick: () => window.location.assign('/dashboard/analytics'),
+            onClick: () => router.push('/dashboard/analytics'),
         },
         {
             icon: <Settings size={18} />,
             label: 'Settings',
-            onClick: () => window.location.assign('/dashboard/settings'),
+            onClick: () => router.push('/dashboard/settings'),
         },
         { icon: <Building2 size={18} />, label: 'Organization', onClick: () => openOrganizationProfile() },
         { icon: <User size={18} />, label: 'Profile', onClick: () => openUserProfile() },

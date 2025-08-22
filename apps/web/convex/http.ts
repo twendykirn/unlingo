@@ -95,7 +95,7 @@ http.route({
 });
 
 http.route({
-    path: '/api/v1/translations',
+    path: '/v1/translations',
     method: 'GET',
     handler: httpAction(async (ctx, request) => {
         const apiKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '');
@@ -115,7 +115,7 @@ http.route({
             return new Response(
                 JSON.stringify({
                     error: 'Missing required parameters: release, namespace, and lang are required',
-                    example: '/api/v1/translations?release=1.0.0&namespace=common&lang=en',
+                    example: '/v1/translations?release=1.0.0&namespace=common&lang=en',
                 }),
                 {
                     status: 400,
@@ -288,7 +288,7 @@ http.route({
             }
 
             const responseBody = JSON.stringify(parsedContent);
-            
+
             await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
                 ...ingestBase,
                 responseSize: new TextEncoder().encode(responseBody).length,
