@@ -11,6 +11,7 @@ import ModeSelectionView from './components/ModeSelectionView';
 import EditModeView from './components/EditModeView';
 import TranslateModeView from './components/TranslateModeView';
 import dynamic from 'next/dynamic';
+import { isAddingContainer$, selectedContainerId$ } from './store';
 
 type Mode = 'edit' | 'translate';
 
@@ -74,6 +75,13 @@ export default function ScreenshotEditorPage() {
     const handleModeSelect = (selectedMode: Mode) => {
         router.push(`/dashboard/projects/${projectId}/screenshots/${screenshotId}?mode=${selectedMode}`);
     };
+
+    useEffect(() => {
+        return () => {
+            selectedContainerId$.set(null);
+            isAddingContainer$.set(false);
+        };
+    }, []);
 
     if (!currentWorkspace || !currentScreenshot || !canvasImage) {
         return (

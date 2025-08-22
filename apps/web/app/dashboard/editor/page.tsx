@@ -433,6 +433,18 @@ export default function TranslationEditor() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [languageId, currentWorkspace, didInit, language]);
 
+    useEffect(() => {
+        return () => {
+            nodes$.set([]);
+            expandedKeys$.set(new Set());
+            selectedNode$.set(null);
+            hasUnsavedChanges$.set(false);
+            filteredNodes$.set([]);
+            searchQuery$.set('');
+            originalJsonContent$.set('');
+        };
+    }, []);
+
     if (currentWorkspace === undefined) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>

@@ -25,6 +25,15 @@ import { api } from '@/convex/_generated/api';
 import { extractPrimitiveKeys, TranslationKey } from '../utils';
 import { selectedContainerId$ } from '../store';
 import { use$ } from '@legendapp/state/react';
+import * as diff from 'json-diff';
+import { createStructuredChanges } from '@/app/dashboard/editor/utils/createStructuredChanges';
+
+interface LanguageChanges {
+    changes: any; // The structured changes object
+    timestamp: number;
+    languageId: string;
+    isPrimaryLanguage: boolean;
+}
 
 interface WorkflowState {
     namespace?: Doc<'namespaces'>;
@@ -71,6 +80,7 @@ export default function TranslateModeView({
     const [languageKeys, setLanguageKeys] = useState<TranslationKey[]>([]);
     const [isLoadingKeys, setIsLoadingKeys] = useState(false);
     const [orphanedMappings, setOrphanedMappings] = useState<Doc<'screenshotKeyMappings'>[]>([]);
+    const [originalJson, setOriginalJson] = useState<any>({});
 
     const [editValue, setEditValue] = useState('');
     const [editingMapping, setEditingMapping] = useState<Doc<'screenshotKeyMappings'> | null>(null);
@@ -199,39 +209,55 @@ export default function TranslateModeView({
         setEditValue('');
     };
 
+    const setValueByPath = (obj: any, dottedPath: string, value: any) => {
+        const parts = dottedPath.split('.');
+        let cursor = obj;
+        for (let i = 0; i < parts.length - 1; i++) {
+            const part = parts[i];
+            if (part === undefined) continue;
+            if (typeof (cursor as any)[part] !== 'object' || (cursor as any)[part] === null) {
+                (cursor as any)[part] = {};
+            }
+            cursor = (cursor as any)[part];
+        }
+        const last = parts[parts.length - 1];
+        if (last !== undefined) {
+            (cursor as any)[last] = value;
+        }
+    };
+
+    const generateLanguageChanges = (oldJson: any, newJson: any): LanguageChanges => {
+        const fullDiff = diff.diff(oldJson, newJson, { full: true });
+        const changes = createStructuredChanges(fullDiff);
+
+        return {
+            changes,
+            timestamp: Date.now(),
+            languageId: (workflow.language!._id as unknown as string),
+            isPrimaryLanguage: workflow.version?.primaryLanguageId === workflow.language?._id,
+        };
+    };
+
     const handleSaveChanges = async () => {
         if (!workflow.language || pendingChanges.size === 0) return;
 
         setIsSaving(true);
         try {
-            const changesRoot: any = {};
-
+            // Build new JSON by applying pending changes to the last fetched originalJson
+            const newJson = JSON.parse(JSON.stringify(originalJson));
             for (const [, change] of pendingChanges) {
-                const keyParts = change.key.split('.');
-
-                let cursor = changesRoot;
-                for (let i = 0; i < keyParts.length - 1; i++) {
-                    const part = keyParts[i];
-                    if (!cursor[part] || typeof cursor[part] !== 'object') {
-                        cursor[part] = {};
-                    }
-                    cursor = cursor[part];
-                }
-
-                cursor[keyParts[keyParts.length - 1]] = change.newValue;
+                setValueByPath(newJson, change.key, change.newValue);
             }
+
+            const languageChanges = generateLanguageChanges(originalJson, newJson);
 
             await applyLanguageChanges({
                 languageId: workflow.language._id,
                 workspaceId,
-                languageChanges: {
-                    changes: changesRoot,
-                    timestamp: Date.now(),
-                    languageId: workflow.language._id,
-                    isPrimaryLanguage: false,
-                },
+                ...(languageChanges.changes !== undefined ? { languageChanges } : {}),
             });
 
+            setOriginalJson(newJson);
             setPendingChanges(new Map());
             setHasChanges(false);
 
@@ -277,7 +303,9 @@ export default function TranslateModeView({
             workspaceId,
         })
             .then(result => {
-                const keys = extractPrimitiveKeys(result || {});
+                const content = result || {};
+                setOriginalJson(content);
+                const keys = extractPrimitiveKeys(content);
                 setLanguageKeys(keys);
             })
             .catch(error => {
