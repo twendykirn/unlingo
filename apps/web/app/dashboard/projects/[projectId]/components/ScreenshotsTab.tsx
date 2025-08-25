@@ -55,6 +55,14 @@ export function ScreenshotsTab({ project, workspace }: ScreenshotsTabProps) {
         const file = event.target.files?.[0];
 
         if (file && file.type.startsWith('image/')) {
+            // Check file size limit (10MB)
+            const MAX_FILE_SIZE = 10 * 1024 * 1024;
+            if (file.size > MAX_FILE_SIZE) {
+                alert('Image file size cannot exceed 10MB. Please compress your image and try again.');
+                event.target.value = '';
+                return;
+            }
+
             setSelectedFile(file);
             if (!uploadForm.name) {
                 const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, '');
