@@ -4,6 +4,7 @@ import { Id } from './_generated/dataModel';
 import { polar } from './polar';
 import { internal } from './_generated/api';
 import { customersDelete } from '@polar-sh/sdk/funcs/customersDelete.js';
+import { customersUpdate } from '@polar-sh/sdk/funcs/customersUpdate.js';
 import { getCurrentMonth } from './utils';
 
 export const verifyWorkspaceContactEmail = mutation({
@@ -299,6 +300,25 @@ export const getWorkspaceWithSubscription = query({
     },
 });
 
+export const updatePolarCustomer = internalAction({
+    args: {
+        workspaceId: v.id('workspaces'),
+        contactEmail: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const customer = await polar.getCustomerByUserId(ctx, args.workspaceId);
+
+        if (customer) {
+            await customersUpdate(polar.polar, {
+                id: customer.id,
+                customerUpdate: {
+                    email: args.contactEmail,
+                },
+            });
+        }
+    },
+});
+
 export const updateWorkspaceContactEmail = mutation({
     args: {
         clerkId: v.string(),
@@ -317,6 +337,17 @@ export const updateWorkspaceContactEmail = mutation({
             throw new Error('Unauthorized: Can only update organization workspaces - please try again in a moment');
         }
 
+        const existingWorkspace = await ctx.db
+            .query('workspaces')
+            .withIndex('by_contactEmail', q => q.eq('contactEmail', args.contactEmail))
+            .first();
+
+        if (existingWorkspace) {
+            throw new Error(
+                'A workspace with this contact email already exists. Please use a different email address.'
+            );
+        }
+
         const workspace = await ctx.db
             .query('workspaces')
             .withIndex('by_clerk_id', q => q.eq('clerkId', args.clerkId))
@@ -324,6 +355,10 @@ export const updateWorkspaceContactEmail = mutation({
 
         if (!workspace) {
             throw new Error('Workspace not found');
+        }
+
+        if (workspace.contactEmail === args.contactEmail) {
+            return { success: true };
         }
 
         await ctx.db.patch(workspace._id, {
