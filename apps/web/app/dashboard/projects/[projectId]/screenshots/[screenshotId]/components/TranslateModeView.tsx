@@ -233,7 +233,7 @@ export default function TranslateModeView({
         return {
             changes,
             timestamp: Date.now(),
-            languageId: (workflow.language!._id as unknown as string),
+            languageId: workflow.language!._id as Id<'languages'>,
             isPrimaryLanguage: workflow.version?.primaryLanguageId === workflow.language?._id,
         };
     };
@@ -258,6 +258,8 @@ export default function TranslateModeView({
             });
 
             setOriginalJson(newJson);
+            const keys = extractPrimitiveKeys(newJson);
+            setLanguageKeys(keys);
             setPendingChanges(new Map());
             setHasChanges(false);
 

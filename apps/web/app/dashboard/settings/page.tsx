@@ -14,7 +14,7 @@ import {
     Building2,
     ScrollText,
 } from 'lucide-react';
-import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
+import { useOrganization, useClerk } from '@clerk/nextjs';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { CheckoutLink, CustomerPortalLink } from '@convex-dev/polar/react';
@@ -26,7 +26,6 @@ import { useEffect, useState } from 'react';
 import Dock from '@/components/ui/dock';
 
 export default function WorkspaceSettings() {
-    const { user } = useUser();
     const { organization } = useOrganization();
     const { openOrganizationProfile, openUserProfile } = useClerk();
     const router = useRouter();
@@ -67,9 +66,9 @@ export default function WorkspaceSettings() {
             setContactEmail(workspace.contactEmail);
             setOriginalContactEmail(workspace.contactEmail);
         }
-    }, [workspace, user]);
+    }, [workspace]);
 
-    if (!user || !organization || !clerkId) {
+    if (!clerkId) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
                 <div className='text-center'>
@@ -404,6 +403,7 @@ export default function WorkspaceSettings() {
                                                         <CheckoutLink
                                                             polarApi={api.polar}
                                                             productIds={[products.pro250kRequests.id]}
+                                                            embed={false}
                                                             className='inline-flex items-center px-4 py-2 bg-white hover:bg-gray-100 text-black rounded-lg transition-all cursor-pointer font-medium'>
                                                             <CreditCard className='h-4 w-4 mr-2' />
                                                             Upgrade to Pro 250K
@@ -421,6 +421,7 @@ export default function WorkspaceSettings() {
                                                         <CheckoutLink
                                                             polarApi={api.polar}
                                                             productIds={[products.pro500kRequests.id]}
+                                                            embed={false}
                                                             className='inline-flex items-center px-4 py-2 bg-white hover:bg-gray-100 text-black rounded-lg transition-all cursor-pointer font-medium'>
                                                             <CreditCard className='h-4 w-4 mr-2' />
                                                             Upgrade to Pro 500K
@@ -438,6 +439,7 @@ export default function WorkspaceSettings() {
                                                             <CheckoutLink
                                                                 polarApi={api.polar}
                                                                 productIds={[products.pro1mRequests.id]}
+                                                                embed={false}
                                                                 className='inline-flex items-center px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-lg transition-all cursor-pointer font-medium'>
                                                                 1M Requests
                                                             </CheckoutLink>
@@ -446,6 +448,7 @@ export default function WorkspaceSettings() {
                                                             <CheckoutLink
                                                                 polarApi={api.polar}
                                                                 productIds={[products.pro2mRequests.id]}
+                                                                embed={false}
                                                                 className='inline-flex items-center px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-lg transition-all cursor-pointer font-medium'>
                                                                 2M Requests
                                                             </CheckoutLink>
@@ -454,6 +457,7 @@ export default function WorkspaceSettings() {
                                                             <CheckoutLink
                                                                 polarApi={api.polar}
                                                                 productIds={[products.pro10mRequests.id]}
+                                                                embed={false}
                                                                 className='inline-flex items-center px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-lg transition-all cursor-pointer font-medium'>
                                                                 10M Requests
                                                             </CheckoutLink>
@@ -462,6 +466,7 @@ export default function WorkspaceSettings() {
                                                             <CheckoutLink
                                                                 polarApi={api.polar}
                                                                 productIds={[products.pro50mRequests.id]}
+                                                                embed={false}
                                                                 className='inline-flex items-center px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-lg transition-all cursor-pointer font-medium'>
                                                                 50M Requests
                                                             </CheckoutLink>
@@ -470,6 +475,7 @@ export default function WorkspaceSettings() {
                                                             <CheckoutLink
                                                                 polarApi={api.polar}
                                                                 productIds={[products.pro100mRequests.id]}
+                                                                embed={false}
                                                                 className='inline-flex items-center px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-lg transition-all cursor-pointer font-medium'>
                                                                 100M Requests
                                                             </CheckoutLink>

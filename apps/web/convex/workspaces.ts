@@ -50,14 +50,12 @@ export const deletePolarCustomer = internalAction({
     args: {
         workspaceId: v.id('workspaces'),
     },
-    handler: async (_, args) => {
-        const customer = await customersGetExternal(polar.polar, {
-            externalId: args.workspaceId,
-        });
+    handler: async (ctx, args) => {
+        const customer = await polar.getCustomerByUserId(ctx, args.workspaceId);
 
-        if (customer.ok) {
+        if (customer) {
             await customersDelete(polar.polar, {
-                id: customer.value.id,
+                id: customer.id,
             });
         }
     },

@@ -506,14 +506,13 @@ export default function TranslationEditor() {
                             variant='ghost'
                             size='sm'
                             onClick={handleGoBack}
-                            className='text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all rounded-lg'>
-                            <ArrowLeft className='h-4 w-4 mr-2' />
-                            Back
+                            className='w-10 h-10 p-0 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg'>
+                            <ArrowLeft className='h-4 w-4' />
                         </Button>
 
                         <div className='flex items-center space-x-4'>
-                            <div className='w-10 h-10 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/30'>
-                                <Code className='h-5 w-5 text-cyan-400' />
+                            <div className='w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/30'>
+                                <Code className='h-6 w-6 text-cyan-400' />
                             </div>
                             <div>
                                 <div className='flex items-center space-x-2'>
