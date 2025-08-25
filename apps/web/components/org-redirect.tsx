@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser, useOrganizationList } from '@clerk/nextjs';
+import { useOrganizationList } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Building2, ArrowRight } from 'lucide-react';
 
 export function OrgRedirect() {
-    const { user, isLoaded: userLoaded } = useUser();
     const {
         userMemberships,
         isLoaded: orgListLoaded,
@@ -22,10 +21,10 @@ export function OrgRedirect() {
     const [selectedOrgId, setSelectedOrgId] = useState<string>('');
 
     const userOrgs = useMemo(() => {
-        if (!userLoaded || !orgListLoaded || !user) return null;
+        if (!orgListLoaded) return null;
 
         return userMemberships.data.filter(org => org.organization);
-    }, [userLoaded, orgListLoaded, user, userMemberships.data]);
+    }, [orgListLoaded, userMemberships.data]);
 
     useEffect(() => {
         if (!userOrgs) return;
@@ -49,7 +48,7 @@ export function OrgRedirect() {
         }
     };
 
-    if (!userLoaded || !orgListLoaded) {
+    if (!orgListLoaded) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
                 <div className='text-center'>

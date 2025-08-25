@@ -100,7 +100,7 @@ export default function NewOrganizationPage() {
         { number: 2, title: 'Contact Email', description: 'Set up contact details' },
     ];
 
-    if (organization?.id) {
+    if (!organization?.id) {
         return (
             <div className='flex items-center justify-center py-12'>
                 <div className='w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin'></div>

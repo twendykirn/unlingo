@@ -12,8 +12,10 @@ import {
     Building2,
     Loader2,
     ScrollText,
+    ChevronDown,
+    Check,
 } from 'lucide-react';
-import { useUser, useOrganization, useClerk } from '@clerk/nextjs';
+import { useOrganization, useClerk, useOrganizationList } from '@clerk/nextjs';
 import { useQuery, usePaginatedQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import Link from 'next/link';
@@ -22,14 +24,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Dock from '@/components/ui/dock';
 
 export default function Dashboard() {
-    const { user } = useUser();
     const { organization } = useOrganization();
     const { openOrganizationProfile, openUserProfile } = useClerk();
+    const {
+        userMemberships,
+        isLoaded: orgListLoaded,
+        setActive,
+    } = useOrganizationList({
+        userMemberships: {
+            infinite: true,
+        },
+    });
     const router = useRouter();
 
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -37,6 +49,7 @@ export default function Dashboard() {
     const [projectDescription, setProjectDescription] = useState('');
     const [isCreating, setIsCreating] = useState(false);
     const [createError, setCreateError] = useState('');
+    const [isOrgSwitcherOpen, setIsOrgSwitcherOpen] = useState(false);
 
     const items = [
         { icon: <House size={18} />, label: 'Dashboard', onClick: () => router.push('/dashboard') },
@@ -64,7 +77,13 @@ export default function Dashboard() {
         initialNumItems: 12,
     });
 
-    if (!user || !organization || !clerkId) {
+    const userOrgs = useMemo(() => {
+        if (!orgListLoaded) return [];
+
+        return userMemberships.data.filter(org => org.organization);
+    }, [orgListLoaded, userMemberships.data]);
+
+    if (!clerkId) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
                 <div className='text-center'>
@@ -155,6 +174,20 @@ export default function Dashboard() {
         setIsCreating(false);
     };
 
+    const handleOrganizationSwitch = async (orgId: string) => {
+        try {
+            await setActive?.({ organization: orgId });
+            setIsOrgSwitcherOpen(false);
+        } catch (error) {
+            console.error('Failed to switch organization:', error);
+        }
+    };
+
+    const handleCreateOrganization = () => {
+        setIsOrgSwitcherOpen(false);
+        router.push('/dashboard/new');
+    };
+
     return (
         <div className='min-h-screen bg-black text-white'>
             <header className='fixed top-0 left-0 right-0 z-50 bg-black/95 border-b border-gray-800/50 px-6 py-4 backdrop-blur-md'>
@@ -177,6 +210,68 @@ export default function Dashboard() {
                                         <h2 className='text-sm font-semibold text-white'>{organization.name}</h2>
                                         <p className='text-xs text-gray-500'>Workspace</p>
                                     </div>
+
+                                    <Popover open={isOrgSwitcherOpen} onOpenChange={setIsOrgSwitcherOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant='ghost'
+                                                size='sm'
+                                                className='h-8 w-8 p-0 hover:bg-gray-800/50 text-gray-400 hover:text-white'>
+                                                <ChevronDown className='h-4 w-4' />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent
+                                            className='w-64 p-0 bg-gray-950/95 border border-gray-800/50 backdrop-blur-md'
+                                            align='start'>
+                                            <Command className='bg-transparent'>
+                                                <CommandEmpty className='py-6 text-center text-sm text-gray-500'>
+                                                    No organizations found.
+                                                </CommandEmpty>
+                                                <CommandGroup className='p-2'>
+                                                    {userOrgs.map(orgItem => (
+                                                        <CommandItem
+                                                            key={orgItem.organization.id}
+                                                            value={orgItem.organization.name}
+                                                            onSelect={() =>
+                                                                handleOrganizationSwitch(orgItem.organization.id)
+                                                            }
+                                                            className='flex items-center gap-3 px-3 py-2 cursor-pointer rounded-lg hover:bg-gray-800/50 text-white'>
+                                                            <div className='w-8 h-8 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center border border-cyan-500/30 flex-shrink-0'>
+                                                                <Building2 className='h-4 w-4 text-cyan-400' />
+                                                            </div>
+                                                            <div className='flex-1 min-w-0'>
+                                                                <div className='text-sm font-medium text-white truncate'>
+                                                                    {orgItem.organization.name}
+                                                                </div>
+                                                                <div className='text-xs text-gray-500'>
+                                                                    {orgItem.organization.slug}
+                                                                </div>
+                                                            </div>
+                                                            {organization?.id === orgItem.organization.id && (
+                                                                <Check className='h-4 w-4 text-green-400 flex-shrink-0' />
+                                                            )}
+                                                        </CommandItem>
+                                                    ))}
+
+                                                    <CommandItem
+                                                        onSelect={handleCreateOrganization}
+                                                        className='flex items-center gap-3 px-3 py-2 cursor-pointer rounded-lg hover:bg-gray-800/50 text-white border-t border-gray-800/50 mt-2 pt-3'>
+                                                        <div className='w-8 h-8 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg flex items-center justify-center border border-green-500/30 flex-shrink-0'>
+                                                            <Plus className='h-4 w-4 text-green-400' />
+                                                        </div>
+                                                        <div className='flex-1 min-w-0'>
+                                                            <div className='text-sm font-medium text-white'>
+                                                                Create Organization
+                                                            </div>
+                                                            <div className='text-xs text-gray-500'>
+                                                                Add a new workspace
+                                                            </div>
+                                                        </div>
+                                                    </CommandItem>
+                                                </CommandGroup>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
                             </>
                         )}
