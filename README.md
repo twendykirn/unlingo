@@ -1,58 +1,80 @@
-# Turborepo Tailwind CSS starter
+# Unlingo
 
-This Turborepo starter is maintained by the Turborepo core team.
+> The developer platform for modern internationalization. Host, manage, and deliver translations with zero complexity.
 
-## Using this example
+[![GitHub stars](https://img.shields.io/github/stars/unlingo/unlingo?style=social)](https://github.com/twendykirn/unlingo/stargazers)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
-Run the following command:
+## ✨ Features
 
-```sh
-npx create-turbo@latest -e with-tailwind
-```
+- **🌐 Universal Framework Support** - Works seamlessly with i18next, next-intl, and any modern i18n library
+- **⚡ Developer-Friendly API** - Simple, intuitive API that developers love to work with
+- **🔄 Insta Sync** - Instantly propagates translation keys across all languages when you edit the primary language
+- **🤖 AI-Powered Translations** - Smart AI assistance helps generate high-quality translations
+- **📸 Visual Context Mapping** - Attach screenshots to translations for crystal-clear context and faster localization workflows
+- **📊 Analytics** - Track languages usage to monitor performance and optimize your translations
+- **🗄️ Automatic Caching** - Smart caching system that optimizes performance automatically
+- **🎨 Easy UI** - Beautiful, intuitive interface for managing translations
+- **🔀 Version Control** - Create different translation versions for different apps and environments
 
-## What's inside?
+## 🛠️ Tech Stack
 
-This Turborepo includes the following packages/apps:
+- **Frontend**: Next.js, React, Tailwind CSS, TypeScript
+- **Backend**: Convex (Database & API)
+- **Authentication**: Clerk
+- **Payments**: Polar
+- **Analytics**: PostHog (API Analytics), Databuddy (Web Analytics)
+- **Email**: Resend
+- **Hosting**: Vercel
+- **Development**: Turborepo, ESLint, Prettier
 
-### Apps and Packages
+## 🤝 Contributing
 
-- `docs`: a [Next.js](https://nextjs.org/) app with [Tailwind CSS](https://tailwindcss.com/)
-- `web`: another [Next.js](https://nextjs.org/) app with [Tailwind CSS](https://tailwindcss.com/)
-- `ui`: a stub React component library with [Tailwind CSS](https://tailwindcss.com/) shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+We welcome contributions! Our platform is fully open-source, and we encourage you to:
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+- 🐛 Report bugs and issues
+- 💡 Suggest new features
+- 🔧 Submit pull requests
+- 📚 Improve documentation
+- 🌍 Help with translations
 
-### Building packages/ui
+### Development Workflow
 
-This example is set up to produce compiled styles for `ui` components into the `dist` directory. The component `.tsx` files are consumed by the Next.js apps directly using `transpilePackages` in `next.config.ts`. This was chosen for several reasons:
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes
+4. Commit your changes: `git commit -m 'Add amazing feature'`
+5. Push to the branch: `git push origin feature/amazing-feature`
+6. Open a Pull Request
 
-- Make sharing one `tailwind.config.ts` to apps and packages as easy as possible.
-- Make package compilation simple by only depending on the Next.js Compiler and `tailwindcss`.
-- Ensure Tailwind classes do not overwrite each other. The `ui` package uses a `ui-` prefix for it's classes.
-- Maintain clear package export boundaries.
+## 🔒 Security
 
-Another option is to consume `packages/ui` directly from source without building. If using this option, you will need to update the `tailwind.config.ts` in your apps to be aware of your package locations, so it can find all usages of the `tailwindcss` class names for CSS compilation.
+See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 
-For example, in [tailwind.config.ts](packages/tailwind-config/tailwind.config.ts):
+## 📄 License
 
-```js
-  content: [
-    // app content
-    `src/**/*.{js,ts,jsx,tsx}`,
-    // include packages if not transpiling
-    "../../packages/ui/*.{js,ts,jsx,tsx}",
-  ],
-```
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See the [LICENSE](LICENSE) file for details.
 
-If you choose this strategy, you can remove the `tailwindcss` and `autoprefixer` dependencies from the `ui` package.
+Copyright (c) 2025 Igor Kirnosov s.p.
 
-### Utilities
+## 🔗 Links
 
-This Turborepo has some additional tools already setup for you:
+- **Website**: [unlingo.com](https://unlingo.com)
+- **Documentation**: [docs.unlingo.com](https://docs.unlingo.com)
+- **Discord Community**: [Join our Discord](https://discord.gg/TdDYte7KjG)
+- **Twitter**: [@twendykirn](https://x.com/twendykirn)
 
-- [Tailwind CSS](https://tailwindcss.com/) for styles
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+## ⭐ Star History
+
+If you find Unlingo useful, please consider giving us a star! It helps us understand that we're building something valuable for the developer community.
+
+---
+
+<div align="center">
+
+**Built with ❤️ for the developer community**
+
+[Give us a ⭐](https://github.com/twendykirn/unlingo/stargazers) • [Join Discord](https://discord.gg/TdDYte7KjG) • [Follow on Twitter](https://x.com/twendykirn)
+
+</div>

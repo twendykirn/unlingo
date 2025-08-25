@@ -260,7 +260,7 @@ export default function PrivacyPolicy() {
                                 <li>Hosting and infrastructure (Vercel)</li>
                                 <li>Database services (Convex)</li>
                                 <li>Payment processing (Polar)</li>
-                                <li>Analytics services (Databuddy and TinyBird)</li>
+                                <li>Analytics services (Databuddy and PostHog)</li>
                                 <li>Email services (Resend)</li>
                             </ul>
                         </section>
