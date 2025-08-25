@@ -36,8 +36,8 @@ importers:
         specifier: ^0.1.10
         version: 0.1.10(convex-helpers@0.1.104)(convex@1.25.4)(react@19.1.0)
       '@databuddy/sdk':
-        specifier: ^1.4.2
-        version: 1.4.2
+        specifier: ^2.0.0
+        version: 2.0.0(react@19.1.0)
       '@google/genai':
         specifier: ^1.14.0
         version: 1.14.0
@@ -487,8 +487,18 @@ packages:
       convex-helpers: 0.1.104(convex@1.25.4)(react@19.1.0)(typescript@5.8.2)(zod@4.0.17)
     dev: false
 
-  /@databuddy/sdk@1.4.2:
-    resolution: {integrity: sha512-WhfjUcfmKQrl1qSmFTfwd/suvN02O/SIpJSEJda+f9zJYzRNCiYx6oPOgGuzmB0fdYEtNM/GQxfblN+7AaaNGw==}
+  /@databuddy/sdk@2.0.0(react@19.1.0):
+    resolution: {integrity: sha512-jwNeLwg03jN3380W2eyhegjO/eqqVcVXekO01n/d9dzalnaCm6DCEG3lGd8PMBf8ztu/dv1QTivkd4W6rO+tNQ==}
+    peerDependencies:
+      react: '>=18'
+      vue: '>=3'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      vue:
+        optional: true
+    dependencies:
+      react: 19.1.0
     dev: false
 
   /@dimforge/rapier3d-compat@0.12.0:

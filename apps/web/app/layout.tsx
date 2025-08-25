@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
 import { dark } from '@clerk/themes';
 import { ClerkProvider } from '@clerk/nextjs';
-import { Databuddy } from '@databuddy/sdk';
+import { Databuddy } from '@databuddy/sdk/react';
 
 const geist = Geist({ subsets: ['latin'] });
 
