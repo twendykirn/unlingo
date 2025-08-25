@@ -100,7 +100,11 @@ import { initReactI18next } from 'react-i18next';
 class UnlingoBackend {
     constructor() {
         this.type = 'backend';
+        // You can add own options if needed
+        this.init();
     }
+
+    init() {}
 
     async read(language, namespace, callback) {
         try {
@@ -125,10 +129,13 @@ class UnlingoBackend {
             const data = await response.json();
             callback(null, data);
         } catch (error) {
-            callback(error as Error, null);
+            console.error('Unlingo Backend Error:', error);
+            callback(error, null);
         }
     }
 }
+
+export default UnlingoBackend;
 
 i18next
   .use(UnlingoBackend) 

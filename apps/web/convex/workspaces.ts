@@ -4,7 +4,6 @@ import { Id } from './_generated/dataModel';
 import { polar } from './polar';
 import { internal } from './_generated/api';
 import { customersDelete } from '@polar-sh/sdk/funcs/customersDelete.js';
-import { customersGetExternal } from '@polar-sh/sdk/funcs/customersGetExternal.js';
 import { getCurrentMonth } from './utils';
 
 export const createOrganizationWorkspace = mutation({
@@ -16,6 +15,17 @@ export const createOrganizationWorkspace = mutation({
         const identity = await ctx.auth.getUserIdentity();
         if (!identity) {
             throw new Error('Not authenticated');
+        }
+
+        const existingWorkspace = await ctx.db
+            .query('workspaces')
+            .withIndex('by_contactEmail', q => q.eq('contactEmail', args.contactEmail))
+            .first();
+
+        if (existingWorkspace) {
+            throw new Error(
+                'A workspace with this contact email already exists. Please use a different email address.'
+            );
         }
 
         const currentMonth = getCurrentMonth();

@@ -20,6 +20,7 @@ export default function NewOrganizationPage() {
     const [slug, setSlug] = useState('');
     const [contactEmail, setContactEmail] = useState('');
     const [isCompletingSetup, setIsCompletingSetup] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     const { user } = useUser();
     const { organization } = useOrganization();
@@ -68,6 +69,7 @@ export default function NewOrganizationPage() {
         }
 
         setIsCompletingSetup(true);
+        setErrorMessage('');
 
         try {
             const organization = await createOrganization?.({
@@ -89,6 +91,12 @@ export default function NewOrganizationPage() {
         } catch (error) {
             console.error('Failed to complete setup:', error);
             setIsCompletingSetup(false);
+            
+            if (error instanceof Error && error.message.includes('contact email already exists')) {
+                setErrorMessage('This email is already associated with another workspace. Please use a different email address.');
+            } else {
+                setErrorMessage('Failed to create workspace. Please try again.');
+            }
         }
     };
 
@@ -232,7 +240,10 @@ export default function NewOrganizationPage() {
                                     id='contactEmail'
                                     type='email'
                                     value={contactEmail}
-                                    onChange={e => setContactEmail(e.target.value)}
+                                    onChange={e => {
+                                        setContactEmail(e.target.value);
+                                        if (errorMessage) setErrorMessage('');
+                                    }}
                                     placeholder='contact@company.com'
                                     className='bg-gray-900 border-gray-700 text-white placeholder-gray-500 focus:border-white focus:ring-white'
                                     required
@@ -243,6 +254,9 @@ export default function NewOrganizationPage() {
                                     This email will be used for billing and important notifications. You can change this
                                     later in settings.
                                 </p>
+                                {errorMessage && (
+                                    <p className='text-xs text-red-400 mt-2'>{errorMessage}</p>
+                                )}
                             </div>
 
                             <div className='flex space-x-3'>

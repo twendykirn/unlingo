@@ -1,6 +1,6 @@
 'use client';
 
-import { useOrganizationList } from '@clerk/nextjs';
+import { useOrganization, useOrganizationList } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Building2, ArrowRight } from 'lucide-react';
 
 export function OrgRedirect() {
+    const { organization, isLoaded: orgLoaded } = useOrganization();
     const {
         userMemberships,
         isLoaded: orgListLoaded,
@@ -27,9 +28,11 @@ export function OrgRedirect() {
     }, [orgListLoaded, userMemberships.data]);
 
     useEffect(() => {
-        if (!userOrgs) return;
+        if (!userOrgs || !orgListLoaded || !orgLoaded || userMemberships.isLoading) return;
 
-        if (userOrgs.length === 0) {
+        if (organization?.id) {
+            router.push('/dashboard');
+        } else if (userOrgs.length === 0) {
             router.push('/dashboard/new');
         } else if (userOrgs.length === 1) {
             const org = userOrgs[0]?.organization;
@@ -38,7 +41,7 @@ export function OrgRedirect() {
                 router.push('/dashboard');
             }
         }
-    }, [userOrgs, setActive, router]);
+    }, [userOrgs, setActive, router, orgListLoaded, orgLoaded, userMemberships, organization]);
 
     const handleOrgSelection = async (orgId: string) => {
         const selectedOrg = userMemberships.data?.find(org => org.organization?.id === orgId)?.organization;
@@ -48,7 +51,7 @@ export function OrgRedirect() {
         }
     };
 
-    if (!orgListLoaded) {
+    if (!orgListLoaded || !orgLoaded || userMemberships.isLoading) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
                 <div className='text-center'>

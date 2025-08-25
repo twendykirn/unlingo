@@ -16,7 +16,9 @@ export default defineSchema({
             languagesPerVersion: v.number(),
         }),
         workspaceUsageId: v.id('workspaceUsage'),
-    }).index('by_clerk_id', ['clerkId']),
+    })
+        .index('by_clerk_id', ['clerkId'])
+        .index('by_contactEmail', ['contactEmail']),
     workspaceUsage: defineTable({
         month: v.string(), // Format: "YYYY-MM" (e.g., "2024-08")
         requests: v.number(),

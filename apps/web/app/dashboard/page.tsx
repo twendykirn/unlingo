@@ -78,10 +78,10 @@ export default function Dashboard() {
     });
 
     const userOrgs = useMemo(() => {
-        if (!orgListLoaded) return [];
+        if (!orgListLoaded || userMemberships.isLoading) return [];
 
         return userMemberships.data.filter(org => org.organization);
-    }, [orgListLoaded, userMemberships.data]);
+    }, [orgListLoaded, userMemberships]);
 
     if (!clerkId) {
         return (
