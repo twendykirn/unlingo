@@ -1,6 +1,6 @@
 const GithubSpaceLogo: React.FC = () => {
     return (
-        <div className='w-full bg-[#0d0d0d] flex items-center justify-center overflow-hidden'>
+        <div className='w-full bg-[#000] flex items-center justify-center overflow-hidden'>
             <svg width='500' height='500' viewBox='0 0 300 300'>
                 <defs>
                     <radialGradient id='starGradient'>

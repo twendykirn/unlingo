@@ -630,8 +630,7 @@ export default function Page() {
                             viewport={{ once: true }}
                             className='flex items-center justify-center mt-8 lg:mt-0'>
                             <div className='relative w-full max-w-sm sm:max-w-md lg:max-w-lg'>
-                                <div className='absolute inset-0 bg-purple-500/10 rounded-full blur-3xl scale-150' />
-                                <div className='relative bg-black/60 backdrop-blur-md rounded-3xl p-8 sm:p-10 lg:p-12 shadow-2xl'>
+                                <div className='relative p-8 sm:p-10 lg:p-12'>
                                     <div className='w-full flex justify-center'>
                                         <GithubSpaceLogo />
                                     </div>
