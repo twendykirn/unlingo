@@ -69,7 +69,14 @@ export default function AnalyticsPage() {
             label: 'Settings',
             onClick: () => router.push('/dashboard/settings'),
         },
-        { icon: <Building2 size={18} />, label: 'Organization', onClick: () => openOrganizationProfile() },
+        {
+            icon: <Building2 size={18} />,
+            label: 'Organization',
+            onClick: () =>
+                openOrganizationProfile({
+                    afterLeaveOrganizationUrl: '/select-org',
+                }),
+        },
         { icon: <User size={18} />, label: 'Profile', onClick: () => openUserProfile() },
     ];
 

@@ -39,7 +39,14 @@ export default function WorkspaceSettings() {
         },
         { icon: <ChartLine size={18} />, label: 'Analytics', onClick: () => router.push('/dashboard/analytics') },
         { icon: <Settings size={18} />, label: 'Settings', onClick: () => router.push('/dashboard/settings') },
-        { icon: <Building2 size={18} />, label: 'Organization', onClick: () => openOrganizationProfile() },
+        {
+            icon: <Building2 size={18} />,
+            label: 'Organization',
+            onClick: () =>
+                openOrganizationProfile({
+                    afterLeaveOrganizationUrl: '/select-org',
+                }),
+        },
         { icon: <User size={18} />, label: 'Profile', onClick: () => openUserProfile() },
     ];
 

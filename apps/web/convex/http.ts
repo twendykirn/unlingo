@@ -317,7 +317,7 @@ http.route({
 polar.registerRoutes(http, {
     path: '/polar/events',
     onSubscriptionCreated: async (ctx, event) => {
-        const workspaceId = event.data.customer.externalId;
+        const workspaceId = event.data.customer.metadata.userId;
         if (workspaceId) {
             await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {
                 workspaceId: workspaceId as Id<'workspaces'>,
@@ -327,7 +327,7 @@ polar.registerRoutes(http, {
         }
     },
     onSubscriptionUpdated: async (ctx, event) => {
-        const workspaceId = event.data.customer.externalId;
+        const workspaceId = event.data.customer.metadata.userId;
         if (workspaceId) {
             const isActive = event.data.status === 'active' && !event.data.customerCancellationReason;
             await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {

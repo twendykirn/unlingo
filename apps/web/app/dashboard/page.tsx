@@ -60,7 +60,14 @@ export default function Dashboard() {
         },
         { icon: <ChartLine size={18} />, label: 'Analytics', onClick: () => router.push('/dashboard/analytics') },
         { icon: <Settings size={18} />, label: 'Settings', onClick: () => router.push('/dashboard/settings') },
-        { icon: <Building2 size={18} />, label: 'Organization', onClick: () => openOrganizationProfile() },
+        {
+            icon: <Building2 size={18} />,
+            label: 'Organization',
+            onClick: () =>
+                openOrganizationProfile({
+                    afterLeaveOrganizationUrl: '/select-org',
+                }),
+        },
         { icon: <User size={18} />, label: 'Profile', onClick: () => openUserProfile() },
     ];
 
@@ -277,16 +284,27 @@ export default function Dashboard() {
                         )}
                     </div>
 
-                    {hasProjects && (
-                        <div className='flex items-center space-x-3'>
+                    {hasProjects ? (
+                        <div className='flex items-center space-x-5'>
                             <div className='text-right'>
                                 <p className='text-sm font-medium text-white'>{projects?.length || 0} Projects</p>
                                 <p className='text-xs text-gray-400'>
                                     {workspace?.currentUsage.projects} of {workspace?.limits.projects} used
                                 </p>
                             </div>
+                            {canCreateProject ? (
+                                <Button
+                                    className='bg-white text-black hover:bg-gray-200'
+                                    onClick={() => {
+                                        resetCreateForm();
+                                        setIsCreateDialogOpen(true);
+                                    }}>
+                                    <Plus className='h-4 w-4 mr-2' />
+                                    New Project
+                                </Button>
+                            ) : null}
                         </div>
-                    )}
+                    ) : null}
                 </div>
             </header>
 
@@ -332,20 +350,6 @@ export default function Dashboard() {
                 </div>
             ) : (
                 <div className='p-6 pt-24'>
-                    {canCreateProject && (
-                        <div className='flex justify-end mb-8'>
-                            <Button
-                                className='bg-white text-black hover:bg-gray-200'
-                                onClick={() => {
-                                    resetCreateForm();
-                                    setIsCreateDialogOpen(true);
-                                }}>
-                                <Plus className='h-4 w-4 mr-2' />
-                                New Project
-                            </Button>
-                        </div>
-                    )}
-
                     <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
                         {projects?.map((project, index) => (
                             <motion.div

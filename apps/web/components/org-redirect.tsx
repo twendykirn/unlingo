@@ -20,6 +20,7 @@ export function OrgRedirect() {
     });
     const router = useRouter();
     const [selectedOrgId, setSelectedOrgId] = useState<string>('');
+    const [didRevalidate, setDidRevalidate] = useState(false);
 
     const userOrgs = useMemo(() => {
         if (!orgListLoaded) return null;
@@ -27,8 +28,17 @@ export function OrgRedirect() {
         return userMemberships.data.filter(org => org.organization);
     }, [orgListLoaded, userMemberships.data]);
 
+    const revalidateUserOrgs = async () => {
+        if (!userMemberships.isLoading || didRevalidate) return;
+
+        await userMemberships.revalidate();
+        setDidRevalidate(true);
+    };
+
     useEffect(() => {
         if (!userOrgs || !orgListLoaded || !orgLoaded || userMemberships.isLoading) return;
+
+        revalidateUserOrgs();
 
         if (organization?.id) {
             router.push('/dashboard');
@@ -41,7 +51,8 @@ export function OrgRedirect() {
                 router.push('/dashboard');
             }
         }
-    }, [userOrgs, setActive, router, orgListLoaded, orgLoaded, userMemberships, organization]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userOrgs, setActive, router, orgListLoaded, orgLoaded, userMemberships, organization, didRevalidate]);
 
     const handleOrgSelection = async (orgId: string) => {
         const selectedOrg = userMemberships.data?.find(org => org.organization?.id === orgId)?.organization;
