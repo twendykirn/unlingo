@@ -14,7 +14,6 @@
         "@clerk/backend": "^2.6.1",
         "@clerk/nextjs": "^6.28.0",
         "@clerk/themes": "^2.4.3",
-        "@clickhouse/client": "^1.12.1",
         "@convex-dev/polar": "^0.6.3",
         "@convex-dev/resend": "^0.1.10",
         "@databuddy/sdk": "^1.4.2",

@@ -1,4 +1,3 @@
-'use node';
 import { action, internalAction } from './_generated/server';
 import { v } from 'convex/values';
 import { internal } from './_generated/api';
@@ -9,7 +8,7 @@ import {
     getTopLanguages,
     ingestApiRequest,
     ApiRequestEventType,
-} from '../lib/clickhouse';
+} from '../lib/posthog';
 
 export const getMonthlySuccess = action({
     args: {
@@ -35,7 +34,7 @@ export const getMonthlySuccess = action({
 
             return { points };
         } catch (error) {
-            console.error('ClickHouse query failed:', error);
+            console.error('PostHog query failed:', error);
             throw new Error(`Analytics query failed: ${error}`);
         }
     },
@@ -62,7 +61,7 @@ export const getTopNamespacesAction = action({
 
             return { points };
         } catch (error) {
-            console.error('ClickHouse query failed:', error);
+            console.error('PostHog query failed:', error);
             throw new Error(`Analytics query failed: ${error}`);
         }
     },
@@ -98,7 +97,7 @@ export const ingestEvent = internalAction({
 
             await ingestApiRequest(event);
         } catch (e) {
-            console.warn('Failed to ingest ClickHouse event', e);
+            console.warn('Failed to ingest PostHog event', e);
         }
     },
 });
@@ -128,7 +127,7 @@ export const getTopApiCallsAction = action({
 
             return { points };
         } catch (error) {
-            console.error('ClickHouse query failed:', error);
+            console.error('PostHog query failed:', error);
             throw new Error(`Analytics query failed: ${error}`);
         }
     },
@@ -158,7 +157,7 @@ export const getTopLanguagesAction = action({
 
             return { points };
         } catch (error) {
-            console.error('ClickHouse query failed:', error);
+            console.error('PostHog query failed:', error);
             throw new Error(`Analytics query failed: ${error}`);
         }
     },

@@ -29,9 +29,6 @@ importers:
       '@clerk/themes':
         specifier: ^2.4.3
         version: 2.4.3
-      '@clickhouse/client':
-        specifier: ^1.12.1
-        version: 1.12.1
       '@convex-dev/polar':
         specifier: ^0.6.3
         version: 0.6.3(@polar-sh/checkout@0.1.11)(@polar-sh/sdk@0.34.11)(convex@1.25.4)(react-dom@19.1.0)(react@19.1.0)(typescript@5.8.2)(zod@4.0.17)
@@ -424,17 +421,6 @@ packages:
     engines: {node: '>=18.17.0'}
     dependencies:
       csstype: 3.1.3
-    dev: false
-
-  /@clickhouse/client-common@1.12.1:
-    resolution: {integrity: sha512-ccw1N6hB4+MyaAHIaWBwGZ6O2GgMlO99FlMj0B0UEGfjxM9v5dYVYql6FpP19rMwrVAroYs/IgX2vyZEBvzQLg==}
-    dev: false
-
-  /@clickhouse/client@1.12.1:
-    resolution: {integrity: sha512-7ORY85rphRazqHzImNXMrh4vsaPrpetFoTWpZYueCO2bbO6PXYDXp/GQ4DgxnGIqbWB/Di1Ai+Xuwq2o7DJ36A==}
-    engines: {node: '>=16'}
-    dependencies:
-      '@clickhouse/client-common': 1.12.1
     dev: false
 
   /@convex-dev/polar@0.6.3(@polar-sh/checkout@0.1.11)(@polar-sh/sdk@0.34.11)(convex@1.25.4)(react-dom@19.1.0)(react@19.1.0)(typescript@5.8.2)(zod@4.0.17):
