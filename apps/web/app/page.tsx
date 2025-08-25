@@ -82,6 +82,7 @@ const features = [
 ];
 
 const pricingOptions = [
+    { requests: '50k', price: 12 },
     { requests: '250k', price: 25 },
     { requests: '500k', price: 50 },
     { requests: '1M', price: 75 },
@@ -90,6 +91,24 @@ const pricingOptions = [
     { requests: '50M', price: 500 },
     { requests: '100M', price: 1000 },
 ];
+
+const getPlanLimits = (requests: string) => {
+    if (requests === '50k') {
+        return {
+            projects: 3,
+            namespacesPerProject: 12,
+            versionsPerNamespace: 8,
+            languagesPerVersion: 12,
+        };
+    } else {
+        return {
+            projects: 30,
+            namespacesPerProject: 40,
+            versionsPerNamespace: 20,
+            languagesPerVersion: 35,
+        };
+    }
+};
 
 const getCodeExample = (library: string) => {
     switch (library) {
@@ -802,7 +821,7 @@ export default function Page() {
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>100k requests/month</span>
+                                    <span>10k requests/month</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
@@ -875,19 +894,30 @@ export default function Page() {
                                     <ul className='space-y-3 mb-8'>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
-                                            <span>30 projects</span>
+                                            <span>
+                                                {getPlanLimits(selectedPricing?.requests || '50k').projects} projects
+                                            </span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
-                                            <span>40 namespaces per project</span>
+                                            <span>
+                                                {getPlanLimits(selectedPricing?.requests || '50k').namespacesPerProject}{' '}
+                                                namespaces per project
+                                            </span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
-                                            <span>35 languages per version</span>
+                                            <span>
+                                                {getPlanLimits(selectedPricing?.requests || '50k').languagesPerVersion}{' '}
+                                                languages per version
+                                            </span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
-                                            <span>20 versions per namespace</span>
+                                            <span>
+                                                {getPlanLimits(selectedPricing?.requests || '50k').versionsPerNamespace}{' '}
+                                                versions per namespace
+                                            </span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />

@@ -62,7 +62,7 @@ export const createOrganizationWorkspace = mutation({
                 projects: 0,
             },
             limits: {
-                requests: 100000,
+                requests: 10000,
                 projects: 1,
                 namespacesPerProject: 5,
                 languagesPerVersion: 5,
@@ -372,7 +372,7 @@ export const updateWorkspaceContactEmail = mutation({
 export const updateWorkspaceLimits = internalMutation({
     args: {
         workspaceId: v.id('workspaces'),
-        isPremium: v.boolean(),
+        tier: v.union(v.literal('free'), v.literal('starter'), v.literal('premium')),
         requestLimit: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
@@ -382,25 +382,42 @@ export const updateWorkspaceLimits = internalMutation({
             throw new Error('Workspace not found');
         }
 
-        const limits = args.isPremium
-            ? {
-                  requests: args.requestLimit || 250000,
-                  projects: 30,
-                  namespacesPerProject: 40,
-                  versionsPerNamespace: 20,
-                  languagesPerVersion: 35,
-              }
-            : {
-                  requests: 100000,
-                  projects: 1,
-                  namespacesPerProject: 5,
-                  versionsPerNamespace: 1,
-                  languagesPerVersion: 5,
-              };
+        let limits;
+        switch (args.tier) {
+            case 'free':
+                limits = {
+                    requests: 10000,
+                    projects: 1,
+                    namespacesPerProject: 5,
+                    versionsPerNamespace: 1,
+                    languagesPerVersion: 5,
+                };
+                break;
+            case 'starter':
+                limits = {
+                    requests: 50000,
+                    projects: 3,
+                    namespacesPerProject: 12,
+                    versionsPerNamespace: 8,
+                    languagesPerVersion: 12,
+                };
+                break;
+            case 'premium':
+                limits = {
+                    requests: args.requestLimit || 250000,
+                    projects: 30,
+                    namespacesPerProject: 40,
+                    versionsPerNamespace: 20,
+                    languagesPerVersion: 35,
+                };
+                break;
+            default:
+                throw new Error('Invalid tier');
+        }
 
         await ctx.db.patch(workspace._id, { limits });
 
-        console.log(`Updated limits for workspace ${workspace._id}, premium: ${args.isPremium}`);
+        console.log(`Updated limits for workspace ${workspace._id}, tier: ${args.tier}`);
         return { success: true };
     },
 });

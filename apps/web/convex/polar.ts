@@ -4,6 +4,7 @@ import { Id } from './_generated/dataModel';
 
 export const polar = new Polar(components.polar, {
     products: {
+        pro50kRequests: process.env.POLAR_PRO_50K_PRODUCT_ID!,
         pro250kRequests: process.env.POLAR_PRO_250K_PRODUCT_ID!,
         pro500kRequests: process.env.POLAR_PRO_500K_PRODUCT_ID!,
         pro1mRequests: process.env.POLAR_PRO_1M_PRODUCT_ID!,

@@ -354,34 +354,33 @@ export default function WorkspaceSettings() {
                             </div>
 
                             <div className='lg:col-span-2 xl:col-span-3 bg-gray-900/50 border border-gray-800/50 rounded-xl p-8 backdrop-blur-sm'>
-                                <h3 className='text-xl font-semibold mb-8 text-white'>Billing & Subscription</h3>
+                                <div className='flex items-center justify-between mb-8'>
+                                    <h3 className='text-xl font-semibold text-white'>Billing & Subscription</h3>
+                                    {workspace.isPremium ? (
+                                        <CustomerPortalLink
+                                            polarApi={{
+                                                generateCustomerPortalUrl: api.polar.generateCustomerPortalUrl,
+                                            }}
+                                            className='inline-flex items-center px-6 py-3 bg-white text-black hover:bg-gray-100 rounded-lg transition-all cursor-pointer font-medium'>
+                                            <CreditCard className='h-4 w-4 mr-2' />
+                                            Manage Subscription
+                                            <ExternalLink className='h-4 w-4 ml-2' />
+                                        </CustomerPortalLink>
+                                    ) : null}
+                                </div>
 
                                 {workspace.isPremium ? (
-                                    <div className='space-y-6'>
-                                        <div className='flex items-center justify-between p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-xl'>
-                                            <div>
-                                                <h4 className='font-semibold text-emerald-400 text-lg'>
-                                                    Premium Plan Active
-                                                </h4>
-                                                <p className='text-sm text-gray-300 mt-1'>
-                                                    You have access to all premium features and higher limits.
-                                                </p>
-                                            </div>
-                                            <div className='flex items-center text-emerald-400'>
-                                                <CreditCard className='h-6 w-6' />
-                                            </div>
+                                    <div className='flex items-center justify-between p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-xl'>
+                                        <div>
+                                            <h4 className='font-semibold text-emerald-400 text-lg'>
+                                                Premium Plan Active
+                                            </h4>
+                                            <p className='text-sm text-gray-300 mt-1'>
+                                                You have access to all premium features and higher limits.
+                                            </p>
                                         </div>
-
-                                        <div className='flex justify-center'>
-                                            <CustomerPortalLink
-                                                polarApi={{
-                                                    generateCustomerPortalUrl: api.polar.generateCustomerPortalUrl,
-                                                }}
-                                                className='inline-flex items-center px-6 py-3 bg-white text-black hover:bg-gray-100 rounded-lg transition-all cursor-pointer font-medium'>
-                                                <CreditCard className='h-4 w-4 mr-2' />
-                                                Manage Subscription
-                                                <ExternalLink className='h-4 w-4 ml-2' />
-                                            </CustomerPortalLink>
+                                        <div className='flex items-center text-emerald-400'>
+                                            <CreditCard className='h-6 w-6' />
                                         </div>
                                     </div>
                                 ) : (
@@ -399,14 +398,23 @@ export default function WorkspaceSettings() {
                                         </div>
 
                                         {products ? (
-                                            <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                                            <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+                                                {products.pro50kRequests ? (
+                                                    <div className='bg-black/20 border border-gray-700/30 rounded-xl p-6 hover:border-gray-600/50 transition-all'>
+                                                        <h5 className='font-semibold text-white mb-2'>Pro 50K Plan</h5>
+                                                        <CheckoutLink
+                                                            polarApi={api.polar}
+                                                            productIds={[products.pro50kRequests.id]}
+                                                            embed={false}
+                                                            className='inline-flex items-center px-4 py-2 bg-white hover:bg-gray-100 text-black rounded-lg transition-all cursor-pointer font-medium'>
+                                                            <CreditCard className='h-4 w-4 mr-2' />
+                                                            Upgrade to Pro 50K
+                                                        </CheckoutLink>
+                                                    </div>
+                                                ) : null}
                                                 {products.pro250kRequests ? (
                                                     <div className='bg-black/20 border border-gray-700/30 rounded-xl p-6 hover:border-gray-600/50 transition-all'>
                                                         <h5 className='font-semibold text-white mb-2'>Pro 250K Plan</h5>
-                                                        <p className='text-sm text-gray-300 mb-4'>
-                                                            250,000 translation requests, unlimited projects &
-                                                            namespaces
-                                                        </p>
                                                         <CheckoutLink
                                                             polarApi={api.polar}
                                                             productIds={[products.pro250kRequests.id]}
@@ -421,10 +429,6 @@ export default function WorkspaceSettings() {
                                                 {products.pro500kRequests ? (
                                                     <div className='bg-black/20 border border-gray-700/30 rounded-xl p-6 hover:border-gray-600/50 transition-all'>
                                                         <h5 className='font-semibold text-white mb-2'>Pro 500K Plan</h5>
-                                                        <p className='text-sm text-gray-300 mb-4'>
-                                                            500,000 translation requests, unlimited projects &
-                                                            namespaces
-                                                        </p>
                                                         <CheckoutLink
                                                             polarApi={api.polar}
                                                             productIds={[products.pro500kRequests.id]}
@@ -436,11 +440,8 @@ export default function WorkspaceSettings() {
                                                     </div>
                                                 ) : null}
 
-                                                <div className='md:col-span-2 bg-black/20 border border-gray-700/30 rounded-xl p-6 hover:border-gray-600/50 transition-all'>
+                                                <div className='md:col-span-3 bg-black/20 border border-gray-700/30 rounded-xl p-6 hover:border-gray-600/50 transition-all'>
                                                     <h5 className='font-semibold text-white mb-2'>Pro 1M+ Plans</h5>
-                                                    <p className='text-sm text-gray-300 mb-4'>
-                                                        1M+ translation requests, unlimited everything
-                                                    </p>
                                                     <div className='flex flex-wrap gap-3'>
                                                         {products.pro1mRequests ? (
                                                             <CheckoutLink

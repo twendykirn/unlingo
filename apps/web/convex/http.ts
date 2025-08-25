@@ -23,11 +23,11 @@ async function validateRequest(req: Request): Promise<WebhookEvent | null> {
     }
 }
 
-// Helper function to determine request limits based on product ID
 function getRequestLimitFromProduct(productId?: string): number | undefined {
     if (!productId) return undefined;
 
     const requestLimits: Record<string, number> = {
+        [process.env.POLAR_PRO_50K_PRODUCT_ID!]: 50000,
         [process.env.POLAR_PRO_250K_PRODUCT_ID!]: 250000,
         [process.env.POLAR_PRO_500K_PRODUCT_ID!]: 500000,
         [process.env.POLAR_PRO_1M_PRODUCT_ID!]: 1000000,
@@ -37,7 +37,26 @@ function getRequestLimitFromProduct(productId?: string): number | undefined {
         [process.env.POLAR_PRO_100M_PRODUCT_ID!]: 100000000,
     };
 
-    return requestLimits[productId] || 250000; // Default to 250k if unknown
+    return requestLimits[productId] || 50000;
+}
+
+function getTierFromProduct(productId?: string) {
+    if (!productId) return 'free';
+
+    switch (productId) {
+        case process.env.POLAR_PRO_50K_PRODUCT_ID!:
+            return 'starter';
+        case process.env.POLAR_PRO_250K_PRODUCT_ID!:
+        case process.env.POLAR_PRO_500K_PRODUCT_ID!:
+        case process.env.POLAR_PRO_1M_PRODUCT_ID!:
+        case process.env.POLAR_PRO_2M_PRODUCT_ID!:
+        case process.env.POLAR_PRO_10M_PRODUCT_ID!:
+        case process.env.POLAR_PRO_50M_PRODUCT_ID!:
+        case process.env.POLAR_PRO_100M_PRODUCT_ID!:
+            return 'premium';
+        default:
+            return 'free';
+    }
 }
 
 const http = httpRouter();
@@ -321,7 +340,7 @@ polar.registerRoutes(http, {
         if (workspaceId) {
             await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {
                 workspaceId: workspaceId as Id<'workspaces'>,
-                isPremium: true,
+                tier: getTierFromProduct(event.data.product?.id),
                 requestLimit: getRequestLimitFromProduct(event.data.product?.id),
             });
         }
@@ -332,7 +351,7 @@ polar.registerRoutes(http, {
             const isActive = event.data.status === 'active' && !event.data.customerCancellationReason;
             await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {
                 workspaceId: workspaceId as Id<'workspaces'>,
-                isPremium: isActive,
+                tier: getTierFromProduct(event.data.product?.id),
                 requestLimit: isActive ? getRequestLimitFromProduct(event.data.product?.id) : undefined,
             });
         }
