@@ -27,6 +27,7 @@ export default function NewOrganizationPage() {
     const { createOrganization, setActive } = useOrganizationList();
 
     const createWorkspaceMutation = useMutation(api.workspaces.createOrganizationWorkspace);
+    const verifyWorkspaceContactEmailMutation = useMutation(api.workspaces.verifyWorkspaceContactEmail);
 
     useEffect(() => {
         if (user?.primaryEmailAddress?.emailAddress && !contactEmail) {
@@ -72,6 +73,18 @@ export default function NewOrganizationPage() {
         setErrorMessage('');
 
         try {
+            const verifyContactEmail = await verifyWorkspaceContactEmailMutation({
+                contactEmail: contactEmail.trim(),
+            });
+
+            if (!verifyContactEmail.success) {
+                setIsCompletingSetup(false);
+                setErrorMessage(
+                    'This email is already associated with another workspace. Please use a different email address.'
+                );
+                return;
+            }
+
             const organization = await createOrganization?.({
                 name: name.trim(),
                 slug: slug.trim(),
@@ -91,9 +104,11 @@ export default function NewOrganizationPage() {
         } catch (error) {
             console.error('Failed to complete setup:', error);
             setIsCompletingSetup(false);
-            
+
             if (error instanceof Error && error.message.includes('contact email already exists')) {
-                setErrorMessage('This email is already associated with another workspace. Please use a different email address.');
+                setErrorMessage(
+                    'This email is already associated with another workspace. Please use a different email address.'
+                );
             } else {
                 setErrorMessage('Failed to create workspace. Please try again.');
             }
@@ -254,9 +269,7 @@ export default function NewOrganizationPage() {
                                     This email will be used for billing and important notifications. You can change this
                                     later in settings.
                                 </p>
-                                {errorMessage && (
-                                    <p className='text-xs text-red-400 mt-2'>{errorMessage}</p>
-                                )}
+                                {errorMessage ? <p className='text-xs text-red-400 mt-2'>{errorMessage}</p> : null}
                             </div>
 
                             <div className='flex space-x-3'>

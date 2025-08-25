@@ -6,6 +6,25 @@ import { internal } from './_generated/api';
 import { customersDelete } from '@polar-sh/sdk/funcs/customersDelete.js';
 import { getCurrentMonth } from './utils';
 
+export const verifyWorkspaceContactEmail = mutation({
+    args: {
+        contactEmail: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error('Not authenticated');
+        }
+
+        const existingWorkspace = await ctx.db
+            .query('workspaces')
+            .withIndex('by_contactEmail', q => q.eq('contactEmail', args.contactEmail))
+            .first();
+
+        return { success: existingWorkspace === null };
+    },
+});
+
 export const createOrganizationWorkspace = mutation({
     args: {
         clerkOrgId: v.string(),
