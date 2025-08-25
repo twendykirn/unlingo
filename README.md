@@ -1,10 +1,14 @@
 # Unlingo
 
-> The developer platform for modern internationalization. Host, manage, and deliver translations with zero complexity.
+<div align="center">
 
-[![GitHub stars](https://img.shields.io/github/stars/unlingo/unlingo?style=social)](https://github.com/twendykirn/unlingo/stargazers)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+[![License: AGPL](https://img.shields.io/badge/License-AGPL-red.svg)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/twendykirn/unlingo?style=social)](https://github.com/twendykirn/unlingo/stargazers)
+[![Twitter](https://img.shields.io/twitter/follow/twendykirn?style=social)](https://twitter.com/twendykirn)
+
+</div>
+
+The developer platform for modern internationalization. Host, manage, and deliver translations with zero complexity.
 
 ## ✨ Features
 
