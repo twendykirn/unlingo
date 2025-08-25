@@ -1111,7 +1111,7 @@ export default function Page() {
                 {/* Sliding Unlingo Text Animation */}
                 <div className='bg-black overflow-hidden'>
                     <div className='flex justify-center'>
-                        <div className='text-[12rem] md:text-[16rem] lg:text-[20rem] font-bold tracking-wider'>
+                        <div className='text-[4rem] xs:text-[6rem] sm:text-[8rem] md:text-[12rem] lg:text-[16rem] xl:text-[20rem] font-bold tracking-wider'>
                             {['U', 'n', 'l', 'i', 'n', 'g', 'o'].map((letter, index) => (
                                 <motion.span
                                     key={index}
