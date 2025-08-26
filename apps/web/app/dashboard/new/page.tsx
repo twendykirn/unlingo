@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useOrganization, useOrganizationList, useUser } from '@clerk/nextjs';
+import { useOrganizationList, useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,6 @@ export default function NewOrganizationPage() {
     const [errorMessage, setErrorMessage] = useState('');
 
     const { user } = useUser();
-    const { organization } = useOrganization();
     const { createOrganization, setActive } = useOrganizationList();
 
     const createWorkspaceMutation = useMutation(api.workspaces.createOrganizationWorkspace);
@@ -123,7 +122,7 @@ export default function NewOrganizationPage() {
         { number: 2, title: 'Contact Email', description: 'Set up contact details' },
     ];
 
-    if (!organization?.id) {
+    if (!user?.id) {
         return (
             <div className='flex items-center justify-center py-12'>
                 <div className='w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin'></div>
