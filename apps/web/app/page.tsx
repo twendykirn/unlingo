@@ -32,6 +32,7 @@ import { ShineBorder } from '@/components/magicui/shine-border';
 import Link from 'next/link';
 import { CodeEditor } from '@/components/code-editor';
 import GithubSpaceLogo from '@/components/github-space-logo';
+import HeroVideoDialog from '@/components/magicui/hero-video-dialog';
 
 const features = [
     {
@@ -374,17 +375,12 @@ export default function Page() {
                         className='pt-12'>
                         <div className='bg-gray-900/50 border border-gray-800 rounded-lg max-w-3xl mx-auto relative overflow-hidden'>
                             <div className='aspect-video bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center'>
-                                <div className='text-center space-y-4'>
-                                    <div className='w-20 h-20 mx-auto bg-white/10 rounded-full flex items-center justify-center'>
-                                        <Play className='h-8 w-8 text-white ml-1' />
-                                    </div>
-                                    <div className='space-y-2'>
-                                        <h3 className='text-xl font-semibold text-white'>Platform Demo</h3>
-                                        <p className='text-gray-400 text-sm'>
-                                            See how Unlingo transforms your workflow
-                                        </p>
-                                    </div>
-                                </div>
+                                <HeroVideoDialog
+                                    animationStyle='top-in-bottom-out'
+                                    videoSrc='https://www.youtube.com/embed/0tjNs2iU3VA?si=j7GOzn4x1h6rBds3'
+                                    thumbnailSrc='https://o2xjkxudhl.ufs.sh/f/k57kIptYxTsACGO4JI2uq3A1GPZTNXMrx0sztoRLKjSci2ly'
+                                    thumbnailAlt='Demo Video'
+                                />
                             </div>
                         </div>
                     </motion.div>
