@@ -62,10 +62,13 @@ export function SettingsTab({ project, workspace }: SettingsTabProps) {
         setIsDeleting(true);
         try {
             router.push('/dashboard');
-            await deleteProject({
-                projectId: project._id,
-                workspaceId: workspace._id,
-            });
+
+            setTimeout(() => {
+                deleteProject({
+                    projectId: project._id,
+                    workspaceId: workspace._id,
+                });
+            }, 100);
         } catch (error) {
             console.error('Failed to delete project:', error);
             setIsDeleting(false);
