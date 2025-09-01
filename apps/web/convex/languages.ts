@@ -217,6 +217,7 @@ export const deleteLanguage = mutation({
             usage: {
                 languages: Math.max(0, currentLanguageCount - 1),
             },
+            updatedAt: Date.now(),
         });
 
         return args.languageId;
@@ -255,7 +256,7 @@ export const getLanguageContent = action({
             const response = await fetch(fileUrl);
             const content = await response.text();
             const parsedContent = JSON.parse(content);
-            
+
             // Track analytics for language content fetch
             await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
                 workspaceId: args.workspaceId as unknown as string,
@@ -267,11 +268,11 @@ export const getLanguageContent = action({
                 responseSize: new TextEncoder().encode(content).length,
                 time: Date.now(),
             });
-            
+
             return parsedContent;
         } catch (error) {
             console.error('Failed to fetch language content:', error);
-            
+
             // Track failed fetch
             await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
                 workspaceId: args.workspaceId as unknown as string,
@@ -283,7 +284,7 @@ export const getLanguageContent = action({
                 deniedReason: 'fetch_error',
                 time: Date.now(),
             });
-            
+
             return {};
         }
     },
@@ -333,7 +334,7 @@ export const getJsonSchema = action({
             return schemaContent;
         } catch (error) {
             console.error('Failed to fetch schema content:', error);
-            
+
             // Track failed fetch
             await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
                 workspaceId: args.workspaceId as unknown as string,
@@ -344,7 +345,7 @@ export const getJsonSchema = action({
                 deniedReason: 'fetch_error',
                 time: Date.now(),
             });
-            
+
             return null;
         }
     },

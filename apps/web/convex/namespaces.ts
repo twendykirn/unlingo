@@ -130,6 +130,7 @@ export const createNamespace = mutation({
             usage: {
                 languages: 0,
             },
+            updatedAt: Date.now(),
         });
 
         await ctx.db.patch(args.projectId, {
@@ -339,6 +340,7 @@ export const setPrimaryLanguage = mutation({
 
         await ctx.db.patch(language.namespaceVersionId, {
             primaryLanguageId: args.languageId,
+            updatedAt: Date.now(),
         });
 
         return args.namespaceId;

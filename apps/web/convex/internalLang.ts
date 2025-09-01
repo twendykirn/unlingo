@@ -109,6 +109,7 @@ export const languageUpdateSchema = internalMutation({
         await ctx.db.patch(args.namespaceVersionId, {
             jsonSchemaFileId: args.jsonSchemaFileId,
             jsonSchemaSize: args.jsonSchemaSize,
+            updatedAt: Date.now(),
         });
     },
 });
@@ -123,6 +124,7 @@ export const internalLanguageUpdate = internalMutation({
         await ctx.db.patch(args.languageId, {
             fileId: args.fileId,
             fileSize: args.fileSize,
+            updatedAt: Date.now(),
         });
     },
 });
@@ -221,6 +223,7 @@ export const internalCreateLanguageUpdate = internalMutation({
             languageCode: args.languageCode,
             fileId: args.fileId ?? undefined,
             fileSize: args.fileSize,
+            updatedAt: Date.now(),
         });
 
         await ctx.db.patch(
@@ -231,11 +234,13 @@ export const internalCreateLanguageUpdate = internalMutation({
                           languages: args.currentLanguageCount + 1,
                       },
                       primaryLanguageId: languageId,
+                      updatedAt: Date.now(),
                   }
                 : {
                       usage: {
                           languages: args.currentLanguageCount + 1,
                       },
+                      updatedAt: Date.now(),
                   }
         );
 

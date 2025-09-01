@@ -190,6 +190,7 @@ export const updateNamespaceVersion = mutation({
 
         await ctx.db.patch(args.versionId, {
             version: args.version,
+            updatedAt: Date.now(),
         });
 
         return args.versionId;

@@ -51,6 +51,7 @@ export const createNamespaceVersionContext = internalMutation({
             usage: {
                 languages: 0,
             },
+            updatedAt: Date.now(),
         });
 
         await ctx.db.patch(args.namespaceId, {
@@ -90,6 +91,7 @@ export const internalInsertLanguage = internalMutation({
             languageCode: args.languageCode,
             fileId: args.fileId,
             fileSize: args.fileSize,
+            updatedAt: Date.now(),
         });
     },
 });
@@ -104,6 +106,7 @@ export const internalUpdateVersionUsage = internalMutation({
             usage: {
                 languages: args.languageCount,
             },
+            updatedAt: Date.now(),
         });
     },
 });

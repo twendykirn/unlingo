@@ -58,12 +58,14 @@ export default defineSchema({
         usage: v.object({
             languages: v.number(),
         }),
+        updatedAt: v.number(),
     }).index('by_namespace_version', ['namespaceId', 'version']),
     languages: defineTable({
         namespaceVersionId: v.id('namespaceVersions'),
         languageCode: v.string(),
         fileId: v.optional(v.id('_storage')),
         fileSize: v.optional(v.number()),
+        updatedAt: v.number(),
     }).index('by_namespace_version_language', ['namespaceVersionId', 'languageCode']),
     apiKeys: defineTable({
         workspaceId: v.id('workspaces'),
