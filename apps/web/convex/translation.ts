@@ -92,6 +92,7 @@ IMPORTANT RULES:
 4. For arrays, translate each string element while keeping the array structure
 5. For objects, translate only the string values, not the keys
 6. Return valid JSON only, no explanation
+7. Make sure the translated content is natural and fluent in the target language
 
 Content to translate:
 ${JSON.stringify(args.primaryValue, null, 2)}
