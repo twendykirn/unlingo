@@ -11,7 +11,6 @@ import {
     GitBranch,
     Calendar,
     Copy,
-    Play,
     RefreshCw,
     Bot,
     Camera,
@@ -19,20 +18,22 @@ import {
     BarChart3,
 } from 'lucide-react';
 import { useState } from 'react';
+import type React from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, SignOutButton } from '@clerk/nextjs';
+import { useUser, SignOutButton, useSignUp } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Gradient } from '@/components/ui/gradient';
 import SpotlightCard from '@/components/ui/spotlight-card';
-import Galaxy from '@/components/ui/galaxy';
+import { Meteors } from '@/components/magicui/meteors';
 import { BorderBeam } from '@/components/magicui/border-beam';
 import { MagicCard } from '@/components/magicui/magic-card';
-import { Meteors } from '@/components/magicui/meteors';
-import { ShineBorder } from '@/components/magicui/shine-border';
 import Link from 'next/link';
 import { CodeEditor } from '@/components/code-editor';
 import GithubSpaceLogo from '@/components/github-space-logo';
 import HeroVideoDialog from '@/components/magicui/hero-video-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import GithubStarButton from '@/components/github-star-button';
 
 const features = [
     {
@@ -220,13 +221,81 @@ export default function Page() {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [activeLibrary, setActiveLibrary] = useState('i18next');
     const [isCopied, setIsCopied] = useState(false);
+    const [email, setEmail] = useState('');
+    const [emailError, setEmailError] = useState<string | null>(null);
+    const [generalError, setGeneralError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isVerifyOpen, setIsVerifyOpen] = useState(false);
+    const [code, setCode] = useState('');
+    const [verifyError, setVerifyError] = useState<string | null>(null);
+    const [isVerifying, setIsVerifying] = useState(false);
+
     const router = useRouter();
     const { isSignedIn } = useUser();
+    const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
 
     const scrollToSection = (sectionId: string) => {
         const element = document.getElementById(sectionId);
         if (element) {
             element.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
+    const handleQuickSignup = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setEmailError(null);
+        setGeneralError(null);
+
+        const trimmed = email.trim();
+        const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+
+        if (!isValid) {
+            setEmailError('Please enter a valid email');
+            return;
+        }
+        if (!signUpLoaded) return;
+
+        try {
+            setIsSubmitting(true);
+            await signUp.create({ emailAddress: trimmed, legalAccepted: true });
+            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+            setIsVerifyOpen(true);
+        } catch (err: any) {
+            const message = err?.errors?.[0]?.message || 'Could not start sign up. Please try again.';
+            setGeneralError(message);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleVerify = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!signUpLoaded) return;
+        setVerifyError(null);
+
+        try {
+            setIsVerifying(true);
+            const res = await signUp.attemptEmailAddressVerification({ code });
+            if (res.status === 'complete') {
+                await setActive({ session: res.createdSessionId });
+                router.push('/dashboard/new');
+            } else {
+                setVerifyError('Verification incomplete. Please try again.');
+            }
+        } catch (err: any) {
+            const message = err?.errors?.[0]?.message || 'Invalid code. Please try again.';
+            setVerifyError(message);
+        } finally {
+            setIsVerifying(false);
+        }
+    };
+
+    const handleResend = async () => {
+        if (!signUpLoaded) return;
+        try {
+            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+        } catch (_) {
+            // Clerk will throttle appropriately
         }
     };
 
@@ -277,6 +346,7 @@ export default function Page() {
 
                         {/* Auth Buttons */}
                         <div className='flex items-center space-x-4'>
+                            <GithubStarButton />
                             {isSignedIn ? (
                                 <>
                                     <SignOutButton>
@@ -319,21 +389,28 @@ export default function Page() {
             </div>
 
             {/* Hero Section */}
-            <section id='hero' className='relative min-h-screen flex items-center justify-center px-6 pt-20'>
-                {/* Galaxy Background - Full Hero Section */}
-                <Galaxy />
+            <section id='hero' className='relative min-h-screen flex items-center justify-center px-6 pt-28 sm:pt-48'>
+                {/* Elegant subtle background (radial glow + faint grid) */}
+                <div
+                    className='absolute inset-0 pointer-events-none'
+                    style={{
+                        backgroundImage: [
+                            'radial-gradient(ellipse at center, rgba(0,0,0,0.6), rgba(0,0,0,0) 60%)',
+                            'radial-gradient(circle at 15% 10%, rgba(255,255,255,0.05), transparent 35%)',
+                            'radial-gradient(circle at 85% 20%, rgba(255,255,255,0.04), transparent 30%)',
+                            'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px)',
+                            'linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
+                        ].join(', '),
+                        backgroundSize: 'auto, auto, auto, 28px 28px, 28px 28px',
+                        backgroundPosition: 'center, center, center, top left, top left',
+                    }}
+                />
                 <div className='max-w-6xl mx-auto text-center space-y-8 z-10'>
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8 }}
                         className='space-y-6'>
-                        <div className='relative inline-flex items-center space-x-2 bg-gray-900/50 rounded-full px-4 py-2 text-sm overflow-hidden'>
-                            <ShineBorder shineColor={['#ec4899', '#7c3aed', '#3b82f6']} className='absolute inset-0' />
-                            <div className='w-2 h-2 bg-green-400 rounded-full animate-pulse relative z-10' />
-                            <span className='text-gray-300 relative z-10'>Translations made simple</span>
-                        </div>
-
                         <h1 className='text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight'>
                             <span className='bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent'>
                                 Unlingo
@@ -346,27 +423,80 @@ export default function Page() {
                         </p>
                     </motion.div>
 
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8, delay: 0.2 }}
-                        className='flex flex-col sm:flex-row gap-4 justify-center items-center'>
-                        <Button
-                            size='lg'
-                            className='bg-white hover:bg-gray-200 font-semibold px-8 py-4 text-lg group shadow-lg hover:shadow-xl transition-all duration-300'
-                            onClick={() => router.push('/sign-up')}>
-                            Get Started Free
-                            <ArrowRight className='ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform' />
-                        </Button>
-                        <Link href='https://docs.unlingo.com' target='_blank'>
+                    {isSignedIn ? (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8, delay: 0.2 }}
+                            className='flex flex-col sm:flex-row gap-2 items-center justify-center'>
                             <Button
-                                variant='outline'
-                                size='lg'
-                                className='border-2 border-white/30 hover:border-white/50 bg-black/40 backdrop-blur-sm hover:bg-white/10 px-8 py-4 text-lg text-white hover:text-white shadow-lg hover:shadow-xl transition-all duration-300'>
-                                View Documentation
+                                size='sm'
+                                className='h-8 bg-white text-black hover:bg-gray-200'
+                                onClick={() => router.push('/dashboard')}>
+                                Go to Dashboard
                             </Button>
-                        </Link>
-                    </motion.div>
+                            <Link href='https://docs.unlingo.com' target='_blank'>
+                                <Button
+                                    size='sm'
+                                    variant='outline'
+                                    className='h-8 border-white/20 hover:border-white/40 bg-black/30 hover:bg-white/10'>
+                                    Docs
+                                </Button>
+                            </Link>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8, delay: 0.2 }}
+                            className='flex flex-col gap-3 items-center w-full max-w-2xs mx-auto'>
+                            <form onSubmit={handleQuickSignup} className='w-full space-y-3'>
+                                <Input
+                                    type='email'
+                                    inputMode='email'
+                                    autoComplete='email'
+                                    required
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    placeholder='you@company.com'
+                                    className='h-8 md:h-9 bg-black/40 border-gray-800 placeholder:text-gray-500 text-sm'
+                                />
+
+                                <div id='clerk-captcha' data-cl-theme='dark' data-cl-size='flexible' />
+
+                                <Button
+                                    type='submit'
+                                    disabled={isSubmitting}
+                                    size='sm'
+                                    className='h-8 w-full bg-white text-black hover:bg-gray-200 font-medium text-sm px-4'>
+                                    {isSubmitting ? 'Sending code…' : 'Start free'}
+                                    {!isSubmitting && <ArrowRight className='ml-2 h-3.5 w-3.5' />}
+                                </Button>
+                            </form>
+                            {emailError || generalError ? (
+                                <div className='text-sm text-red-400'>{emailError || generalError}</div>
+                            ) : null}
+                            <div className='text-xs text-gray-500'>No credit card required</div>
+                            <div className='flex gap-2 pt-1'>
+                                <Link href='/sign-in'>
+                                    <Button
+                                        size='sm'
+                                        variant='outline'
+                                        className='h-8 text-xs border-white/20 hover:border-white/40 bg-black/30 hover:bg-white/10'>
+                                        Already have an account
+                                    </Button>
+                                </Link>
+                                <Link href='https://docs.unlingo.com' target='_blank'>
+                                    <Button
+                                        size='sm'
+                                        variant='outline'
+                                        className='h-8 text-xs border-white/20 hover:border-white/40 bg-black/30 hover:bg-white/10'>
+                                        Docs
+                                    </Button>
+                                </Link>
+                            </div>
+                        </motion.div>
+                    )}
 
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -387,6 +517,43 @@ export default function Page() {
                 </div>
             </section>
 
+            {/* Verify Email Dialog */}
+            <Dialog open={isVerifyOpen} onOpenChange={setIsVerifyOpen}>
+                <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-sm backdrop-blur-md'>
+                    <DialogHeader>
+                        <DialogTitle>Verify your email</DialogTitle>
+                        <DialogDescription className='text-gray-400'>
+                            We sent a 6-digit code to {email}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleVerify} className='space-y-4'>
+                        <Input
+                            value={code}
+                            onChange={e => setCode(e.target.value)}
+                            placeholder='Enter verification code'
+                            inputMode='numeric'
+                            autoFocus
+                            className='h-9 bg-black/40 border-gray-800 placeholder:text-gray-500'
+                        />
+                        {verifyError && <div className='text-sm text-red-400'>{verifyError}</div>}
+                        <div className='flex items-center justify-between'>
+                            <button
+                                type='button'
+                                onClick={handleResend}
+                                className='text-sm text-gray-400 hover:text-white underline underline-offset-4'>
+                                Resend code
+                            </button>
+                            <Button
+                                type='submit'
+                                disabled={isVerifying}
+                                className='bg-white text-black hover:bg-gray-200'>
+                                {isVerifying ? 'Verifying…' : 'Verify'}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
             {/* Code Examples Section */}
             <section id='examples' className='relative py-32 px-6'>
                 <div className='max-w-6xl mx-auto'>
@@ -395,16 +562,10 @@ export default function Page() {
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8 }}
                         viewport={{ once: true }}
-                        className='text-center mb-12'>
-                        <h2 className='text-4xl md:text-6xl font-bold mb-6'>
-                            Works with{' '}
-                            <span className='bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent'>
-                                every library
-                            </span>
-                        </h2>
-                        <p className='text-xl text-gray-400 max-w-3xl mx-auto'>
-                            Our platform seamlessly integrates with your favorite internationalization libraries and
-                            frameworks. Choose your stack and get started in minutes.
+                        className='text-center mb-10'>
+                        <h2 className='text-4xl md:text-6xl font-bold mb-4 text-white'>Works with every library</h2>
+                        <p className='text-base md:text-lg text-gray-400 max-w-3xl mx-auto'>
+                            Pick your stack and copy the exact snippet you need.
                         </p>
                     </motion.div>
 
@@ -414,19 +575,21 @@ export default function Page() {
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.2 }}
                         viewport={{ once: true }}
-                        className='flex flex-wrap justify-center gap-4 mb-12'>
-                        {['i18next', 'next-intl', 'rest api'].map(library => (
-                            <button
-                                key={library}
-                                onClick={() => setActiveLibrary(library)}
-                                className={`px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-300 cursor-pointer ${
-                                    activeLibrary === library
-                                        ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg scale-105'
-                                        : 'bg-gray-900/50 border border-gray-800 text-gray-300 hover:border-gray-600 hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-600/20 hover:scale-105'
-                                }`}>
-                                {library}
-                            </button>
-                        ))}
+                        className='flex justify-center mb-8'>
+                        <div className='inline-flex items-center gap-1 bg-gray-950/60 border border-gray-800 rounded-lg p-1'>
+                            {['i18next', 'next-intl', 'rest api'].map(library => (
+                                <button
+                                    key={library}
+                                    onClick={() => setActiveLibrary(library)}
+                                    className={`px-3.5 py-2 rounded-md text-sm transition-colors cursor-pointer ${
+                                        activeLibrary === library
+                                            ? 'bg-white text-black'
+                                            : 'text-gray-300 hover:bg-white/5'
+                                    }`}>
+                                    {library}
+                                </button>
+                            ))}
+                        </div>
                     </motion.div>
 
                     {/* Code Example Card */}
@@ -436,37 +599,31 @@ export default function Page() {
                         transition={{ duration: 0.6, delay: 0.4 }}
                         viewport={{ once: true }}
                         className='max-w-6xl mx-auto'>
-                        <div className='relative bg-gray-950/80 backdrop-blur-sm border border-gray-800/50 rounded-xl overflow-hidden shadow-2xl'>
-                            {/* Terminal Header */}
-                            <div className='flex items-center justify-between px-6 py-4 bg-gray-900/50 border-b border-gray-800/50'>
-                                <div className='flex items-center space-x-4'>
-                                    <div className='flex space-x-2'>
-                                        <div className='w-3 h-3 bg-red-500 rounded-full' />
-                                        <div className='w-3 h-3 bg-yellow-500 rounded-full' />
-                                        <div className='w-3 h-3 bg-green-500 rounded-full' />
-                                    </div>
-                                    <div className='text-sm text-gray-400 font-mono'>
-                                        {activeLibrary === 'rest api' ? 'curl' : `${activeLibrary}.js`}
-                                    </div>
+                        <div className='relative bg-gray-950 border border-gray-800 rounded-xl overflow-hidden'>
+                            {/* Simple Header */}
+                            <div className='flex items-center justify-between px-4 py-3 bg-gray-950/80 border-b border-gray-800'>
+                                <div className='text-xs md:text-sm text-gray-400 font-mono'>
+                                    {activeLibrary === 'rest api' ? 'shell' : 'javascript'} · {activeLibrary}
                                 </div>
-                                <div className='flex items-center space-x-3'>
-                                    <span className='text-xs text-gray-500 bg-gray-800/50 px-2 py-1 rounded-md font-mono'>
-                                        {activeLibrary}
-                                    </span>
-                                    <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(getCodeExample(activeLibrary));
-                                            setIsCopied(true);
-                                            setTimeout(() => setIsCopied(false), 600);
-                                        }}
-                                        className='p-2 hover:bg-gray-800 rounded-lg transition-all duration-200 cursor-pointer group'>
-                                        {isCopied ? (
-                                            <Check className='h-4 w-4 text-green-400' />
-                                        ) : (
-                                            <Copy className='h-4 w-4 text-gray-400 group-hover:text-white' />
-                                        )}
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(getCodeExample(activeLibrary));
+                                        setIsCopied(true);
+                                        setTimeout(() => setIsCopied(false), 700);
+                                    }}
+                                    className='inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-gray-800 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer'>
+                                    {isCopied ? (
+                                        <>
+                                            <Check className='h-3.5 w-3.5 text-green-400' />
+                                            Copied
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy className='h-3.5 w-3.5 text-gray-400' />
+                                            Copy
+                                        </>
+                                    )}
+                                </button>
                             </div>
 
                             {/* Code Editor */}
@@ -479,10 +636,10 @@ export default function Page() {
                                     }}>
                                     <CodeEditor
                                         value={getCodeExample(activeLibrary)}
-                                        language='javascript'
+                                        language={activeLibrary === 'rest api' ? 'shell' : 'javascript'}
                                         readOnly
-                                        padding={24}
-                                        className='min-h-[400px] text-sm font-mono border-none pointer-events-none'
+                                        padding={20}
+                                        className='min-h-[360px] text-sm font-mono border-none'
                                         style={{
                                             fontSize: '14px',
                                             fontFamily:
@@ -492,19 +649,24 @@ export default function Page() {
                                     />
                                 </div>
                             </div>
-
-                            {/* Animated Border Effects */}
+                            {/* Subtle running border animation in dark blue */}
                             <BorderBeam
-                                duration={12}
-                                size={800}
-                                className='from-transparent via-pink-600 to-transparent'
+                                size={120}
+                                duration={14}
+                                colorFrom='#0c1320'
+                                colorTo='#2b3648'
+                                borderWidth={1}
+                                initialOffset={0}
                             />
                             <BorderBeam
-                                duration={12}
-                                delay={6}
-                                size={800}
-                                borderWidth={2}
-                                className='from-transparent via-purple-600 to-transparent'
+                                size={120}
+                                duration={14}
+                                delay={7}
+                                reverse
+                                colorFrom='#0c1320'
+                                colorTo='#2b3648'
+                                borderWidth={1}
+                                initialOffset={50}
                             />
                         </div>
                     </motion.div>
@@ -519,19 +681,14 @@ export default function Page() {
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8 }}
                         viewport={{ once: true }}
-                        className='text-center mb-20'>
-                        <h2 className='text-4xl md:text-6xl font-bold mb-6'>
-                            Built for{' '}
-                            <span className='bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent'>
-                                developers
-                            </span>
-                        </h2>
-                        <p className='text-xl text-gray-400 max-w-3xl mx-auto'>
+                        className='text-center mb-16'>
+                        <h2 className='text-4xl md:text-6xl font-bold mb-4 text-white'>Built for developers</h2>
+                        <p className='text-base md:text-lg text-gray-400 max-w-3xl mx-auto'>
                             Everything you need to internationalize your application, without the complexity.
                         </p>
                     </motion.div>
 
-                    <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-8'>
+                    <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8'>
                         {features.map((feature, index) => (
                             <motion.div
                                 key={feature.title}
@@ -541,15 +698,25 @@ export default function Page() {
                                 viewport={{ once: true }}
                                 className='group h-full'>
                                 <MagicCard
-                                    gradientColor='#262626'
-                                    className='bg-gray-900/50 border border-gray-800 rounded-lg p-8 h-full hover:border-gray-700 transition-colors'>
-                                    <div className='flex items-center space-x-4 mb-4'>
-                                        <div className='p-3 bg-gray-800 rounded-lg group-hover:bg-gray-700 transition-colors'>
-                                            <feature.icon className='h-6 w-6 text-white' />
+                                    gradientSize={260}
+                                    gradientFrom='#2b3648'
+                                    gradientTo='#0c1320'
+                                    gradientColor='#0a2340'
+                                    gradientOpacity={0.55}
+                                    className='h-full rounded-xl border border-gray-800 hover:border-gray-700'>
+                                    <div className='p-6 md:p-7'>
+                                        <div className='flex items-start gap-4 mb-3'>
+                                            <div className='shrink-0 rounded-md border border-gray-800 bg-black/40 p-2.5 text-white group-hover:border-gray-700'>
+                                                <feature.icon className='h-5 w-5' />
+                                            </div>
+                                            <h3 className='text-lg md:text-xl font-semibold text-white'>
+                                                {feature.title}
+                                            </h3>
                                         </div>
-                                        <h3 className='text-xl font-semibold'>{feature.title}</h3>
+                                        <p className='text-sm md:text-base text-gray-400 leading-relaxed'>
+                                            {feature.description}
+                                        </p>
                                     </div>
-                                    <p className='text-gray-400 leading-relaxed'>{feature.description}</p>
                                 </MagicCard>
                             </motion.div>
                         ))}
@@ -568,42 +735,27 @@ export default function Page() {
                             transition={{ duration: 1.2, ease: 'easeOut' }}
                             viewport={{ once: true }}
                             className='space-y-6 sm:space-y-8 text-center lg:text-left'>
-                            <div className='space-y-4 sm:space-y-6'>
-                                <div className='relative inline-flex items-center space-x-2 bg-gray-900/50 rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm overflow-hidden'>
-                                    <ShineBorder
-                                        shineColor={['#a855f7', '#ec4899', '#8b5cf6']}
-                                        className='absolute inset-0'
-                                    />
-                                    <div className='w-2 h-2 bg-purple-400 rounded-full animate-pulse relative z-10' />
-                                    <span className='text-gray-300 relative z-10'>Fully transparent</span>
-                                </div>
-
+                            <div className='space-y-4 sm:space-y-5'>
                                 <h2 className='text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight'>
                                     Open Source
                                 </h2>
-
                                 <p className='text-lg sm:text-xl text-gray-400 leading-relaxed max-w-2xl mx-auto lg:mx-0'>
-                                    Our entire platform is fully open-source, with the complete codebase and development
-                                    process transparently accessible. Learn from our approach, contribute to the
-                                    project, and adapt it to your specific needs.
+                                    Fully transparent. Explore the code, follow our development, and contribute.
                                 </p>
                             </div>
 
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 1, delay: 0.4, ease: 'easeOut' }}
+                                transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
                                 viewport={{ once: true }}
-                                className='flex flex-col sm:flex-row gap-4 justify-center lg:justify-start'>
+                                className='flex gap-3 justify-center lg:justify-start'>
                                 <Link href='https://github.com/twendykirn/unlingo' target='_blank'>
                                     <Button
                                         size='lg'
-                                        className='bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg group shadow-lg hover:shadow-xl transition-all duration-500 w-full sm:w-auto'>
+                                        className='bg-white text-black hover:bg-gray-200 font-semibold px-6 sm:px-7 py-3 sm:py-3.5 text-base group'>
                                         <div className='flex items-center justify-center'>
-                                            <svg
-                                                className='mr-2 sm:mr-3 h-4 sm:h-5 w-4 sm:w-5'
-                                                fill='currentColor'
-                                                viewBox='0 0 24 24'>
+                                            <svg className='mr-2 h-4 w-4' fill='currentColor' viewBox='0 0 24 24'>
                                                 <path
                                                     fillRule='evenodd'
                                                     d='M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z'
@@ -612,7 +764,7 @@ export default function Page() {
                                             </svg>
                                             <span>Give us a star</span>
                                         </div>
-                                        <ArrowRight className='ml-2 h-4 sm:h-5 w-4 sm:w-5 group-hover:translate-x-1 transition-transform duration-300' />
+                                        <ArrowRight className='ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-300' />
                                     </Button>
                                 </Link>
                             </motion.div>
@@ -626,11 +778,21 @@ export default function Page() {
                             viewport={{ once: true }}
                             className='flex items-center justify-center mt-8 lg:mt-0'>
                             <div className='relative w-full max-w-sm sm:max-w-md lg:max-w-lg'>
-                                <div className='relative p-8 sm:p-10 lg:p-12'>
-                                    <div className='w-full flex justify-center'>
-                                        <GithubSpaceLogo />
+                                <MagicCard
+                                    gradientSize={280}
+                                    gradientFrom='#2b3648'
+                                    gradientTo='#0c1320'
+                                    gradientColor='#0a2340'
+                                    gradientOpacity={0.55}
+                                    showBackground={false}
+                                    showBorder={false}
+                                    className='rounded-2xl'>
+                                    <div className='p-8 sm:p-10 lg:p-12'>
+                                        <div className='w-full flex justify-center'>
+                                            <GithubSpaceLogo />
+                                        </div>
                                     </div>
-                                </div>
+                                </MagicCard>
                             </div>
                         </motion.div>
                     </div>
@@ -772,26 +934,21 @@ export default function Page() {
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8 }}
                         viewport={{ once: true }}
-                        className='text-center mb-20'>
-                        <h2 className='text-4xl md:text-6xl font-bold mb-6'>
-                            Simple{' '}
-                            <span className='bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent'>
-                                pricing
-                            </span>
-                        </h2>
-                        <p className='text-xl text-gray-400 max-w-3xl mx-auto'>
-                            Choose the plan that fits your needs. Start free and scale as you grow.
+                        className='text-center mb-16'>
+                        <h2 className='text-4xl md:text-6xl font-bold mb-4 text-white'>Pricing</h2>
+                        <p className='text-base md:text-lg text-gray-400 max-w-3xl mx-auto'>
+                            Start free. Upgrade only when you need more.
                         </p>
                     </motion.div>
 
-                    <div className='grid md:grid-cols-3 gap-8 max-w-5xl mx-auto'>
+                    <div className='grid md:grid-cols-3 gap-6 md:gap-8 max-w-5xl mx-auto'>
                         {/* Free Tier */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5 }}
                             viewport={{ once: true }}
-                            className='bg-gray-900/50 border border-gray-800 rounded-lg p-8 relative'>
+                            className='bg-gray-950/60 border border-gray-800 rounded-xl p-7 relative h-full'>
                             <h3 className='text-2xl font-bold mb-2'>Free</h3>
                             <div className='mb-6'>
                                 <span className='text-4xl font-bold'>$0</span>
@@ -824,17 +981,17 @@ export default function Page() {
                                 </li>
                             </ul>
                             <Button
-                                className='w-full bg-white text-black hover:bg-gray-200'
+                                className='w-full bg-transparent border border-gray-700 text-white hover:bg-white/5'
                                 onClick={() => router.push('/sign-up')}>
                                 Get Started Free
                             </Button>
                         </motion.div>
 
                         {/* Pro Tier */}
-                        <div className='relative'>
-                            <div className='absolute -top-4 left-1/2 transform -translate-x-1/2 z-20'>
-                                <span className='bg-gradient-to-r from-pink-500 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-semibold'>
-                                    Most Popular
+                        <div className='relative h-full'>
+                            <div className='absolute -top-3 left-1/2 transform -translate-x-1/2 z-20'>
+                                <span className='px-3 py-1 rounded-full text-[11px] font-medium border border-transparent bg-white text-black'>
+                                    Recommended
                                 </span>
                             </div>
                             <motion.div
@@ -842,10 +999,15 @@ export default function Page() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.5, delay: 0.1 }}
                                 viewport={{ once: true }}
-                                className='bg-gray-900/50 rounded-lg p-8 pt-12 relative overflow-hidden'>
-                                <ShineBorder
-                                    shineColor={['#ec4899', '#7c3aed', '#3b82f6']}
-                                    className='absolute inset-0'
+                                className='bg-gray-950/80 rounded-xl p-7 pt-12 relative overflow-hidden border border-white/15 hover:border-white/25 ring-1 ring-white/10 shadow-xl shadow-black/40 transition-all md:-translate-y-1 md:scale-[1.01] hover:md:scale-[1.02] h-full'>
+                                {/* Subtle radial highlight behind content */}
+                                <div
+                                    aria-hidden
+                                    className='pointer-events-none absolute inset-0 -z-0'
+                                    style={{
+                                        backgroundImage:
+                                            'radial-gradient(ellipse at 50% -10%, rgba(255,255,255,0.08), transparent 55%)',
+                                    }}
                                 />
                                 <div className='relative z-10'>
                                     <h3 className='text-2xl font-bold mb-2'>Pro</h3>
@@ -862,14 +1024,14 @@ export default function Page() {
                                         <div className='relative'>
                                             <button
                                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                                className='w-full bg-gray-800 border border-gray-700 rounded-md px-4 py-2 flex items-center justify-between hover:bg-gray-750 transition-colors cursor-pointer'>
+                                                className='w-full bg-gray-900/60 border border-gray-700 rounded-md px-4 py-2 flex items-center justify-between hover:bg-gray-800 transition-colors cursor-pointer'>
                                                 <span>{selectedPricing?.requests}</span>
                                                 <ChevronDown
                                                     className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
                                                 />
                                             </button>
                                             {isDropdownOpen && (
-                                                <div className='absolute top-full mt-1 w-full bg-gray-800 border border-gray-700 rounded-md shadow-lg z-10'>
+                                                <div className='absolute top-full mt-1 w-full bg-gray-900 border border-gray-700 rounded-md shadow-lg z-10'>
                                                     {pricingOptions.map(option => (
                                                         <button
                                                             key={option.requests}
@@ -877,7 +1039,7 @@ export default function Page() {
                                                                 setSelectedPricing(option);
                                                                 setIsDropdownOpen(false);
                                                             }}
-                                                            className='w-full px-4 py-2 text-left hover:bg-gray-700 transition-colors first:rounded-t-md last:rounded-b-md cursor-pointer'>
+                                                            className='w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors first:rounded-t-md last:rounded-b-md cursor-pointer'>
                                                             {option.requests}
                                                         </button>
                                                     ))}
@@ -928,7 +1090,7 @@ export default function Page() {
                                         </li>
                                     </ul>
                                     <Button
-                                        className='w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white'
+                                        className='w-full bg-white text-black hover:bg-gray-200'
                                         onClick={() => router.push('/sign-up')}>
                                         Upgrade to Pro
                                     </Button>
@@ -942,7 +1104,7 @@ export default function Page() {
                             whileInView={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5, delay: 0.2 }}
                             viewport={{ once: true }}
-                            className='bg-gray-900/50 border border-gray-800 rounded-lg p-8 relative'>
+                            className='bg-gray-950/60 border border-gray-800 rounded-xl p-7 relative h-full'>
                             <h3 className='text-2xl font-bold mb-2'>Enterprise</h3>
                             <div className='mb-6'>
                                 <span className='text-4xl font-bold'>Custom $</span>
@@ -969,40 +1131,47 @@ export default function Page() {
             {/* CTA Section */}
             <section className='relative py-32 px-6 overflow-hidden'>
                 <Meteors number={25} />
-                <div className='max-w-4xl mx-auto text-center relative z-10'>
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8 }}
-                        viewport={{ once: true }}
-                        className='space-y-8'>
-                        <h2 className='text-4xl md:text-6xl font-bold'>
-                            Translate your{' '}
-                            <span className='bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent'>
-                                app today
-                            </span>
-                        </h2>
-                        <p className='text-xl text-gray-400 max-w-2xl mx-auto'>
-                            Get started with Unlingo and bring your application to a global audience with powerful
-                            translation management tools.
-                        </p>
-                        <div className='flex flex-col sm:flex-row gap-4 justify-center items-center'>
-                            <Link href='/sign-up'>
-                                <Button
-                                    size='lg'
-                                    className='bg-white text-black hover:bg-gray-200 font-semibold text-lg group'>
-                                    Start Now
-                                    <ArrowRight className='ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform' />
-                                </Button>
-                            </Link>
-                            <Link href='mailto:support@unlingo.com'>
-                                <Button variant='ghost' size='lg' className='text-gray-400 hover:text-white text-lg'>
-                                    <Calendar className='mr-2 h-5 w-5' />
-                                    Contact Us
-                                </Button>
-                            </Link>
+                <div className='max-w-4xl mx-auto relative z-10'>
+                    <MagicCard
+                        gradientSize={280}
+                        gradientFrom='#2b3648'
+                        gradientTo='#0c1320'
+                        gradientColor='#0a2340'
+                        gradientOpacity={0.55}
+                        className='rounded-2xl border border-gray-800 hover:border-gray-700'>
+                        <div className='px-6 py-10 sm:px-10'>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.8 }}
+                                viewport={{ once: true }}
+                                className='space-y-6 text-center'>
+                                <h2 className='text-3xl md:text-5xl font-bold text-white'>Translate your app today</h2>
+                                <p className='text-base md:text-lg text-gray-400 max-w-2xl mx-auto'>
+                                    Launch globally with fast, reliable localization.
+                                </p>
+                                <div className='flex flex-col sm:flex-row gap-3 justify-center items-center'>
+                                    <Link href='/sign-up'>
+                                        <Button
+                                            size='lg'
+                                            className='bg-white text-black hover:bg-gray-200 font-semibold group'>
+                                            Start Now
+                                            <ArrowRight className='ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform' />
+                                        </Button>
+                                    </Link>
+                                    <Link href='mailto:support@unlingo.com'>
+                                        <Button
+                                            variant='outline'
+                                            size='lg'
+                                            className='border border-white/20 text-white hover:border-white/40 hover:bg-white/5'>
+                                            <Calendar className='mr-2 h-5 w-5' />
+                                            Contact Us
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </motion.div>
                         </div>
-                    </motion.div>
+                    </MagicCard>
                 </div>
             </section>
 
