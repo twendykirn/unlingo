@@ -99,7 +99,7 @@ ${JSON.stringify(args.primaryValue, null, 2)}
 Target language: ${args.targetLanguage}`;
 
             const result = await ai.models.generateContent({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash-lite',
                 contents: prompt,
             });
             const translatedText = result.text;
