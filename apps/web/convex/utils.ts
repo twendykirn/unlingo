@@ -193,7 +193,7 @@ export function applyStructuralOperations(existingContent: any, operations: any[
         if (operation.type === 'add') {
             // For add operations, use the primary language value
             const pathParts = parsePath(operation.path);
-            setValueAtPath(result, pathParts, operation.value);
+            setValueAtPath(result, pathParts, operation.newValue);
         } else if (operation.type === 'delete') {
             // For delete operations, remove from existing content
             const pathParts = parsePath(operation.path);
@@ -205,10 +205,10 @@ export function applyStructuralOperations(existingContent: any, operations: any[
             const pathParts = parsePath(operation.path);
             // Only apply if it's a structural change (type change)
             const oldType = Array.isArray(operation.oldValue) ? 'array' : typeof operation.oldValue;
-            const newType = Array.isArray(operation.value) ? 'array' : typeof operation.value;
+            const newType = Array.isArray(operation.newValue) ? 'array' : typeof operation.newValue;
 
             if (oldType !== newType) {
-                setValueAtPath(result, pathParts, operation.value);
+                setValueAtPath(result, pathParts, operation.newValue);
             }
             // For same-type modifications, preserve the existing value
         }
