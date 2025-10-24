@@ -71,6 +71,7 @@ export const ingestEvent = internalAction({
     args: {
         workspaceId: v.string(),
         projectId: v.string(),
+        projectName: v.optional(v.string()),
         elementId: v.string(),
         type: v.string(),
         deniedReason: v.optional(v.string()),
@@ -78,6 +79,7 @@ export const ingestEvent = internalAction({
         apiCallName: v.optional(v.string()),
         languageCode: v.optional(v.string()),
         namespaceId: v.optional(v.string()),
+        namespaceName: v.optional(v.string()),
         responseSize: v.optional(v.number()),
     },
     handler: async (_, args) => {
@@ -85,6 +87,7 @@ export const ingestEvent = internalAction({
             const event: ApiRequestEventType = {
                 workspaceId: args.workspaceId,
                 projectId: args.projectId,
+                projectName: args.projectName,
                 elementId: args.elementId,
                 type: args.type,
                 time: Math.trunc((args.time ?? Date.now()) / 1000), // Convert to seconds
@@ -92,6 +95,7 @@ export const ingestEvent = internalAction({
                 apiCallName: args.apiCallName,
                 languageCode: args.languageCode,
                 namespaceId: args.namespaceId,
+                namespaceName: args.namespaceName,
                 responseSize: args.responseSize,
             };
 

@@ -3,6 +3,7 @@ import { z } from 'zod';
 // Schema definitions - kept compatible with existing ClickHouse schema
 export const ApiRequestEvent = z.object({
     projectId: z.string(),
+    projectName: z.string().optional(),
     elementId: z.string(),
     type: z.string(),
     workspaceId: z.string(),
@@ -11,6 +12,7 @@ export const ApiRequestEvent = z.object({
     apiCallName: z.string().optional(),
     languageCode: z.string().optional(),
     namespaceId: z.string().optional(),
+    namespaceName: z.string().optional(),
     responseSize: z.number().optional(),
 });
 
@@ -76,6 +78,7 @@ export async function ingestApiRequest(event: ApiRequestEventType): Promise<void
             properties: {
                 $process_person_profile: false,
                 projectId: event.projectId,
+                projectName: event.projectName || null,
                 elementId: event.elementId,
                 type: event.type,
                 workspaceId: event.workspaceId,
@@ -84,6 +87,7 @@ export async function ingestApiRequest(event: ApiRequestEventType): Promise<void
                 apiCallName: event.apiCallName || null,
                 languageCode: event.languageCode || null,
                 namespaceId: event.namespaceId || null,
+                namespaceName: event.namespaceName || null,
                 responseSize: event.responseSize || null,
                 success: !event.deniedReason,
             },
@@ -140,16 +144,16 @@ export async function getTopNamespaces(workspaceId: string, months: number = 6, 
 
         const query = `
       SELECT 
-        properties.namespaceId as namespace,
+        properties.namespaceName as namespace,
         countIf(properties.success = true) as success
       FROM events 
       WHERE 
         event = 'api_request'
         AND properties.workspaceId = '${workspaceId}'
         AND timestamp >= toDateTime(${cutoffTimestamp})
-        AND properties.namespaceId IS NOT NULL
-        AND properties.namespaceId != ''
-      GROUP BY properties.namespaceId
+        AND properties.namespaceName IS NOT NULL
+        AND properties.namespaceName != ''
+      GROUP BY properties.namespaceName
       ORDER BY success DESC
       LIMIT ${limit}
     `;

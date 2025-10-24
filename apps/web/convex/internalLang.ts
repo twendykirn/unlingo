@@ -41,6 +41,8 @@ export const languageChangesContext = internalQuery({
         return {
             namespaceVersion,
             language,
+            namespace,
+            project,
         };
     },
 });
@@ -76,7 +78,11 @@ export const schemaContext = internalQuery({
             throw new Error('Project not found or access denied');
         }
 
-        return namespaceVersion.jsonSchemaFileId;
+        return {
+            jsonSchemaFileId: namespaceVersion.jsonSchemaFileId,
+            namespace,
+            project,
+        };
     },
 });
 

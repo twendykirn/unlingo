@@ -1,8 +1,6 @@
 import { paginationOptsValidator } from 'convex/server';
-import { action, mutation, query } from './_generated/server';
+import { internalMutation, query } from './_generated/server';
 import { v } from 'convex/values';
-import { internal } from './_generated/api';
-import { Id } from './_generated/dataModel';
 
 export const getNamespaceVersions = query({
     args: {
@@ -74,79 +72,7 @@ export const getNamespaceVersion = query({
     },
 });
 
-export const createNamespaceVersion = action({
-    args: {
-        namespaceId: v.id('namespaces'),
-        workspaceId: v.id('workspaces'),
-        version: v.string(),
-        copyFromVersionId: v.optional(v.id('namespaceVersions')),
-    },
-    handler: async (ctx, args): Promise<Id<'namespaceVersions'>> => {
-        const { versionId, sourceLanguages } = await ctx.runMutation(
-            internal.internalNamespaces.createNamespaceVersionContext,
-            {
-                namespaceId: args.namespaceId,
-                workspaceId: args.workspaceId,
-                version: args.version,
-                copyFromVersionId: args.copyFromVersionId,
-            }
-        );
-
-        if (args.copyFromVersionId && sourceLanguages) {
-            try {
-                for (const sourceLang of sourceLanguages) {
-                    let newFileId: string | undefined = undefined;
-                    let newFileSize: number | undefined = undefined;
-
-                    if (sourceLang.fileId) {
-                        try {
-                            const sourceFileUrl = await ctx.storage.getUrl(sourceLang.fileId);
-                            if (!sourceFileUrl) {
-                                throw new Error('Failed to get source file URL');
-                            }
-                            const sourceResponse = await fetch(sourceFileUrl);
-                            const sourceContent = await sourceResponse.text();
-
-                            const newBlob = new Blob([sourceContent], { type: 'application/json' });
-                            const uploadUrl = await ctx.storage.generateUploadUrl();
-                            const uploadResponse = await fetch(uploadUrl, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: newBlob,
-                            });
-
-                            const { storageId } = await uploadResponse.json();
-                            newFileId = storageId;
-                            newFileSize = newBlob.size;
-                        } catch (error) {
-                            throw new Error(`Failed to copy file for language: ${sourceLang.languageCode}. ${error}`);
-                        }
-                    }
-
-                    await ctx.runMutation(internal.internalNamespaces.internalInsertLanguage, {
-                        namespaceVersionId: versionId,
-                        languageCode: sourceLang.languageCode,
-                        fileId: newFileId ? (newFileId as Id<'_storage'>) : undefined,
-                        fileSize: newFileSize,
-                    });
-                }
-
-                if (sourceLanguages.length > 0) {
-                    await ctx.runMutation(internal.internalNamespaces.internalUpdateVersionUsage, {
-                        versionId,
-                        languageCount: sourceLanguages.length,
-                    });
-                }
-            } catch (error) {
-                throw new Error(`Failed to copy file for language: ${error}`);
-            }
-        }
-
-        return versionId;
-    },
-});
-
-export const updateNamespaceVersion = mutation({
+export const updateNamespaceVersion = internalMutation({
     args: {
         versionId: v.id('namespaceVersions'),
         workspaceId: v.id('workspaces'),
@@ -197,7 +123,7 @@ export const updateNamespaceVersion = mutation({
     },
 });
 
-export const deleteNamespaceVersion = mutation({
+export const deleteNamespaceVersion = internalMutation({
     args: {
         versionId: v.id('namespaceVersions'),
         workspaceId: v.id('workspaces'),

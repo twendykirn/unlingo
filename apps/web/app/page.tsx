@@ -99,15 +99,13 @@ const getPlanLimits = (requests: string) => {
         return {
             projects: 3,
             namespacesPerProject: 12,
-            versionsPerNamespace: 8,
-            languagesPerVersion: 12,
+            languagesPerVersion: 25,
         };
     } else {
         return {
             projects: 30,
             namespacesPerProject: 40,
-            versionsPerNamespace: 20,
-            languagesPerVersion: 35,
+            languagesPerVersion: 90,
         };
     }
 };
@@ -965,11 +963,7 @@ export default function Page() {
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>5 languages per version</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>1 version per namespace</span>
+                                    <span>6 languages per version</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
@@ -1067,13 +1061,6 @@ export default function Page() {
                                             <span>
                                                 {getPlanLimits(selectedPricing?.requests || '50k').languagesPerVersion}{' '}
                                                 languages per version
-                                            </span>
-                                        </li>
-                                        <li className='flex items-center'>
-                                            <Check className='h-5 w-5 text-green-400 mr-3' />
-                                            <span>
-                                                {getPlanLimits(selectedPricing?.requests || '50k').versionsPerNamespace}{' '}
-                                                versions per namespace
                                             </span>
                                         </li>
                                         <li className='flex items-center'>
