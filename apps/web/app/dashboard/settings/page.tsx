@@ -323,7 +323,7 @@ export default function WorkspaceSettings() {
                                     ) : null}
                                 </div>
 
-                                <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                                     <div className='bg-black/10 rounded-lg p-4 border border-gray-700/20'>
                                         <div className='text-xs font-medium text-gray-400 uppercase tracking-wide mb-1'>
                                             Namespaces per Project
@@ -339,15 +339,6 @@ export default function WorkspaceSettings() {
                                         </div>
                                         <div className='text-lg font-semibold text-white'>
                                             {workspace.limits.languagesPerVersion}
-                                        </div>
-                                    </div>
-
-                                    <div className='bg-black/10 rounded-lg p-4 border border-gray-700/20'>
-                                        <div className='text-xs font-medium text-gray-400 uppercase tracking-wide mb-1'>
-                                            Versions per Namespace
-                                        </div>
-                                        <div className='text-lg font-semibold text-white'>
-                                            {workspace.limits.versionsPerNamespace}
                                         </div>
                                     </div>
                                 </div>

@@ -238,6 +238,8 @@ export const getLanguageContent = action({
         const result: {
             namespaceVersion: Doc<'namespaceVersions'>;
             language: Doc<'languages'>;
+            namespace: Doc<'namespaces'>;
+            project: Doc<'projects'>;
         } = await ctx.runQuery(internal.internalLang.languageChangesContext, {
             workspaceId: args.workspaceId,
             languageId: args.languageId,
@@ -259,8 +261,11 @@ export const getLanguageContent = action({
 
             // Track analytics for language content fetch
             await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
-                workspaceId: args.workspaceId as unknown as string,
-                projectId: result.language.namespaceVersionId as unknown as string,
+                workspaceId: args.workspaceId as string,
+                projectId: result.project._id as string,
+                projectName: result.project.name,
+                namespaceId: result.namespace._id as string,
+                namespaceName: result.namespace.name,
                 elementId: `lang:${result.language.languageCode}`,
                 type: 'language_content',
                 apiCallName: 'getLanguageContent',
@@ -275,8 +280,11 @@ export const getLanguageContent = action({
 
             // Track failed fetch
             await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
-                workspaceId: args.workspaceId as unknown as string,
-                projectId: result.language.namespaceVersionId as unknown as string,
+                workspaceId: args.workspaceId as string,
+                projectId: result.project._id as string,
+                projectName: result.project.name,
+                namespaceId: result.namespace._id as string,
+                namespaceName: result.namespace.name,
                 elementId: `lang:${result.language.languageCode}`,
                 type: 'language_content',
                 apiCallName: 'getLanguageContent',
@@ -301,7 +309,7 @@ export const getJsonSchema = action({
             throw new Error('Not authenticated');
         }
 
-        const jsonSchemaFileId = await ctx.runQuery(internal.internalLang.schemaContext, {
+        const { jsonSchemaFileId, namespace, project } = await ctx.runQuery(internal.internalLang.schemaContext, {
             workspaceId: args.workspaceId,
             namespaceVersionId: args.namespaceVersionId,
         });
@@ -322,8 +330,11 @@ export const getJsonSchema = action({
 
             // Track analytics for schema fetch
             await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
-                workspaceId: args.workspaceId as unknown as string,
-                projectId: args.namespaceVersionId as unknown as string,
+                workspaceId: args.workspaceId as string,
+                projectId: project._id as string,
+                projectName: project.name,
+                namespaceId: namespace._id as string,
+                namespaceName: namespace.name,
                 elementId: `schema:${args.namespaceVersionId}`,
                 type: 'schema_content',
                 apiCallName: 'getJsonSchema',
@@ -337,8 +348,11 @@ export const getJsonSchema = action({
 
             // Track failed fetch
             await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
-                workspaceId: args.workspaceId as unknown as string,
-                projectId: args.namespaceVersionId as unknown as string,
+                workspaceId: args.workspaceId as string,
+                projectId: project._id as string,
+                projectName: project.name,
+                namespaceId: namespace._id as string,
+                namespaceName: namespace.name,
                 elementId: `schema:${args.namespaceVersionId}`,
                 type: 'schema_content',
                 apiCallName: 'getJsonSchema',
