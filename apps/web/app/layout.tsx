@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
 import { dark } from '@clerk/themes';
 import { ClerkProvider } from '@clerk/nextjs';
-import { Databuddy } from '@databuddy/sdk/react';
+import { OpenPanelComponent } from '@openpanel/nextjs';
 
 const geist = Geist({ subsets: ['latin'] });
 
@@ -76,9 +76,6 @@ export const metadata: Metadata = {
     },
 };
 
-const isDevelopment = process.env.NODE_ENV === 'development';
-const isProduction = process.env.NODE_ENV === 'production';
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang='en' className='dark'>
@@ -89,16 +86,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     }}>
                     {children}
                 </ClerkProvider>
-                <Databuddy
-                    clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID!}
-                    disabled={isDevelopment} // No tracking in development
-                    // Performance optimizations for production
-                    enableBatching={isProduction}
-                    samplingRate={isProduction ? 1.0 : 0.1}
+                <OpenPanelComponent
+                    clientId={process.env.NEXT_PUBLIC_OPEN_PANEL_CLIENT_ID!}
+                    trackScreenViews={true}
+                    trackAttributes={true}
                     trackOutgoingLinks={true}
-                    trackInteractions={true}
-                    trackEngagement={true}
-                    trackScrollDepth={true}
+                    disabled={process.env.NODE_ENV === 'development'} // No tracking in development
                 />
             </body>
         </html>
