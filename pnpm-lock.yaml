@@ -35,15 +35,15 @@ importers:
       '@convex-dev/resend':
         specifier: ^0.1.10
         version: 0.1.10(convex-helpers@0.1.104)(convex@1.25.4)(react@19.1.0)
-      '@databuddy/sdk':
-        specifier: ^2.0.0
-        version: 2.0.0(react@19.1.0)
       '@google/genai':
         specifier: ^1.14.0
         version: 1.14.0
       '@legendapp/state':
         specifier: 3.0.0-beta.31
         version: 3.0.0-beta.31(react@19.1.0)
+      '@openpanel/nextjs':
+        specifier: ^1.0.8
+        version: 1.0.8(next@15.4.2)(react-dom@19.1.0)(react@19.1.0)
       '@polar-sh/sdk':
         specifier: ^0.34.11
         version: 0.34.11
@@ -478,20 +478,6 @@ packages:
     dependencies:
       convex: 1.25.4(react@19.1.0)
       convex-helpers: 0.1.104(convex@1.25.4)(react@19.1.0)(typescript@5.8.2)(zod@4.0.17)
-    dev: false
-
-  /@databuddy/sdk@2.0.0(react@19.1.0):
-    resolution: {integrity: sha512-jwNeLwg03jN3380W2eyhegjO/eqqVcVXekO01n/d9dzalnaCm6DCEG3lGd8PMBf8ztu/dv1QTivkd4W6rO+tNQ==}
-    peerDependencies:
-      react: '>=18'
-      vue: '>=3'
-    peerDependenciesMeta:
-      react:
-        optional: true
-      vue:
-        optional: true
-    dependencies:
-      react: 19.1.0
     dev: false
 
   /@dimforge/rapier3d-compat@0.12.0:
@@ -1267,6 +1253,29 @@ packages:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
     dev: true
+
+  /@openpanel/nextjs@1.0.8(next@15.4.2)(react-dom@19.1.0)(react@19.1.0):
+    resolution: {integrity: sha512-1y5T6ARQFysg1DjdLrepP/En7XPUQd1yShvSgC1bkW6k9cwW1v7fbRSCUHmRzhhCt0rs1FGUOuFFwpEF7GRvdA==}
+    peerDependencies:
+      next: ^12.0.0 || ^13.0.0 || ^14.0.0 || ^15.0.0
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    dependencies:
+      '@openpanel/web': 1.0.1
+      next: 15.4.2(react-dom@19.1.0)(react@19.1.0)
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
+    dev: false
+
+  /@openpanel/sdk@1.0.0:
+    resolution: {integrity: sha512-FNmmfjdXoC/VHEjA+WkrQ4lyM5lxEmV7xDd57uj4E+lIS0sU3DLG2mV/dpS8AscnZbUvuMn3kPhiLCqYzuv/gg==}
+    dev: false
+
+  /@openpanel/web@1.0.1:
+    resolution: {integrity: sha512-cVZ7Kr9SicczJ/RDIfEtZs8+1iGDzwkabVA/j3NqSl8VSucsC8m1+LVbjmCDzCJNnK4yVn6tEcc9PJRi2rtllw==}
+    dependencies:
+      '@openpanel/sdk': 1.0.0
+    dev: false
 
   /@polar-sh/checkout@0.1.11(@stripe/react-stripe-js@3.9.0)(@stripe/stripe-js@7.8.0)(@types/react-dom@19.1.1)(@types/react@19.1.0)(react-dom@19.1.0)(react@19.1.0)(zod@4.0.17):
     resolution: {integrity: sha512-cRhXB5vw/cYxTKmHlmMU2Z3h5QfNEitftE/s/i/g88eyeJJ06YffmftwjdwT3jJJvMu8YZX7dHRZFljrEMi8gA==}
