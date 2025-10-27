@@ -280,7 +280,7 @@ export const getLanguageContent = action({
 
             // Track failed fetch
             await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
-                workspaceId: args.workspaceId as unknown as string,
+                workspaceId: args.workspaceId as string,
                 projectId: result.project._id as string,
                 projectName: result.project.name,
                 namespaceId: result.namespace._id as string,

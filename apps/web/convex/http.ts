@@ -114,6 +114,20 @@ http.route({
 });
 
 http.route({
+    path: '/v1/health',
+    method: 'GET',
+    handler: httpAction(async (_, request) => {
+        if (request.headers.get('x-api-key') !== process.env.OPEN_STATUS_API_KEY!) {
+            return new Response(JSON.stringify({ error: 'API key required' }), {
+                status: 401,
+            });
+        }
+
+        return new Response(null, { status: 200 });
+    }),
+});
+
+http.route({
     path: '/v1/translations',
     method: 'GET',
     handler: httpAction(async (ctx, request) => {

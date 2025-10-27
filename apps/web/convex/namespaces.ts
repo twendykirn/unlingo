@@ -124,13 +124,15 @@ export const createNamespace = mutation({
             },
         });
 
+        const now = Date.now();
+
         await ctx.db.insert('namespaceVersions', {
             namespaceId: namespaceId,
             version: 'development',
             usage: {
                 languages: 0,
             },
-            updatedAt: Date.now(),
+            updatedAt: now,
         });
 
         await ctx.db.insert('namespaceVersions', {
@@ -139,7 +141,7 @@ export const createNamespace = mutation({
             usage: {
                 languages: 0,
             },
-            updatedAt: Date.now(),
+            updatedAt: now,
         });
 
         await ctx.db.patch(args.projectId, {

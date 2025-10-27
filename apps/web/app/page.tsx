@@ -1173,6 +1173,12 @@ export default function Page() {
                                     className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Documentation
                                 </Link>
+                                <Link
+                                    href='https://unlingo.openstatus.dev'
+                                    target='_blank'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                    Status
+                                </Link>
                             </div>
                         </div>
 
