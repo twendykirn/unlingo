@@ -153,13 +153,15 @@ http.route({
             }
 
             const ingestBase = {
-                workspaceId: apiKeyInfo.workspaceId as unknown as string,
-                projectId: apiKeyInfo.projectId as unknown as string,
+                workspaceId: apiKeyInfo.workspaceId as string,
+                projectId: apiKeyInfo.projectId as string,
+                projectName: apiKeyInfo.project?.name,
                 elementId: `ns:${namespace}`,
                 type: 'translations',
                 time: Date.now(),
                 apiCallName: 'api/v1/translations',
                 languageCode: lang,
+                namespaceName: namespace,
             };
 
             const limitCheck = await ctx.runMutation(internal.internalWorkspaces.checkAndUpdateRequestUsage, {

@@ -1,48 +1,105 @@
 "use client"
 
-import * as React from "react"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
+import type {
+  DialogTriggerProps,
+  PopoverProps as PopoverPrimitiveProps,
+} from "react-aria-components"
+import {
+  DialogTrigger as DialogTriggerPrimitive,
+  OverlayArrow,
+  Popover as PopoverPrimitive,
+} from "react-aria-components"
+import { composeTailwindRenderProps } from "@/lib/primitive"
+import {
+  DialogBody,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./dialog"
 
-import { cn } from "@/lib/utils"
-
-function Popover({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Root>) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />
+type PopoverProps = DialogTriggerProps
+const Popover = (props: PopoverProps) => {
+  return <DialogTriggerPrimitive {...props} />
 }
 
-function PopoverTrigger({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
-  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
+const PopoverTitle = DialogTitle
+const PopoverHeader = DialogHeader
+const PopoverBody = DialogBody
+const PopoverFooter = DialogFooter
+
+interface PopoverContentProps extends PopoverPrimitiveProps {
+  showArrow?: boolean
+  ref?: React.Ref<HTMLDivElement>
 }
 
-function PopoverContent({
+const PopoverContent = ({
+  children,
+  showArrow = false,
   className,
-  align = "center",
-  sideOffset = 4,
+  ref,
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+}: PopoverContentProps) => {
+  const offset = props.offset ?? (showArrow ? 12 : 8)
   return (
-    <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Content
-        data-slot="popover-content"
-        align={align}
-        sideOffset={sideOffset}
-        className={cn(
-          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-md border p-4 shadow-md outline-hidden",
-          className
-        )}
-        {...props}
-      />
-    </PopoverPrimitive.Portal>
+    <PopoverPrimitive
+      ref={ref}
+      offset={offset}
+      className={composeTailwindRenderProps(className, [
+        "group/popover min-w-(--trigger-width) max-w-xs origin-(--trigger-anchor-point) rounded-xl border bg-overlay text-overlay-fg shadow-xs outline-hidden transition-transform [--gutter:--spacing(6)] sm:text-sm dark:backdrop-saturate-200 **:[[role=dialog]]:[--gutter:--spacing(4)]",
+        "entering:fade-in entering:animate-in",
+        "exiting:fade-out exiting:animate-out",
+        "placement-left:entering:slide-in-from-right-1 placement-right:entering:slide-in-from-left-1 placement-top:entering:slide-in-from-bottom-1 placement-bottom:entering:slide-in-from-top-1",
+        "placement-left:exiting:slide-out-to-right-1 placement-right:exiting:slide-out-to-left-1 placement-top:exiting:slide-out-to-bottom-1 placement-bottom:exiting:slide-out-to-top-1",
+        "forced-colors:bg-[Canvas]",
+      ])}
+      {...props}
+    >
+      {(values) => (
+        <>
+          {showArrow && (
+            <OverlayArrow className="group">
+              <svg
+                width={12}
+                height={12}
+                viewBox="0 0 12 12"
+                className="group-placement-left:-rotate-90 block fill-overlay stroke-border group-placement-bottom:rotate-180 group-placement-right:rotate-90 forced-colors:fill-[Canvas] forced-colors:stroke-[ButtonBorder]"
+              >
+                <path d="M0 0 L6 6 L12 0" />
+              </svg>
+            </OverlayArrow>
+          )}
+          {typeof children === "function" ? children(values) : children}
+        </>
+      )}
+    </PopoverPrimitive>
   )
 }
 
-function PopoverAnchor({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Anchor>) {
-  return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />
-}
+const PopoverTrigger = DialogTrigger
+const PopoverClose = DialogClose
+const PopoverDescription = DialogDescription
 
-export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor }
+Popover.Trigger = PopoverTrigger
+Popover.Close = PopoverClose
+Popover.Description = PopoverDescription
+Popover.Content = PopoverContent
+Popover.Body = PopoverBody
+Popover.Footer = PopoverFooter
+Popover.Header = PopoverHeader
+Popover.Title = PopoverTitle
+
+export type { PopoverProps, PopoverContentProps }
+export {
+  Popover,
+  PopoverTrigger,
+  PopoverClose,
+  PopoverDescription,
+  PopoverContent,
+  PopoverBody,
+  PopoverFooter,
+  PopoverHeader,
+  PopoverTitle,
+}

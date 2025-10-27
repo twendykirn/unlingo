@@ -7,7 +7,6 @@ import {
     Database,
     Palette,
     Check,
-    ChevronDown,
     GitBranch,
     Calendar,
     Copy,
@@ -31,9 +30,14 @@ import Link from 'next/link';
 import { CodeEditor } from '@/components/code-editor';
 import GithubSpaceLogo from '@/components/github-space-logo';
 import HeroVideoDialog from '@/components/magicui/hero-video-dialog';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import GithubStarButton from '@/components/github-star-button';
+import { ModalBody, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@/components/ui/modal';
+import { Form } from '@/components/ui/form';
+import type { Key } from 'react-aria-components';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { IconArrowRight } from '@intentui/icons';
+import { InputOTP } from '@/components/ui/input-otp';
 
 const features = [
     {
@@ -84,31 +88,52 @@ const features = [
 ];
 
 const pricingOptions = [
-    { requests: '50k', price: 12 },
-    { requests: '250k', price: 25 },
-    { requests: '500k', price: 50 },
-    { requests: '1M', price: 75 },
-    { requests: '2M', price: 100 },
-    { requests: '10M', price: 250 },
-    { requests: '50M', price: 500 },
-    { requests: '100M', price: 1000 },
+    { name: '50k', id: '12' },
+    { name: '250k', id: '25' },
+    { name: '500k', id: '50' },
+    { name: '1M', id: '75' },
+    { name: '2M', id: '100' },
+    { name: '10M', id: '250' },
+    { name: '50M', id: '500' },
+    { name: '100M', id: '1000' },
 ];
 
 const getPlanLimits = (requests: string) => {
-    if (requests === '50k') {
+    if (requests === '12') {
         return {
             projects: 3,
             namespacesPerProject: 12,
-            versionsPerNamespace: 8,
-            languagesPerVersion: 12,
+            languagesPerVersion: 25,
         };
     } else {
         return {
             projects: 30,
             namespacesPerProject: 40,
-            versionsPerNamespace: 20,
-            languagesPerVersion: 35,
+            languagesPerVersion: 90,
         };
+    }
+};
+
+const getRequestLimits = (requests: string) => {
+    switch (requests) {
+        case '12':
+            return '50k';
+        case '25':
+            return '250k';
+        case '50':
+            return '500k';
+        case '75':
+            return '1M';
+        case '100':
+            return '2M';
+        case '250':
+            return '10M';
+        case '500':
+            return '50M';
+        case '1000':
+            return '100M';
+        default:
+            return '50k';
     }
 };
 
@@ -217,8 +242,7 @@ console.log(translations.welcome);`;
 };
 
 export default function Page() {
-    const [selectedPricing, setSelectedPricing] = useState(pricingOptions[0]);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [selectedPricing, setSelectedPricing] = useState<Key>('12');
     const [activeLibrary, setActiveLibrary] = useState('i18next');
     const [isCopied, setIsCopied] = useState(false);
     const [email, setEmail] = useState('');
@@ -227,7 +251,7 @@ export default function Page() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isVerifyOpen, setIsVerifyOpen] = useState(false);
     const [code, setCode] = useState('');
-    const [verifyError, setVerifyError] = useState<string | null>(null);
+    const [verifyError, setVerifyError] = useState<Record<string, string> | undefined>(undefined);
     const [isVerifying, setIsVerifying] = useState(false);
 
     const router = useRouter();
@@ -271,7 +295,7 @@ export default function Page() {
     const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!signUpLoaded) return;
-        setVerifyError(null);
+        setVerifyError(undefined);
 
         try {
             setIsVerifying(true);
@@ -280,11 +304,11 @@ export default function Page() {
                 await setActive({ session: res.createdSessionId });
                 router.push('/dashboard/new');
             } else {
-                setVerifyError('Verification incomplete. Please try again.');
+                setVerifyError({ code: 'Verification incomplete. Please try again.' });
             }
         } catch (err: any) {
             const message = err?.errors?.[0]?.message || 'Invalid code. Please try again.';
-            setVerifyError(message);
+            setVerifyError({ code: message });
         } finally {
             setIsVerifying(false);
         }
@@ -292,6 +316,7 @@ export default function Page() {
 
     const handleResend = async () => {
         if (!signUpLoaded) return;
+        setVerifyError(undefined);
         try {
             await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
         } catch (_) {
@@ -350,31 +375,16 @@ export default function Page() {
                             {isSignedIn ? (
                                 <>
                                     <SignOutButton>
-                                        <Button variant='ghost' className='text-gray-300 hover:text-white'>
-                                            Sign Out
-                                        </Button>
+                                        <Button intent='outline'>Sign Out</Button>
                                     </SignOutButton>
-                                    <Button
-                                        size='sm'
-                                        className='bg-white text-black hover:bg-gray-200'
-                                        onClick={() => router.push('/dashboard')}>
-                                        Dashboard
-                                    </Button>
+                                    <Button onClick={() => router.push('/dashboard')}>Dashboard</Button>
                                 </>
                             ) : (
                                 <>
-                                    <Button
-                                        variant='ghost'
-                                        className='text-gray-300 hover:text-white'
-                                        onClick={() => router.push('/sign-in')}>
+                                    <Button intent='outline' onClick={() => router.push('/sign-in')}>
                                         Sign in
                                     </Button>
-                                    <Button
-                                        size='sm'
-                                        className='bg-white text-black hover:bg-gray-200'
-                                        onClick={() => router.push('/sign-up')}>
-                                        Get Started
-                                    </Button>
+                                    <Button onClick={() => router.push('/sign-up')}>Get Started</Button>
                                 </>
                             )}
                         </div>
@@ -429,19 +439,9 @@ export default function Page() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.8, delay: 0.2 }}
                             className='flex flex-col sm:flex-row gap-2 items-center justify-center'>
-                            <Button
-                                size='sm'
-                                className='h-8 bg-white text-black hover:bg-gray-200'
-                                onClick={() => router.push('/dashboard')}>
-                                Go to Dashboard
-                            </Button>
+                            <Button onClick={() => router.push('/dashboard')}>Go to Dashboard</Button>
                             <Link href='https://docs.unlingo.com' target='_blank'>
-                                <Button
-                                    size='sm'
-                                    variant='outline'
-                                    className='h-8 border-white/20 hover:border-white/40 bg-black/30 hover:bg-white/10'>
-                                    Docs
-                                </Button>
+                                <Button intent='outline'>Docs</Button>
                             </Link>
                         </motion.div>
                     ) : (
@@ -464,13 +464,9 @@ export default function Page() {
 
                                 <div id='clerk-captcha' data-cl-theme='dark' data-cl-size='flexible' />
 
-                                <Button
-                                    type='submit'
-                                    disabled={isSubmitting}
-                                    size='sm'
-                                    className='h-8 w-full bg-white text-black hover:bg-gray-200 font-medium text-sm px-4'>
-                                    {isSubmitting ? 'Sending code…' : 'Start free'}
-                                    {!isSubmitting && <ArrowRight className='ml-2 h-3.5 w-3.5' />}
+                                <Button type='submit' className='w-full' isDisabled={isSubmitting}>
+                                    {isSubmitting ? 'Sending code…' : 'Create workspace'}
+                                    {!isSubmitting && <IconArrowRight />}
                                 </Button>
                             </form>
                             {emailError || generalError ? (
@@ -479,20 +475,10 @@ export default function Page() {
                             <div className='text-xs text-gray-500'>No credit card required</div>
                             <div className='flex gap-2 pt-1'>
                                 <Link href='/sign-in'>
-                                    <Button
-                                        size='sm'
-                                        variant='outline'
-                                        className='h-8 text-xs border-white/20 hover:border-white/40 bg-black/30 hover:bg-white/10'>
-                                        Already have an account
-                                    </Button>
+                                    <Button intent='plain'>Already have an account</Button>
                                 </Link>
                                 <Link href='https://docs.unlingo.com' target='_blank'>
-                                    <Button
-                                        size='sm'
-                                        variant='outline'
-                                        className='h-8 text-xs border-white/20 hover:border-white/40 bg-black/30 hover:bg-white/10'>
-                                        Docs
-                                    </Button>
+                                    <Button intent='plain'>Docs</Button>
                                 </Link>
                             </div>
                         </motion.div>
@@ -518,41 +504,32 @@ export default function Page() {
             </section>
 
             {/* Verify Email Dialog */}
-            <Dialog open={isVerifyOpen} onOpenChange={setIsVerifyOpen}>
-                <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-sm backdrop-blur-md'>
-                    <DialogHeader>
-                        <DialogTitle>Verify your email</DialogTitle>
-                        <DialogDescription className='text-gray-400'>
-                            We sent a 6-digit code to {email}.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleVerify} className='space-y-4'>
-                        <Input
-                            value={code}
-                            onChange={e => setCode(e.target.value)}
-                            placeholder='Enter verification code'
-                            inputMode='numeric'
-                            autoFocus
-                            className='h-9 bg-black/40 border-gray-800 placeholder:text-gray-500'
-                        />
-                        {verifyError && <div className='text-sm text-red-400'>{verifyError}</div>}
-                        <div className='flex items-center justify-between'>
-                            <button
-                                type='button'
-                                onClick={handleResend}
-                                className='text-sm text-gray-400 hover:text-white underline underline-offset-4'>
-                                Resend code
-                            </button>
-                            <Button
-                                type='submit'
-                                disabled={isVerifying}
-                                className='bg-white text-black hover:bg-gray-200'>
-                                {isVerifying ? 'Verifying…' : 'Verify'}
-                            </Button>
-                        </div>
-                    </form>
-                </DialogContent>
-            </Dialog>
+            <ModalContent isOpen={isVerifyOpen} onOpenChange={setIsVerifyOpen}>
+                <ModalHeader>
+                    <ModalTitle>Verify your email</ModalTitle>
+                    <ModalDescription>We sent a 6-digit code to {email}.</ModalDescription>
+                </ModalHeader>
+                <Form onSubmit={handleVerify} validationErrors={verifyError}>
+                    <ModalBody>
+                        <InputOTP maxLength={6} value={code} onChange={setCode} autoFocus className='max-w-full'>
+                            <InputOTP.Group>
+                                {[...Array(6)].map((_, index) => (
+                                    <InputOTP.Slot key={index} index={index} />
+                                ))}
+                            </InputOTP.Group>
+                        </InputOTP>
+                        {verifyError && <div className='text-sm text-red-400 mt-2'>{verifyError.code}</div>}
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button intent='outline' onClick={handleResend}>
+                            Resend code
+                        </Button>
+                        <Button type='submit' isDisabled={isVerifying}>
+                            {isVerifying ? 'Verifying…' : 'Verify'}
+                        </Button>
+                    </ModalFooter>
+                </Form>
+            </ModalContent>
 
             {/* Code Examples Section */}
             <section id='examples' className='relative py-32 px-6'>
@@ -751,9 +728,7 @@ export default function Page() {
                                 viewport={{ once: true }}
                                 className='flex gap-3 justify-center lg:justify-start'>
                                 <Link href='https://github.com/twendykirn/unlingo' target='_blank'>
-                                    <Button
-                                        size='lg'
-                                        className='bg-white text-black hover:bg-gray-200 font-semibold px-6 sm:px-7 py-3 sm:py-3.5 text-base group'>
+                                    <Button>
                                         <div className='flex items-center justify-center'>
                                             <svg className='mr-2 h-4 w-4' fill='currentColor' viewBox='0 0 24 24'>
                                                 <path
@@ -965,11 +940,7 @@ export default function Page() {
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>5 languages per version</span>
-                                </li>
-                                <li className='flex items-center'>
-                                    <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>1 version per namespace</span>
+                                    <span>6 languages per version</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
@@ -980,9 +951,7 @@ export default function Page() {
                                     <span>Community support</span>
                                 </li>
                             </ul>
-                            <Button
-                                className='w-full bg-transparent border border-gray-700 text-white hover:bg-white/5'
-                                onClick={() => router.push('/sign-up')}>
+                            <Button intent='outline' className='w-full' onClick={() => router.push('/sign-up')}>
                                 Get Started Free
                             </Button>
                         </motion.div>
@@ -1012,73 +981,60 @@ export default function Page() {
                                 <div className='relative z-10'>
                                     <h3 className='text-2xl font-bold mb-2'>Pro</h3>
                                     <div className='mb-6'>
-                                        <span className='text-4xl font-bold'>${selectedPricing?.price}</span>
+                                        <span className='text-4xl font-bold'>${selectedPricing}</span>
                                         <span className='text-gray-400'>/month</span>
                                     </div>
 
                                     {/* Dropdown for request amounts */}
-                                    <div className='mb-6'>
-                                        <label className='block text-sm font-medium text-gray-300 mb-2'>
-                                            Monthly requests
-                                        </label>
-                                        <div className='relative'>
-                                            <button
-                                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                                className='w-full bg-gray-900/60 border border-gray-700 rounded-md px-4 py-2 flex items-center justify-between hover:bg-gray-800 transition-colors cursor-pointer'>
-                                                <span>{selectedPricing?.requests}</span>
-                                                <ChevronDown
-                                                    className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
-                                                />
-                                            </button>
-                                            {isDropdownOpen && (
-                                                <div className='absolute top-full mt-1 w-full bg-gray-900 border border-gray-700 rounded-md shadow-lg z-10'>
-                                                    {pricingOptions.map(option => (
-                                                        <button
-                                                            key={option.requests}
-                                                            onClick={() => {
-                                                                setSelectedPricing(option);
-                                                                setIsDropdownOpen(false);
-                                                            }}
-                                                            className='w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors first:rounded-t-md last:rounded-b-md cursor-pointer'>
-                                                            {option.requests}
-                                                        </button>
-                                                    ))}
-                                                </div>
+                                    <Select
+                                        selectedKey={selectedPricing}
+                                        onSelectionChange={value => {
+                                            if (value) {
+                                                setSelectedPricing(value);
+                                            }
+                                        }}
+                                        label='Monthly requests'
+                                        defaultSelectedKey={pricingOptions[0]?.id}
+                                        className='mb-6'>
+                                        <SelectTrigger />
+                                        <SelectContent items={pricingOptions}>
+                                            {item => (
+                                                <SelectItem id={item.id} textValue={item.name}>
+                                                    {item.name}
+                                                </SelectItem>
                                             )}
-                                        </div>
-                                    </div>
+                                        </SelectContent>
+                                    </Select>
 
                                     <ul className='space-y-3 mb-8'>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
                                             <span>
-                                                {getPlanLimits(selectedPricing?.requests || '50k').projects} projects
+                                                {getPlanLimits(selectedPricing.toString() || '50k').projects} projects
                                             </span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
                                             <span>
-                                                {getPlanLimits(selectedPricing?.requests || '50k').namespacesPerProject}{' '}
+                                                {
+                                                    getPlanLimits(selectedPricing.toString() || '50k')
+                                                        .namespacesPerProject
+                                                }{' '}
                                                 namespaces per project
                                             </span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
                                             <span>
-                                                {getPlanLimits(selectedPricing?.requests || '50k').languagesPerVersion}{' '}
+                                                {getPlanLimits(selectedPricing.toString() || '50k').languagesPerVersion}{' '}
                                                 languages per version
                                             </span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
                                             <span>
-                                                {getPlanLimits(selectedPricing?.requests || '50k').versionsPerNamespace}{' '}
-                                                versions per namespace
+                                                {getRequestLimits(selectedPricing.toString() || '50k')} requests/month
                                             </span>
-                                        </li>
-                                        <li className='flex items-center'>
-                                            <Check className='h-5 w-5 text-green-400 mr-3' />
-                                            <span>{selectedPricing?.requests} requests/month</span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
@@ -1089,9 +1045,7 @@ export default function Page() {
                                             <span>Priority support</span>
                                         </li>
                                     </ul>
-                                    <Button
-                                        className='w-full bg-white text-black hover:bg-gray-200'
-                                        onClick={() => router.push('/sign-up')}>
+                                    <Button className='w-full' onClick={() => router.push('/sign-up')}>
                                         Upgrade to Pro
                                     </Button>
                                 </div>
@@ -1121,7 +1075,7 @@ export default function Page() {
                                 </li>
                             </ul>
                             <Link href='mailto:support@unlingo.com?subject=Enterprise%20Support'>
-                                <Button className='w-full bg-white text-black hover:bg-gray-200'>Contact Us</Button>
+                                <Button className='w-full'>Contact Us</Button>
                             </Link>
                         </motion.div>
                     </div>
@@ -1152,18 +1106,13 @@ export default function Page() {
                                 </p>
                                 <div className='flex flex-col sm:flex-row gap-3 justify-center items-center'>
                                     <Link href='/sign-up'>
-                                        <Button
-                                            size='lg'
-                                            className='bg-white text-black hover:bg-gray-200 font-semibold group'>
+                                        <Button>
                                             Start Now
-                                            <ArrowRight className='ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform' />
+                                            <IconArrowRight />
                                         </Button>
                                     </Link>
                                     <Link href='mailto:support@unlingo.com'>
-                                        <Button
-                                            variant='outline'
-                                            size='lg'
-                                            className='border border-white/20 text-white hover:border-white/40 hover:bg-white/5'>
+                                        <Button intent='outline'>
                                             <Calendar className='mr-2 h-5 w-5' />
                                             Contact Us
                                         </Button>

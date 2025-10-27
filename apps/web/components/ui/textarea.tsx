@@ -1,18 +1,44 @@
-import * as React from "react"
+"use client"
 
-import { cn } from "@/lib/utils"
+import { TextArea, TextField, type TextFieldProps } from "react-aria-components"
+import { twJoin } from "tailwind-merge"
+import { cx } from "@/lib/primitive"
+import { Description, FieldError, type FieldProps, Label } from "./field"
 
-function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
+interface TextareaProps extends Omit<TextFieldProps, "className">, FieldProps {
+  className?: string | ((v: TextFieldProps) => string)
+}
+
+const Textarea = ({
+  className,
+  placeholder,
+  label,
+  description,
+  errorMessage,
+  ...props
+}: TextareaProps) => {
   return (
-    <textarea
-      data-slot="textarea"
-      className={cn(
-        "border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 flex field-sizing-content min-h-16 w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-        className
-      )}
+    <TextField
       {...props}
-    />
+      className={cx("group flex flex-col gap-y-1 *:data-[slot=label]:font-medium", className)}
+    >
+      {label && <Label>{label}</Label>}
+      <TextArea
+        placeholder={placeholder}
+        className={cx(
+          twJoin([
+            "field-sizing-content max-h-96 min-h-16 w-full min-w-0 rounded-lg border border-input px-2.5 py-2 text-base placeholder-muted-fg shadow-xs outline-hidden transition duration-200 sm:text-sm/6",
+            "focus:border-ring/70 focus:ring-3 focus:ring-ring/20",
+            "focus:invalid:border-danger/70 focus:invalid:ring-3 focus:invalid:ring-danger/20",
+          ]),
+          className,
+        )}
+      />
+      {description && <Description>{description}</Description>}
+      <FieldError>{errorMessage}</FieldError>
+    </TextField>
   )
 }
 
+export type { TextareaProps }
 export { Textarea }

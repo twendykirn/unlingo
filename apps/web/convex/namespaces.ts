@@ -120,13 +120,22 @@ export const createNamespace = mutation({
             projectId: args.projectId,
             name: args.name.trim(),
             usage: {
-                versions: 1,
+                versions: 2,
             },
         });
 
         await ctx.db.insert('namespaceVersions', {
             namespaceId: namespaceId,
-            version: 'main',
+            version: 'development',
+            usage: {
+                languages: 0,
+            },
+            updatedAt: Date.now(),
+        });
+
+        await ctx.db.insert('namespaceVersions', {
+            namespaceId: namespaceId,
+            version: 'production',
             usage: {
                 languages: 0,
             },

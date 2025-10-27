@@ -1,9 +1,9 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
-import { dark } from '@clerk/themes';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Databuddy } from '@databuddy/sdk/react';
+import { HeroUIProvider } from '@heroui/react';
 
 const geist = Geist({ subsets: ['latin'] });
 
@@ -83,11 +83,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return (
         <html lang='en' className='dark'>
             <body className={geist.className}>
-                <ClerkProvider
-                    appearance={{
-                        baseTheme: dark,
-                    }}>
-                    {children}
+                <ClerkProvider>
+                    <HeroUIProvider>{children}</HeroUIProvider>
                 </ClerkProvider>
                 <Databuddy
                     clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID!}

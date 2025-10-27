@@ -1,3 +1,5 @@
+import { LanguageItem } from './utils/jsonFlatten';
+
 export interface TranslationNode {
     id: string;
     key: string;
@@ -14,4 +16,11 @@ export interface StructuredChange {
     newValue?: any;
     arrayIndex?: number; // Exact array index for array operations
     isStructural: boolean; // Whether this affects structure vs just values
+}
+
+export interface TranslationHistoryItem {
+    key: string;
+    item: LanguageItem;
+    newValue?: any;
+    action: 'add' | 'delete' | 'modify';
 }
