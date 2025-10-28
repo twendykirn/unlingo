@@ -148,7 +148,7 @@ export default function EditorPage() {
 
             languageContent$.set(result);
 
-            const itemsArray = Object.values(result);
+            const itemsArray = Object.values(result).sort((a, b) => (a.key < b.key ? -1 : 1));
             editorMaxPages$.set(Math.ceil(itemsArray.length / 20));
             editorItems$.set(itemsArray);
             editorVisibleItems$.set(itemsArray.slice(0, 1 * 20));
@@ -409,7 +409,7 @@ export default function EditorPage() {
 
                             languageContent$.set(newContent);
 
-                            const itemsArray = Object.values(newContent);
+                            const itemsArray = Object.values(newContent).sort((a, b) => (a.key < b.key ? -1 : 1));
                             editorMaxPages$.set(Math.ceil(itemsArray.length / 20));
                             editorItems$.set(itemsArray);
                             editorPage$.set(1);
