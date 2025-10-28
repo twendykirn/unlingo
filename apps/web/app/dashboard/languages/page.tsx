@@ -9,7 +9,6 @@ import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
 import { CalendarDateTime } from '@internationalized/date';
 import { DateField } from '@/components/ui/date-field';
-import { Snippet } from '@heroui/snippet';
 import { Doc, Id } from '@/convex/_generated/dataModel';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
@@ -213,9 +212,8 @@ export default function NamespacesPage() {
                                 className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
                                 aria-label='Namespaces'>
                                 <Table.Header>
-                                    <Table.Column className='w-0'>Id</Table.Column>
-                                    <Table.Column isRowHeader>Name</Table.Column>
-                                    <Table.Column>Primary</Table.Column>
+                                    <Table.Column className='w-0'>Name</Table.Column>
+                                    <Table.Column isRowHeader>Primary</Table.Column>
                                     <Table.Column>Created At</Table.Column>
                                     <Table.Column />
                                 </Table.Header>
@@ -233,13 +231,8 @@ export default function NamespacesPage() {
 
                                             return (
                                                 <Table.Row id={item._id}>
-                                                    <Table.Cell>
-                                                        <Snippet size='sm' hideSymbol>
-                                                            {item._id}
-                                                        </Snippet>
-                                                    </Table.Cell>
                                                     <Table.Cell>{item.languageCode}</Table.Cell>
-                                                    <Table.Cell>{item.isPrimary ? <IconStar /> : null}</Table.Cell>
+                                                    <Table.Cell>{item.isPrimary ? <IconStar className='text-yellow-500' /> : null}</Table.Cell>
                                                     <Table.Cell>
                                                         <div className='flex gap-2 flex-1 items-center'>
                                                             <DateField

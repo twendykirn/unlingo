@@ -105,9 +105,8 @@ export default function ReleasesPage() {
                                 className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
                                 aria-label='Projects'>
                                 <Table.Header>
-                                    <Table.Column className='w-0'>Id</Table.Column>
-                                    <Table.Column isRowHeader>Name</Table.Column>
-                                    <Table.Column>Tag</Table.Column>
+                                    <Table.Column className='w-0'>Name</Table.Column>
+                                    <Table.Column isRowHeader>Tag</Table.Column>
                                     <Table.Column>Created At</Table.Column>
                                     <Table.Column />
                                 </Table.Header>
@@ -125,7 +124,6 @@ export default function ReleasesPage() {
 
                                             return (
                                                 <Table.Row id={item._id}>
-                                                    <Table.Cell>{item._id}</Table.Cell>
                                                     <Table.Cell>{item.name}</Table.Cell>
                                                     <Table.Cell>
                                                         <Snippet size='sm' hideSymbol>

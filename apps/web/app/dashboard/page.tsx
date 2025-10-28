@@ -9,7 +9,6 @@ import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
 import { CalendarDateTime } from '@internationalized/date';
 import { DateField } from '@/components/ui/date-field';
-import { Snippet } from '@heroui/snippet';
 import ProjectEditSheet from './components/project-edit-sheet';
 import { Doc } from '@/convex/_generated/dataModel';
 import ProjectRemoveModal from './components/project-remove-modal';
@@ -60,9 +59,8 @@ export default function Dashboard() {
                                 className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
                                 aria-label='Projects'>
                                 <Table.Header>
-                                    <Table.Column className='w-0'>Id</Table.Column>
-                                    <Table.Column isRowHeader>Name</Table.Column>
-                                    <Table.Column>Description</Table.Column>
+                                    <Table.Column className='w-0'>Name</Table.Column>
+                                    <Table.Column isRowHeader>Description</Table.Column>
                                     <Table.Column>Created At</Table.Column>
                                     <Table.Column />
                                 </Table.Header>
@@ -79,11 +77,6 @@ export default function Dashboard() {
 
                                         return (
                                             <Table.Row id={item._id}>
-                                                <Table.Cell>
-                                                    <Snippet size='sm' hideSymbol>
-                                                        {item._id}
-                                                    </Snippet>
-                                                </Table.Cell>
                                                 <Table.Cell>{item.name}</Table.Cell>
                                                 <Table.Cell>{item.description || '-'}</Table.Cell>
                                                 <Table.Cell>

@@ -107,9 +107,8 @@ export default function ApiKeysPage() {
                                 className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
                                 aria-label='API Keys'>
                                 <Table.Header>
-                                    <Table.Column className='w-0'>Id</Table.Column>
-                                    <Table.Column isRowHeader>Name</Table.Column>
-                                    <Table.Column>Key</Table.Column>
+                                    <Table.Column className='w-0'>Name</Table.Column>
+                                    <Table.Column isRowHeader>Key</Table.Column>
                                     <Table.Column>Created At</Table.Column>
                                     <Table.Column />
                                 </Table.Header>
@@ -127,7 +126,6 @@ export default function ApiKeysPage() {
 
                                             return (
                                                 <Table.Row id={item._id}>
-                                                    <Table.Cell>{item._id}</Table.Cell>
                                                     <Table.Cell>{item.name}</Table.Cell>
                                                     <Table.Cell>{formatKeyDisplay(item.prefix)}</Table.Cell>
                                                     <Table.Cell>

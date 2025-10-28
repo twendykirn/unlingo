@@ -21,9 +21,10 @@ interface Props {
     originalValue: string;
     primaryValue: string;
     onApply: (value: string) => void;
+    isPrimaryLanguage: boolean;
 }
 
-const EditValueModal = ({ isOpen, setIsOpen, originalValue, primaryValue, onApply }: Props) => {
+const EditValueModal = ({ isOpen, setIsOpen, originalValue, primaryValue, onApply, isPrimaryLanguage }: Props) => {
     const value$ = useObservable('');
     const isDisabled$ = useObservable(() => value$.get() === originalValue);
 
@@ -57,7 +58,9 @@ const EditValueModal = ({ isOpen, setIsOpen, originalValue, primaryValue, onAppl
                     value$.set('');
                 }}>
                 <ModalBody className='pb-1 space-y-2'>
-                    <Textarea isReadOnly label='Original (Primary)' defaultValue={primaryValue} />
+                    {!isPrimaryLanguage ? (
+                        <Textarea isReadOnly label='Original (Primary)' defaultValue={primaryValue} />
+                    ) : null}
                     <$Textarea
                         isRequired
                         autoFocus
