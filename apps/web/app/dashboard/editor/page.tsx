@@ -289,7 +289,8 @@ export default function EditorPage() {
                                                                     onClick={() => {
                                                                         setSelectedKey(item);
                                                                         setIsEditModalOpen(true);
-                                                                    }}>
+                                                                    }}
+                                                                    size='sm'>
                                                                     <IconHighlight />
                                                                 </Button>
                                                             ) : null}
@@ -308,7 +309,8 @@ export default function EditorPage() {
                                                                     onClick={() => {
                                                                         setSelectedKey(item);
                                                                         setIsEditModalOpen(true);
-                                                                    }}>
+                                                                    }}
+                                                                    size='sm'>
                                                                     <IconHighlight />
                                                                 </Button>
                                                             </div>
