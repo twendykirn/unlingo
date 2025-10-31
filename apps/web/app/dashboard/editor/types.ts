@@ -18,9 +18,13 @@ export interface StructuredChange {
     isStructural: boolean; // Whether this affects structure vs just values
 }
 
-export interface TranslationHistoryItem {
+interface HistoryItems {
     key: string;
     item: LanguageItem;
     newValue?: any;
+}
+
+export interface TranslationHistoryItem {
+    items: HistoryItems[];
     action: 'add' | 'delete' | 'modify';
 }

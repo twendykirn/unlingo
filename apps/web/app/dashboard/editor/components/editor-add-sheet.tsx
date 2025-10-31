@@ -15,23 +15,31 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { IconPlus, IconTrash } from '@intentui/icons';
 import { Table } from '@/components/ui/table';
-import { LanguageItem } from '../utils/jsonFlatten';
+import { flattenJson, LanguageItem } from '../utils/jsonFlatten';
 import { Text } from 'react-aria-components';
+import { use$ } from '@legendapp/state/react';
+import { languageContent$ } from '../store';
+import { Tab, TabList, TabPanel, Tabs } from '@/components/ui/tabs';
+import { isValidJson } from '../utils/isValidJson';
 
 interface Props {
     isOpen: boolean;
     setIsOpen: (value: boolean) => void;
-    keys: string[];
     onSave: (newKeys: LanguageItem[]) => void;
 }
 
-const EditorAddKeySheet = ({ isOpen, setIsOpen, keys, onSave }: Props) => {
+const EditorAddKeySheet = ({ isOpen, setIsOpen, onSave }: Props) => {
+    const keys = use$(Object.keys(languageContent$.get()));
     const [newKeys, setNewKeys] = useState<LanguageItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+
+    const [activeTab, setActiveTab] = useState('single');
 
     const [newKey, setNewKey] = useState('');
     const [newValue, setNewValue] = useState('');
     const [applySuggestion, setApplySuggestion] = useState(false);
+
+    const [newJSON, setNewJSON] = useState('');
 
     const parentKeys = useMemo(() => {
         const newKeysArray = newKeys.map(i => i.key);
@@ -107,7 +115,61 @@ const EditorAddKeySheet = ({ isOpen, setIsOpen, keys, onSave }: Props) => {
         return { isValid: true };
     };
 
-    const handleAddKey = async () => {
+    const resetStringStates = () => {
+        setNewKey('');
+        setNewValue('');
+        setNewJSON('');
+    };
+
+    const handleAddJSONValue = () => {
+        if (!isValidJson(newJSON)) {
+            toast.error('Invalid JSON: Please use standard JSON format.');
+            return;
+        }
+
+        const object = JSON.parse(newJSON);
+        const flatJSON = flattenJson(object);
+        const newValues = Object.values(flatJSON);
+        const safeItems: LanguageItem[] = [];
+        let safeKey = '';
+        let addedItem: LanguageItem | undefined;
+
+        for (const value of newValues) {
+            safeKey = value.key.replaceAll(' ', '');
+            safeKey = safeKey.endsWith('.') ? safeKey.slice(0, -1) : safeKey;
+
+            addedItem = newKeys.find(item => item.key === safeKey);
+
+            if (addedItem) {
+                toast.error(`Invalid key: "${addedItem.key}". You cannot use the same key more than once.`);
+                break;
+            } else {
+                safeItems.push({ ...value, key: safeKey });
+            }
+        }
+
+        const newKeysArray = newKeys.map(i => i.key);
+        const safeKeys = safeItems.map(i => i.key);
+        const allKeys = [...safeKeys, ...newKeysArray];
+
+        const validatedItems: LanguageItem[] = [];
+
+        for (const safeItem of safeItems) {
+            const validation = validateNewKey(safeItem.key, allKeys);
+
+            if (!validation.isValid) {
+                toast.error(validation.error);
+                break;
+            } else {
+                validatedItems.push(safeItem);
+            }
+        }
+
+        setNewKeys(s => [...s, ...validatedItems]);
+        resetStringStates();
+    };
+
+    const handleAddKey = () => {
         let safeKey = newKey.replaceAll(' ', '');
         safeKey = safeKey.endsWith('.') ? safeKey.slice(0, -1) : safeKey;
 
@@ -124,12 +186,13 @@ const EditorAddKeySheet = ({ isOpen, setIsOpen, keys, onSave }: Props) => {
             }
 
             setNewKeys(s => [...s, { key: safeKey, value: newValue, primaryValue: null }]);
-            setNewKey('');
-            setNewValue('');
+            resetStringStates();
+        } else {
+            toast.error(`Invalid key: "${item.key}". You cannot use the same key more than once.`);
         }
     };
 
-    const handleSave = async (close: () => void) => {
+    const handleSave = (close: () => void) => {
         setIsLoading(true);
 
         try {
@@ -169,48 +232,84 @@ const EditorAddKeySheet = ({ isOpen, setIsOpen, keys, onSave }: Props) => {
                         <Form
                             onSubmit={e => {
                                 e.preventDefault();
-                                handleAddKey();
+
+                                if (activeTab === 'single') {
+                                    handleAddKey();
+                                } else if (activeTab === 'json') {
+                                    handleAddJSONValue();
+                                }
                             }}
                             className='space-y-3'>
-                            <div className='space-y-1'>
-                                <TextField
-                                    label='Key'
-                                    type='text'
-                                    placeholder='Enter new key'
-                                    value={newKey}
-                                    onChange={value => {
-                                        setNewKey(value);
-                                        setApplySuggestion(false);
-                                    }}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Tab' && suggestion) {
-                                            e.preventDefault();
-                                            setNewKey(suggestion);
-                                            setApplySuggestion(true);
-                                        }
-                                    }}
-                                    isRequired
-                                />
-                                {suggestion ? (
-                                    <>
-                                        <Text
-                                            slot='description'
-                                            className='text-pretty text-base/6 text-muted-fg group-disabled:opacity-50 sm:text-sm/6'>
-                                            Suggestion: {suggestion}
-                                        </Text>
-                                    </>
-                                ) : null}
-                            </div>
-                            <Textarea
-                                label='Value'
-                                placeholder='Enter key value'
-                                value={newValue}
-                                onChange={setNewValue}
-                                isRequired
-                            />
+                            <Tabs aria-label='Add key modes'>
+                                <TabList>
+                                    <Tab
+                                        id='single'
+                                        onClick={() => {
+                                            setActiveTab('single');
+                                            resetStringStates();
+                                        }}>
+                                        Single
+                                    </Tab>
+                                    <Tab
+                                        id='json'
+                                        onClick={() => {
+                                            setActiveTab('json');
+                                            resetStringStates();
+                                        }}>
+                                        JSON
+                                    </Tab>
+                                </TabList>
+                                <TabPanel id='single' className='space-y-3'>
+                                    <div className='space-y-1'>
+                                        <TextField
+                                            label='Key'
+                                            type='text'
+                                            placeholder='Enter new key'
+                                            value={newKey}
+                                            onChange={value => {
+                                                setNewKey(value);
+                                                setApplySuggestion(false);
+                                            }}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Tab' && suggestion) {
+                                                    e.preventDefault();
+                                                    setNewKey(suggestion);
+                                                    setApplySuggestion(true);
+                                                }
+                                            }}
+                                            isRequired={activeTab === 'single'}
+                                        />
+                                        {suggestion ? (
+                                            <>
+                                                <Text
+                                                    slot='description'
+                                                    className='text-pretty text-base/6 text-muted-fg group-disabled:opacity-50 sm:text-sm/6'>
+                                                    Suggestion: {suggestion}
+                                                </Text>
+                                            </>
+                                        ) : null}
+                                    </div>
+                                    <Textarea
+                                        label='Value'
+                                        placeholder='Enter key value'
+                                        value={newValue}
+                                        onChange={setNewValue}
+                                        isRequired={activeTab === 'single'}
+                                    />
+                                </TabPanel>
+                                <TabPanel id='json'>
+                                    <Textarea
+                                        label='Value'
+                                        placeholder='Enter JSON object'
+                                        value={newJSON}
+                                        onChange={setNewJSON}
+                                        isRequired={activeTab === 'json'}
+                                    />
+                                </TabPanel>
+                            </Tabs>
                             <Button
                                 isPending={isLoading}
-                                isDisabled={isLoading || !newKey || !newValue}
+                                isDisabled={isLoading || (activeTab === 'single' && (!newKey || !newValue)) || (activeTab === 'json' && !newJSON)}
                                 type='submit'
                                 className='w-full'>
                                 <IconPlus /> Add key
@@ -235,9 +334,7 @@ const EditorAddKeySheet = ({ isOpen, setIsOpen, keys, onSave }: Props) => {
                                                 intent='danger'
                                                 size='sq-xs'
                                                 onClick={() => {
-                                                    const filteredKeys = newKeys.filter(key => key.key !== item.key);
-
-                                                    setNewKeys(filteredKeys);
+                                                    setNewKeys(s => s.filter(key => key.key !== item.key));
                                                 }}>
                                                 <IconTrash />
                                             </Button>
@@ -249,7 +346,7 @@ const EditorAddKeySheet = ({ isOpen, setIsOpen, keys, onSave }: Props) => {
                     </SheetBody>
                     <SheetFooter>
                         <SheetClose>Cancel</SheetClose>
-                        <Button isPending={isLoading} onPress={() => handleSave(close)}>
+                        <Button isPending={isLoading} onPress={() => handleSave(close)} isDisabled={newKeys.length === 0}>
                             Add keys
                         </Button>
                     </SheetFooter>

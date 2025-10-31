@@ -2,8 +2,8 @@
 
 import { useAction, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useEffect, useState } from 'react';
-import { IconHighlight, IconPlus, IconTrash, IconUndo } from '@intentui/icons';
+import { useEffect, useRef, useState } from 'react';
+import { IconDownload, IconHighlight, IconPlus, IconRedo, IconTrash, IconUndo } from '@intentui/icons';
 import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
 import { Snippet } from '@heroui/snippet';
@@ -12,22 +12,16 @@ import { Loader } from '@/components/ui/loader';
 import { Button, buttonStyles } from '@/components/ui/button';
 import { useSearchParams } from 'next/navigation';
 import DashboardSidebar, { WorkspaceWithPremium } from '../components/dashboard-sidebar';
-import { Collection, TableLoadMoreItem, type Selection } from 'react-aria-components';
-import { flattenJson, LanguageContentInterface, LanguageItem } from './utils/jsonFlatten';
+import { flattenJson, LanguageContentInterface, LanguageItem, unflattenJson } from './utils/jsonFlatten';
 import { Textarea } from '@/components/ui/textarea';
 import EditValueModal from './components/EditValueModal';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
-import {
-    editorItems$,
-    editorMaxPages$,
-    editorPage$,
-    editorVisibleItems$,
-    languageContent$,
-    translationHistory$,
-} from './store';
+import { languageContent$, undoTranslationHistory$, redoTranslationHistory$ } from './store';
 import { use$ } from '@legendapp/state/react';
 import EditorAddKeySheet from './components/editor-add-sheet';
+import { ButtonGroup } from '@/components/ui/button-group';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 export default function EditorPage() {
     const searchParams = useSearchParams();
@@ -40,16 +34,13 @@ export default function EditorPage() {
     const [selectedKey, setSelectedKey] = useState<LanguageItem | null>(null);
     const [isCreateKeySheetOpen, setIsCreateKeySheetOpen] = useState(false);
 
-    const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set());
-
     const [primaryLanguageSchema, setPrimaryLanguageSchema] = useState<any | null>(null);
 
     const [primaryLanguageContent, setPrimaryLanguageContent] = useState<LanguageContentInterface>({});
 
     const [didInit, setDidInit] = useState(false);
     const [loadingContent, setLoadingContent] = useState(false);
-
-    const [loadingTable, setLoadingTable] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     const getLanguageContent = useAction(api.languages.getLanguageContent);
     const getJsonSchema = useAction(api.languages.getJsonSchema);
@@ -68,23 +59,17 @@ export default function EditorPage() {
     const isPrimaryLanguage = !!language?.isPrimary;
     const isPremium = !!workspace?.isPremium;
 
-    const contentArray = use$(editorVisibleItems$);
-    const contentKeys = use$(Object.keys(languageContent$.get()));
-    const status = use$(() => (editorPage$.get() < editorMaxPages$.get() ? 'CanLoadMore' : 'Exhausted'));
+    const contentItems = use$(Object.values(languageContent$.get()).sort((a, b) => (a.key < b.key ? -1 : 1)));
+    const undoHistoryItems = use$(undoTranslationHistory$);
+    const redoHistoryItems = use$(redoTranslationHistory$);
 
-    const handleLoadingMore = () => {
-        const currentPage = editorPage$.get();
-        const totalPages = editorMaxPages$.get();
+    const parentRef = useRef(null);
 
-        if (currentPage < totalPages) {
-            setLoadingTable(true);
-            const newPage = currentPage + 1;
-            const allItems = editorItems$.get();
-            editorVisibleItems$.set(allItems.slice(0, newPage * 20));
-            editorPage$.set(newPage);
-            setLoadingTable(false);
-        }
-    };
+    const virtualizer = useVirtualizer({
+        count: contentItems.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: () => 41,
+    });
 
     const getContentOnInit = async () => {
         try {
@@ -148,17 +133,33 @@ export default function EditorPage() {
 
             languageContent$.set(result);
 
-            const itemsArray = Object.values(result).sort((a, b) => (a.key < b.key ? -1 : 1));
-            editorMaxPages$.set(Math.ceil(itemsArray.length / 20));
-            editorItems$.set(itemsArray);
-            editorVisibleItems$.set(itemsArray.slice(0, 1 * 20));
-
             setDidInit(true);
         } catch (error) {
             console.error('Failed to process language content:', error);
         } finally {
             setLoadingContent(false);
         }
+    };
+
+    const saveLanguageAsFile = () => {
+        setIsDownloading(true);
+        const dataObjToWrite = unflattenJson(languageContent$.get());
+        const blob = new Blob([JSON.stringify(dataObjToWrite, null, 2)], { type: 'application/json' });
+        const link = document.createElement('a');
+
+        link.download = `${selectedLanguageCode}.json`;
+        link.href = window.URL.createObjectURL(blob);
+        link.dataset.downloadurl = ['application/json', link.download, link.href].join(':');
+
+        const evt = new MouseEvent('click', {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+        });
+
+        link.dispatchEvent(evt);
+        link.remove();
+        setIsDownloading(false);
     };
 
     useEffect(() => {
@@ -185,7 +186,7 @@ export default function EditorPage() {
                                     <Card.Title className='flex items-center gap-1'>
                                         Translations {language ? `(${language.languageCode})` : null}
                                         {selectedLanguage ? (
-                                            <Badge intent={isPrimaryLanguage ? 'primary' : 'secondary'}>
+                                            <Badge intent={isPrimaryLanguage ? 'warning' : 'secondary'}>
                                                 {isPrimaryLanguage ? 'Primary' : 'Secondary'}
                                             </Badge>
                                         ) : null}
@@ -193,28 +194,71 @@ export default function EditorPage() {
                                     <Card.Description>Translate and edit your translations keys.</Card.Description>
                                 </div>
                                 <div className='flex items-center gap-2'>
-                                    {translationHistory$.length > 0 ? (
-                                        <Button
-                                            intent='warning'
-                                            onClick={() => {
-                                                const lastItem = translationHistory$.pop();
-                                                if (lastItem) {
-                                                    if (lastItem.action === 'delete') {
-                                                        languageContent$.set(s => ({
-                                                            ...s,
-                                                            [lastItem.key]: lastItem.item,
-                                                        }));
-                                                    } else if (lastItem.action === 'modify') {
-                                                        languageContent$[lastItem.key]?.value.set(lastItem.item.value);
-                                                    } else if (lastItem.action === 'add') {
-                                                        languageContent$[lastItem.key]?.delete();
+                                    {undoHistoryItems.length > 0 || redoHistoryItems.length > 0 ? (
+                                        <ButtonGroup>
+                                            <Button
+                                                intent='secondary'
+                                                onClick={() => {
+                                                    const lastItem = undoTranslationHistory$.pop();
+                                                    if (lastItem) {
+                                                        if (lastItem.action === 'delete') {
+                                                            for (const item of lastItem.items) {
+                                                                languageContent$.set(s => ({
+                                                                    ...s,
+                                                                    [item.key]: item.item,
+                                                                }));
+                                                            }
+                                                        } else if (lastItem.action === 'modify') {
+                                                            for (const item of lastItem.items) {
+                                                                languageContent$[item.key]?.value.set(item.item.value);
+                                                            }
+                                                        } else if (lastItem.action === 'add') {
+                                                            for (const item of lastItem.items) {
+                                                                languageContent$[item.key]?.delete();
+                                                            }
+                                                        }
+                                                        redoTranslationHistory$.push(lastItem);
                                                     }
-                                                }
-                                            }}>
-                                            <IconUndo />
-                                            Undo Last Change
-                                        </Button>
+                                                }}
+                                                isDisabled={undoHistoryItems.length === 0}>
+                                                <IconUndo />
+                                            </Button>
+                                            <Button
+                                                intent='secondary'
+                                                onClick={() => {
+                                                    const lastItem = redoTranslationHistory$.pop();
+                                                    if (lastItem) {
+                                                        if (lastItem.action === 'delete') {
+                                                            for (const item of lastItem.items) {
+                                                                languageContent$[item.key]?.delete();
+                                                            }
+                                                        } else if (lastItem.action === 'modify') {
+                                                            for (const item of lastItem.items) {
+                                                                languageContent$[item.key]?.value.set(item.newValue);
+                                                            }
+                                                        } else if (lastItem.action === 'add') {
+                                                            for (const item of lastItem.items) {
+                                                                languageContent$.set(s => ({
+                                                                    ...s,
+                                                                    [item.key]: item.item,
+                                                                }));
+                                                            }
+                                                        }
+                                                        undoTranslationHistory$.push(lastItem);
+                                                    }
+                                                }}
+                                                isDisabled={redoHistoryItems.length === 0}>
+                                                <IconRedo />
+                                            </Button>
+                                        </ButtonGroup>
                                     ) : null}
+                                    <Button
+                                        intent='secondary'
+                                        onClick={saveLanguageAsFile}
+                                        isDisabled={contentItems.length === 0}
+                                        isPending={isDownloading}>
+                                        <IconDownload />
+                                    </Button>
                                     {!isPrimaryLanguage ? (
                                         <Tooltip delay={0}>
                                             <Tooltip.Trigger
@@ -223,7 +267,6 @@ export default function EditorPage() {
                                                     isDisabled: true,
                                                 })}>
                                                 <IconPlus />
-                                                Add Key
                                             </Tooltip.Trigger>
                                             <Tooltip.Content>
                                                 <strong className='font-semibold'>Key Creation</strong>
@@ -236,7 +279,6 @@ export default function EditorPage() {
                                     ) : (
                                         <Button onClick={() => setIsCreateKeySheetOpen(true)}>
                                             <IconPlus />
-                                            Add Key
                                         </Button>
                                     )}
                                 </div>
@@ -245,8 +287,9 @@ export default function EditorPage() {
                         <Card.Content>
                             <Table
                                 bleed
-                                className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
-                                aria-label='Translations'>
+                                className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)] flex-1 max-h-full'
+                                aria-label='Translations'
+                                ref={parentRef}>
                                 <Table.Header>
                                     <Table.Column className='w-0'>Key</Table.Column>
                                     <Table.Column isRowHeader>Original (Primary)</Table.Column>
@@ -258,115 +301,120 @@ export default function EditorPage() {
                                         <div className='flex h-full items-center justify-center p-4 text-muted-fg'>
                                             No translations found.
                                         </div>
-                                    )}>
-                                    <Collection items={contentArray}>
-                                        {item => {
-                                            return (
-                                                <Table.Row id={item.key}>
-                                                    <Table.Cell>
-                                                        <Snippet size='sm' hideSymbol>
-                                                            {item.key}
-                                                        </Snippet>
-                                                    </Table.Cell>
+                                    )}
+                                    style={{
+                                        height: `${virtualizer.getTotalSize()}px`,
+                                        width: '100%',
+                                        position: 'relative',
+                                    }}>
+                                    {virtualizer.getVirtualItems().map(virtualRow => {
+                                        const item = contentItems[virtualRow.index];
+
+                                        if (!item) return null;
+
+                                        return (
+                                            <Table.Row
+                                                id={virtualRow.index}
+                                                key={virtualRow.key}
+                                                data-index={virtualRow.index}
+                                                ref={virtualizer.measureElement}>
+                                                <Table.Cell>
+                                                    <Snippet size='sm' hideSymbol>
+                                                        {item.key}
+                                                    </Snippet>
+                                                </Table.Cell>
+                                                <Table.Cell>
+                                                    <div className='flex items-center gap-2 w-9/12'>
+                                                        <Textarea
+                                                            value={
+                                                                isPrimaryLanguage
+                                                                    ? item.value
+                                                                    : (item.primaryValue ?? '-')
+                                                            }
+                                                            isReadOnly
+                                                            className='w-full'
+                                                            aria-label={
+                                                                isPrimaryLanguage
+                                                                    ? item.value
+                                                                    : (item.primaryValue ?? '-')
+                                                            }
+                                                        />
+                                                        {isPrimaryLanguage ? (
+                                                            <Button
+                                                                onClick={() => {
+                                                                    setSelectedKey(item);
+                                                                    setIsEditModalOpen(true);
+                                                                }}
+                                                                size='sm'>
+                                                                <IconHighlight />
+                                                            </Button>
+                                                        ) : null}
+                                                    </div>
+                                                </Table.Cell>
+                                                {!isPrimaryLanguage ? (
                                                     <Table.Cell>
                                                         <div className='flex items-center gap-2 w-9/12'>
                                                             <Textarea
-                                                                value={
-                                                                    isPrimaryLanguage
-                                                                        ? item.value
-                                                                        : (item.primaryValue ?? '-')
-                                                                }
+                                                                value={item.value}
                                                                 isReadOnly
                                                                 className='w-full'
-                                                                aria-label={
-                                                                    isPrimaryLanguage
-                                                                        ? item.value
-                                                                        : (item.primaryValue ?? '-')
-                                                                }
+                                                                aria-label={item.value}
                                                             />
-                                                            {isPrimaryLanguage ? (
-                                                                <Button
-                                                                    onClick={() => {
-                                                                        setSelectedKey(item);
-                                                                        setIsEditModalOpen(true);
-                                                                    }}
-                                                                    size='sm'>
-                                                                    <IconHighlight />
-                                                                </Button>
-                                                            ) : null}
+                                                            <Button
+                                                                onClick={() => {
+                                                                    setSelectedKey(item);
+                                                                    setIsEditModalOpen(true);
+                                                                }}
+                                                                size='sm'>
+                                                                <IconHighlight />
+                                                            </Button>
                                                         </div>
                                                     </Table.Cell>
+                                                ) : null}
+                                                <Table.Cell className='text-end pr-2.5'>
                                                     {!isPrimaryLanguage ? (
-                                                        <Table.Cell>
-                                                            <div className='flex items-center gap-2 w-9/12'>
-                                                                <Textarea
-                                                                    value={item.value}
-                                                                    isReadOnly
-                                                                    className='w-full'
-                                                                    aria-label={item.value}
-                                                                />
-                                                                <Button
-                                                                    onClick={() => {
-                                                                        setSelectedKey(item);
-                                                                        setIsEditModalOpen(true);
-                                                                    }}
-                                                                    size='sm'>
-                                                                    <IconHighlight />
-                                                                </Button>
-                                                            </div>
-                                                        </Table.Cell>
-                                                    ) : null}
-                                                    <Table.Cell className='text-end pr-2.5'>
-                                                        {!isPrimaryLanguage ? (
-                                                            <Tooltip delay={0}>
-                                                                <Tooltip.Trigger
-                                                                    aria-label='Remove key'
-                                                                    className={buttonStyles({
-                                                                        intent: 'danger',
-                                                                        size: 'sm',
-                                                                        isDisabled: true,
-                                                                    })}>
-                                                                    <IconTrash />
-                                                                </Tooltip.Trigger>
-                                                                <Tooltip.Content>
-                                                                    <strong className='font-semibold'>
-                                                                        Key Removal
-                                                                    </strong>
-                                                                    <p className='mt-1 max-w-2xs text-pretty text-muted-fg text-sm'>
-                                                                        You can remove a key only inside the primary
-                                                                        language. That way we can sync the changes
-                                                                        properly.
-                                                                    </p>
-                                                                </Tooltip.Content>
-                                                            </Tooltip>
-                                                        ) : (
-                                                            <Button
-                                                                intent='danger'
-                                                                size='sm'
-                                                                onClick={() => {
-                                                                    translationHistory$.push({
-                                                                        key: item.key,
-                                                                        item,
-                                                                        action: 'delete',
-                                                                    });
-                                                                    languageContent$[item.key]?.delete();
-                                                                }}>
+                                                        <Tooltip delay={0}>
+                                                            <Tooltip.Trigger
+                                                                aria-label='Remove key'
+                                                                className={buttonStyles({
+                                                                    intent: 'danger',
+                                                                    size: 'sm',
+                                                                    isDisabled: true,
+                                                                })}>
                                                                 <IconTrash />
-                                                            </Button>
-                                                        )}
-                                                    </Table.Cell>
-                                                </Table.Row>
-                                            );
-                                        }}
-                                    </Collection>
-                                    {status !== 'Exhausted' ? (
-                                        <TableLoadMoreItem
-                                            className='sticky inset-x-0 bottom-0 h-16'
-                                            onLoadMore={handleLoadingMore}
-                                            isLoading={loadingTable}>
-                                            <Loader className='mx-auto' isIndeterminate aria-label='Loading more...' />
-                                        </TableLoadMoreItem>
-                                    ) : null}
+                                                            </Tooltip.Trigger>
+                                                            <Tooltip.Content>
+                                                                <strong className='font-semibold'>Key Removal</strong>
+                                                                <p className='mt-1 max-w-2xs text-pretty text-muted-fg text-sm'>
+                                                                    You can remove a key only inside the primary
+                                                                    language. That way we can sync the changes properly.
+                                                                </p>
+                                                            </Tooltip.Content>
+                                                        </Tooltip>
+                                                    ) : (
+                                                        <Button
+                                                            intent='danger'
+                                                            size='sm'
+                                                            onClick={() => {
+                                                                undoTranslationHistory$.push({
+                                                                    items: [
+                                                                        {
+                                                                            key: item.key,
+                                                                            item,
+                                                                        },
+                                                                    ],
+                                                                    action: 'delete',
+                                                                });
+                                                                redoTranslationHistory$.set([]);
+                                                                languageContent$[item.key]?.delete();
+                                                            }}>
+                                                            <IconTrash />
+                                                        </Button>
+                                                    )}
+                                                </Table.Cell>
+                                            </Table.Row>
+                                        );
+                                    })}
                                 </Table.Body>
                             </Table>
                         </Card.Content>
@@ -375,17 +423,27 @@ export default function EditorPage() {
                         <EditValueModal
                             isOpen={isEditModalOpen}
                             setIsOpen={setIsEditModalOpen}
+                            originalKey={selectedKey.key}
                             originalValue={selectedKey.value}
                             primaryValue={selectedKey.primaryValue}
                             isPrimaryLanguage={isPrimaryLanguage}
-                            onApply={value => {
-                                translationHistory$.push({
-                                    key: selectedKey.key,
-                                    item: selectedKey,
-                                    newValue: value,
+                            onApply={params => {
+                                undoTranslationHistory$.push({
+                                    items: [
+                                        {
+                                            key: params.key,
+                                            item: {
+                                                key: params.key,
+                                                value: params.oldValue,
+                                                primaryValue: params.primaryValue,
+                                            },
+                                            newValue: params.newValue,
+                                        },
+                                    ],
                                     action: 'modify',
                                 });
-                                languageContent$[selectedKey.key]?.value.set(value);
+                                redoTranslationHistory$.set([]);
+                                languageContent$[selectedKey.key]?.value.set(params.newValue);
                                 setSelectedKey(null);
                                 setIsEditModalOpen(false);
                             }}
@@ -395,7 +453,6 @@ export default function EditorPage() {
                     <EditorAddKeySheet
                         isOpen={isCreateKeySheetOpen}
                         setIsOpen={setIsCreateKeySheetOpen}
-                        keys={contentKeys}
                         onSave={newKeys => {
                             const currentContent = languageContent$.get();
                             const newContent: LanguageContentInterface = {
@@ -411,11 +468,15 @@ export default function EditorPage() {
 
                             languageContent$.set(newContent);
 
-                            const itemsArray = Object.values(newContent).sort((a, b) => (a.key < b.key ? -1 : 1));
-                            editorMaxPages$.set(Math.ceil(itemsArray.length / 20));
-                            editorItems$.set(itemsArray);
-                            editorPage$.set(1);
-                            editorVisibleItems$.set(itemsArray.slice(0, 1 * 20));
+                            undoTranslationHistory$.push({
+                                items: newKeys.map(key => ({
+                                    key: key.key,
+                                    item: key,
+                                    newValue: key.value,
+                                })),
+                                action: 'add',
+                            });
+                            redoTranslationHistory$.set([]);
                         }}
                     />
                 </>

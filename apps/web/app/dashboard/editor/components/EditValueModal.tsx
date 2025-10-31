@@ -18,13 +18,19 @@ const $Button = reactive(Button);
 interface Props {
     isOpen: boolean;
     setIsOpen: (value: boolean) => void;
+    originalKey: string;
     originalValue: string;
     primaryValue: string;
-    onApply: (value: string) => void;
+    onApply: (params: {
+        oldValue: string;
+        newValue: string;
+        key: string;
+        primaryValue: null | string;
+    }) => void;
     isPrimaryLanguage: boolean;
 }
 
-const EditValueModal = ({ isOpen, setIsOpen, originalValue, primaryValue, onApply, isPrimaryLanguage }: Props) => {
+const EditValueModal = ({ isOpen, setIsOpen, originalKey, originalValue, primaryValue, onApply, isPrimaryLanguage }: Props) => {
     const value$ = useObservable('');
     const isDisabled$ = useObservable(() => value$.get() === originalValue);
 
@@ -53,7 +59,12 @@ const EditValueModal = ({ isOpen, setIsOpen, originalValue, primaryValue, onAppl
             </ModalHeader>
             <Form
                 onSubmit={() => {
-                    onApply(value$.get());
+                    onApply({
+                        oldValue: originalValue,
+                        newValue: value$.get(),
+                        key: originalKey,
+                        primaryValue,
+                    });
                     setIsOpen(false);
                     value$.set('');
                 }}>
