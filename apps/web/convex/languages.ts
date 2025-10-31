@@ -3,8 +3,10 @@ import { action, ActionCtx, mutation, query, internalQuery } from './_generated/
 import { v } from 'convex/values';
 import { generateSchemas } from '../lib/zodSchemaGenerator';
 import { internal } from './_generated/api';
-import { applyJsonDiffToContent, applyStructuralOperations } from './utils';
+import { applyStructuralOperations } from './utils';
 import { Doc, Id } from './_generated/dataModel';
+import { flattenJson, unflattenJson } from '../utils/jsonFlatten';
+import { applyLanguageChanges } from '../utils/applyLanguageChanges';
 
 export const getLanguages = query({
     args: {
@@ -428,14 +430,41 @@ export const applyChangeOperations = action({
     args: {
         languageId: v.id('languages'),
         workspaceId: v.id('workspaces'),
-        languageChanges: v.optional(
-            v.object({
-                changes: v.any(),
-                timestamp: v.number(),
-                languageId: v.string(),
-                isPrimaryLanguage: v.boolean(),
-            })
-        ),
+        languageChanges: v.object({
+            add: v.array(
+                v.object({
+                    key: v.string(),
+                    item: v.object({
+                        key: v.string(),
+                        value: v.optional(v.any()),
+                        primaryValue: v.optional(v.any()),
+                    }),
+                    newValue: v.optional(v.any()),
+                })
+            ),
+            modify: v.array(
+                v.object({
+                    key: v.string(),
+                    item: v.object({
+                        key: v.string(),
+                        value: v.optional(v.any()),
+                        primaryValue: v.optional(v.any()),
+                    }),
+                    newValue: v.optional(v.any()),
+                })
+            ),
+            delete: v.array(
+                v.object({
+                    key: v.string(),
+                    item: v.object({
+                        key: v.string(),
+                        value: v.optional(v.any()),
+                        primaryValue: v.optional(v.any()),
+                    }),
+                    newValue: v.optional(v.any()),
+                })
+            ),
+        }),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -462,15 +491,13 @@ export const applyChangeOperations = action({
                 }
             }
 
-            let updatedContent: any;
-            if (args.languageChanges && args.languageChanges.changes) {
-                // Use json-diff format (for primary language saves)
-                updatedContent = applyJsonDiffToContent(currentContent, args.languageChanges.changes);
-            }
+            const flatJson = flattenJson(currentContent);
+            const result = applyLanguageChanges(flatJson, args.languageChanges);
+            const newJson = unflattenJson(result.updatedContent);
 
             // For primary language: Always generate and update schema
             if (isPrimaryLanguage) {
-                const schema = generateSchemas(updatedContent);
+                const schema = generateSchemas(newJson);
 
                 const schemaContent = JSON.stringify(schema.jsonSchema, null, 2);
                 const schemaBlob = new Blob([schemaContent], { type: 'application/json' });
@@ -511,7 +538,7 @@ export const applyChangeOperations = action({
                 }
             }
 
-            const updatedContentString = JSON.stringify(updatedContent, null, 2);
+            const updatedContentString = JSON.stringify(newJson, null, 2);
             const contentBlob = new Blob([updatedContentString], { type: 'application/json' });
             const uploadUrl = await ctx.storage.generateUploadUrl();
             const uploadResponse = await fetch(uploadUrl, {

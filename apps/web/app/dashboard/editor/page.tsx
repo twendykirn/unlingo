@@ -3,7 +3,7 @@
 import { useAction, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useEffect, useRef, useState } from 'react';
-import { IconDownload, IconHighlight, IconPlus, IconRedo, IconTrash, IconUndo } from '@intentui/icons';
+import { IconDownload, IconFloppyDisk, IconHighlight, IconPlus, IconRedo, IconTrash, IconUndo } from '@intentui/icons';
 import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
 import { Snippet } from '@heroui/snippet';
@@ -12,7 +12,7 @@ import { Loader } from '@/components/ui/loader';
 import { Button, buttonStyles } from '@/components/ui/button';
 import { useSearchParams } from 'next/navigation';
 import DashboardSidebar, { WorkspaceWithPremium } from '../components/dashboard-sidebar';
-import { flattenJson, LanguageContentInterface, LanguageItem, unflattenJson } from './utils/jsonFlatten';
+import { flattenJson, LanguageContentInterface, LanguageItem, unflattenJson } from '@/utils/jsonFlatten';
 import { Textarea } from '@/components/ui/textarea';
 import EditValueModal from './components/EditValueModal';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -22,6 +22,9 @@ import { use$ } from '@legendapp/state/react';
 import EditorAddKeySheet from './components/editor-add-sheet';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { validateWithAjv } from '@/lib/zodSchemaGenerator';
+import { toast } from 'sonner';
+import { consolidateHistory } from './utils/consolidateHistory';
 
 export default function EditorPage() {
     const searchParams = useSearchParams();
@@ -41,9 +44,11 @@ export default function EditorPage() {
     const [didInit, setDidInit] = useState(false);
     const [loadingContent, setLoadingContent] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     const getLanguageContent = useAction(api.languages.getLanguageContent);
     const getJsonSchema = useAction(api.languages.getJsonSchema);
+    const applyChangeOperations = useAction(api.languages.applyChangeOperations);
 
     const language = useQuery(
         api.languages.getLanguageWithContext,
@@ -162,6 +167,48 @@ export default function EditorPage() {
         setIsDownloading(false);
     };
 
+    const handleSaveChanges = async () => {
+        const languageContent = languageContent$.get();
+        if (!languageContent.length || !selectedLanguage || !workspace) return;
+
+        setIsSaving(true);
+
+        try {
+            const jsonContent = unflattenJson(languageContent);
+
+            if (!isPrimaryLanguage && primaryLanguageSchema) {
+                const validation = validateWithAjv(jsonContent, primaryLanguageSchema);
+
+                if (!validation.isValid) {
+                    const errorMessage =
+                        validation.errors
+                            ?.slice(0, 3)
+                            .map(err => `• ${err.instancePath || 'root'}: ${err.message}`)
+                            .join('\n') || 'Unknown validation errors';
+
+                    toast.error(
+                        `Schema validation failed:\n${errorMessage}${validation.errors && validation.errors.length > 3 ? '\n... and more errors' : ''}`
+                    );
+                    setIsSaving(false);
+                    return;
+                }
+            }
+
+            const languageChanges = consolidateHistory(undoHistoryItems);
+
+            await applyChangeOperations({
+                languageId: selectedLanguage,
+                workspaceId: workspace._id,
+                languageChanges,
+            });
+        } catch (error) {
+            console.error('Failed to save changes:', error);
+            toast.error('Failed to save changes. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     useEffect(() => {
         if (workspace?._id && !didInit && language && selectedLanguage) {
             getContentOnInit();
@@ -198,6 +245,7 @@ export default function EditorPage() {
                                         <ButtonGroup>
                                             <Button
                                                 intent='secondary'
+                                                size='sm'
                                                 onClick={() => {
                                                     const lastItem = undoTranslationHistory$.pop();
                                                     if (lastItem) {
@@ -225,6 +273,7 @@ export default function EditorPage() {
                                             </Button>
                                             <Button
                                                 intent='secondary'
+                                                size='sm'
                                                 onClick={() => {
                                                     const lastItem = redoTranslationHistory$.pop();
                                                     if (lastItem) {
@@ -254,6 +303,7 @@ export default function EditorPage() {
                                     ) : null}
                                     <Button
                                         intent='secondary'
+                                        size='sm'
                                         onClick={saveLanguageAsFile}
                                         isDisabled={contentItems.length === 0}
                                         isPending={isDownloading}>
@@ -265,6 +315,7 @@ export default function EditorPage() {
                                                 aria-label='Add key'
                                                 className={buttonStyles({
                                                     isDisabled: true,
+                                                    size: 'sm',
                                                 })}>
                                                 <IconPlus />
                                             </Tooltip.Trigger>
@@ -277,10 +328,19 @@ export default function EditorPage() {
                                             </Tooltip.Content>
                                         </Tooltip>
                                     ) : (
-                                        <Button onClick={() => setIsCreateKeySheetOpen(true)}>
+                                        <Button size='sm' onClick={() => setIsCreateKeySheetOpen(true)}>
                                             <IconPlus />
                                         </Button>
                                     )}
+                                    <Button
+                                        intent='success'
+                                        size='sm'
+                                        onClick={handleSaveChanges}
+                                        isDisabled={undoHistoryItems.length === 0}
+                                        isPending={isSaving}>
+                                        <IconFloppyDisk />
+                                        Save
+                                    </Button>
                                 </div>
                             </div>
                         </Card.Header>

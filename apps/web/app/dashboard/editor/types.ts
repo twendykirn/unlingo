@@ -1,4 +1,4 @@
-import { LanguageItem } from './utils/jsonFlatten';
+import { LanguageItem } from '@/utils/jsonFlatten';
 
 export interface TranslationNode {
     id: string;
@@ -18,7 +18,7 @@ export interface StructuredChange {
     isStructural: boolean; // Whether this affects structure vs just values
 }
 
-interface HistoryItems {
+export interface HistoryItems {
     key: string;
     item: LanguageItem;
     newValue?: any;

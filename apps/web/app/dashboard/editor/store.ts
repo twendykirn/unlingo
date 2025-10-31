@@ -1,6 +1,6 @@
 import { observable } from '@legendapp/state';
 import { TranslationHistoryItem, TranslationNode } from './types';
-import { LanguageContentInterface } from './utils/jsonFlatten';
+import { LanguageContentInterface } from '@/utils/jsonFlatten';
 
 export const nodes$ = observable<TranslationNode[]>([]);
 export const expandedKeys$ = observable(new Set());
