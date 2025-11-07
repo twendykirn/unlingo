@@ -69,15 +69,6 @@ export default defineSchema({
         updatedAt: v.number(),
         status: v.optional(v.union(v.literal('merging'), v.literal('syncing'))),
     }).index('by_namespace_version_language', ['namespaceVersionId', 'languageCode']),
-    apiKeys: defineTable({
-        workspaceId: v.id('workspaces'),
-        projectId: v.id('projects'),
-        name: v.string(),
-        unkeyKeyId: v.string(), // Unkey key ID for management operations
-        prefix: v.string(), // visible prefix for display purposes
-    })
-        .index('by_workspace_project', ['workspaceId', 'projectId'])
-        .index('by_unkey_id', ['unkeyKeyId']),
     screenshots: defineTable({
         projectId: v.id('projects'),
         name: v.string(),

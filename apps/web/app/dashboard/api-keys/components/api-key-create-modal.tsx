@@ -12,10 +12,8 @@ import {
     ModalTitle,
 } from '@/components/ui/modal';
 import { TextField } from '@/components/ui/text-field';
-import { api } from '@/convex/_generated/api';
 import { Doc } from '@/convex/_generated/dataModel';
 import { Snippet } from '@heroui/react';
-import { useMutation } from 'convex/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -24,28 +22,44 @@ interface Props {
     setIsOpen: (value: boolean) => void;
     workspace: Doc<'workspaces'>;
     project: Doc<'projects'>;
+    onCreated?: () => void;
 }
 
-const ApiKeyCreateModal = ({ isOpen, setIsOpen, workspace, project }: Props) => {
+const ApiKeyCreateModal = ({ isOpen, setIsOpen, workspace, project, onCreated }: Props) => {
     const [name, setName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [newlyGeneratedKey, setNewlyGeneratedKey] = useState<string | null>(null);
-
-    const generateApiKey = useMutation(api.apiKeys.generateApiKey);
 
     const handleGenerate = async () => {
         setIsLoading(true);
 
         try {
-            const result = await generateApiKey({
-                projectId: project._id,
-                workspaceId: workspace._id,
-                name: name.trim(),
+            const response = await fetch('/api/api-keys', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    projectId: project._id,
+                    workspaceId: workspace._id,
+                    name: name.trim(),
+                }),
             });
 
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to create API key');
+            }
+
+            const result = await response.json();
             setNewlyGeneratedKey(result.key);
             setName('');
             toast.success('API key created successfully');
+
+            // Refresh the list
+            if (onCreated) {
+                onCreated();
+            }
         } catch (err) {
             toast.error(`Failed to create API key: ${err instanceof Error ? err.message : 'Unknown error'}`);
         } finally {
