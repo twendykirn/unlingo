@@ -19,11 +19,8 @@ type Mode = 'edit' | 'translate';
 const ScreenshotCanvas = dynamic(() => import('@/components/konva'), {
     ssr: false,
     loading: () => (
-        <div className='bg-gray-950/50 border border-gray-800/50 rounded-2xl p-6 backdrop-blur-sm'>
-            <div className='text-center py-16'>
-                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4'></div>
-                <p className='text-gray-400'>Loading canvas...</p>
-            </div>
+        <div className='flex items-center justify-center py-16'>
+            <Loader isIndeterminate aria-label='Loading canvas...' />
         </div>
     ),
 });
@@ -52,6 +49,8 @@ export default function ScreenshotEditorPage() {
         api.screenshots.getContainersForScreenshot,
         screenshotId && workspace ? { screenshotId, workspaceId: workspace._id } : 'skip'
     );
+
+    const projectId = currentScreenshot?.projectId;
 
     useEffect(() => {
         if (currentScreenshot?.imageUrl) {
