@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { usePaginatedQuery, useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Doc, Id } from '@/convex/_generated/dataModel';
+import { Id } from '@/convex/_generated/dataModel';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -32,7 +32,6 @@ import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from 
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
 import { Collection, TableLoadMoreItem } from 'react-aria-components';
 import { useDateFormatter } from '@react-aria/i18n';
-import { Badge } from '@/components/ui/badge';
 
 export default function ScreenshotsPage() {
     const searchParams = useSearchParams();
@@ -273,35 +272,40 @@ export default function ScreenshotsPage() {
                                                 <TableCell>
                                                     {formatter.format(new Date(screenshot._creationTime))}
                                                 </TableCell>
-                                                <TableCell className='flex justify-end'>
-                                                    <Menu>
-                                                        <MenuTrigger className='size-6'>
-                                                            <EllipsisVerticalIcon />
-                                                        </MenuTrigger>
-                                                        <MenuContent placement='left top'>
-                                                            <MenuItem
-                                                                onAction={() =>
-                                                                    openScreenshotEditor(screenshot._id, 'edit')
-                                                                }>
-                                                                <PencilSquareIcon /> Edit Mappings
-                                                            </MenuItem>
-                                                            <MenuItem
-                                                                onAction={() =>
-                                                                    openScreenshotEditor(screenshot._id, 'translate')
-                                                                }>
-                                                                <LanguageIcon /> Translate
-                                                            </MenuItem>
-                                                            <MenuSeparator />
-                                                            <MenuItem
-                                                                intent='danger'
-                                                                onAction={() => {
-                                                                    setScreenshotToDelete(screenshot._id);
-                                                                    setDeleteConfirmOpen(true);
-                                                                }}>
-                                                                <TrashIcon /> Delete
-                                                            </MenuItem>
-                                                        </MenuContent>
-                                                    </Menu>
+                                                <TableCell>
+                                                    <div className='flex justify-end'>
+                                                        <Menu>
+                                                            <MenuTrigger className='size-6'>
+                                                                <EllipsisVerticalIcon />
+                                                            </MenuTrigger>
+                                                            <MenuContent placement='left top'>
+                                                                <MenuItem
+                                                                    onAction={() =>
+                                                                        openScreenshotEditor(screenshot._id, 'edit')
+                                                                    }>
+                                                                    <PencilSquareIcon /> Edit Mappings
+                                                                </MenuItem>
+                                                                <MenuItem
+                                                                    onAction={() =>
+                                                                        openScreenshotEditor(
+                                                                            screenshot._id,
+                                                                            'translate'
+                                                                        )
+                                                                    }>
+                                                                    <LanguageIcon /> Translate
+                                                                </MenuItem>
+                                                                <MenuSeparator />
+                                                                <MenuItem
+                                                                    intent='danger'
+                                                                    onAction={() => {
+                                                                        setScreenshotToDelete(screenshot._id);
+                                                                        setDeleteConfirmOpen(true);
+                                                                    }}>
+                                                                    <TrashIcon /> Delete
+                                                                </MenuItem>
+                                                            </MenuContent>
+                                                        </Menu>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         )}
@@ -380,8 +384,8 @@ export default function ScreenshotsPage() {
                         <ModalHeader>
                             <ModalTitle>Delete Screenshot</ModalTitle>
                             <ModalDescription>
-                                Are you sure you want to delete this screenshot? This will also remove all
-                                associated key mappings. This action cannot be undone.
+                                Are you sure you want to delete this screenshot? This will also remove all associated
+                                key mappings. This action cannot be undone.
                             </ModalDescription>
                         </ModalHeader>
                         <ModalFooter>

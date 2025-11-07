@@ -11,34 +11,30 @@ import {
     ModalHeader,
     ModalTitle,
 } from '@/components/ui/modal';
-import {
-    MagnifyingGlassIcon,
-    CheckIcon,
-    PencilSquareIcon,
-    TrashIcon,
-    LanguageIcon,
-    DocumentTextIcon,
-} from '@heroicons/react/24/outline';
+import { CheckIcon, PencilSquareIcon, TrashIcon, LanguageIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { Doc } from '@/convex/_generated/dataModel';
 import { useEffect, useState } from 'react';
-import { TranslationKey } from '../utils';
 import { Label } from '@/components/ui/field';
 import { Loader } from '@/components/ui/loader';
 import { Badge } from '@/components/ui/badge';
+import { TranslationHistoryItem } from '@/app/dashboard/editor/types';
+import { LanguageContentInterface, LanguageItem } from '@/app/dashboard/editor/utils/jsonFlatten';
+import { SearchField, SearchInput } from '@/components/ui/search-field';
+import { ChoiceBox, ChoiceBoxDescription, ChoiceBoxItem, ChoiceBoxLabel } from '@/components/ui/choice-box';
 
 interface ScreenshotDialogsProps {
     isKeyDialogOpen: boolean;
     isMappingsDialogOpen: boolean;
-    languageKeys: TranslationKey[];
+    languageKeys: LanguageContentInterface;
     isLoadingKeys: boolean;
     memoizedMappings: Doc<'screenshotKeyMappings'>[];
-    pendingChanges: Map<string, any>;
+    pendingChanges: TranslationHistoryItem[];
     containerMappings: any;
     editValue: string;
     editingMapping: Doc<'screenshotKeyMappings'> | null;
     onKeyDialogChange: (open: boolean) => void;
     onMappingsDialogChange: (open: boolean) => void;
-    onAssignKey: (key: TranslationKey) => void;
+    onAssignKey: (key: LanguageItem) => void;
     onSaveValue: (value: string) => void;
     onCancelEdit: () => void;
     onRemoveKeyFromContainer: (args: any) => void;
@@ -66,25 +62,24 @@ export default function ScreenshotDialogs({
     setEditingMapping,
 }: ScreenshotDialogsProps) {
     const [keySearchTerm, setKeySearchTerm] = useState('');
-    const [filteredKeys, setFilteredKeys] = useState<TranslationKey[]>([]);
+    const [filteredKeys, setFilteredKeys] = useState<LanguageItem[]>([]);
 
     const getCurrentValue = (mapping: Doc<'screenshotKeyMappings'>) => {
-        const changeKey = `${mapping.translationKey}`;
-        const pendingChange = pendingChanges.get(changeKey);
-        if (pendingChange) return pendingChange.newValue;
-        const lk = languageKeys.find(k => k.key === mapping.translationKey);
+        const pendingChange = pendingChanges.find(c => c.items.some(item => item.key === mapping.translationKey));
+        if (pendingChange) return pendingChange.items[0]?.newValue;
+        const lk = languageKeys[mapping.translationKey];
         return lk?.value ?? '';
     };
 
     const handleEditMapping = (mapping: Doc<'screenshotKeyMappings'>) => {
         setEditingMapping(mapping);
-        const lk = languageKeys.find(k => k.key === mapping.translationKey);
+        const lk = languageKeys[mapping.translationKey];
         setEditValue(String(lk?.value ?? ''));
     };
 
     useEffect(() => {
         const term = keySearchTerm.trim().toLowerCase();
-        const list = languageKeys.filter(key => {
+        const list = Object.values(languageKeys).filter(key => {
             const matchesTerm = term
                 ? key.key.toLowerCase().includes(term) || String(key.value).toLowerCase().includes(term)
                 : true;
@@ -105,15 +100,9 @@ export default function ScreenshotDialogs({
                 </ModalHeader>
                 <ModalBody>
                     <div className='flex flex-col gap-4'>
-                        <div className='relative'>
-                            <MagnifyingGlassIcon className='absolute left-3 top-3 size-4 text-muted-fg' />
-                            <Input
-                                placeholder='Search keys...'
-                                value={keySearchTerm}
-                                onChange={e => setKeySearchTerm(e.target.value)}
-                                className='pl-10'
-                            />
-                        </div>
+                        <SearchField value={keySearchTerm} onChange={setKeySearchTerm} aria-label='Search'>
+                            <SearchInput />
+                        </SearchField>
 
                         <div className='max-h-[60vh] overflow-y-auto space-y-2'>
                             {isLoadingKeys ? (
@@ -122,26 +111,30 @@ export default function ScreenshotDialogs({
                                 </div>
                             ) : (
                                 <>
-                                    {filteredKeys.map(key => (
-                                        <div
-                                            key={key.key}
-                                            onClick={() => onAssignKey(key)}
-                                            className='p-4 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors'>
-                                            <div className='flex items-start justify-between gap-3'>
-                                                <div className='flex-1 min-w-0'>
-                                                    <h4 className='font-medium text-sm truncate'>{key.key}</h4>
-                                                    <p className='text-xs text-muted-fg mt-1 break-words'>
-                                                        {String(key.value)}
-                                                    </p>
-                                                </div>
-                                                <Badge>{key.type}</Badge>
-                                            </div>
-                                        </div>
-                                    ))}
+                                    <ChoiceBox
+                                        aria-label='Select key'
+                                        onSelectionChange={keys => {
+                                            const key = filteredKeys.find(
+                                                k => k.key === (Array.from(keys)[0] as string)
+                                            );
+
+                                            if (key) {
+                                                onAssignKey(key);
+                                            }
+                                        }}>
+                                        {filteredKeys.map(key => (
+                                            <ChoiceBoxItem key={key.key} textValue={key.key} id={key.key}>
+                                                <ChoiceBoxLabel>{key.key}</ChoiceBoxLabel>
+                                                <ChoiceBoxDescription>{key.value}</ChoiceBoxDescription>
+                                            </ChoiceBoxItem>
+                                        ))}
+                                    </ChoiceBox>
 
                                     {filteredKeys.length === 0 ? (
                                         <div className='text-center py-10 text-muted-fg'>
-                                            {keySearchTerm ? 'No keys match your search' : 'No primitive keys available'}
+                                            {keySearchTerm
+                                                ? 'No keys match your search'
+                                                : 'No primitive keys available'}
                                         </div>
                                     ) : null}
                                 </>
@@ -167,7 +160,9 @@ export default function ScreenshotDialogs({
                         {memoizedMappings.length > 0 ? (
                             memoizedMappings.map(mapping => {
                                 const currentValue = getCurrentValue(mapping);
-                                const hasChange = pendingChanges.has(`${mapping.translationKey}`);
+                                const hasChange = pendingChanges.find(c =>
+                                    c.items.some(item => item.key === mapping.translationKey)
+                                );
                                 const isEditing = editingMapping?._id === mapping._id;
                                 return (
                                     <div
@@ -203,15 +198,11 @@ export default function ScreenshotDialogs({
                                                         <p className='text-xs text-muted-fg break-all'>
                                                             {String(currentValue)}
                                                         </p>
-                                                        {hasChange ? (
-                                                            <Badge intent='warning'>Modified</Badge>
-                                                        ) : null}
+                                                        {hasChange ? <Badge intent='warning'>Modified</Badge> : null}
                                                     </div>
                                                 </div>
                                                 <div className='flex items-center gap-1'>
-                                                    <Button
-                                                        intent='plain'
-                                                        onClick={() => handleEditMapping(mapping)}>
+                                                    <Button intent='plain' onClick={() => handleEditMapping(mapping)}>
                                                         <PencilSquareIcon />
                                                     </Button>
                                                     <Button

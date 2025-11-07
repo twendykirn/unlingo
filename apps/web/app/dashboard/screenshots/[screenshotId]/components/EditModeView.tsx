@@ -2,17 +2,17 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusIcon, TrashIcon, PencilSquareIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { Doc, Id } from '@/convex/_generated/dataModel';
 import { PropsWithChildren, useEffect, useMemo, useState } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isAddingContainer$, selectedContainerId$ } from '../store';
 import { use$ } from '@legendapp/state/react';
-import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/field';
 import { TextField } from '@/components/ui/text-field';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 
 interface EditModeViewProps extends PropsWithChildren {
     workspaceId: Id<'workspaces'>;
@@ -108,26 +108,36 @@ export default function EditModeView({
                             <CardDescription>{screenshotName}</CardDescription>
                         </div>
                         <div className='flex items-center gap-2'>
-                            <Button
-                                onClick={() => isAddingContainer$.set(true)}
-                                isDisabled={isAddingContainer}
-                                intent='plain'>
-                                <PlusIcon />
-                                {isAddingContainer ? 'Click to Place' : 'Add Container'}
-                            </Button>
+                            <div>
+                                <Select
+                                    value={0}
+                                    aria-label='namespaces-selector'
+                                    placeholder='namespace'
+                                    onChange={() => onSwitchToTranslate()}
+                                    defaultValue={0}>
+                                    <SelectTrigger />
+                                    <SelectContent
+                                        items={[
+                                            { id: 0, name: 'Edit Mode' },
+                                            { id: 1, name: 'Translation Mode' },
+                                        ]}>
+                                        {item => (
+                                            <SelectItem id={item.id} textValue={item.name}>
+                                                {item.name}
+                                            </SelectItem>
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             {isAddingContainer ? (
-                                <Button onClick={() => isAddingContainer$.set(false)} intent='outline'>
+                                <Button onClick={() => isAddingContainer$.set(false)} intent='danger'>
                                     Cancel
                                 </Button>
                             ) : null}
-                            <Menu>
-                                <MenuTrigger className='size-6'>
-                                    <EllipsisVerticalIcon />
-                                </MenuTrigger>
-                                <MenuContent placement='left top'>
-                                    <MenuItem onClick={onSwitchToTranslate}>Switch to Translate</MenuItem>
-                                </MenuContent>
-                            </Menu>
+                            <Button onClick={() => isAddingContainer$.set(true)} isDisabled={isAddingContainer}>
+                                <PlusIcon />
+                                {isAddingContainer ? 'Click to Place' : 'Add Container'}
+                            </Button>
                         </div>
                     </div>
                 </CardHeader>
@@ -209,9 +219,7 @@ export default function EditModeView({
                                         </>
                                     ) : (
                                         <>
-                                            <TextField
-                                                value={detailsColor}
-                                                onChange={value => setDetailsColor(value)}>
+                                            <TextField value={detailsColor} onChange={value => setDetailsColor(value)}>
                                                 <Label>Container Color</Label>
                                                 <div className='flex items-center gap-2 mt-2'>
                                                     <input

@@ -1,39 +1,30 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import {
     PlusIcon,
     TrashIcon,
-    PencilSquareIcon,
-    EllipsisVerticalIcon,
     LockOpenIcon,
     GlobeAltIcon,
     LanguageIcon,
+    NewspaperIcon,
 } from '@heroicons/react/24/outline';
 import { Doc, Id } from '@/convex/_generated/dataModel';
 import { useAction, useMutation, usePaginatedQuery } from 'convex/react';
 import { PropsWithChildren, useEffect, useMemo, useState } from 'react';
 import ScreenshotDialogs from './ScreenshotDialogs';
-import { useRouter } from 'next/navigation';
 import { api } from '@/convex/_generated/api';
-import { extractPrimitiveKeys, TranslationKey } from '../utils';
 import { selectedContainerId$ } from '../store';
 import { use$ } from '@legendapp/state/react';
-import * as diff from 'json-diff';
-import { createStructuredChanges } from '@/app/dashboard/editor/utils/createStructuredChanges';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/field';
-import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/menu';
 import { Badge } from '@/components/ui/badge';
 import { Loader } from '@/components/ui/loader';
-
-interface LanguageChanges {
-    changes: any; // The structured changes object
-    timestamp: number;
-    languageId: string;
-    isPrimaryLanguage: boolean;
-}
+import { toast } from 'sonner';
+import { flattenJson, LanguageContentInterface, LanguageItem } from '@/app/dashboard/editor/utils/jsonFlatten';
+import { TranslationHistoryItem } from '@/app/dashboard/editor/types';
+import { consolidateHistory } from '@/app/dashboard/editor/utils/consolidateHistory';
 
 interface WorkflowState {
     namespace?: Doc<'namespaces'>;
@@ -72,26 +63,25 @@ export default function TranslateModeView({
     const [draftLanguage, setDraftLanguage] = useState<Doc<'languages'> | undefined>(undefined);
 
     const [hasChanges, setHasChanges] = useState(false);
-    const [pendingChanges, setPendingChanges] = useState<Map<string, any>>(new Map());
+    const [pendingChanges, setPendingChanges] = useState<TranslationHistoryItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
 
-    const [languageKeys, setLanguageKeys] = useState<TranslationKey[]>([]);
+    const [languageKeys, setLanguageKeys] = useState<LanguageContentInterface>({});
     const [isLoadingKeys, setIsLoadingKeys] = useState(false);
     const [orphanedMappings, setOrphanedMappings] = useState<Doc<'screenshotKeyMappings'>[]>([]);
-    const [originalJson, setOriginalJson] = useState<any>({});
 
     const [editValue, setEditValue] = useState('');
     const [editingMapping, setEditingMapping] = useState<Doc<'screenshotKeyMappings'> | null>(null);
 
     const assignKeyToContainer = useMutation(api.screenshots.assignKeyToContainer);
-    const applyLanguageChanges = useAction(api.languages.applyChangeOperations);
+    const applyChangeOperations = useAction(api.languages.applyChangeOperations);
     const removeKeyFromContainer = useMutation(api.screenshots.removeKeyFromContainer);
     const getLanguageContent = useAction(api.languages.getLanguageContent);
 
     const namespaces = usePaginatedQuery(
         api.namespaces.getNamespaces,
         projectId && workspaceId && isEditingContext ? { projectId, workspaceId } : 'skip',
-        { initialNumItems: 20 }
+        { initialNumItems: 40 }
     );
 
     const versions = usePaginatedQuery(
@@ -105,7 +95,7 @@ export default function TranslateModeView({
         isEditingContext && draftVersion && workspaceId
             ? { namespaceVersionId: draftVersion._id, workspaceId }
             : 'skip',
-        { initialNumItems: 20 }
+        { initialNumItems: 90 }
     );
 
     const containerMappings = usePaginatedQuery(
@@ -133,7 +123,8 @@ export default function TranslateModeView({
     }, [containers, selectedContainerId]);
 
     const unsavedCount = useMemo(() => {
-        return memoizedMappings.filter(m => pendingChanges.has(`${m.translationKey}`)).length;
+        return memoizedMappings.filter(m => pendingChanges.some(c => c.items.some(i => i.key === m.translationKey)))
+            .length;
     }, [memoizedMappings, pendingChanges]);
 
     const handleUnlockWorkflow = () => {
@@ -162,7 +153,7 @@ export default function TranslateModeView({
         setIsEditingContext(false);
     };
 
-    const handleAssignKey = async (key: TranslationKey) => {
+    const handleAssignKey = async (key: LanguageItem) => {
         if (!selectedContainerId || !workflow.version || !workflow.language) return;
 
         try {
@@ -181,90 +172,68 @@ export default function TranslateModeView({
         }
     };
 
-    const handleSaveValue = (value: string) => {
+    const handleSaveValue = (value: any) => {
         if (!editingMapping) return;
 
-        let parsedValue: string | number | boolean = value;
-        if (/^-?\d+(\.\d+)?$/.test(value)) {
-            parsedValue = Number(value);
-        } else if (/^(true|false)$/i.test(value)) {
-            parsedValue = value.toLowerCase() === 'true';
+        const item = languageKeys[editingMapping.translationKey];
+
+        if (!item) return;
+
+        if (value === item.value) {
+            setEditingMapping(null);
+            return;
         }
 
-        const changeKey = `${editingMapping.translationKey}`;
-        setPendingChanges(prev => {
-            const newChanges = new Map(prev);
-            newChanges.set(changeKey, {
-                key: editingMapping.translationKey,
-                oldValue: languageKeys.find(k => k.key === editingMapping.translationKey)?.value,
-                newValue: parsedValue,
-            });
-            return newChanges;
-        });
+        setPendingChanges(prev => [
+            ...prev,
+            {
+                action: 'modify',
+                items: [
+                    {
+                        key: editingMapping.translationKey,
+                        item: {
+                            key: editingMapping.translationKey,
+                            value: item.value,
+                            primaryValue: null,
+                        },
+                        newValue: value,
+                    },
+                ],
+            },
+        ]);
+
+        setLanguageKeys(keys => ({
+            ...keys,
+            [editingMapping.translationKey]: {
+                ...item,
+                value,
+            },
+        }));
 
         setHasChanges(true);
         setEditingMapping(null);
         setEditValue('');
     };
 
-    const setValueByPath = (obj: any, dottedPath: string, value: any) => {
-        const parts = dottedPath.split('.');
-        let cursor = obj;
-        for (let i = 0; i < parts.length - 1; i++) {
-            const part = parts[i];
-            if (part === undefined) continue;
-            if (typeof (cursor as any)[part] !== 'object' || (cursor as any)[part] === null) {
-                (cursor as any)[part] = {};
-            }
-            cursor = (cursor as any)[part];
-        }
-        const last = parts[parts.length - 1];
-        if (last !== undefined) {
-            (cursor as any)[last] = value;
-        }
-    };
-
-    const generateLanguageChanges = (oldJson: any, newJson: any): LanguageChanges => {
-        const fullDiff = diff.diff(oldJson, newJson, { full: true });
-        const changes = createStructuredChanges(fullDiff);
-
-        return {
-            changes,
-            timestamp: Date.now(),
-            languageId: workflow.language!._id as Id<'languages'>,
-            isPrimaryLanguage: workflow.version?.primaryLanguageId === workflow.language?._id,
-        };
-    };
-
     const handleSaveChanges = async () => {
-        if (!workflow.language || pendingChanges.size === 0) return;
+        if (!workflow.language || pendingChanges.length === 0) return;
 
         setIsSaving(true);
         try {
-            // Build new JSON by applying pending changes to the last fetched originalJson
-            const newJson = JSON.parse(JSON.stringify(originalJson));
-            for (const [, change] of pendingChanges) {
-                setValueByPath(newJson, change.key, change.newValue);
-            }
+            const languageChanges = consolidateHistory(pendingChanges);
 
-            const languageChanges = generateLanguageChanges(originalJson, newJson);
-
-            await applyLanguageChanges({
+            await applyChangeOperations({
                 languageId: workflow.language._id,
                 workspaceId,
-                ...(languageChanges.changes !== undefined ? { languageChanges } : {}),
+                languageChanges,
             });
 
-            setOriginalJson(newJson);
-            const keys = extractPrimitiveKeys(newJson);
-            setLanguageKeys(keys);
-            setPendingChanges(new Map());
+            setPendingChanges([]);
             setHasChanges(false);
 
-            alert('Changes saved successfully!');
+            toast.success('Changes saved successfully!');
         } catch (error) {
-            console.error('Failed to save changes:', error);
-            alert(error instanceof Error ? error.message : 'Failed to save changes');
+            toast.error(`Failed to save changes: ${error}`);
         } finally {
             setIsSaving(false);
         }
@@ -272,7 +241,7 @@ export default function TranslateModeView({
 
     const handleDiscardChanges = () => {
         if (confirm('Discard all unsaved changes?')) {
-            setPendingChanges(new Map());
+            setPendingChanges([]);
             setHasChanges(false);
             setEditingMapping(null);
             setEditValue('');
@@ -292,7 +261,7 @@ export default function TranslateModeView({
 
     useEffect(() => {
         if (!workflow.language) {
-            setLanguageKeys([]);
+            setLanguageKeys({});
             setOrphanedMappings([]);
             return;
         }
@@ -304,13 +273,12 @@ export default function TranslateModeView({
         })
             .then(result => {
                 const content = result || {};
-                setOriginalJson(content);
-                const keys = extractPrimitiveKeys(content);
-                setLanguageKeys(keys);
+                const flatContent = flattenJson(content);
+                setLanguageKeys(flatContent);
             })
             .catch(error => {
-                console.error('Error fetching language content:', error);
-                setLanguageKeys([]);
+                toast.error(`Error fetching language content: ${error}`);
+                setLanguageKeys({});
                 setOrphanedMappings([]);
             })
             .finally(() => {
@@ -323,12 +291,10 @@ export default function TranslateModeView({
             setOrphanedMappings([]);
             return;
         }
-        const keyToValue = new Map(languageKeys.map(k => [k.key, k.value]));
         const orphaned = memoizedMappings.filter(mapping => {
-            const val = keyToValue.get(mapping.translationKey);
+            const val = languageKeys[mapping.translationKey];
             if (val === undefined) return true;
-            const isPrimitive = ['string', 'number', 'boolean'].includes(typeof val);
-            return !isPrimitive;
+            return false;
         });
         setOrphanedMappings(orphaned);
     }, [languageKeys, memoizedMappings]);
@@ -349,7 +315,7 @@ export default function TranslateModeView({
                 }
                 setOrphanedMappings([]);
             } catch (err) {
-                console.error('Auto cleanup of orphaned mappings failed:', err);
+                toast.error(`Auto cleanup of orphaned mappings failed: ${err}`);
             }
         })();
     }, [orphanedMappings, workflow.language, workspaceId, removeKeyFromContainer]);
@@ -365,32 +331,43 @@ export default function TranslateModeView({
                                 <CardDescription>{screenshotName}</CardDescription>
                             </div>
                             <div className='flex items-center gap-2'>
+                                <div>
+                                    <Select
+                                        value={1}
+                                        aria-label='modes-selector'
+                                        placeholder='modes'
+                                        onChange={() => onSwitchToEdit()}
+                                        defaultValue={1}>
+                                        <SelectTrigger />
+                                        <SelectContent
+                                            items={[
+                                                { id: 0, name: 'Edit Mode' },
+                                                { id: 1, name: 'Translation Mode' },
+                                            ]}>
+                                            {item => (
+                                                <SelectItem id={item.id} textValue={item.name}>
+                                                    {item.name}
+                                                </SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                                 {hasChanges ? (
-                                    <Button onClick={handleSaveChanges} isPending={isSaving} intent='primary'>
-                                        {isSaving ? <Loader /> : 'Save Changes'} ({pendingChanges.size})
-                                    </Button>
+                                    <>
+                                        <Button onClick={handleDiscardChanges} isDisabled={isSaving} intent='danger'>
+                                            <TrashIcon /> Discard Changes
+                                        </Button>
+                                        <Button onClick={handleSaveChanges} isPending={isSaving}>
+                                            {isSaving ? <Loader /> : 'Save Changes'} ({pendingChanges.length})
+                                        </Button>
+                                    </>
                                 ) : null}
-                                <Menu>
-                                    <MenuTrigger className='size-6'>
-                                        <EllipsisVerticalIcon />
-                                    </MenuTrigger>
-                                    <MenuContent placement='left top'>
-                                        {hasChanges ? (
-                                            <MenuItem intent='danger' onAction={handleDiscardChanges}>
-                                                <TrashIcon /> Discard Changes
-                                            </MenuItem>
-                                        ) : null}
-                                        <MenuItem onAction={onSwitchToEdit}>
-                                            <PencilSquareIcon /> Switch to Edit
-                                        </MenuItem>
-                                    </MenuContent>
-                                </Menu>
                             </div>
                         </div>
                     </CardHeader>
                 </Card>
 
-                <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
+                <div className='grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1'>
                     <div className='lg:col-span-1 space-y-6'>
                         {workflow.isLocked ? (
                             <Card>
@@ -407,8 +384,9 @@ export default function TranslateModeView({
                                                 </span>
                                             </div>
                                             <div className='flex items-center gap-2'>
+                                                <NewspaperIcon className='size-4' />
                                                 <span className='text-sm font-medium truncate'>
-                                                    v{workflow.version?.version}
+                                                    {workflow.version?.version}
                                                 </span>
                                             </div>
                                             <div className='flex items-center gap-2'>
@@ -434,77 +412,71 @@ export default function TranslateModeView({
                                 </CardHeader>
                                 <CardContent>
                                     <div className='flex flex-col gap-4'>
-                                        <div>
+                                        <Select
+                                            value={draftNamespace?._id || ''}
+                                            onChange={val => {
+                                                const ns = namespaces?.results?.find(
+                                                    n => n._id === (val as Id<'namespaces'>)
+                                                );
+                                                setDraftNamespace(ns);
+                                                setDraftVersion(undefined);
+                                                setDraftLanguage(undefined);
+                                            }}
+                                            aria-label='Namespace'
+                                            placeholder='Select namespace'>
                                             <Label>Namespace</Label>
-                                            <Select
-                                                value={draftNamespace?._id || ''}
-                                                onValueChange={val => {
-                                                    const ns = namespaces?.results?.find(
-                                                        n => n._id === (val as Id<'namespaces'>)
-                                                    );
-                                                    setDraftNamespace(ns);
-                                                    setDraftVersion(undefined);
-                                                    setDraftLanguage(undefined);
-                                                }}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder='Select namespace' />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {namespaces?.results?.map(ns => (
-                                                        <SelectItem key={ns._id} value={ns._id}>
-                                                            {ns.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div>
-                                            <Label>Version</Label>
-                                            <Select
-                                                value={draftVersion?._id || ''}
-                                                onValueChange={val => {
-                                                    const v = versions?.results?.find(
-                                                        vv => vv._id === (val as Id<'namespaceVersions'>)
-                                                    );
-                                                    setDraftVersion(v);
-                                                    setDraftLanguage(undefined);
-                                                }}
-                                                disabled={!draftNamespace}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder='Select version' />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {versions?.results?.map(v => (
-                                                        <SelectItem key={v._id} value={v._id}>
-                                                            {v.version}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div>
+                                            <SelectTrigger />
+                                            <SelectContent items={namespaces?.results}>
+                                                {item => (
+                                                    <SelectItem id={item._id} textValue={item.name}>
+                                                        {item.name}
+                                                    </SelectItem>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select
+                                            value={draftVersion?._id || ''}
+                                            onChange={val => {
+                                                const v = versions?.results?.find(
+                                                    vv => vv._id === (val as Id<'namespaceVersions'>)
+                                                );
+                                                setDraftVersion(v);
+                                                setDraftLanguage(undefined);
+                                            }}
+                                            aria-label='Environment'
+                                            placeholder='Select environment'
+                                            isDisabled={!draftNamespace}>
+                                            <Label>Environment</Label>
+                                            <SelectTrigger />
+                                            <SelectContent items={versions?.results}>
+                                                {item => (
+                                                    <SelectItem id={item._id} textValue={item.version}>
+                                                        {item.version}
+                                                    </SelectItem>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select
+                                            value={draftLanguage?._id || ''}
+                                            onChange={val => {
+                                                const lang = languages?.results?.find(
+                                                    l => l._id === (val as Id<'languages'>)
+                                                );
+                                                setDraftLanguage(lang);
+                                            }}
+                                            aria-label='Language'
+                                            placeholder='Select language'
+                                            isDisabled={!draftVersion}>
                                             <Label>Language</Label>
-                                            <Select
-                                                value={draftLanguage?._id || ''}
-                                                onValueChange={val => {
-                                                    const lang = languages?.results?.find(
-                                                        l => l._id === (val as Id<'languages'>)
-                                                    );
-                                                    setDraftLanguage(lang);
-                                                }}
-                                                disabled={!draftVersion}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder='Select language' />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {languages?.results?.map(l => (
-                                                        <SelectItem key={l._id} value={l._id}>
-                                                            {l.languageCode}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
+                                            <SelectTrigger />
+                                            <SelectContent items={languages?.results}>
+                                                {item => (
+                                                    <SelectItem id={item._id} textValue={item.languageCode}>
+                                                        {item.languageCode}
+                                                    </SelectItem>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
                                         <div className='flex gap-2'>
                                             {didInitTranslateMode ? (
                                                 <Button intent='outline' onClick={handleCancelWorkflowContext}>

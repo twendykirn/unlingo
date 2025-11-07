@@ -76,7 +76,7 @@ export default function ScreenshotEditorPage() {
 
     return (
         <DashboardSidebar activeItem='screenshots' onWorkspaceChange={setWorkspace}>
-            {workspace && currentScreenshot && canvasImage ? (
+            {workspace && currentScreenshot && projectId && canvasImage ? (
                 <>
                     {showModeSelection ? (
                         <ModeSelectionView
