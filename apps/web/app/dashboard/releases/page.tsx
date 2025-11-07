@@ -3,12 +3,10 @@
 import { usePaginatedQuery, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useEffect, useState } from 'react';
-import { IconDotsVertical, IconHighlight, IconPlus, IconTrash } from '@intentui/icons';
+import { PlusIcon, TrashIcon, PencilSquareIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
-import { Card } from '@/components/ui/card';
-import { Table } from '@/components/ui/table';
-import { CalendarDateTime } from '@internationalized/date';
-import { DateField } from '@/components/ui/date-field';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@/components/ui/table';
 import { Snippet } from '@heroui/snippet';
 import { Doc, Id } from '@/convex/_generated/dataModel';
 import { Loader } from '@/components/ui/loader';
@@ -20,6 +18,7 @@ import { Collection, TableLoadMoreItem } from 'react-aria-components';
 import ReleaseCreateSheet from './components/release-create-sheet';
 import ReleaseRemoveModal from './components/release-remove-modal';
 import ReleaseEditSheet from './components/release-edit-sheet';
+import { useDateFormatter } from '@react-aria/i18n';
 
 export default function ReleasesPage() {
     const searchParams = useSearchParams();
@@ -32,6 +31,8 @@ export default function ReleasesPage() {
     const [isDeleteReleaseModalOpen, setIsDeleteReleaseModalOpen] = useState(false);
     const [isCreateReleaseSheetOpen, setIsCreateReleaseSheetOpen] = useState(false);
     const [selectedRelease, setSelectedRelease] = useState<Doc<'releases'> | null>(null);
+
+    const formatter = useDateFormatter({ dateStyle: 'long' });
 
     const project = useQuery(
         api.projects.getProject,
@@ -75,11 +76,11 @@ export default function ReleasesPage() {
             {workspace ? (
                 <>
                     <Card>
-                        <Card.Header>
+                        <CardHeader>
                             <div className='flex items-center justify-between'>
                                 <div className='flex flex-col gap-1'>
-                                    <Card.Title>Releases</Card.Title>
-                                    <Card.Description>View, edit and delete your releases.</Card.Description>
+                                    <CardTitle>Releases</CardTitle>
+                                    <CardDescription>View, edit and delete your releases.</CardDescription>
                                 </div>
                                 <div className='flex items-end gap-2'>
                                     <ProjectsSelector
@@ -94,81 +95,64 @@ export default function ReleasesPage() {
                                         intent='plain'
                                         isDisabled={!project}
                                         onClick={() => setIsCreateReleaseSheetOpen(true)}>
-                                        <IconPlus />
+                                        <PlusIcon />
                                     </Button>
                                 </div>
                             </div>
-                        </Card.Header>
-                        <Card.Content>
+                        </CardHeader>
+                        <CardContent>
                             <Table
                                 bleed
                                 className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
                                 aria-label='Projects'>
-                                <Table.Header>
-                                    <Table.Column className='w-0'>Name</Table.Column>
-                                    <Table.Column isRowHeader>Tag</Table.Column>
-                                    <Table.Column>Created At</Table.Column>
-                                    <Table.Column />
-                                </Table.Header>
-                                <Table.Body>
+                                <TableHeader>
+                                    <TableColumn className='w-0'>Name</TableColumn>
+                                    <TableColumn isRowHeader>Tag</TableColumn>
+                                    <TableColumn>Created At</TableColumn>
+                                    <TableColumn />
+                                </TableHeader>
+                                <TableBody>
                                     <Collection items={releases}>
-                                        {item => {
-                                            const projectCreatedAt = new Date(item._creationTime);
-                                            const date = new CalendarDateTime(
-                                                projectCreatedAt.getFullYear(),
-                                                projectCreatedAt.getMonth(),
-                                                projectCreatedAt.getDate(),
-                                                projectCreatedAt.getHours(),
-                                                projectCreatedAt.getMinutes()
-                                            );
-
-                                            return (
-                                                <Table.Row id={item._id}>
-                                                    <Table.Cell>{item.name}</Table.Cell>
-                                                    <Table.Cell>
-                                                        <Snippet size='sm' hideSymbol>
-                                                            {item.tag}
-                                                        </Snippet>
-                                                    </Table.Cell>
-                                                    <Table.Cell>
-                                                        <div className='flex gap-2 flex-1 items-center'>
-                                                            <DateField
-                                                                isReadOnly
-                                                                defaultValue={date}
-                                                                hideTimeZone
-                                                                hourCycle={24}
-                                                                aria-label='created-at'
-                                                            />
-                                                        </div>
-                                                    </Table.Cell>
-                                                    <Table.Cell className='text-end last:pr-2.5'>
-                                                        <Menu>
-                                                            <MenuTrigger>
-                                                                <IconDotsVertical />
-                                                            </MenuTrigger>
-                                                            <MenuContent placement='left top'>
-                                                                <MenuItem
-                                                                    onClick={() => {
-                                                                        setIsEditReleaseSheetOpen(true);
-                                                                        setSelectedRelease(item);
-                                                                    }}>
-                                                                    <IconHighlight /> Edit
-                                                                </MenuItem>
-                                                                <MenuSeparator />
-                                                                <MenuItem
-                                                                    isDanger
-                                                                    onClick={() => {
-                                                                        setIsDeleteReleaseModalOpen(true);
-                                                                        setSelectedRelease(item);
-                                                                    }}>
-                                                                    <IconTrash /> Delete
-                                                                </MenuItem>
-                                                            </MenuContent>
-                                                        </Menu>
-                                                    </Table.Cell>
-                                                </Table.Row>
-                                            );
-                                        }}
+                                        {item => (
+                                            <TableRow id={item._id}>
+                                                <TableCell>{item.name}</TableCell>
+                                                <TableCell>
+                                                    <Snippet size='sm' hideSymbol>
+                                                        {item.tag}
+                                                    </Snippet>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className='flex gap-2 flex-1 items-center'>
+                                                        {formatter.format(new Date(item._creationTime))}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className='flex justify-end'>
+                                                    <Menu>
+                                                        <MenuTrigger className='size-6'>
+                                                            <EllipsisVerticalIcon />
+                                                        </MenuTrigger>
+                                                        <MenuContent placement='left top'>
+                                                            <MenuItem
+                                                                onClick={() => {
+                                                                    setIsEditReleaseSheetOpen(true);
+                                                                    setSelectedRelease(item);
+                                                                }}>
+                                                                <PencilSquareIcon /> Edit
+                                                            </MenuItem>
+                                                            <MenuSeparator />
+                                                            <MenuItem
+                                                                intent='danger'
+                                                                onClick={() => {
+                                                                    setIsDeleteReleaseModalOpen(true);
+                                                                    setSelectedRelease(item);
+                                                                }}>
+                                                                <TrashIcon /> Delete
+                                                            </MenuItem>
+                                                        </MenuContent>
+                                                    </Menu>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
                                     </Collection>
                                     {status !== 'Exhausted' ? (
                                         <TableLoadMoreItem
@@ -178,9 +162,9 @@ export default function ReleasesPage() {
                                             <Loader className='mx-auto' isIndeterminate aria-label='Loading more...' />
                                         </TableLoadMoreItem>
                                     ) : null}
-                                </Table.Body>
+                                </TableBody>
                             </Table>
-                        </Card.Content>
+                        </CardContent>
                     </Card>
                     {project && selectedRelease ? (
                         <>

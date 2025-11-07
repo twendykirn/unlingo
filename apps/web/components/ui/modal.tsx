@@ -6,7 +6,8 @@ import {
   ModalOverlay,
   Modal as ModalPrimitive,
 } from "react-aria-components"
-import { twJoin, twMerge } from "tailwind-merge"
+import { twJoin } from "tailwind-merge"
+import { cx } from "@/lib/primitive"
 import {
   Dialog,
   DialogBody,
@@ -24,6 +25,7 @@ const Modal = (props: DialogTriggerProps) => {
 }
 
 const sizes = {
+  "2xs": "sm:max-w-2xs",
   xs: "sm:max-w-xs",
   sm: "sm:max-w-sm",
   md: "sm:max-w-md",
@@ -33,6 +35,7 @@ const sizes = {
   "3xl": "sm:max-w-3xl",
   "4xl": "sm:max-w-4xl",
   "5xl": "sm:max-w-5xl",
+  fullscreen: "",
 }
 
 interface ModalContentProps
@@ -62,37 +65,33 @@ const ModalContent = ({
     <ModalOverlay
       data-slot="modal-overlay"
       isDismissable={isDismissable}
-      className={({ isExiting, isEntering }) =>
-        twJoin(
-          "fixed inset-0 z-50 h-(--visual-viewport-height,100vh) bg-black/15 md:p-4",
-          "grid grid-rows-[1fr_auto] justify-items-center sm:grid-rows-[1fr_auto_3fr]",
-          isEntering && "fade-in animate-in duration-300",
-          isExiting && "fade-out animate-out duration-200",
-          isBlurred && "backdrop-blur-sm backdrop-filter",
-        )
-      }
+      className={twJoin(
+        "fixed inset-0 z-50 h-(--visual-viewport-height,100vh) bg-black/15",
+        "grid grid-rows-[1fr_auto] justify-items-center sm:grid-rows-[1fr_auto_3fr]",
+        size === "fullscreen" ? "md:p-3" : "md:p-4",
+        "entering:fade-in entering:animate-in entering:duration-300 entering:ease-out",
+        "exiting:fade-out exiting:animate-out exiting:ease-in",
+        isBlurred && "backdrop-blur-[1px] backdrop-filter",
+      )}
       {...props}
     >
       <ModalPrimitive
         data-slot="modal-content"
-        className={({ isExiting, isEntering }) =>
-          twMerge(
-            "row-start-2 w-full text-left align-middle",
-            "[--visual-viewport-vertical-padding:16px] sm:[--visual-viewport-vertical-padding:32px]",
-            "relative bg-overlay text-overlay-fg",
-            "shadow-lg ring ring-fg/5 dark:ring-border",
-            "rounded-t-2xl md:rounded-xl",
-            sizes[size],
-            isEntering && [
-              "slide-in-from-bottom animate-in duration-300 ease-out",
-              "md:fade-in md:zoom-in-95 md:slide-in-from-bottom-0",
-            ],
-            isExiting && [
-              "slide-out-to-bottom animate-out",
-              "md:fade-out md:zoom-out-95 md:slide-out-to-bottom-0",
-            ],
-          )
-        }
+        className={cx(
+          "row-start-2 w-full text-left align-middle",
+          "[--visual-viewport-vertical-padding:16px]",
+          size === "fullscreen"
+            ? "sm:rounded-md sm:[--visual-viewport-vertical-padding:16px]"
+            : "sm:rounded-xl sm:[--visual-viewport-vertical-padding:32px]",
+          "relative overflow-hidden bg-overlay text-overlay-fg",
+          "rounded-t-2xl shadow-lg ring ring-fg/5 dark:ring-border",
+          sizes[size],
+
+          "entering:slide-in-from-bottom sm:entering:zoom-in-95 sm:entering:slide-in-from-bottom-0 entering:animate-in entering:duration-300 entering:ease-out",
+          "exiting:slide-out-to-bottom sm:exiting:zoom-out-95 sm:exiting:slide-out-to-bottom-0 exiting:animate-out exiting:ease-in",
+          className,
+        )}
+        {...props}
       >
         <Dialog role={role}>
           {(values) => (
@@ -114,15 +113,6 @@ const ModalDescription = DialogDescription
 const ModalFooter = DialogFooter
 const ModalBody = DialogBody
 const ModalClose = DialogClose
-
-Modal.Trigger = ModalTrigger
-Modal.Header = ModalHeader
-Modal.Title = ModalTitle
-Modal.Description = ModalDescription
-Modal.Footer = ModalFooter
-Modal.Body = ModalBody
-Modal.Close = ModalClose
-Modal.Content = ModalContent
 
 export {
   Modal,

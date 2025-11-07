@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { Loader } from '@/components/ui/loader';
 import {
     ModalBody,
@@ -57,20 +59,17 @@ const ProjectRemoveModal = ({ isOpen, setIsOpen, project, workspace }: Props) =>
             <ModalHeader>
                 <ModalTitle>Delete Project</ModalTitle>
                 <ModalDescription>
-                    This action is permanent and cannot be undone. To confirm, please type the project name below:{' '}
-                    <Snippet size='sm' hideSymbol>
-                        {project.name}
-                    </Snippet>
+                    This action is permanent and cannot be undone. To confirm, please type the project name below:
                 </ModalDescription>
+                <Snippet size='sm' hideSymbol>
+                    {project.name}
+                </Snippet>
             </ModalHeader>
             <ModalBody>
-                <TextField
-                    label='Name'
-                    type='text'
-                    placeholder='Enter project name'
-                    value={deleteConfirmation}
-                    onChange={setDeleteConfirmation}
-                />
+                <TextField value={deleteConfirmation} onChange={setDeleteConfirmation}>
+                    <Label>Name</Label>
+                    <Input placeholder='Enter project name' />
+                </TextField>
             </ModalBody>
             <ModalFooter>
                 <ModalClose>Cancel</ModalClose>

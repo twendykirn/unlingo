@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useEffect, useState } from 'react';
-import { IconCreditCard, IconOpenLink } from '@intentui/icons';
+import { CreditCardIcon } from '@heroicons/react/24/outline';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import DashboardSidebar, { WorkspaceWithPremium } from '../components/dashboard-sidebar';
@@ -12,12 +12,14 @@ import { toast } from 'sonner';
 import { CheckoutLink, CustomerPortalLink } from '@convex-dev/polar/react';
 import { Form } from '@/components/ui/form';
 import { TextField } from '@/components/ui/text-field';
-import { Card } from '@/components/ui/card';
-import { ProgressBar } from '@/components/ui/progress-bar';
-import { DescriptionList } from '@/components/ui/description-list';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ProgressBar, ProgressBarHeader, ProgressBarTrack, ProgressBarValue } from '@/components/ui/progress-bar';
+import { DescriptionDetails, DescriptionList, DescriptionTerm } from '@/components/ui/description-list';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import type { Key } from 'react-aria-components';
+import { Label } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 
 export default function BillingPage() {
     const { organization } = useOrganization();
@@ -126,22 +128,21 @@ export default function BillingPage() {
                 <>
                     <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'>
                         <Card>
-                            <Card.Header>
-                                <Card.Title>Contact Information</Card.Title>
-                            </Card.Header>
-                            <Card.Content>
+                            <CardHeader>
+                                <CardTitle>Contact Information</CardTitle>
+                            </CardHeader>
+                            <CardContent>
                                 <Form>
                                     <div className='flex gap-2 items-end'>
                                         <TextField
-                                            label='Contact Email'
-                                            type='text'
-                                            placeholder='contact@company.com'
                                             value={contactEmail}
                                             onChange={setContactEmail}
-                                            isRequired
-                                            isReadOnly={!isEditing}
                                             className='flex-1'
-                                        />
+                                            isRequired
+                                            isReadOnly={!isEditing}>
+                                            <Label>Contact Email</Label>
+                                            <Input placeholder='contact@company.com' />
+                                        </TextField>
                                         <Button
                                             onClick={() => {
                                                 if (!isEditing) {
@@ -164,27 +165,24 @@ export default function BillingPage() {
                                         This email will be used for billing and important notifications.
                                     </p>
                                 </Form>
-                            </Card.Content>
+                            </CardContent>
                         </Card>
                         <Card>
-                            <Card.Header>
+                            <CardHeader>
                                 <div className='flex items-center justify-between flex-wrap gap-2'>
-                                    <Card.Title>Billing & Subscription</Card.Title>
+                                    <CardTitle>Billing & Subscription</CardTitle>
                                     {workspace.isPremium ? (
                                         <CustomerPortalLink
                                             polarApi={{
                                                 generateCustomerPortalUrl: api.polar.generateCustomerPortalUrl,
                                             }}>
-                                            <Button>
-                                                Manage Subscription
-                                                <IconOpenLink />
-                                            </Button>
+                                            <Button>Manage Subscription</Button>
                                         </CustomerPortalLink>
                                     ) : products ? (
                                         <div className='flex items-center gap-2'>
                                             <Select
-                                                selectedKey={selectedPackage}
-                                                onSelectionChange={setSelectedPackage}
+                                                value={selectedPackage}
+                                                onChange={setSelectedPackage}
                                                 aria-label='Select a subscription package'
                                                 placeholder='Select a movie'>
                                                 <SelectTrigger />
@@ -209,8 +207,8 @@ export default function BillingPage() {
                                         </div>
                                     ) : null}
                                 </div>
-                            </Card.Header>
-                            <Card.Content className='space-y-4'>
+                            </CardHeader>
+                            <CardContent className='space-y-4'>
                                 {workspace.isPremium ? (
                                     <div className='flex items-center justify-between p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-xl'>
                                         <div>
@@ -222,7 +220,7 @@ export default function BillingPage() {
                                             </p>
                                         </div>
                                         <div className='flex items-center text-emerald-400'>
-                                            <IconCreditCard />
+                                            <CreditCardIcon />
                                         </div>
                                     </div>
                                 ) : (
@@ -235,55 +233,65 @@ export default function BillingPage() {
                                                 </p>
                                             </div>
                                             <div className='flex items-center text-slate-400'>
-                                                <IconCreditCard />
+                                                <CreditCardIcon />
                                             </div>
                                         </div>
                                     </div>
                                 )}
-                            </Card.Content>
+                            </CardContent>
                         </Card>
                     </div>
                     <Card>
-                        <Card.Header>
+                        <CardHeader>
                             <div className='flex items-center justify-between'>
-                                <Card.Title>Usage & Limits • {usageData?.month || 'Current month'}</Card.Title>
+                                <CardTitle>Usage & Limits • {usageData?.month || 'Current month'}</CardTitle>
                                 <Badge intent={workspace.isPremium ? 'success' : 'secondary'}>
                                     {workspace.isPremium ? 'Premium Plan' : 'Free Plan'}
                                 </Badge>
                             </div>
-                        </Card.Header>
-                        <Card.Content>
+                        </CardHeader>
+                        <CardContent>
                             <DescriptionList>
-                                <DescriptionList.Term>Projects</DescriptionList.Term>
-                                <DescriptionList.Details>
+                                <DescriptionTerm>Projects</DescriptionTerm>
+                                <DescriptionDetails>
                                     <ProgressBar
                                         value={Math.min(
                                             (workspace.currentUsage.projects / workspace.limits.projects) * 100
-                                        )}
-                                        label={`${workspace.currentUsage.projects}/${workspace.limits.projects}`}
-                                    />
-                                </DescriptionList.Details>
+                                        )}>
+                                        <ProgressBarHeader>
+                                            <Label>
+                                                {`${workspace.currentUsage.projects}/${workspace.limits.projects}`}
+                                            </Label>
+                                            <ProgressBarValue />
+                                        </ProgressBarHeader>
+                                        <ProgressBarTrack />
+                                    </ProgressBar>
+                                </DescriptionDetails>
                                 {usageData ? (
                                     <>
-                                        <DescriptionList.Term>Translation Requests</DescriptionList.Term>
-                                        <DescriptionList.Details>
+                                        <DescriptionTerm>Translation Requests</DescriptionTerm>
+                                        <DescriptionDetails>
                                             <ProgressBar
-                                                value={Math.min((usageData.requests / workspace.limits.requests) * 100)}
-                                                label={`${usageData.requests}/${workspace.limits.requests.toLocaleString()}`}
-                                            />
-                                        </DescriptionList.Details>
+                                                value={Math.min(
+                                                    (usageData.requests / workspace.limits.requests) * 100
+                                                )}>
+                                                <ProgressBarHeader>
+                                                    <Label>
+                                                        {`${usageData.requests}/${workspace.limits.requests.toLocaleString()}`}
+                                                    </Label>
+                                                    <ProgressBarValue />
+                                                </ProgressBarHeader>
+                                                <ProgressBarTrack />
+                                            </ProgressBar>
+                                        </DescriptionDetails>
                                     </>
                                 ) : null}
-                                <DescriptionList.Term>Namespaces per Project</DescriptionList.Term>
-                                <DescriptionList.Details>
-                                    {workspace.limits.namespacesPerProject}
-                                </DescriptionList.Details>
-                                <DescriptionList.Term>Languages per Version</DescriptionList.Term>
-                                <DescriptionList.Details>
-                                    {workspace.limits.languagesPerVersion}
-                                </DescriptionList.Details>
+                                <DescriptionTerm>Namespaces per Project</DescriptionTerm>
+                                <DescriptionDetails>{workspace.limits.namespacesPerProject}</DescriptionDetails>
+                                <DescriptionTerm>Languages per Version</DescriptionTerm>
+                                <DescriptionDetails>{workspace.limits.languagesPerVersion}</DescriptionDetails>
                             </DescriptionList>
-                        </Card.Content>
+                        </CardContent>
                     </Card>
                 </>
             ) : (

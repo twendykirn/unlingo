@@ -20,8 +20,11 @@ const choiceBoxStyles = tv({
     },
     gap: {
       0: "gap-0",
+      1: "gap-1",
       2: "gap-2",
+      3: "gap-3",
       4: "gap-4",
+      5: "gap-5",
       6: "gap-6",
     },
   },
@@ -60,6 +63,7 @@ const ChoiceBox = <T extends object>({
   return (
     <ChoiceBoxContext value={{ columns, gap, isReadOnly }}>
       <GridList
+        data-slot="control"
         layout={columns === 1 ? "stack" : "grid"}
         selectionMode={selectionMode}
         className={cx(
@@ -81,9 +85,10 @@ const choiceBoxItemStyles = tv({
     "[--choice-box-fg:var(--color-primary-subtle-fg)] [--choice-box:var(--color-primary-subtle)]",
     "[--choice-box-selected-hovered:var(--color-primary-subtle)]/90",
     "inset-ring inset-ring-border rounded-lg p-(--gutter) **:data-[slot=label]:font-medium",
-    "**:data-[slot=avatar]:*:size-5.5 **:data-[slot=avatar]:size-5 **:data-[slot=avatar]:shrink-0",
-    "**:data-[slot=icon]:mt-[--spacing(0.7)] **:data-[slot=icon]:size-4.5 **:data-[slot=icon]:shrink-0",
-    "grid grid-cols-[1fr_auto] content-start items-start gap-x-(--gutter) gap-y-1 has-data-[slot=icon]:grid-cols-[auto_1fr_auto]",
+    "**:data-[slot=avatar]:row-span-2 **:data-[slot=avatar]:mt-0.5 **:data-[slot=avatar]:shrink-0",
+    "**:data-[slot=icon]:row-span-2 **:data-[slot=icon]:h-[1.1lh] **:data-[slot=icon]:w-5 **:data-[slot=icon]:shrink-0",
+    "has-data-[slot=avatar]:grid-cols-[auto_1fr_auto] has-data-[slot=icon]:grid-cols-[auto_1fr_auto]",
+    "grid grid-cols-[1fr_auto] content-start items-start gap-x-[calc(var(--gutter)-(--spacing(1)))] gap-y-1",
     "[--choice-box-active-ring:var(--color-ring)]/70 [--choice-box-ring:var(--color-ring)]/20",
     "has-[[slot=description]]:**:data-[slot=label]:font-medium",
   ],
@@ -96,9 +101,9 @@ const choiceBoxItemStyles = tv({
       true: "not-data-readonly:not-data-focus-visible:not-selected:inset-ring-muted-fg/30",
     },
     isFocused: {
-      true: "inset-ring-(--choice-box-active-ring) ring-(--choice-box-ring) ring-3 invalid:ring-danger/20",
+      true: "inset-ring-(--choice-box-active-ring) ring-(--choice-box-ring) ring-3 invalid:ring-danger-subtle-fg/20",
     },
-    isInvalid: { true: "ring-3 ring-danger/20" },
+    isInvalid: { true: "ring-3 ring-danger-subtle-fg/20" },
     isOneColumn: {
       true: "col-span-full",
     },
@@ -170,7 +175,7 @@ const ChoiceBoxItem = ({
             {content}
             {selectionMode === "multiple" && (
               <Checkbox
-                className="col-start-2 self-start group-has-data-[slot=icon]:col-start-3 sm:mt-0.5"
+                className="col-start-2 self-start group-has-data-[slot=avatar]:col-start-3 group-has-data-[slot=icon]:col-start-3 sm:mt-0.5"
                 slot="selection"
               />
             )}
@@ -194,6 +199,7 @@ const ChoiceBoxLabel = ({ className, ref, ...props }: ChoiceBoxLabelProps) => {
         "select-none text-base/6 text-fg group-disabled:opacity-50 sm:text-sm/6",
         "col-start-1 row-start-1",
         "group-has-data-[slot=icon]:col-start-2",
+        "group-has-data-[slot=avatar]:col-start-2",
         className,
       )}
       {...props}
@@ -211,6 +217,7 @@ const ChoiceBoxDescription = ({ className, ref, ...props }: ChoiceBoxDescription
       className={twMerge(
         "col-start-1 row-start-2",
         "group-has-data-[slot=icon]:col-start-2",
+        "group-has-data-[slot=avatar]:col-start-2",
         "text-base/6 text-muted-fg sm:text-sm/6",
         "group-disabled:opacity-50",
         className,

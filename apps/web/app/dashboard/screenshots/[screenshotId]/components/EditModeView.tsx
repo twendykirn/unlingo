@@ -3,17 +3,16 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ArrowLeft, Plus, Trash2, Edit3, Languages, MoreVertical } from 'lucide-react';
+import { Plus, Trash2, Edit3, Languages, MoreVertical } from 'lucide-react';
 import { Doc, Id } from '@/convex/_generated/dataModel';
 import { PropsWithChildren, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isAddingContainer$, selectedContainerId$ } from '../store';
 import { use$ } from '@legendapp/state/react';
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/menu';
 
 interface EditModeViewProps extends PropsWithChildren {
-    projectId: Id<'projects'>;
     workspaceId: Id<'workspaces'>;
     screenshotName: string;
     containers: Doc<'screenshotContainers'>[] | undefined;
@@ -21,15 +20,12 @@ interface EditModeViewProps extends PropsWithChildren {
 }
 
 export default function EditModeView({
-    projectId,
     workspaceId,
     screenshotName,
     containers,
     onSwitchToTranslate,
     children,
 }: EditModeViewProps) {
-    const router = useRouter();
-
     const selectedContainerId = use$(selectedContainerId$);
     const isAddingContainer = use$(isAddingContainer$);
 
@@ -106,13 +102,6 @@ export default function EditModeView({
                 <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-4 sm:p-6 backdrop-blur-sm mb-4 sm:mb-6'>
                     <div className='flex items-center justify-between'>
                         <div className='flex items-center space-x-3 sm:space-x-4'>
-                            <Button
-                                onClick={() => router.push(`/dashboard/projects/${projectId}`)}
-                                variant='ghost'
-                                size='icon'
-                                className='text-gray-400 hover:text-white'>
-                                <ArrowLeft className='h-4 w-4' />
-                            </Button>
                             <div className='w-12 h-12 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-xl flex items-center justify-center border border-blue-500/20'>
                                 <Edit3 className='h-6 w-6 text-blue-400' />
                             </div>
@@ -124,7 +113,7 @@ export default function EditModeView({
                         <div className='flex flex-wrap items-center gap-2'>
                             <Button
                                 onClick={() => isAddingContainer$.set(true)}
-                                disabled={isAddingContainer}
+                                isDisabled={isAddingContainer}
                                 className='bg-blue-600 hover:bg-blue-700 text-white'>
                                 <Plus className='h-4 w-4 mr-2' />
                                 {isAddingContainer ? 'Click to Place' : 'Add Container'}
@@ -132,39 +121,24 @@ export default function EditModeView({
                             {isAddingContainer ? (
                                 <Button
                                     onClick={() => isAddingContainer$.set(false)}
-                                    variant='outline'
+                                    intent='outline'
                                     className='border-gray-600 text-gray-300 hover:bg-gray-800'>
                                     Cancel Placing
                                 </Button>
                             ) : null}
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant='ghost'
-                                        size='icon'
-                                        className='text-gray-400 hover:text-white hover:bg-gray-800/50'>
-                                        <MoreVertical className='h-4 w-4' />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent align='end' className='w-56 bg-gray-900 border-gray-800 p-1'>
-                                    <div className='flex flex-col'>
-                                        {isAddingContainer ? (
-                                            <Button
-                                                variant='ghost'
-                                                className='justify-start text-gray-300 hover:text-white hover:bg-gray-800'
-                                                onClick={() => isAddingContainer$.set(false)}>
-                                                Cancel Placing
-                                            </Button>
-                                        ) : null}
-                                        <Button
-                                            variant='ghost'
-                                            className='justify-start text-pink-400 hover:text-white hover:bg-pink-600/20'
-                                            onClick={onSwitchToTranslate}>
-                                            <Languages className='h-3 w-3 mr-2' /> Switch to Translate
-                                        </Button>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
+                            <Menu>
+                                <MenuTrigger>
+                                    <MoreVertical className='h-4 w-4' />
+                                </MenuTrigger>
+                                <MenuContent popover={{ placement: 'bottom' }}>
+                                    {isAddingContainer ? (
+                                        <MenuItem onClick={() => isAddingContainer$.set(false)}>
+                                            Cancel Placing
+                                        </MenuItem>
+                                    ) : null}
+                                    <MenuItem onClick={onSwitchToTranslate}>Switch to Translate</MenuItem>
+                                </MenuContent>
+                            </Menu>
                         </div>
                     </div>
                 </div>
@@ -193,8 +167,8 @@ export default function EditModeView({
                                     <h3 className='text-lg font-semibold text-white'>Container Details</h3>
                                     {!isEditingDetails ? (
                                         <Button
-                                            size='icon'
-                                            variant='ghost'
+                                            size='sm'
+                                            intent='plain'
                                             onClick={() => setIsEditingDetails(true)}
                                             className='text-blue-400 hover:text-white hover:bg-blue-600/20'>
                                             <Edit3 className='h-4 w-4' />
@@ -205,7 +179,7 @@ export default function EditModeView({
                                                 size='sm'
                                                 className='bg-white text-black hover:bg-gray-200'
                                                 onClick={handleSaveDetails}
-                                                disabled={
+                                                isDisabled={
                                                     selectedContainer
                                                         ? detailsColor ===
                                                               (selectedContainer.backgroundColor || '#3b82f6') &&
@@ -217,7 +191,7 @@ export default function EditModeView({
                                             </Button>
                                             <Button
                                                 size='sm'
-                                                variant='ghost'
+                                                intent='plain'
                                                 onClick={handleCancelDetails}
                                                 className='text-gray-400 hover:text-white hover:bg-gray-800/50'>
                                                 Cancel
@@ -299,7 +273,7 @@ export default function EditModeView({
 
                                         <div className='pt-3 border-t border-gray-800'>
                                             <Button
-                                                variant='destructive'
+                                                intent='danger'
                                                 onClick={() => handleContainerDelete(selectedContainerId)}
                                                 className='w-full'>
                                                 <Trash2 className='h-4 w-4 mr-2' /> Delete Container

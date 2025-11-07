@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { Loader } from '@/components/ui/loader';
 import {
     ModalBody,
@@ -56,20 +58,17 @@ const ReleaseRemoveModal = ({ isOpen, setIsOpen, workspace, release }: Props) =>
                 <ModalTitle>Delete Release</ModalTitle>
                 <ModalDescription>
                     This action is permanent and cannot be undone. Any applications or services using this release will
-                    no longer be able to access the API. To confirm, please type the release name below:{' '}
-                    <Snippet size='sm' hideSymbol>
-                        {release.name}
-                    </Snippet>
+                    no longer be able to access the API. To confirm, please type the release name below:
                 </ModalDescription>
+                <Snippet size='sm' hideSymbol>
+                    {release.name}
+                </Snippet>
             </ModalHeader>
             <ModalBody>
-                <TextField
-                    label='Name'
-                    type='text'
-                    placeholder='Enter release name'
-                    value={deleteConfirmation}
-                    onChange={setDeleteConfirmation}
-                />
+                <TextField value={deleteConfirmation} onChange={setDeleteConfirmation}>
+                    <Label>Name</Label>
+                    <Input placeholder='Enter release name' />
+                </TextField>
             </ModalBody>
             <ModalFooter>
                 <ModalClose>Cancel</ModalClose>

@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { Loader } from '@/components/ui/loader';
 import {
     ModalBody,
@@ -55,20 +57,17 @@ const LanguageRemoveModal = ({ isOpen, setIsOpen, workspace, language }: Props) 
             <ModalHeader>
                 <ModalTitle>Delete Language</ModalTitle>
                 <ModalDescription>
-                    This action is permanent and cannot be undone. To confirm, please type the language code below:{' '}
-                    <Snippet size='sm' hideSymbol>
-                        {language.languageCode}
-                    </Snippet>
+                    This action is permanent and cannot be undone. To confirm, please type the language code below:
                 </ModalDescription>
+                <Snippet size='sm' hideSymbol>
+                    {language.languageCode}
+                </Snippet>
             </ModalHeader>
             <ModalBody>
-                <TextField
-                    label='Code'
-                    type='text'
-                    placeholder='Enter language code'
-                    value={deleteConfirmation}
-                    onChange={setDeleteConfirmation}
-                />
+                <TextField value={deleteConfirmation} onChange={setDeleteConfirmation}>
+                    <Label>Code</Label>
+                    <Input placeholder='Enter language code' />
+                </TextField>
             </ModalBody>
             <ModalFooter>
                 <ModalClose>Cancel</ModalClose>

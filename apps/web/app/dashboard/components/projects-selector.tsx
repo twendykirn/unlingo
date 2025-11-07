@@ -1,3 +1,4 @@
+import { Label } from '@/components/ui/field';
 import { Loader } from '@/components/ui/loader';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { api } from '@/convex/_generated/api';
@@ -43,16 +44,16 @@ const ProjectsSelector = ({
 
     return (
         <Select
-            selectedKey={selectedProjectId}
+            value={selectedProjectId}
             aria-label='projects-selector'
             placeholder='Select project'
-            label={label}
-            onSelectionChange={value => {
+            onChange={value => {
                 if (value) {
                     setSelectedProjectId(value as Id<'projects'>);
                 }
             }}
-            defaultSelectedKey={defaultProjectId}>
+            defaultValue={defaultProjectId}>
+            <Label>{label}</Label>
             <SelectTrigger />
             <SelectContent items={projects}>
                 {item => (

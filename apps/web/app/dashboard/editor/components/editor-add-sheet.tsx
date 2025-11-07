@@ -13,14 +13,16 @@ import { TextField } from '@/components/ui/text-field';
 import { Textarea } from '@/components/ui/textarea';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { IconPlus, IconTrash } from '@intentui/icons';
-import { Table } from '@/components/ui/table';
+import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@/components/ui/table';
 import { flattenJson, LanguageItem } from '../utils/jsonFlatten';
 import { Text } from 'react-aria-components';
 import { use$ } from '@legendapp/state/react';
 import { languageContent$ } from '../store';
 import { Tab, TabList, TabPanel, Tabs } from '@/components/ui/tabs';
 import { isValidJson } from '../utils/isValidJson';
+import { FieldError, Label } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 
 interface Props {
     isOpen: boolean;
@@ -262,9 +264,6 @@ const EditorAddKeySheet = ({ isOpen, setIsOpen, onSave }: Props) => {
                                 <TabPanel id='single' className='space-y-3'>
                                     <div className='space-y-1'>
                                         <TextField
-                                            label='Key'
-                                            type='text'
-                                            placeholder='Enter new key'
                                             value={newKey}
                                             onChange={value => {
                                                 setNewKey(value);
@@ -277,8 +276,11 @@ const EditorAddKeySheet = ({ isOpen, setIsOpen, onSave }: Props) => {
                                                     setApplySuggestion(true);
                                                 }
                                             }}
-                                            isRequired={activeTab === 'single'}
-                                        />
+                                            isRequired={activeTab === 'single'}>
+                                            <Label>Key</Label>
+                                            <Input placeholder='Enter new key' />
+                                            <FieldError />
+                                        </TextField>
                                         {suggestion ? (
                                             <>
                                                 <Text
@@ -289,64 +291,70 @@ const EditorAddKeySheet = ({ isOpen, setIsOpen, onSave }: Props) => {
                                             </>
                                         ) : null}
                                     </div>
-                                    <Textarea
-                                        label='Value'
-                                        placeholder='Enter key value'
+                                    <TextField
                                         value={newValue}
                                         onChange={setNewValue}
-                                        isRequired={activeTab === 'single'}
-                                    />
+                                        isRequired={activeTab === 'single'}>
+                                        <Label>Value</Label>
+                                        <Textarea placeholder='Enter key value' />
+                                        <FieldError />
+                                    </TextField>
                                 </TabPanel>
                                 <TabPanel id='json'>
-                                    <Textarea
-                                        label='Value'
-                                        placeholder='Enter JSON object'
-                                        value={newJSON}
-                                        onChange={setNewJSON}
-                                        isRequired={activeTab === 'json'}
-                                    />
+                                    <TextField value={newJSON} onChange={setNewJSON} isRequired={activeTab === 'json'}>
+                                        <Label>Value</Label>
+                                        <Textarea placeholder='Enter JSON object' />
+                                        <FieldError />
+                                    </TextField>
                                 </TabPanel>
                             </Tabs>
                             <Button
                                 isPending={isLoading}
-                                isDisabled={isLoading || (activeTab === 'single' && (!newKey || !newValue)) || (activeTab === 'json' && !newJSON)}
+                                isDisabled={
+                                    isLoading ||
+                                    (activeTab === 'single' && (!newKey || !newValue)) ||
+                                    (activeTab === 'json' && !newJSON)
+                                }
                                 type='submit'
                                 className='w-full'>
-                                <IconPlus /> Add key
+                                <PlusIcon /> Add key
                             </Button>
                         </Form>
                         <Table
                             bleed
                             className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
                             aria-label='New keys'>
-                            <Table.Header>
-                                <Table.Column isRowHeader>Key</Table.Column>
-                                <Table.Column>Value</Table.Column>
-                                <Table.Column />
-                            </Table.Header>
-                            <Table.Body items={newKeys}>
+                            <TableHeader>
+                                <TableColumn isRowHeader>Key</TableColumn>
+                                <TableColumn>Value</TableColumn>
+                                <TableColumn />
+                            </TableHeader>
+                            <TableBody items={newKeys}>
                                 {item => (
-                                    <Table.Row id={item.key}>
-                                        <Table.Cell>{item.key}</Table.Cell>
-                                        <Table.Cell>{item.value}</Table.Cell>
-                                        <Table.Cell className='text-end last:pr-2.5'>
+                                    <TableRow id={item.key}>
+                                        <TableCell>{item.key}</TableCell>
+                                        <TableCell>{item.value}</TableCell>
+                                        <TableCell className='text-end last:pr-2.5'>
                                             <Button
                                                 intent='danger'
                                                 size='sq-xs'
                                                 onClick={() => {
                                                     setNewKeys(s => s.filter(key => key.key !== item.key));
                                                 }}>
-                                                <IconTrash />
+                                                <TrashIcon />
                                             </Button>
-                                        </Table.Cell>
-                                    </Table.Row>
+                                        </TableCell>
+                                    </TableRow>
                                 )}
-                            </Table.Body>
+                            </TableBody>
                         </Table>
                     </SheetBody>
                     <SheetFooter>
                         <SheetClose>Cancel</SheetClose>
-                        <Button isPending={isLoading} onPress={() => handleSave(close)} isDisabled={newKeys.length === 0}>
+                        <Button
+                            isPending={isLoading}
+                            onPress={() => handleSave(close)}
+                            isDisabled={newKeys.length === 0}>
                             Add keys
                         </Button>
                     </SheetFooter>

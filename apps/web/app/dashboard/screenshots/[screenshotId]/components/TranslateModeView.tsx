@@ -3,19 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-    ArrowLeft,
-    Save,
-    Trash2,
-    Edit3,
-    Languages,
-    Unlock,
-    Globe,
-    GitBranch,
-    Plus,
-    MoreVertical,
-    FileText,
-} from 'lucide-react';
+import { Save, Trash2, Edit3, Languages, Unlock, Globe, GitBranch, Plus, MoreVertical, FileText } from 'lucide-react';
 import { Doc, Id } from '@/convex/_generated/dataModel';
 import { useAction, useMutation, usePaginatedQuery } from 'convex/react';
 import { PropsWithChildren, useEffect, useMemo, useState } from 'react';
@@ -58,8 +46,6 @@ export default function TranslateModeView({
     onSwitchToEdit,
     children,
 }: TranslateModeViewProps) {
-    const router = useRouter();
-
     const selectedContainerId = use$(selectedContainerId$);
 
     const [isEditingContext, setIsEditingContext] = useState(true);
@@ -363,13 +349,6 @@ export default function TranslateModeView({
                     <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-4 sm:p-6 backdrop-blur-sm mb-4 sm:mb-6'>
                         <div className='flex items-center justify-between'>
                             <div className='flex items-center space-x-3 sm:space-x-4'>
-                                <Button
-                                    onClick={() => router.push(`/dashboard/projects/${projectId}`)}
-                                    variant='ghost'
-                                    size='icon'
-                                    className='text-gray-400 hover:text-white'>
-                                    <ArrowLeft className='h-4 w-4' />
-                                </Button>
                                 <div className='w-12 h-12 bg-gradient-to-br from-pink-500/10 to-purple-500/10 rounded-xl flex items-center justify-center border border-pink-500/20'>
                                     <Languages className='h-6 w-6 text-pink-400' />
                                 </div>
@@ -382,7 +361,7 @@ export default function TranslateModeView({
                                 {hasChanges ? (
                                     <Button
                                         onClick={handleSaveChanges}
-                                        disabled={isSaving}
+                                        isDisabled={isSaving}
                                         className='bg-green-600 hover:bg-green-700 text-white'>
                                         {isSaving ? (
                                             <>

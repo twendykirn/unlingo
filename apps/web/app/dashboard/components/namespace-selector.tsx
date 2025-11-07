@@ -1,3 +1,4 @@
+import { Label } from '@/components/ui/field';
 import { Loader } from '@/components/ui/loader';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { api } from '@/convex/_generated/api';
@@ -48,19 +49,19 @@ const NamespaceSelector = ({
 
     return (
         <Select
-            selectedKey={selectedNamespace?._id}
+            value={selectedNamespace?._id}
             aria-label='namespaces-selector'
             placeholder='namespace'
-            label={label}
             isDisabled={!workspace || !project}
-            onSelectionChange={value => {
+            onChange={value => {
                 if (value) {
                     const namespace = namespaces?.find(ns => ns._id === value);
                     if (namespace?._id === selectedNamespace?._id) return;
                     setSelectedNamespace(namespace ?? null);
                 }
             }}
-            defaultSelectedKey={defaultNamespace?._id}>
+            defaultValue={defaultNamespace?._id}>
+            <Label>{label}</Label>
             <SelectTrigger />
             <SelectContent items={namespaces}>
                 {item => (

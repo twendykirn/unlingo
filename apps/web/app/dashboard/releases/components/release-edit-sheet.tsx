@@ -19,8 +19,10 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import NamespaceSelector from '../../components/namespace-selector';
 import EnvironmentSelector from '../../components/environment-selector';
-import { IconPlus, IconTrash } from '@intentui/icons';
-import { Table } from '@/components/ui/table';
+import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@/components/ui/table';
+import { FieldError, Label } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 
 interface Props {
     isOpen: boolean;
@@ -141,21 +143,16 @@ const ReleaseEditSheet = ({ isOpen, setIsOpen, workspace, project, release }: Pr
                             handleUpdate(close);
                         }}>
                         <SheetBody className='space-y-4'>
-                            <TextField
-                                label='Name'
-                                type='text'
-                                placeholder='Enter release name'
-                                value={name}
-                                onChange={setName}
-                                isRequired
-                            />
-                            <Textarea
-                                label='Tag'
-                                placeholder='Enter release tag for the api'
-                                value={tag}
-                                onChange={setTag}
-                                isRequired
-                            />
+                            <TextField isRequired value={name} onChange={setName}>
+                                <Label>Name</Label>
+                                <Input placeholder='Enter release name' />
+                                <FieldError />
+                            </TextField>
+                            <TextField isRequired value={tag} onChange={setTag}>
+                                <Label>Tag</Label>
+                                <Textarea placeholder='Enter release tag for the api' />
+                                <FieldError />
+                            </TextField>
                             <div className='flex items-end space-x-3'>
                                 <NamespaceSelector
                                     workspace={workspace}
@@ -195,24 +192,24 @@ const ReleaseEditSheet = ({ isOpen, setIsOpen, workspace, project, release }: Pr
                                             },
                                         ]);
                                     }}>
-                                    <IconPlus />
+                                    <PlusIcon />
                                 </Button>
                             </div>
                             <Table
                                 bleed
                                 className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
                                 aria-label='Release namespaces'>
-                                <Table.Header>
-                                    <Table.Column isRowHeader>Namespace</Table.Column>
-                                    <Table.Column>Environment</Table.Column>
-                                    <Table.Column />
-                                </Table.Header>
-                                <Table.Body items={releaseNamespaces}>
+                                <TableHeader>
+                                    <TableColumn isRowHeader>Namespace</TableColumn>
+                                    <TableColumn>Environment</TableColumn>
+                                    <TableColumn />
+                                </TableHeader>
+                                <TableBody items={releaseNamespaces}>
                                     {item => (
-                                        <Table.Row id={item.environment._id}>
-                                            <Table.Cell>{item.namespace.name}</Table.Cell>
-                                            <Table.Cell>{item.environment.version}</Table.Cell>
-                                            <Table.Cell className='text-end last:pr-2.5'>
+                                        <TableRow id={item.environment._id}>
+                                            <TableCell>{item.namespace.name}</TableCell>
+                                            <TableCell>{item.environment.version}</TableCell>
+                                            <TableCell className='text-end last:pr-2.5'>
                                                 <Button
                                                     intent='danger'
                                                     size='sq-xs'
@@ -225,12 +222,12 @@ const ReleaseEditSheet = ({ isOpen, setIsOpen, workspace, project, release }: Pr
 
                                                         setReleaseNamespaces(filteredNamespaces);
                                                     }}>
-                                                    <IconTrash />
+                                                    <TrashIcon />
                                                 </Button>
-                                            </Table.Cell>
-                                        </Table.Row>
+                                            </TableCell>
+                                        </TableRow>
                                     )}
-                                </Table.Body>
+                                </TableBody>
                             </Table>
                         </SheetBody>
                         <SheetFooter>

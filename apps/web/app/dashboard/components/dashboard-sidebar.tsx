@@ -20,6 +20,7 @@ import {
     SidebarItem,
     SidebarLabel,
     SidebarLink,
+    SidebarMenuTrigger,
     SidebarNav,
     SidebarProvider,
     SidebarRail,
@@ -28,31 +29,27 @@ import {
     SidebarTrigger,
 } from '@/components/ui/sidebar';
 import {
-    IconBrackets2,
-    IconBrandDiscord,
-    IconBrandGithub,
-    IconChartLineUp,
-    IconChevronsY,
-    IconCommandRegular,
-    IconCreditCard,
-    IconCube,
-    IconDashboard,
-    IconDashboardFill,
-    IconDotsHorizontal,
-    IconEnvelope,
-    IconFile,
-    IconFolder,
-    IconGlobe,
-    IconGuide,
-    IconHighlight,
-    IconLogout,
-    IconPlus,
-    IconSettings,
-    IconSettingsFill,
-    IconShieldFill,
-    IconSupport,
-    IconTrash,
-} from '@intentui/icons';
+    PlusIcon,
+    TrashIcon,
+    PencilIcon,
+    EllipsisHorizontalIcon,
+    ChatBubbleLeftRightIcon,
+    UserIcon,
+    UserGroupIcon,
+    ArrowLeftStartOnRectangleIcon,
+    DocumentTextIcon,
+    LanguageIcon,
+    FolderIcon,
+    NewspaperIcon,
+    EnvelopeIcon,
+    CreditCardIcon,
+    ArrowsRightLeftIcon,
+    KeyIcon,
+    ChevronUpDownIcon,
+    ChartBarIcon,
+    CubeIcon,
+    PhotoIcon,
+} from '@heroicons/react/24/outline';
 import {
     Menu,
     MenuContent,
@@ -61,8 +58,7 @@ import {
     MenuLabel,
     MenuSection,
     MenuSeparator,
-    MenuSubmenu,
-    MenuTrigger,
+    MenuSubMenu,
 } from '@/components/ui/menu';
 import { Avatar } from '@/components/ui/avatar';
 import Image from 'next/image';
@@ -83,7 +79,15 @@ export interface WorkspaceWithPremium extends Doc<'workspaces'> {
 }
 
 interface Props extends PropsWithChildren {
-    activeItem: 'projects' | 'namespaces' | 'languages' | 'releases' | 'api-keys' | 'analytics' | 'billing' | 'editor';
+    activeItem:
+        | 'projects'
+        | 'namespaces'
+        | 'languages'
+        | 'releases'
+        | 'api-keys'
+        | 'analytics'
+        | 'billing'
+        | 'screenshots';
     onWorkspaceChange?: (workspace: WorkspaceWithPremium) => void;
 }
 
@@ -175,25 +179,25 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                                 {({ isCollapsed, isFocused }) => (
                                     <>
                                         <SidebarLink href='/dashboard'>
-                                            <IconFolder />
+                                            <FolderIcon />
                                             <SidebarLabel>Projects</SidebarLabel>
                                         </SidebarLink>
                                         {(!isCollapsed || isFocused) && (
                                             <Menu>
-                                                <MenuTrigger data-slot='menu-action-trigger' aria-label='Manage'>
-                                                    <IconDotsHorizontal />
-                                                </MenuTrigger>
+                                                <SidebarMenuTrigger aria-label='Manage'>
+                                                    <EllipsisHorizontalIcon />
+                                                </SidebarMenuTrigger>
                                                 <MenuContent popover={{ offset: 0, placement: 'right top' }}>
                                                     <MenuItem href='#new-order'>
-                                                        <IconPlus />
+                                                        <PlusIcon />
                                                         <MenuLabel>New Project</MenuLabel>
                                                     </MenuItem>
                                                     <MenuItem href='#view-all'>
-                                                        <IconHighlight />
+                                                        <PencilIcon />
                                                         <MenuLabel>Edit Project</MenuLabel>
                                                     </MenuItem>
-                                                    <MenuItem href='#pending-orders' isDanger>
-                                                        <IconTrash />
+                                                    <MenuItem href='#pending-orders' intent='danger'>
+                                                        <TrashIcon />
                                                         <MenuLabel>Delete Project</MenuLabel>
                                                     </MenuItem>
                                                 </MenuContent>
@@ -206,17 +210,17 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                                 {({ isCollapsed, isFocused }) => (
                                     <>
                                         <SidebarLink href='/dashboard/namespaces'>
-                                            <IconFile />
+                                            <NewspaperIcon />
                                             <SidebarLabel>Namespaces</SidebarLabel>
                                         </SidebarLink>
                                         {(!isCollapsed || isFocused) && (
                                             <Menu>
-                                                <MenuTrigger data-slot='menu-action-trigger' aria-label='Manage'>
-                                                    <IconDotsHorizontal />
-                                                </MenuTrigger>
+                                                <SidebarMenuTrigger data-slot='menu-action-trigger' aria-label='Manage'>
+                                                    <EllipsisHorizontalIcon />
+                                                </SidebarMenuTrigger>
                                                 <MenuContent popover={{ offset: 0, placement: 'right top' }}>
                                                     <MenuItem href='#new-product'>
-                                                        <IconPlus />
+                                                        <PlusIcon />
                                                         <MenuLabel>New Namespace</MenuLabel>
                                                     </MenuItem>
                                                 </MenuContent>
@@ -229,17 +233,17 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                                 {({ isCollapsed, isFocused }) => (
                                     <>
                                         <SidebarLink href='/dashboard/languages'>
-                                            <IconGlobe />
+                                            <LanguageIcon />
                                             <SidebarLabel>Languages</SidebarLabel>
                                         </SidebarLink>
                                         {(!isCollapsed || isFocused) && (
                                             <Menu>
-                                                <MenuTrigger data-slot='menu-action-trigger' aria-label='Manage'>
-                                                    <IconDotsHorizontal />
-                                                </MenuTrigger>
+                                                <SidebarMenuTrigger data-slot='menu-action-trigger' aria-label='Manage'>
+                                                    <EllipsisHorizontalIcon />
+                                                </SidebarMenuTrigger>
                                                 <MenuContent popover={{ offset: 0, placement: 'right top' }}>
                                                     <MenuItem href='#new-product'>
-                                                        <IconPlus />
+                                                        <PlusIcon />
                                                         <MenuLabel>New Language</MenuLabel>
                                                     </MenuItem>
                                                 </MenuContent>
@@ -248,25 +252,28 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                                     </>
                                 )}
                             </SidebarItem>
-                            <SidebarItem href='/dashboard/editor' tooltip='Editor' isCurrent={activeItem === 'editor'}>
-                                <IconHighlight />
-                                <SidebarLabel>Editor</SidebarLabel>
+                            <SidebarItem
+                                href='/dashboard/screenshots'
+                                tooltip='Screenshots'
+                                isCurrent={activeItem === 'screenshots'}>
+                                <PhotoIcon />
+                                <SidebarLabel>Screenshots</SidebarLabel>
                             </SidebarItem>
                             <SidebarItem tooltip='Releases' isCurrent={activeItem === 'releases'}>
                                 {({ isCollapsed, isFocused }) => (
                                     <>
                                         <SidebarLink href='/dashboard/releases'>
-                                            <IconCube />
+                                            <CubeIcon />
                                             <SidebarLabel>Releases</SidebarLabel>
                                         </SidebarLink>
                                         {(!isCollapsed || isFocused) && (
                                             <Menu>
-                                                <MenuTrigger data-slot='menu-action-trigger' aria-label='Manage'>
-                                                    <IconDotsHorizontal />
-                                                </MenuTrigger>
+                                                <SidebarMenuTrigger data-slot='menu-action-trigger' aria-label='Manage'>
+                                                    <EllipsisHorizontalIcon />
+                                                </SidebarMenuTrigger>
                                                 <MenuContent popover={{ offset: 0, placement: 'right top' }}>
                                                     <MenuItem href='#new-product'>
-                                                        <IconPlus />
+                                                        <PlusIcon />
                                                         <MenuLabel>New Release</MenuLabel>
                                                     </MenuItem>
                                                 </MenuContent>
@@ -279,25 +286,25 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                                 href='/dashboard/api-keys'
                                 tooltip='API Keys'
                                 isCurrent={activeItem === 'api-keys'}>
-                                <IconBrackets2 />
+                                <KeyIcon />
                                 <SidebarLabel>API Keys</SidebarLabel>
                             </SidebarItem>
                             <SidebarItem
                                 href='/dashboard/analytics'
                                 tooltip='Analytics'
                                 isCurrent={activeItem === 'analytics'}>
-                                <IconChartLineUp />
+                                <ChartBarIcon />
                                 <SidebarLabel>Analytics</SidebarLabel>
                             </SidebarItem>
                             <SidebarItem href='https://docs.unlingo.com' target='_blank' tooltip='Documentation'>
-                                <IconGuide />
+                                <DocumentTextIcon />
                                 <SidebarLabel>Documentation</SidebarLabel>
                             </SidebarItem>
                             <SidebarItem
                                 href='/dashboard/billing'
                                 tooltip='Usage & Billing'
                                 isCurrent={activeItem === 'billing'}>
-                                <IconCreditCard />
+                                <CreditCardIcon />
                                 <SidebarLabel>Usage & Billing</SidebarLabel>
                             </SidebarItem>
                         </SidebarSection>
@@ -305,23 +312,47 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                         <SidebarDisclosureGroup defaultExpandedKeys={[1]}>
                             <SidebarDisclosure id={1}>
                                 <SidebarDisclosureTrigger>
-                                    <IconSupport />
+                                    <ChatBubbleLeftRightIcon />
                                     <SidebarLabel>Support</SidebarLabel>
                                 </SidebarDisclosureTrigger>
                                 <SidebarDisclosurePanel>
                                     <SidebarItem href='mailto:support@unlingo.com' target='_blank' tooltip='Email'>
-                                        <IconEnvelope />
+                                        <EnvelopeIcon />
                                         <SidebarLabel>Email</SidebarLabel>
                                     </SidebarItem>
                                     <SidebarItem href='https://discord.gg/TdDYte7KjG' target='_blank' tooltip='Discord'>
-                                        <IconBrandDiscord />
+                                        <svg
+                                            xmlns='http://www.w3.org/2000/svg'
+                                            width='16'
+                                            height='16'
+                                            fill='none'
+                                            viewBox='0 0 24 24'
+                                            className='intentui-icons size-4'
+                                            data-slot='icon'
+                                            aria-hidden='true'>
+                                            <path
+                                                fill='currentColor'
+                                                d='M19.636 5.023a18.1 18.1 0 0 0-4.539-1.404q-.321.579-.581 1.188a16.8 16.8 0 0 0-5.037 0 13 13 0 0 0-.582-1.188 18.3 18.3 0 0 0-4.542 1.407C1.483 9.3.705 13.465 1.093 17.572A18.3 18.3 0 0 0 6.66 20.38q.677-.916 1.192-1.933a12 12 0 0 1-1.877-.9c.157-.115.311-.234.46-.348a13.02 13.02 0 0 0 11.13 0q.225.186.46.347-.902.535-1.88.903.513 1.017 1.191 1.931a18.2 18.2 0 0 0 5.57-2.808c.457-4.762-.78-8.89-3.27-12.55ZM8.346 15.046c-1.086 0-1.982-.99-1.982-2.207 0-1.218.865-2.217 1.978-2.217s2.002.999 1.983 2.216c-.02 1.218-.874 2.208-1.98 2.208Zm7.309 0c-1.087 0-1.98-.99-1.98-2.207 0-1.218.865-2.217 1.98-2.217s1.996.999 1.977 2.216-.872 2.208-1.978 2.208Z'></path>
+                                        </svg>
                                         <SidebarLabel>Discord</SidebarLabel>
                                     </SidebarItem>
                                     <SidebarItem
                                         href='https://github.com/twendykirn/unlingo/stargazers'
                                         target='_blank'
                                         tooltip='Github'>
-                                        <IconBrandGithub />
+                                        <svg
+                                            xmlns='http://www.w3.org/2000/svg'
+                                            width='16'
+                                            height='16'
+                                            fill='none'
+                                            viewBox='0 0 24 25'
+                                            className='intentui-icons size-4'
+                                            data-slot='icon'
+                                            aria-hidden='true'>
+                                            <path
+                                                fill='currentColor'
+                                                d='M12 2.7c5.525 0 10 4.476 10 10a10.02 10.02 0 0 1-6.813 9.488c-.5.1-.687-.212-.687-.475 0-.337.012-1.412.012-2.75 0-.937-.312-1.537-.675-1.85 2.226-.25 4.563-1.1 4.563-4.937 0-1.1-.387-1.988-1.025-2.688.1-.25.45-1.275-.1-2.65 0 0-.837-.275-2.75 1.025a9.3 9.3 0 0 0-2.5-.337c-.85 0-1.7.112-2.5.337-1.913-1.287-2.75-1.025-2.75-1.025-.55 1.375-.2 2.4-.1 2.65-.638.7-1.025 1.6-1.025 2.688 0 3.825 2.325 4.687 4.55 4.937-.287.25-.55.688-.637 1.338-.575.262-2.013.687-2.913-.825-.188-.3-.75-1.038-1.538-1.025-.837.012-.337.475.013.662.425.238.912 1.125 1.025 1.413.2.562.85 1.637 3.362 1.175 0 .837.013 1.625.013 1.862 0 .263-.188.563-.688.475A9.99 9.99 0 0 1 2 12.701c0-5.525 4.475-10 10-10Z'></path>
+                                        </svg>
                                         <SidebarLabel>Github</SidebarLabel>
                                     </SidebarItem>
                                 </SidebarDisclosurePanel>
@@ -332,7 +363,7 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
 
                 <SidebarFooter className='flex flex-row justify-between gap-4 group-data-[state=collapsed]:flex-col'>
                     <Menu>
-                        <MenuTrigger
+                        <SidebarMenuTrigger
                             className='flex w-full items-center justify-between cursor-pointer'
                             aria-label='Profile'>
                             <div className='flex items-center gap-x-2'>
@@ -347,8 +378,8 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                                     <span className='-mt-0.5 block text-muted-fg'>{workspace.contactEmail}</span>
                                 </div>
                             </div>
-                            <IconChevronsY data-slot='chevron' />
-                        </MenuTrigger>
+                            <ChevronUpDownIcon data-slot='chevron' />
+                        </SidebarMenuTrigger>
                         <MenuContent
                             className='in-data-[sidebar-collapsible=collapsed]:min-w-56 min-w-(--trigger-width)'
                             placement='bottom right'>
@@ -359,14 +390,14 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                                 </MenuHeader>
                             </MenuSection>
 
-                            <MenuSubmenu>
+                            <MenuSubMenu>
                                 <MenuItem>
-                                    <IconDashboardFill />
+                                    <ArrowsRightLeftIcon />
                                     <MenuLabel>Switch Organization</MenuLabel>
                                 </MenuItem>
                                 <MenuContent>
                                     <MenuItem onClick={() => handleCreateOrganization()}>
-                                        <IconPlus />
+                                        <PlusIcon />
                                         <MenuLabel>New Organization</MenuLabel>
                                     </MenuItem>
                                     {userOrgs.map(org => (
@@ -382,20 +413,20 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                                         </MenuItem>
                                     ))}
                                 </MenuContent>
-                            </MenuSubmenu>
+                            </MenuSubMenu>
                             <MenuItem onClick={() => openOrganizationProfile()}>
-                                <IconSettingsFill />
+                                <UserGroupIcon />
                                 <MenuLabel>Organization Settings</MenuLabel>
                             </MenuItem>
                             <MenuItem onClick={() => openUserProfile()}>
-                                <IconShieldFill />
+                                <UserIcon />
                                 <MenuLabel>Account Settings</MenuLabel>
                             </MenuItem>
                             <MenuSeparator />
                             <ThemeSwitcher />
                             <MenuSeparator />
                             <MenuItem href='#logout'>
-                                <IconLogout />
+                                <ArrowLeftStartOnRectangleIcon />
                                 <MenuLabel>Log out</MenuLabel>
                             </MenuItem>
                         </MenuContent>
@@ -409,9 +440,9 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                         <SidebarTrigger className='-ml-2' />
                     </span>
                     <Menu>
-                        <MenuTrigger className='ml-auto md:hidden' aria-label='Open Menu'>
+                        <SidebarMenuTrigger className='ml-auto md:hidden' aria-label='Open Menu'>
                             <Avatar isSquare alt={organization?.name} src={organization?.imageUrl} />
-                        </MenuTrigger>
+                        </SidebarMenuTrigger>
                         <MenuContent popover={{ placement: 'bottom end' }} className='min-w-64'>
                             <MenuSection>
                                 <MenuHeader separator>
@@ -419,14 +450,14 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                                     <span className='font-normal text-muted-fg'>{workspace.contactEmail}</span>
                                 </MenuHeader>
                             </MenuSection>
-                            <MenuSubmenu>
+                            <MenuSubMenu>
                                 <MenuItem>
-                                    <IconDashboard />
+                                    <ArrowsRightLeftIcon />
                                     <MenuLabel>Switch Organization</MenuLabel>
                                 </MenuItem>
                                 <MenuContent>
                                     <MenuItem onClick={() => handleCreateOrganization()}>
-                                        <IconPlus />
+                                        <PlusIcon />
                                         <MenuLabel>New Organization</MenuLabel>
                                     </MenuItem>
                                     {userOrgs.map(org => (
@@ -442,20 +473,20 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                                         </MenuItem>
                                     ))}
                                 </MenuContent>
-                            </MenuSubmenu>
+                            </MenuSubMenu>
                             <MenuItem onClick={() => openOrganizationProfile()}>
-                                <IconSettings />
+                                <UserGroupIcon />
                                 <MenuLabel>Organization Settings</MenuLabel>
                             </MenuItem>
                             <MenuItem onClick={() => openUserProfile()}>
-                                <IconCommandRegular />
+                                <UserIcon />
                                 <MenuLabel>Account Settings</MenuLabel>
                             </MenuItem>
                             <MenuSeparator />
                             <ThemeSwitcher />
                             <MenuSeparator />
                             <MenuItem href='#logout'>
-                                <IconLogout />
+                                <ArrowLeftStartOnRectangleIcon />
                                 <MenuLabel>Log out</MenuLabel>
                             </MenuItem>
                         </MenuContent>
@@ -466,47 +497,70 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
             <CommandMenu shortcut='/' isOpen={isCommandMenuOpen} onOpenChange={setIsCommandMenuOpen} isBlurred>
                 <CommandMenuSearch placeholder='Quick search...' />
                 <CommandMenuList>
-                    <CommandMenuSection className='mt-2' title='Pages'>
+                    <CommandMenuSection className='mt-2' label='Pages'>
                         <CommandMenuItem href='/dashboard' textValue='projects'>
-                            <IconFolder /> Projects
+                            <FolderIcon /> Projects
                         </CommandMenuItem>
                         <CommandMenuItem href='/dashboard/namespaces' textValue='namespaces'>
-                            <IconFile /> Namespaces
+                            <NewspaperIcon /> Namespaces
                         </CommandMenuItem>
                         <CommandMenuItem href='/dashboard/languages' textValue='languages'>
-                            <IconGlobe /> Languages
+                            <LanguageIcon /> Languages
                         </CommandMenuItem>
                         <CommandMenuItem href='/dashboard/releases' textValue='releases'>
-                            <IconCube /> Releases
+                            <CubeIcon /> Releases
                         </CommandMenuItem>
                         <CommandMenuItem href='/dashboard/api-keys' textValue='api-keys'>
-                            <IconBrackets2 /> API Keys
+                            <KeyIcon /> API Keys
                         </CommandMenuItem>
                         <CommandMenuItem href='/dashboard/analytics' textValue='analytics'>
-                            <IconChartLineUp /> Analytics
-                        </CommandMenuItem>
-                        <CommandMenuItem href='/dashboard/languages' textValue='languages'>
-                            <IconGlobe /> Languages
+                            <ChartBarIcon /> Analytics
                         </CommandMenuItem>
                         <CommandMenuItem href='https://docs.unlingo.com' target='_blank' textValue='documentation'>
-                            <IconGuide /> Documentation
+                            <DocumentTextIcon /> Documentation
                         </CommandMenuItem>
                         <CommandMenuItem href='/dashboard/billing' textValue='billing'>
-                            <IconCreditCard /> Usage & Billing
+                            <CreditCardIcon /> Usage & Billing
                         </CommandMenuItem>
                     </CommandMenuSection>
-                    <CommandMenuSection title='Support'>
+                    <CommandMenuSection label='Support'>
                         <CommandMenuItem href='mailto:support@unlingo.com' target='_blank' textValue='email'>
-                            <IconEnvelope /> Email
+                            <EnvelopeIcon /> Email
                         </CommandMenuItem>
                         <CommandMenuItem href='https://discord.gg/TdDYte7KjG' target='_blank' textValue='discord'>
-                            <IconBrandDiscord /> Discord
+                            <svg
+                                xmlns='http://www.w3.org/2000/svg'
+                                width='16'
+                                height='16'
+                                fill='none'
+                                viewBox='0 0 24 24'
+                                className='intentui-icons size-4'
+                                data-slot='icon'
+                                aria-hidden='true'>
+                                <path
+                                    fill='currentColor'
+                                    d='M19.636 5.023a18.1 18.1 0 0 0-4.539-1.404q-.321.579-.581 1.188a16.8 16.8 0 0 0-5.037 0 13 13 0 0 0-.582-1.188 18.3 18.3 0 0 0-4.542 1.407C1.483 9.3.705 13.465 1.093 17.572A18.3 18.3 0 0 0 6.66 20.38q.677-.916 1.192-1.933a12 12 0 0 1-1.877-.9c.157-.115.311-.234.46-.348a13.02 13.02 0 0 0 11.13 0q.225.186.46.347-.902.535-1.88.903.513 1.017 1.191 1.931a18.2 18.2 0 0 0 5.57-2.808c.457-4.762-.78-8.89-3.27-12.55ZM8.346 15.046c-1.086 0-1.982-.99-1.982-2.207 0-1.218.865-2.217 1.978-2.217s2.002.999 1.983 2.216c-.02 1.218-.874 2.208-1.98 2.208Zm7.309 0c-1.087 0-1.98-.99-1.98-2.207 0-1.218.865-2.217 1.98-2.217s1.996.999 1.977 2.216-.872 2.208-1.978 2.208Z'></path>
+                            </svg>{' '}
+                            Discord
                         </CommandMenuItem>
                         <CommandMenuItem
                             href='https://github.com/twendykirn/unlingo/stargazers'
                             target='_blank'
                             textValue='github'>
-                            <IconBrandGithub /> Github
+                            <svg
+                                xmlns='http://www.w3.org/2000/svg'
+                                width='16'
+                                height='16'
+                                fill='none'
+                                viewBox='0 0 24 25'
+                                className='intentui-icons size-4'
+                                data-slot='icon'
+                                aria-hidden='true'>
+                                <path
+                                    fill='currentColor'
+                                    d='M12 2.7c5.525 0 10 4.476 10 10a10.02 10.02 0 0 1-6.813 9.488c-.5.1-.687-.212-.687-.475 0-.337.012-1.412.012-2.75 0-.937-.312-1.537-.675-1.85 2.226-.25 4.563-1.1 4.563-4.937 0-1.1-.387-1.988-1.025-2.688.1-.25.45-1.275-.1-2.65 0 0-.837-.275-2.75 1.025a9.3 9.3 0 0 0-2.5-.337c-.85 0-1.7.112-2.5.337-1.913-1.287-2.75-1.025-2.75-1.025-.55 1.375-.2 2.4-.1 2.65-.638.7-1.025 1.6-1.025 2.688 0 3.825 2.325 4.687 4.55 4.937-.287.25-.55.688-.637 1.338-.575.262-2.013.687-2.913-.825-.188-.3-.75-1.038-1.538-1.025-.837.012-.337.475.013.662.425.238.912 1.125 1.025 1.413.2.562.85 1.637 3.362 1.175 0 .837.013 1.625.013 1.862 0 .263-.188.563-.688.475A9.99 9.99 0 0 1 2 12.701c0-5.525 4.475-10 10-10Z'></path>
+                            </svg>{' '}
+                            Github
                         </CommandMenuItem>
                     </CommandMenuSection>
                 </CommandMenuList>

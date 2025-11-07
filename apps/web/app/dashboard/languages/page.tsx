@@ -3,12 +3,10 @@
 import { useConvex, useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useEffect, useMemo, useState } from 'react';
-import { IconDotsVertical, IconHighlight, IconPlus, IconStar, IconTrash } from '@intentui/icons';
+import { PlusIcon, TrashIcon, PencilSquareIcon, EllipsisVerticalIcon, StarIcon } from '@heroicons/react/24/outline';
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
-import { Card } from '@/components/ui/card';
-import { Table } from '@/components/ui/table';
-import { CalendarDateTime } from '@internationalized/date';
-import { DateField } from '@/components/ui/date-field';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@/components/ui/table';
 import { Doc, Id } from '@/convex/_generated/dataModel';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
@@ -21,6 +19,8 @@ import EnvironmentSelector from '../components/environment-selector';
 import { toast } from 'sonner';
 import LanguageRemoveModal from './components/language-removal-modal';
 import LanguageCreateSheet from './components/language-create-sheet';
+import { Badge } from '@/components/ui/badge';
+import { useDateFormatter } from '@react-aria/i18n';
 
 export default function NamespacesPage() {
     const searchParams = useSearchParams();
@@ -44,6 +44,8 @@ export default function NamespacesPage() {
     const [isDeleteLanguageModalOpen, setIsDeleteLanguageModalOpen] = useState(false);
     const [isCreateLanguageSheetOpen, setIsCreateLanguageSheetOpen] = useState(false);
 
+    const formatter = useDateFormatter({ dateStyle: 'long' });
+
     const project = useQuery(
         api.projects.getProject,
         workspace && selectedProjectId
@@ -66,7 +68,7 @@ export default function NamespacesPage() {
                   workspaceId: workspace._id,
               }
             : 'skip',
-        { initialNumItems: 20 }
+        { initialNumItems: 90 }
     );
 
     const languagesWithPrimary = useMemo(() => {
@@ -164,11 +166,11 @@ export default function NamespacesPage() {
             {workspace ? (
                 <>
                     <Card>
-                        <Card.Header>
+                        <CardHeader>
                             <div className='flex items-center justify-between'>
                                 <div className='flex flex-col gap-1'>
-                                    <Card.Title>Languages</Card.Title>
-                                    <Card.Description>View, edit and delete your languages.</Card.Description>
+                                    <CardTitle>Languages</CardTitle>
+                                    <CardDescription>View, edit and delete your languages.</CardDescription>
                                 </div>
                                 <div className='flex items-end gap-2'>
                                     <ProjectsSelector
@@ -198,91 +200,86 @@ export default function NamespacesPage() {
                                         isPreSelectLonelyItem
                                     />
                                     <Button
-                                        intent='plain'
                                         isDisabled={!canCreateLanguage}
                                         onClick={() => setIsCreateLanguageSheetOpen(true)}>
-                                        <IconPlus />
+                                        <PlusIcon />
                                     </Button>
                                 </div>
                             </div>
-                        </Card.Header>
-                        <Card.Content>
+                        </CardHeader>
+                        <CardContent>
                             <Table
                                 bleed
                                 className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
                                 aria-label='Namespaces'>
-                                <Table.Header>
-                                    <Table.Column className='w-0'>Name</Table.Column>
-                                    <Table.Column isRowHeader>Primary</Table.Column>
-                                    <Table.Column>Created At</Table.Column>
-                                    <Table.Column />
-                                </Table.Header>
-                                <Table.Body>
+                                <TableHeader>
+                                    <TableColumn className='w-0'>Name</TableColumn>
+                                    <TableColumn isRowHeader>Primary</TableColumn>
+                                    <TableColumn>Status</TableColumn>
+                                    <TableColumn>Created At</TableColumn>
+                                    <TableColumn />
+                                </TableHeader>
+                                <TableBody>
                                     <Collection items={languagesWithPrimary}>
-                                        {item => {
-                                            const createdAt = new Date(item._creationTime);
-                                            const date = new CalendarDateTime(
-                                                createdAt.getFullYear(),
-                                                createdAt.getMonth(),
-                                                createdAt.getDate(),
-                                                createdAt.getHours(),
-                                                createdAt.getMinutes()
-                                            );
-
-                                            return (
-                                                <Table.Row id={item._id}>
-                                                    <Table.Cell>{item.languageCode}</Table.Cell>
-                                                    <Table.Cell>{item.isPrimary ? <IconStar className='text-yellow-500' /> : null}</Table.Cell>
-                                                    <Table.Cell>
-                                                        <div className='flex gap-2 flex-1 items-center'>
-                                                            <DateField
-                                                                isReadOnly
-                                                                defaultValue={date}
-                                                                hideTimeZone
-                                                                hourCycle={24}
-                                                                aria-label='created-at'
-                                                            />
-                                                        </div>
-                                                    </Table.Cell>
-                                                    <Table.Cell className='text-end last:pr-2.5'>
-                                                        <Menu>
-                                                            <MenuTrigger>
-                                                                <IconDotsVertical />
-                                                            </MenuTrigger>
-                                                            <MenuContent placement='left top'>
+                                        {item => (
+                                            <TableRow id={item._id}>
+                                                <TableCell>{item.languageCode}</TableCell>
+                                                <TableCell>
+                                                    {item.isPrimary ? (
+                                                        <StarIcon className='text-yellow-500 w-5 h-5' />
+                                                    ) : null}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge intent={item.status ? 'warning' : 'success'}>
+                                                        {item.status || 'ready'}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className='flex gap-2 flex-1 items-center'>
+                                                        {formatter.format(new Date(item._creationTime))}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className='flex justify-end'>
+                                                    <Menu>
+                                                        <MenuTrigger className='size-6'>
+                                                            <EllipsisVerticalIcon />
+                                                        </MenuTrigger>
+                                                        <MenuContent placement='left top'>
+                                                            <MenuItem
+                                                                href={`/dashboard/editor?languageId=${item._id}`}
+                                                                isDisabled={!!item.status}>
+                                                                <PencilSquareIcon /> Edit
+                                                            </MenuItem>
+                                                            {!item.isPrimary ? (
                                                                 <MenuItem
-                                                                    href={`/dashboard/editor?languageId=${item._id}`}>
-                                                                    <IconHighlight /> Edit
-                                                                </MenuItem>
-                                                                {!item.isPrimary ? (
-                                                                    <MenuItem
-                                                                        onClick={() => {
-                                                                            handleSetPrimaryLanguage(item._id);
-                                                                        }}>
-                                                                        <IconStar /> Set Primary
-                                                                    </MenuItem>
-                                                                ) : null}
-                                                                <MenuSeparator />
-                                                                <MenuItem
-                                                                    isDanger
                                                                     onClick={() => {
-                                                                        if (item.isPrimary && languages.length > 1) {
-                                                                            toast.error(
-                                                                                'Cannot delete primary language until it is the only language in environment. Try to delete all other languages or set a new primary language.'
-                                                                            );
-                                                                            return;
-                                                                        }
-                                                                        setIsDeleteLanguageModalOpen(true);
-                                                                        setSelectedLanguage(item);
-                                                                    }}>
-                                                                    <IconTrash /> Delete
+                                                                        handleSetPrimaryLanguage(item._id);
+                                                                    }}
+                                                                    isDisabled={!!item.status}>
+                                                                    <StarIcon /> Set Primary
                                                                 </MenuItem>
-                                                            </MenuContent>
-                                                        </Menu>
-                                                    </Table.Cell>
-                                                </Table.Row>
-                                            );
-                                        }}
+                                                            ) : null}
+                                                            <MenuSeparator />
+                                                            <MenuItem
+                                                                intent='danger'
+                                                                onClick={() => {
+                                                                    if (item.isPrimary && languages.length > 1) {
+                                                                        toast.error(
+                                                                            'Cannot delete primary language until it is the only language in environment. Try to delete all other languages or set a new primary language.'
+                                                                        );
+                                                                        return;
+                                                                    }
+                                                                    setIsDeleteLanguageModalOpen(true);
+                                                                    setSelectedLanguage(item);
+                                                                }}
+                                                                isDisabled={!!item.status}>
+                                                                <TrashIcon /> Delete
+                                                            </MenuItem>
+                                                        </MenuContent>
+                                                    </Menu>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
                                     </Collection>
                                     {status !== 'Exhausted' ? (
                                         <TableLoadMoreItem
@@ -292,9 +289,9 @@ export default function NamespacesPage() {
                                             <Loader className='mx-auto' isIndeterminate aria-label='Loading more...' />
                                         </TableLoadMoreItem>
                                     ) : null}
-                                </Table.Body>
+                                </TableBody>
                             </Table>
-                        </Card.Content>
+                        </CardContent>
                     </Card>
                     {selectedLanguage ? (
                         <LanguageRemoveModal
@@ -313,6 +310,8 @@ export default function NamespacesPage() {
                             setIsOpen={setIsCreateLanguageSheetOpen}
                             workspace={workspace}
                             environment={selectedEnvironment}
+                            languages={languages}
+                            primaryLanguageId={selectedEnvironment.primaryLanguageId}
                         />
                     ) : null}
                 </>

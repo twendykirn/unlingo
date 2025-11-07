@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { Loader } from '@/components/ui/loader';
 import {
     ModalBody,
@@ -59,20 +61,17 @@ const ApiKeyRemoveModal = ({ isOpen, setIsOpen, workspace, apiKey }: Props) => {
                 <ModalTitle>Delete API Key</ModalTitle>
                 <ModalDescription>
                     This action is permanent and cannot be undone. Any applications or services using this key will no
-                    longer be able to access the API. To confirm, please type the API key name below:{' '}
-                    <Snippet size='sm' hideSymbol>
-                        {apiKey.name}
-                    </Snippet>
+                    longer be able to access the API. To confirm, please type the API key name below:
                 </ModalDescription>
+                <Snippet size='sm' hideSymbol>
+                    {apiKey.name}
+                </Snippet>
             </ModalHeader>
             <ModalBody>
-                <TextField
-                    label='Name'
-                    type='text'
-                    placeholder='Enter API key name'
-                    value={deleteConfirmation}
-                    onChange={setDeleteConfirmation}
-                />
+                <TextField value={deleteConfirmation} onChange={setDeleteConfirmation}>
+                    <Label>Name</Label>
+                    <Input placeholder='Enter API key name' />
+                </TextField>
             </ModalBody>
             <ModalFooter>
                 <ModalClose>Cancel</ModalClose>

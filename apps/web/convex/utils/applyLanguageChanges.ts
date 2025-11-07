@@ -1,10 +1,6 @@
-import { HistoryItems } from '../app/dashboard/editor/types';
-import { LanguageContentInterface } from './jsonFlatten';
+import { IChanges, LanguageContentInterface } from './types';
 
-export const applyLanguageChanges = (
-    content: LanguageContentInterface,
-    changes: { [key in 'add' | 'delete' | 'modify']: HistoryItems[] }
-) => {
+export const applyLanguageChanges = (content: LanguageContentInterface, changes: IChanges) => {
     const updatedContent: LanguageContentInterface = { ...content };
 
     if (changes.delete.length) {
@@ -30,11 +26,5 @@ export const applyLanguageChanges = (
         });
     }
 
-    const modifiedItems = changes.modify.map(item => ({ key: item.key, value: item.newValue }));
-    const addedItems = changes.add.map(item => ({ key: item.key, value: item.newValue }));
-
-    return {
-        updatedContent,
-        addedOrModifiedItems: [...modifiedItems, addedItems],
-    };
+    return updatedContent;
 };

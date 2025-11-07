@@ -3,12 +3,10 @@
 import { usePaginatedQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useState } from 'react';
-import { IconDotsVertical, IconEye, IconHighlight, IconPlus, IconTrash } from '@intentui/icons';
+import { PlusIcon, TrashIcon, PencilSquareIcon, EllipsisVerticalIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
-import { Card } from '@/components/ui/card';
-import { Table } from '@/components/ui/table';
-import { CalendarDateTime } from '@internationalized/date';
-import { DateField } from '@/components/ui/date-field';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@/components/ui/table';
 import ProjectEditSheet from './components/project-edit-sheet';
 import { Doc } from '@/convex/_generated/dataModel';
 import ProjectRemoveModal from './components/project-remove-modal';
@@ -16,6 +14,7 @@ import DashboardSidebar, { WorkspaceWithPremium } from './components/dashboard-s
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import ProjectCreateSheet from './components/project-create-sheet';
+import { useDateFormatter } from '@react-aria/i18n';
 
 export default function Dashboard() {
     const [workspace, setWorkspace] = useState<WorkspaceWithPremium | null>(null);
@@ -23,6 +22,8 @@ export default function Dashboard() {
     const [isDeleteProjectModalOpen, setIsDeleteProjectModalOpen] = useState(false);
     const [isCreateProjectSheetOpen, setIsCreateProjectSheetOpen] = useState(false);
     const [selectedProject, setSelectedProject] = useState<Doc<'projects'> | null>(null);
+
+    const formatter = useDateFormatter({ dateStyle: 'long' });
 
     const { results: projects } = usePaginatedQuery(
         api.projects.getProjects,
@@ -39,92 +40,74 @@ export default function Dashboard() {
             {workspace ? (
                 <>
                     <Card>
-                        <Card.Header>
+                        <CardHeader>
                             <div className='flex items-center justify-between'>
                                 <div className='flex flex-col gap-1'>
-                                    <Card.Title>Projects</Card.Title>
-                                    <Card.Description>View, edit and delete your projects.</Card.Description>
+                                    <CardTitle>Projects</CardTitle>
+                                    <CardDescription>View, edit and delete your projects.</CardDescription>
                                 </div>
                                 <Button
                                     intent='plain'
                                     isDisabled={!canCreateProject}
                                     onClick={() => setIsCreateProjectSheetOpen(true)}>
-                                    <IconPlus />
+                                    <PlusIcon />
                                 </Button>
                             </div>
-                        </Card.Header>
-                        <Card.Content>
+                        </CardHeader>
+                        <CardContent>
                             <Table
                                 bleed
                                 className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
                                 aria-label='Projects'>
-                                <Table.Header>
-                                    <Table.Column className='w-0'>Name</Table.Column>
-                                    <Table.Column isRowHeader>Description</Table.Column>
-                                    <Table.Column>Created At</Table.Column>
-                                    <Table.Column />
-                                </Table.Header>
-                                <Table.Body items={projects}>
-                                    {item => {
-                                        const projectCreatedAt = new Date(item._creationTime);
-                                        const date = new CalendarDateTime(
-                                            projectCreatedAt.getFullYear(),
-                                            projectCreatedAt.getMonth(),
-                                            projectCreatedAt.getDate(),
-                                            projectCreatedAt.getHours(),
-                                            projectCreatedAt.getMinutes()
-                                        );
-
-                                        return (
-                                            <Table.Row id={item._id}>
-                                                <Table.Cell>{item.name}</Table.Cell>
-                                                <Table.Cell>{item.description || '-'}</Table.Cell>
-                                                <Table.Cell>
-                                                    <div className='flex gap-2 flex-1 items-center'>
-                                                        <DateField
-                                                            isReadOnly
-                                                            defaultValue={date}
-                                                            hideTimeZone
-                                                            hourCycle={24}
-                                                            aria-label='created-at'
-                                                        />
-                                                    </div>
-                                                </Table.Cell>
-                                                <Table.Cell className='text-end last:pr-2.5'>
-                                                    <Menu>
-                                                        <MenuTrigger>
-                                                            <IconDotsVertical />
-                                                        </MenuTrigger>
-                                                        <MenuContent placement='left top'>
-                                                            <MenuItem
-                                                                href={`/dashboard/namespaces?projectId=${item._id}`}>
-                                                                <IconEye /> View
-                                                            </MenuItem>
-                                                            <MenuItem
-                                                                onClick={() => {
-                                                                    setIsEditProjectSheetOpen(true);
-                                                                    setSelectedProject(item);
-                                                                }}>
-                                                                <IconHighlight /> Edit
-                                                            </MenuItem>
-                                                            <MenuSeparator />
-                                                            <MenuItem
-                                                                isDanger
-                                                                onClick={() => {
-                                                                    setIsDeleteProjectModalOpen(true);
-                                                                    setSelectedProject(item);
-                                                                }}>
-                                                                <IconTrash /> Delete
-                                                            </MenuItem>
-                                                        </MenuContent>
-                                                    </Menu>
-                                                </Table.Cell>
-                                            </Table.Row>
-                                        );
-                                    }}
-                                </Table.Body>
+                                <TableHeader>
+                                    <TableColumn className='w-0'>Name</TableColumn>
+                                    <TableColumn isRowHeader>Description</TableColumn>
+                                    <TableColumn>Created At</TableColumn>
+                                    <TableColumn />
+                                </TableHeader>
+                                <TableBody items={projects}>
+                                    {item => (
+                                        <TableRow id={item._id}>
+                                            <TableCell>{item.name}</TableCell>
+                                            <TableCell>{item.description || '-'}</TableCell>
+                                            <TableCell>
+                                                <div className='flex gap-2 flex-1 items-center'>
+                                                    {formatter.format(new Date(item._creationTime))}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className='flex justify-end'>
+                                                <Menu>
+                                                    <MenuTrigger className='size-6'>
+                                                        <EllipsisVerticalIcon />
+                                                    </MenuTrigger>
+                                                    <MenuContent placement='left top'>
+                                                        <MenuItem href={`/dashboard/namespaces?projectId=${item._id}`}>
+                                                            <EyeIcon /> View
+                                                        </MenuItem>
+                                                        <MenuItem
+                                                            onClick={() => {
+                                                                setIsEditProjectSheetOpen(true);
+                                                                setSelectedProject(item);
+                                                            }}>
+                                                            <PencilSquareIcon /> Edit
+                                                        </MenuItem>
+                                                        <MenuSeparator />
+                                                        <MenuItem
+                                                            intent='danger'
+                                                            onClick={() => {
+                                                                setIsDeleteProjectModalOpen(true);
+                                                                setSelectedProject(item);
+                                                            }}>
+                                                            <TrashIcon /> Delete
+                                                        </MenuItem>
+                                                    </MenuContent>
+                                                </Menu>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
                             </Table>
-                        </Card.Content>
+                        </CardContent>
                     </Card>
                     {selectedProject ? (
                         <>

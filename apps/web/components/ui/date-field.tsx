@@ -1,83 +1,55 @@
-"use client"
+import type { DateFieldProps, DateInputProps, DateValue } from "react-aria-components"
 
 import {
   DateField as DateFieldPrimitive,
-  type DateFieldProps as DateFieldPrimitiveProps,
   DateInput as DateInputPrimitive,
-  type DateInputProps,
   DateSegment,
-  type DateValue,
-  type ValidationResult,
 } from "react-aria-components"
 import { twJoin } from "tailwind-merge"
-import { composeTailwindRenderProps } from "@/lib/primitive"
-import { Description, FieldError, FieldGroup, Label } from "./field"
+import { cx } from "@/lib/primitive"
+import { fieldStyles } from "./field"
 
-interface DateFieldProps<T extends DateValue> extends DateFieldPrimitiveProps<T> {
-  label?: string
-  description?: string
-  errorMessage?: string | ((validation: ValidationResult) => string)
-  prefix?: React.ReactNode
-  suffix?: React.ReactNode
-}
-
-const DateField = <T extends DateValue>({
-  prefix,
-  suffix,
-  label,
-  description,
-  errorMessage,
-  ...props
-}: DateFieldProps<T>) => {
+export function DateField<T extends DateValue>({ className, ...props }: DateFieldProps<T>) {
   return (
     <DateFieldPrimitive
       {...props}
-      className={composeTailwindRenderProps(props.className, "group flex flex-col gap-y-1")}
-    >
-      {label && <Label>{label}</Label>}
-      <FieldGroup>
-        {prefix && typeof prefix === "string" ? (
-          <span className="ml-2 text-muted-fg">{prefix}</span>
-        ) : (
-          prefix
-        )}
-        <DateInput />
-        {suffix ? (
-          typeof suffix === "string" ? (
-            <span className="mr-2 text-muted-fg">{suffix}</span>
-          ) : (
-            suffix
-          )
-        ) : null}
-      </FieldGroup>
-      {description && <Description>{description}</Description>}
-      <FieldError>{errorMessage}</FieldError>
-    </DateFieldPrimitive>
+      data-slot="control"
+      className={cx(fieldStyles({ className: "w-fit" }), className)}
+    />
   )
 }
 
-const DateInput = ({ className, ...props }: Omit<DateInputProps, "children">) => {
+export function DateInput({ className, ...props }: Omit<DateInputProps, "children">) {
   return (
-    <DateInputPrimitive
-      className={composeTailwindRenderProps(
-        className,
-        "px-3 py-2 text-base text-fg placeholder-muted-fg outline-hidden sm:px-2.5 sm:py-1.5 sm:text-sm/6",
-      )}
-      {...props}
-    >
-      {(segment) => (
-        <DateSegment
-          segment={segment}
-          className={twJoin(
-            "inline shrink-0 rounded px-1.5 type-literal:px-0 text-fg tracking-wider caret-transparent outline-0 forced-color-adjust-none data-placeholder:not-data-focused:text-muted-fg sm:p-0.5 sm:py-0.5 sm:text-sm forced-colors:text-[ButtonText]",
-            "focus:bg-accent focus:text-accent-fg focus:data-invalid:bg-danger focus:data-invalid:text-danger-fg forced-colors:focus:bg-[Highlight] forced-colors:focus:text-[HighlightText]",
-            "disabled:opacity-50 forced-colors:disabled:text-[GrayText]",
-          )}
-        />
-      )}
-    </DateInputPrimitive>
+    <span data-slot="control" className="relative block">
+      <DateInputPrimitive
+        className={cx(
+          "relative block appearance-none rounded-lg px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)]",
+          "text-base/6 text-fg placeholder:text-muted-fg sm:text-sm/6",
+          "border border-input enabled:hover:border-muted-fg/30",
+          "focus-within:border-ring/70 focus-within:bg-primary-subtle/5 focus-within:outline-hidden focus-within:ring-3 focus-within:ring-ring/20 focus-within:hover:border-ring/80",
+          "group-open:border-ring/70 group-open:bg-primary-subtle/5 group-open:outline-hidden group-open:ring-3 group-open:ring-ring/20 group-open:enabled:hover:border-ring/80",
+          "invalid:border-danger-subtle-fg/70 invalid:bg-danger-subtle/5 focus-within:invalid:border-danger-subtle-fg/70 focus-within:invalid:bg-danger-subtle/5 focus-within:invalid:ring-danger-subtle-fg/20 focus-within:invalid:hover:border-danger-subtle-fg/80 invalid:enabled:hover:border-danger-subtle-fg/80",
+          "disabled:bg-muted disabled:opacity-50 forced-colors:disabled:text-[GrayText]",
+          "in-disabled:bg-muted in-disabled:opacity-50 forced-colors:in-disabled:text-[GrayText]",
+          "dark:scheme-dark",
+          className,
+        )}
+        {...props}
+      >
+        {(segment) => (
+          <DateSegment
+            segment={segment}
+            className={twJoin(
+              "inline shrink-0 rounded px-1 type-literal:px-0 text-fg tracking-wider caret-transparent outline-0 data-placeholder:not-data-focused:text-muted-fg sm:p-0.5 sm:px-1.5 sm:py-0.5 sm:text-sm",
+              "focus:bg-primary-subtle focus:text-primary-subtle-fg focus:data-invalid:bg-danger-subtle focus:data-invalid:text-danger-subtle-fg forced-colors:focus:bg-[Highlight] forced-colors:focus:text-[HighlightText]",
+              "forced-color-adjust-none forced-colors:text-[ButtonText]",
+              "disabled:opacity-50 forced-colors:disabled:text-[GrayText]",
+              "in-disabled:bg-muted in-disabled:opacity-50",
+            )}
+          />
+        )}
+      </DateInputPrimitive>
+    </span>
   )
 }
-
-export type { DateFieldProps }
-export { DateField, DateInput }

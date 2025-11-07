@@ -1,3 +1,4 @@
+import { Label } from '@/components/ui/field';
 import { Loader } from '@/components/ui/loader';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { api } from '@/convex/_generated/api';
@@ -56,19 +57,19 @@ const EnvironmentSelector = ({
 
     return (
         <Select
-            selectedKey={selectedEnvironment?._id}
+            value={selectedEnvironment?._id}
             aria-label='environments-selector'
             placeholder='env'
-            label={label}
             isDisabled={!workspace || !namespace}
-            onSelectionChange={value => {
+            onChange={value => {
                 if (value) {
                     const environment = environments?.find(env => env._id === value);
                     if (environment?._id === selectedEnvironment?._id) return;
                     setSelectedEnvironment(environment ?? null);
                 }
             }}
-            defaultSelectedKey={defaultEnvironment?._id}>
+            defaultValue={defaultEnvironment?._id}>
+            <Label>{label}</Label>
             <SelectTrigger />
             <SelectContent items={environments}>
                 {item => (

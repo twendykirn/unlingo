@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Edit3, Languages } from 'lucide-react';
+import { Edit3, Languages } from 'lucide-react';
 import Image from 'next/image';
 
 type Mode = 'edit' | 'translate';
@@ -9,29 +9,16 @@ type Mode = 'edit' | 'translate';
 interface ModeSelectionViewProps {
     screenshotName: string;
     screenshotUrl: string;
-    onGoBack: () => void;
     onModeSelect: (mode: Mode) => void;
 }
 
-export default function ModeSelectionView({
-    screenshotName,
-    screenshotUrl,
-    onGoBack,
-    onModeSelect,
-}: ModeSelectionViewProps) {
+export default function ModeSelectionView({ screenshotName, screenshotUrl, onModeSelect }: ModeSelectionViewProps) {
     return (
         <div className='h-screen overflow-x-hidden bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800'>
             <div className='container mx-auto h-full flex flex-col px-4 sm:px-6 py-4 sm:py-6'>
                 <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-4 sm:p-6 backdrop-blur-sm mb-4 sm:mb-6'>
                     <div className='flex items-center justify-between'>
                         <div className='flex items-center space-x-3 sm:space-x-4'>
-                            <Button
-                                onClick={onGoBack}
-                                variant='ghost'
-                                size='icon'
-                                className='text-gray-400 hover:text-white'>
-                                <ArrowLeft className='h-4 w-4' />
-                            </Button>
                             <div className='w-12 h-12 bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-xl flex items-center justify-center border border-purple-500/20'>
                                 <Languages className='h-6 w-6 text-purple-400' />
                             </div>

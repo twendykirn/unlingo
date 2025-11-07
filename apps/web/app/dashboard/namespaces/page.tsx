@@ -3,12 +3,10 @@
 import { usePaginatedQuery, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useEffect, useState } from 'react';
-import { IconDotsVertical, IconEye, IconHighlight, IconPlus, IconTrash } from '@intentui/icons';
+import { PlusIcon, TrashIcon, PencilSquareIcon, EllipsisVerticalIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
-import { Card } from '@/components/ui/card';
-import { Table } from '@/components/ui/table';
-import { CalendarDateTime } from '@internationalized/date';
-import { DateField } from '@/components/ui/date-field';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@/components/ui/table';
 import { Doc, Id } from '@/convex/_generated/dataModel';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
@@ -19,6 +17,7 @@ import ProjectsSelector from '../components/projects-selector';
 import NamespaceCreateSheet from './components/namespace-create-sheet';
 import NamespaceEditSheet from './components/namespace-edit-sheet';
 import NamespaceRemoveModal from './components/namespace-remove-modal';
+import { useDateFormatter } from '@react-aria/i18n';
 
 export default function NamespacesPage() {
     const searchParams = useSearchParams();
@@ -31,6 +30,8 @@ export default function NamespacesPage() {
     const [isDeleteNamespaceModalOpen, setIsDeleteNamespaceModalOpen] = useState(false);
     const [isCreateNamespaceSheetOpen, setIsCreateNamespaceSheetOpen] = useState(false);
     const [selectedNamespace, setSelectedNamespace] = useState<Doc<'namespaces'> | null>(null);
+
+    const formatter = useDateFormatter({ dateStyle: 'long' });
 
     const project = useQuery(
         api.projects.getProject,
@@ -77,11 +78,11 @@ export default function NamespacesPage() {
             {workspace ? (
                 <>
                     <Card>
-                        <Card.Header>
+                        <CardHeader>
                             <div className='flex items-center justify-between'>
                                 <div className='flex flex-col gap-1'>
-                                    <Card.Title>Namespaces</Card.Title>
-                                    <Card.Description>View, edit and delete your namespaces.</Card.Description>
+                                    <CardTitle>Namespaces</CardTitle>
+                                    <CardDescription>View, edit and delete your namespaces.</CardDescription>
                                 </div>
                                 <div className='flex items-end gap-2'>
                                     <ProjectsSelector
@@ -96,79 +97,62 @@ export default function NamespacesPage() {
                                         intent='plain'
                                         isDisabled={!canCreateNamespace}
                                         onClick={() => setIsCreateNamespaceSheetOpen(true)}>
-                                        <IconPlus />
+                                        <PlusIcon />
                                     </Button>
                                 </div>
                             </div>
-                        </Card.Header>
-                        <Card.Content>
+                        </CardHeader>
+                        <CardContent>
                             <Table
                                 bleed
                                 className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
                                 aria-label='Namespaces'>
-                                <Table.Header>
-                                    <Table.Column className='w-0'>Name</Table.Column>
-                                    <Table.Column isRowHeader>Created At</Table.Column>
-                                    <Table.Column />
-                                </Table.Header>
-                                <Table.Body>
+                                <TableHeader>
+                                    <TableColumn className='w-0'>Name</TableColumn>
+                                    <TableColumn isRowHeader>Created At</TableColumn>
+                                    <TableColumn />
+                                </TableHeader>
+                                <TableBody>
                                     <Collection items={namespaces}>
-                                        {item => {
-                                            const createdAt = new Date(item._creationTime);
-                                            const date = new CalendarDateTime(
-                                                createdAt.getFullYear(),
-                                                createdAt.getMonth(),
-                                                createdAt.getDate(),
-                                                createdAt.getHours(),
-                                                createdAt.getMinutes()
-                                            );
-
-                                            return (
-                                                <Table.Row id={item._id}>
-                                                    <Table.Cell>{item.name}</Table.Cell>
-                                                    <Table.Cell>
-                                                        <div className='flex gap-2 flex-1 items-center'>
-                                                            <DateField
-                                                                isReadOnly
-                                                                defaultValue={date}
-                                                                hideTimeZone
-                                                                hourCycle={24}
-                                                                aria-label='created-at'
-                                                            />
-                                                        </div>
-                                                    </Table.Cell>
-                                                    <Table.Cell className='text-end last:pr-2.5'>
-                                                        <Menu>
-                                                            <MenuTrigger>
-                                                                <IconDotsVertical />
-                                                            </MenuTrigger>
-                                                            <MenuContent placement='left top'>
-                                                                <MenuItem
-                                                                    href={`/dashboard/languages?namespaceId=${item._id}&projectId=${project?._id}`}>
-                                                                    <IconEye /> View
-                                                                </MenuItem>
-                                                                <MenuItem
-                                                                    onClick={() => {
-                                                                        setIsEditNamespaceSheetOpen(true);
-                                                                        setSelectedNamespace(item);
-                                                                    }}>
-                                                                    <IconHighlight /> Edit
-                                                                </MenuItem>
-                                                                <MenuSeparator />
-                                                                <MenuItem
-                                                                    isDanger
-                                                                    onClick={() => {
-                                                                        setIsDeleteNamespaceModalOpen(true);
-                                                                        setSelectedNamespace(item);
-                                                                    }}>
-                                                                    <IconTrash /> Delete
-                                                                </MenuItem>
-                                                            </MenuContent>
-                                                        </Menu>
-                                                    </Table.Cell>
-                                                </Table.Row>
-                                            );
-                                        }}
+                                        {item => (
+                                            <TableRow id={item._id}>
+                                                <TableCell>{item.name}</TableCell>
+                                                <TableCell>
+                                                    <div className='flex gap-2 flex-1 items-center'>
+                                                        {formatter.format(new Date(item._creationTime))}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className='flex justify-end'>
+                                                    <Menu>
+                                                        <MenuTrigger className='size-6'>
+                                                            <EllipsisVerticalIcon />
+                                                        </MenuTrigger>
+                                                        <MenuContent placement='left top'>
+                                                            <MenuItem
+                                                                href={`/dashboard/languages?namespaceId=${item._id}&projectId=${project?._id}`}>
+                                                                <EyeIcon /> View
+                                                            </MenuItem>
+                                                            <MenuItem
+                                                                onClick={() => {
+                                                                    setIsEditNamespaceSheetOpen(true);
+                                                                    setSelectedNamespace(item);
+                                                                }}>
+                                                                <PencilSquareIcon /> Edit
+                                                            </MenuItem>
+                                                            <MenuSeparator />
+                                                            <MenuItem
+                                                                intent='danger'
+                                                                onClick={() => {
+                                                                    setIsDeleteNamespaceModalOpen(true);
+                                                                    setSelectedNamespace(item);
+                                                                }}>
+                                                                <TrashIcon /> Delete
+                                                            </MenuItem>
+                                                        </MenuContent>
+                                                    </Menu>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
                                     </Collection>
                                     {status !== 'Exhausted' ? (
                                         <TableLoadMoreItem
@@ -178,9 +162,9 @@ export default function NamespacesPage() {
                                             <Loader className='mx-auto' isIndeterminate aria-label='Loading more...' />
                                         </TableLoadMoreItem>
                                     ) : null}
-                                </Table.Body>
+                                </TableBody>
                             </Table>
-                        </Card.Content>
+                        </CardContent>
                     </Card>
                     {project && selectedNamespace ? (
                         <>

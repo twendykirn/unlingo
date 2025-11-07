@@ -1,5 +1,7 @@
 import { Button } from '@/components/ui/button';
+import { FieldError, Label } from '@/components/ui/field';
 import { Form } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { Loader } from '@/components/ui/loader';
 import {
     SheetBody,
@@ -82,21 +84,16 @@ const ProjectCreateSheet = ({ isOpen, setIsOpen, workspace }: Props) => {
                             handleCreate(close);
                         }}>
                         <SheetBody className='space-y-4'>
-                            <TextField
-                                label='Name'
-                                type='text'
-                                placeholder='Enter project name'
-                                value={name}
-                                onChange={setName}
-                                isRequired
-                            />
-                            <Textarea
-                                label='Description'
-                                placeholder='Enter project description'
-                                value={description}
-                                onChange={setDescription}
-                                isRequired
-                            />
+                            <TextField isRequired value={name} onChange={setName}>
+                                <Label>Name</Label>
+                                <Input placeholder='Enter project name' />
+                                <FieldError />
+                            </TextField>
+                            <TextField isRequired value={description} onChange={setDescription}>
+                                <Label>Description</Label>
+                                <Textarea placeholder='Enter project description' />
+                                <FieldError />
+                            </TextField>
                         </SheetBody>
                         <SheetFooter>
                             <SheetClose>Cancel</SheetClose>

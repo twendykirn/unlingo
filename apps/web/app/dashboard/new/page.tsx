@@ -221,7 +221,7 @@ export default function NewOrganizationPage() {
 
                             <Button
                                 type='submit'
-                                disabled={!isOrgFormValid}
+                                isDisabled={!isOrgFormValid}
                                 className='w-full bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed py-3'>
                                 <div className='flex items-center justify-center space-x-2'>
                                     <span>Continue</span>
@@ -274,16 +274,16 @@ export default function NewOrganizationPage() {
                             <div className='flex space-x-3'>
                                 <Button
                                     type='button'
-                                    variant='outline'
+                                    intent='outline'
                                     onClick={() => setCurrentStep(1)}
-                                    disabled={isCompletingSetup}
+                                    isDisabled={isCompletingSetup}
                                     className='flex-1 border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white'>
                                     <ArrowLeft className='h-4 w-4 mr-2' />
                                     Back
                                 </Button>
                                 <Button
                                     type='submit'
-                                    disabled={!isEmailFormValid || isCompletingSetup}
+                                    isDisabled={!isEmailFormValid || isCompletingSetup}
                                     className='flex-1 bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed'>
                                     {isCompletingSetup ? (
                                         <div className='flex items-center justify-center space-x-2'>

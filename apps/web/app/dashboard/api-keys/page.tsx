@@ -3,11 +3,9 @@
 import { usePaginatedQuery, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useEffect, useState } from 'react';
-import { IconDotsVertical, IconPlus, IconTrash } from '@intentui/icons';
-import { Card } from '@/components/ui/card';
-import { Table } from '@/components/ui/table';
-import { CalendarDateTime } from '@internationalized/date';
-import { DateField } from '@/components/ui/date-field';
+import { PlusIcon, TrashIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@/components/ui/table';
 import { Doc, Id } from '@/convex/_generated/dataModel';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
@@ -18,6 +16,7 @@ import ProjectsSelector from '../components/projects-selector';
 import ApiKeyRemoveModal from './components/api-key-remove-modal';
 import ApiKeyCreateModal from './components/api-key-create-modal';
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/menu';
+import { useDateFormatter } from '@react-aria/i18n';
 
 const formatKeyDisplay = (key: string) => {
     if (!key) return '';
@@ -37,6 +36,8 @@ export default function ApiKeysPage() {
     const [isDeleteApiKeyModalOpen, setIsDeleteApiKeyModalOpen] = useState(false);
     const [isCreateApiKeySheetOpen, setIsCreateApiKeySheetOpen] = useState(false);
     const [selectedApiKey, setSelectedApiKey] = useState<Doc<'apiKeys'> | null>(null);
+
+    const formatter = useDateFormatter({ dateStyle: 'long' });
 
     const project = useQuery(
         api.projects.getProject,
@@ -80,11 +81,11 @@ export default function ApiKeysPage() {
             {workspace ? (
                 <>
                     <Card>
-                        <Card.Header>
+                        <CardHeader>
                             <div className='flex items-center justify-between'>
                                 <div className='flex flex-col gap-1'>
-                                    <Card.Title>API Keys</Card.Title>
-                                    <Card.Description>Create and delete your API keys.</Card.Description>
+                                    <CardTitle>API Keys</CardTitle>
+                                    <CardDescription>Create and delete your API keys.</CardDescription>
                                 </div>
                                 <div className='flex items-end gap-2'>
                                     <ProjectsSelector
@@ -95,70 +96,53 @@ export default function ApiKeysPage() {
                                         label='Project'
                                         isPreSelectLonelyItem
                                     />
-                                    <Button intent='plain' onClick={() => setIsCreateApiKeySheetOpen(true)}>
-                                        <IconPlus />
+                                    <Button onClick={() => setIsCreateApiKeySheetOpen(true)}>
+                                        <PlusIcon />
                                     </Button>
                                 </div>
                             </div>
-                        </Card.Header>
-                        <Card.Content>
+                        </CardHeader>
+                        <CardContent>
                             <Table
                                 bleed
                                 className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
                                 aria-label='API Keys'>
-                                <Table.Header>
-                                    <Table.Column className='w-0'>Name</Table.Column>
-                                    <Table.Column isRowHeader>Key</Table.Column>
-                                    <Table.Column>Created At</Table.Column>
-                                    <Table.Column />
-                                </Table.Header>
-                                <Table.Body>
+                                <TableHeader>
+                                    <TableColumn className='w-0'>Name</TableColumn>
+                                    <TableColumn isRowHeader>Key</TableColumn>
+                                    <TableColumn>Created At</TableColumn>
+                                    <TableColumn />
+                                </TableHeader>
+                                <TableBody>
                                     <Collection items={apiKeys}>
-                                        {item => {
-                                            const projectCreatedAt = new Date(item._creationTime);
-                                            const date = new CalendarDateTime(
-                                                projectCreatedAt.getFullYear(),
-                                                projectCreatedAt.getMonth(),
-                                                projectCreatedAt.getDate(),
-                                                projectCreatedAt.getHours(),
-                                                projectCreatedAt.getMinutes()
-                                            );
-
-                                            return (
-                                                <Table.Row id={item._id}>
-                                                    <Table.Cell>{item.name}</Table.Cell>
-                                                    <Table.Cell>{formatKeyDisplay(item.prefix)}</Table.Cell>
-                                                    <Table.Cell>
-                                                        <div className='flex gap-2 flex-1 items-center'>
-                                                            <DateField
-                                                                isReadOnly
-                                                                defaultValue={date}
-                                                                hideTimeZone
-                                                                hourCycle={24}
-                                                                aria-label='created-at'
-                                                            />
-                                                        </div>
-                                                    </Table.Cell>
-                                                    <Table.Cell className='text-end last:pr-2.5'>
-                                                        <Menu>
-                                                            <MenuTrigger>
-                                                                <IconDotsVertical />
-                                                            </MenuTrigger>
-                                                            <MenuContent placement='left top'>
-                                                                <MenuItem
-                                                                    isDanger
-                                                                    onClick={() => {
-                                                                        setIsDeleteApiKeyModalOpen(true);
-                                                                        setSelectedApiKey(item);
-                                                                    }}>
-                                                                    <IconTrash /> Delete
-                                                                </MenuItem>
-                                                            </MenuContent>
-                                                        </Menu>
-                                                    </Table.Cell>
-                                                </Table.Row>
-                                            );
-                                        }}
+                                        {item => (
+                                            <TableRow id={item._id}>
+                                                <TableCell>{item.name}</TableCell>
+                                                <TableCell>{formatKeyDisplay(item.prefix)}</TableCell>
+                                                <TableCell>
+                                                    <div className='flex gap-2 flex-1 items-center'>
+                                                        {formatter.format(new Date(item._creationTime))}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className='flex justify-end'>
+                                                    <Menu>
+                                                        <MenuTrigger className='size-6'>
+                                                            <EllipsisVerticalIcon />
+                                                        </MenuTrigger>
+                                                        <MenuContent placement='left top'>
+                                                            <MenuItem
+                                                                intent='danger'
+                                                                onClick={() => {
+                                                                    setIsDeleteApiKeyModalOpen(true);
+                                                                    setSelectedApiKey(item);
+                                                                }}>
+                                                                <TrashIcon /> Delete
+                                                            </MenuItem>
+                                                        </MenuContent>
+                                                    </Menu>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
                                     </Collection>
                                     {status !== 'Exhausted' ? (
                                         <TableLoadMoreItem
@@ -168,9 +152,9 @@ export default function ApiKeysPage() {
                                             <Loader className='mx-auto' isIndeterminate aria-label='Loading more...' />
                                         </TableLoadMoreItem>
                                     ) : null}
-                                </Table.Body>
+                                </TableBody>
                             </Table>
-                        </Card.Content>
+                        </CardContent>
                     </Card>
                     {selectedApiKey ? (
                         <ApiKeyRemoveModal

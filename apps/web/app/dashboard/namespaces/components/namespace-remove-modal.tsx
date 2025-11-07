@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { Loader } from '@/components/ui/loader';
 import {
     ModalBody,
@@ -59,20 +61,17 @@ const NamespaceRemoveModal = ({ isOpen, setIsOpen, project, workspace, namespace
             <ModalHeader>
                 <ModalTitle>Delete Namespace</ModalTitle>
                 <ModalDescription>
-                    This action is permanent and cannot be undone. To confirm, please type the namespace name below:{' '}
-                    <Snippet size='sm' hideSymbol>
-                        {namespace.name}
-                    </Snippet>
+                    This action is permanent and cannot be undone. To confirm, please type the namespace name below:
                 </ModalDescription>
+                <Snippet size='sm' hideSymbol>
+                    {namespace.name}
+                </Snippet>
             </ModalHeader>
             <ModalBody>
-                <TextField
-                    label='Name'
-                    type='text'
-                    placeholder='Enter namespace name'
-                    value={deleteConfirmation}
-                    onChange={setDeleteConfirmation}
-                />
+                <TextField value={deleteConfirmation} onChange={setDeleteConfirmation}>
+                    <Label>Name</Label>
+                    <Input placeholder='Enter namespace name' />
+                </TextField>
             </ModalBody>
             <ModalFooter>
                 <ModalClose>Cancel</ModalClose>

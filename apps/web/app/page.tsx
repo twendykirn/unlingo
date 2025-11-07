@@ -36,7 +36,6 @@ import { ModalBody, ModalContent, ModalDescription, ModalFooter, ModalHeader, Mo
 import { Form } from '@/components/ui/form';
 import type { Key } from 'react-aria-components';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import { IconArrowRight } from '@intentui/icons';
 import { InputOTP } from '@/components/ui/input-otp';
 
 const features = [
@@ -184,7 +183,7 @@ class UnlingoBackend {
 export default UnlingoBackend;
 
 i18next
-  .use(UnlingoBackend) 
+  .use(UnlingoBackend)
   .use(initReactI18next)
   .init({
     ...
@@ -196,7 +195,7 @@ export default i18next;`;
             return `import { getRequestConfig } from 'next-intl/server';
 import { hasLocale } from 'next-intl';
 import { routing } from './routing';
- 
+
 export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale;
   const locale = hasLocale(routing.locales, requested)
@@ -216,7 +215,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
         },
     });
     const data = await response.json();
- 
+
   return {
     locale,
     messages: data,
@@ -466,7 +465,6 @@ export default function Page() {
 
                                 <Button type='submit' className='w-full' isDisabled={isSubmitting}>
                                     {isSubmitting ? 'Sending code…' : 'Create workspace'}
-                                    {!isSubmitting && <IconArrowRight />}
                                 </Button>
                             </form>
                             {emailError || generalError ? (
@@ -1106,10 +1104,7 @@ export default function Page() {
                                 </p>
                                 <div className='flex flex-col sm:flex-row gap-3 justify-center items-center'>
                                     <Link href='/sign-up'>
-                                        <Button>
-                                            Start Now
-                                            <IconArrowRight />
-                                        </Button>
+                                        <Button>Start Now</Button>
                                     </Link>
                                     <Link href='mailto:support@unlingo.com'>
                                         <Button intent='outline'>

@@ -1,6 +1,6 @@
 'use client';
 
-import { IconDeviceDesktop2, IconMoon, IconSun } from '@intentui/icons';
+import { MoonIcon, SunIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline';
 import { useTheme } from 'next-themes';
 import { MenuItem, MenuLabel } from './ui/menu';
 
@@ -16,17 +16,17 @@ export function ThemeSwitcher() {
         <MenuItem onClick={toggleTheme} aria-label='Switch theme'>
             {theme === 'light' ? (
                 <>
-                    <IconSun />
+                    <SunIcon />
                     <MenuLabel>Light Mode</MenuLabel>
                 </>
             ) : theme === 'dark' ? (
                 <>
-                    <IconMoon />
+                    <MoonIcon />
                     <MenuLabel>Dark Mode</MenuLabel>
                 </>
             ) : (
                 <>
-                    <IconDeviceDesktop2 />
+                    <ComputerDesktopIcon />
                     <MenuLabel>System Mode</MenuLabel>
                 </>
             )}

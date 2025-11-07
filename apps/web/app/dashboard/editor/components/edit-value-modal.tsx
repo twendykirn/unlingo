@@ -11,8 +11,10 @@ import {
     ModalHeader,
     ModalTitle,
 } from '@/components/ui/modal';
+import { TextField } from '@/components/ui/text-field';
+import { Label } from '@/components/ui/field';
 
-const $Textarea = reactive(Textarea);
+const $Textarea = reactive(TextField);
 const $Button = reactive(Button);
 
 interface Props {
@@ -21,16 +23,19 @@ interface Props {
     originalKey: string;
     originalValue: string;
     primaryValue: string;
-    onApply: (params: {
-        oldValue: string;
-        newValue: string;
-        key: string;
-        primaryValue: null | string;
-    }) => void;
+    onApply: (params: { oldValue: string; newValue: string; key: string; primaryValue: null | string }) => void;
     isPrimaryLanguage: boolean;
 }
 
-const EditValueModal = ({ isOpen, setIsOpen, originalKey, originalValue, primaryValue, onApply, isPrimaryLanguage }: Props) => {
+const EditValueModal = ({
+    isOpen,
+    setIsOpen,
+    originalKey,
+    originalValue,
+    primaryValue,
+    onApply,
+    isPrimaryLanguage,
+}: Props) => {
     const value$ = useObservable('');
     const isDisabled$ = useObservable(() => value$.get() === originalValue);
 
@@ -70,17 +75,21 @@ const EditValueModal = ({ isOpen, setIsOpen, originalKey, originalValue, primary
                 }}>
                 <ModalBody className='pb-1 space-y-2'>
                     {!isPrimaryLanguage ? (
-                        <Textarea isReadOnly label='Original (Primary)' defaultValue={primaryValue} />
+                        <TextField isReadOnly defaultValue={primaryValue}>
+                            <Label>Original (Primary)</Label>
+                            <Textarea />
+                        </TextField>
                     ) : null}
                     <$Textarea
                         isRequired
                         autoFocus
-                        label='Translation'
                         $value={value$}
                         onChange={value => {
                             value$.set(value);
-                        }}
-                    />
+                        }}>
+                        <Label>Translation</Label>
+                        <Textarea />
+                    </$Textarea>
                 </ModalBody>
                 <ModalFooter>
                     <ModalClose>Cancel</ModalClose>

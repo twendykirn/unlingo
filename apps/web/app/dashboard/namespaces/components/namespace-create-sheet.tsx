@@ -1,5 +1,7 @@
 import { Button } from '@/components/ui/button';
+import { FieldError, Label } from '@/components/ui/field';
 import { Form } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { Loader } from '@/components/ui/loader';
 import {
     SheetBody,
@@ -80,14 +82,11 @@ const NamespaceCreateSheet = ({ isOpen, setIsOpen, workspace, project }: Props) 
                             handleCreate(close);
                         }}>
                         <SheetBody className='space-y-4'>
-                            <TextField
-                                label='Name'
-                                type='text'
-                                placeholder='Enter namespace name'
-                                value={name}
-                                onChange={setName}
-                                isRequired
-                            />
+                            <TextField isRequired value={name} onChange={setName}>
+                                <Label>Name</Label>
+                                <Input placeholder='Enter namespace name' />
+                                <FieldError />
+                            </TextField>
                         </SheetBody>
                         <SheetFooter>
                             <SheetClose>Cancel</SheetClose>

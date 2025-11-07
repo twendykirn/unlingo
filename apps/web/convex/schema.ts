@@ -59,6 +59,7 @@ export default defineSchema({
             languages: v.number(),
         }),
         updatedAt: v.number(),
+        status: v.optional(v.union(v.literal('merging'), v.literal('syncing'))),
     }).index('by_namespace_version', ['namespaceId', 'version']),
     languages: defineTable({
         namespaceVersionId: v.id('namespaceVersions'),
@@ -66,6 +67,7 @@ export default defineSchema({
         fileId: v.optional(v.id('_storage')),
         fileSize: v.optional(v.number()),
         updatedAt: v.number(),
+        status: v.optional(v.union(v.literal('merging'), v.literal('syncing'))),
     }).index('by_namespace_version_language', ['namespaceVersionId', 'languageCode']),
     apiKeys: defineTable({
         workspaceId: v.id('workspaces'),

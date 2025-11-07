@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { Loader } from '@/components/ui/loader';
 import {
     ModalBody,
@@ -53,7 +55,6 @@ const ApiKeyCreateModal = ({ isOpen, setIsOpen, workspace, project }: Props) => 
 
     return (
         <ModalContent
-            role='alertdialog'
             isOpen={isOpen}
             onOpenChange={value => {
                 if (!value) {
@@ -73,7 +74,10 @@ const ApiKeyCreateModal = ({ isOpen, setIsOpen, workspace, project }: Props) => 
                         {newlyGeneratedKey}
                     </Snippet>
                 ) : (
-                    <TextField label='Name' type='text' placeholder='Enter key name' value={name} onChange={setName} />
+                    <TextField value={name} onChange={setName}>
+                        <Label>Name</Label>
+                        <Input placeholder='Enter key name' />
+                    </TextField>
                 )}{' '}
             </ModalBody>
             <ModalFooter>

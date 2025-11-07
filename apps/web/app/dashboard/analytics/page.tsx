@@ -6,7 +6,7 @@ import { useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Select, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select';
 import DashboardSidebar from '../components/dashboard-sidebar';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Key } from 'react-aria-components';
 import { AreaChart } from '@/components/ui/area-chart';
 import { BarChart } from '@/components/ui/bar-chart';
@@ -147,22 +147,23 @@ export default function AnalyticsPage() {
     return (
         <DashboardSidebar activeItem='analytics'>
             <Card>
-                <Card.Header>
+                <CardHeader>
                     <div className='flex items-center justify-between'>
                         <div className='flex flex-col gap-1'>
-                            <Card.Title>Analytics</Card.Title>
-                            <Card.Description>Track your API usage and languages.</Card.Description>
+                            <CardTitle>Analytics</CardTitle>
+                            <CardDescription>Track your API usage and languages.</CardDescription>
                         </div>
                         <div className='flex items-center gap-2'>
                             <Select
-                                selectedKey={months}
                                 aria-label='Date range in months'
-                                onSelectionChange={value => {
+                                placeholder='Select a date range'
+                                value={months}
+                                onChange={value => {
                                     if (value) {
                                         setMonths(value);
                                     }
                                 }}
-                                defaultSelectedKey={6}>
+                                defaultValue={6}>
                                 <SelectTrigger />
                                 <SelectContent
                                     items={[
@@ -179,19 +180,19 @@ export default function AnalyticsPage() {
                             </Select>
                         </div>
                     </div>
-                </Card.Header>
-                <Card.Content className='flex flex-col gap-4'>
+                </CardHeader>
+                <CardContent className='flex flex-col gap-4'>
                     <Card>
-                        <Card.Header>
+                        <CardHeader>
                             <div className='flex items-center justify-between'>
                                 <div className='flex flex-col gap-1'>
-                                    <Card.Title>API Usage</Card.Title>
-                                    <Card.Description>Success rate is {successRate}%.</Card.Description>
+                                    <CardTitle>API Usage</CardTitle>
+                                    <CardDescription>Success rate is {successRate}%.</CardDescription>
                                 </div>
                                 {loading ? <Loader /> : null}
                             </div>
-                        </Card.Header>
-                        <Card.Content>
+                        </CardHeader>
+                        <CardContent>
                             <AreaChart
                                 className='aspect-video h-56 min-h-[224px] sm:h-72 sm:min-h-[288px]'
                                 data={monthlyChartData}
@@ -199,17 +200,17 @@ export default function AnalyticsPage() {
                                 xAxisProps={{ interval: 0 }}
                                 config={monthlyConfig}
                             />
-                        </Card.Content>
+                        </CardContent>
                     </Card>
 
                     <Card>
-                        <Card.Header>
+                        <CardHeader>
                             <div className='flex items-center justify-between'>
-                                <Card.Title>API Calls</Card.Title>
+                                <CardTitle>API Calls</CardTitle>
                                 {loading ? <Loader /> : null}
                             </div>
-                        </Card.Header>
-                        <Card.Content>
+                        </CardHeader>
+                        <CardContent>
                             <BarChart
                                 className='aspect-video h-56 min-h-[224px] sm:h-72 sm:min-h-[288px]'
                                 data={apiCallsChartData}
@@ -217,17 +218,17 @@ export default function AnalyticsPage() {
                                 xAxisProps={{ interval: 0 }}
                                 config={singleSeriesConfig}
                             />
-                        </Card.Content>
+                        </CardContent>
                     </Card>
 
                     <Card>
-                        <Card.Header>
+                        <CardHeader>
                             <div className='flex items-center justify-between'>
-                                <Card.Title>Namespaces</Card.Title>
+                                <CardTitle>Namespaces</CardTitle>
                                 {loading ? <Loader /> : null}
                             </div>
-                        </Card.Header>
-                        <Card.Content>
+                        </CardHeader>
+                        <CardContent>
                             <BarChart
                                 className='aspect-video h-56 min-h-[224px] sm:h-72 sm:min-h-[288px]'
                                 data={namespacesChartData}
@@ -235,17 +236,17 @@ export default function AnalyticsPage() {
                                 xAxisProps={{ interval: 0 }}
                                 config={singleSeriesConfig}
                             />
-                        </Card.Content>
+                        </CardContent>
                     </Card>
 
                     <Card>
-                        <Card.Header>
+                        <CardHeader>
                             <div className='flex items-center justify-between'>
-                                <Card.Title>Languages</Card.Title>
+                                <CardTitle>Languages</CardTitle>
                                 {loading ? <Loader /> : null}
                             </div>
-                        </Card.Header>
-                        <Card.Content>
+                        </CardHeader>
+                        <CardContent>
                             <BarChart
                                 className='aspect-video h-56 min-h-[224px] sm:h-72 sm:min-h-[288px]'
                                 data={languagesChartData}
@@ -253,9 +254,9 @@ export default function AnalyticsPage() {
                                 xAxisProps={{ interval: 0 }}
                                 config={singleSeriesConfig}
                             />
-                        </Card.Content>
+                        </CardContent>
                     </Card>
-                </Card.Content>
+                </CardContent>
             </Card>
         </DashboardSidebar>
     );
