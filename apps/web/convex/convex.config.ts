@@ -9,5 +9,6 @@ app.use(polar);
 app.use(resend);
 app.use(workpool, { name: 'languageWorkpool' });
 app.use(workpool, { name: 'createLanguageWorkpool' });
+app.use(workpool, { name: 'mergeWorkpool' });
 
 export default app;
