@@ -1,18 +1,14 @@
 import { action, internalAction } from './_generated/server';
 import { v } from 'convex/values';
 import { internal } from './_generated/api';
-import {
-    getMonthlyTimeseries,
-    getTopNamespaces,
-    getTopApiCalls,
-    getTopLanguages,
-    ingestApiRequest,
-    ApiRequestEventType,
-} from '../lib/posthog';
+import { ingestApiRequest, ApiRequestEventType, fetchEvents } from '../lib/openpanel';
 
-export const getMonthlySuccess = action({
+export const getEvents = action({
     args: {
-        months: v.number(),
+        start: v.string(),
+        end: v.string(),
+        page: v.optional(v.number()),
+        limit: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -23,45 +19,19 @@ export const getMonthlySuccess = action({
         const workspace = await ctx.runQuery(internal.workspaces.getWorkspaceInfo, {});
 
         try {
-            const data = await getMonthlyTimeseries(workspace._id, args.months || 6);
-            const points = Array.isArray(data.data)
-                ? data.data.map((row: any) => ({
-                      time: row.month_start ?? row.time,
-                      success: Number(row.success || 0),
-                      total_requests: Number(row.total_requests || 0),
-                  }))
-                : [];
+            const result = await fetchEvents({
+                profileId: workspace._id,
+                event: 'api_request',
+                start: args.start,
+                end: args.end,
+                page: args.page || 1,
+                limit: args.limit || 50,
+                includes: ['profile', 'meta'],
+            });
 
-            return { points };
+            return result;
         } catch (error) {
-            console.error('PostHog query failed:', error);
-            throw new Error(`Analytics query failed: ${error}`);
-        }
-    },
-});
-
-export const getTopNamespacesAction = action({
-    args: {
-        months: v.number(),
-        limit: v.number(),
-    },
-    handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            throw new Error('Not authenticated');
-        }
-
-        const workspace = await ctx.runQuery(internal.workspaces.getWorkspaceInfo, {});
-
-        try {
-            const data = await getTopNamespaces(workspace._id, args.months || 6, args.limit || 10);
-            const points = Array.isArray(data.data)
-                ? data.data.map((row: any) => ({ namespace: row.namespace, success: Number(row.success || 0) }))
-                : [];
-
-            return { points };
-        } catch (error) {
-            console.error('PostHog query failed:', error);
+            console.error('Openpanel query failed:', error);
             throw new Error(`Analytics query failed: ${error}`);
         }
     },
@@ -101,68 +71,7 @@ export const ingestEvent = internalAction({
 
             await ingestApiRequest(event);
         } catch (e) {
-            console.warn('Failed to ingest PostHog event', e);
-        }
-    },
-});
-
-export const getTopApiCallsAction = action({
-    args: {
-        months: v.number(),
-        limit: v.number(),
-    },
-    handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            throw new Error('Not authenticated');
-        }
-
-        const workspace = await ctx.runQuery(internal.workspaces.getWorkspaceInfo, {});
-
-        try {
-            const data = await getTopApiCalls(workspace._id, args.months || 6, args.limit || 10);
-            const points = Array.isArray(data.data)
-                ? data.data.map((row: any) => ({
-                      apiCallName: row.apiCallName,
-                      success: Number(row.success || 0),
-                      total_requests: Number(row.total_requests || 0),
-                  }))
-                : [];
-
-            return { points };
-        } catch (error) {
-            console.error('PostHog query failed:', error);
-            throw new Error(`Analytics query failed: ${error}`);
-        }
-    },
-});
-
-export const getTopLanguagesAction = action({
-    args: {
-        months: v.number(),
-        limit: v.number(),
-    },
-    handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            throw new Error('Not authenticated');
-        }
-
-        const workspace = await ctx.runQuery(internal.workspaces.getWorkspaceInfo, {});
-
-        try {
-            const data = await getTopLanguages(workspace._id, args.months || 6, args.limit || 10);
-            const points = Array.isArray(data.data)
-                ? data.data.map((row: any) => ({
-                      languageCode: row.languageCode,
-                      success: Number(row.success || 0),
-                  }))
-                : [];
-
-            return { points };
-        } catch (error) {
-            console.error('PostHog query failed:', error);
-            throw new Error(`Analytics query failed: ${error}`);
+            console.warn('Failed to ingest Openpanel event', e);
         }
     },
 });

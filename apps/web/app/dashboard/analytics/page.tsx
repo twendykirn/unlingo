@@ -1,140 +1,118 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useOrganization } from '@clerk/nextjs';
-import { useAction } from 'convex/react';
+import { useAction, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Select, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select';
 import DashboardSidebar from '../components/dashboard-sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Key } from 'react-aria-components';
-import { AreaChart } from '@/components/ui/area-chart';
-import { BarChart } from '@/components/ui/bar-chart';
 import { Container } from '@/components/ui/container';
 import { Loader } from '@/components/ui/loader';
+import { GridList, GridListItem } from '@/components/ui/grid-list';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetBody } from '@/components/ui/sheet';
+import { DescriptionList, DescriptionTerm, DescriptionDetails } from '@/components/ui/description-list';
+import { Button } from '@/components/ui/button';
 
-type MonthlyPoint = { time: string; success: number; total_requests: number };
-type NamespacePoint = { namespace: string; success: number };
-type ApiCallPoint = { apiCallName: string; success: number; total_requests: number };
-type LanguagePoint = { languageCode: string; success: number };
+type TimeRange = '24h' | '7d' | '30d';
+
+interface OpenpanelEvent {
+    id: string;
+    name: string;
+    created_at: string;
+    properties: Record<string, any>;
+}
+
+function getDateRange(range: TimeRange) {
+    const end = new Date();
+    const start = new Date();
+
+    switch (range) {
+        case '24h':
+            start.setHours(start.getHours() - 24);
+            break;
+        case '7d':
+            start.setDate(start.getDate() - 7);
+            break;
+        case '30d':
+            start.setDate(start.getDate() - 30);
+            break;
+    }
+
+    return {
+        start: start.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0],
+    };
+}
 
 export default function AnalyticsPage() {
     const { organization } = useOrganization();
+    const workspace = useQuery(
+        api.workspaces.getWorkspaceWithSubscription,
+        organization?.id ? { clerkId: organization.id } : 'skip'
+    );
 
-    const getMonthlySuccess = useAction(api.analytics.getMonthlySuccess);
-    const getTopNamespacesAction = useAction(api.analytics.getTopNamespacesAction);
-    const getTopApiCallsAction = useAction(api.analytics.getTopApiCallsAction);
-    const getTopLanguagesAction = useAction(api.analytics.getTopLanguagesAction);
+    const getEvents = useAction(api.analytics.getEvents);
 
-    const [months, setMonths] = useState<Key>(6);
-    const [loading, setLoading] = useState(true);
-    const [monthly, setMonthly] = useState<MonthlyPoint[]>([]);
-    const [topNamespaces, setTopNamespaces] = useState<NamespacePoint[]>([]);
-    const [topApiCalls, setTopApiCalls] = useState<ApiCallPoint[]>([]);
-    const [topLanguages, setTopLanguages] = useState<LanguagePoint[]>([]);
+    const [timeRange, setTimeRange] = useState<TimeRange>('7d');
+    const [events, setEvents] = useState<OpenpanelEvent[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [selectedEvent, setSelectedEvent] = useState<OpenpanelEvent | null>(null);
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+    const isPremium = workspace?.isPremium || false;
 
     useEffect(() => {
-        let cancelled = false;
-        async function load() {
+        setEvents([]);
+        setPage(1);
+        setHasMore(true);
+    }, [timeRange, organization]);
+
+    useEffect(() => {
+        async function loadEvents() {
+            if (!organization?.id || !hasMore) return;
+
             setLoading(true);
             try {
-                if (!organization?.id) return;
+                const dateRange = getDateRange(timeRange);
+                const result = await getEvents({
+                    start: dateRange.start,
+                    end: dateRange.end,
+                    page,
+                    limit: 50,
+                });
 
-                const [monthlyData, namespacesData, apiCallsData, languagesData] = await Promise.all([
-                    getMonthlySuccess({ months: Number(months) }),
-                    getTopNamespacesAction({ months: Number(months), limit: 8 }),
-                    getTopApiCallsAction({ months: Number(months), limit: 6 }),
-                    getTopLanguagesAction({ months: Number(months), limit: 8 }),
-                ]);
-
-                if (!cancelled) {
-                    setMonthly(monthlyData?.points || []);
-                    setTopNamespaces(namespacesData?.points || []);
-                    setTopApiCalls(apiCallsData?.points || []);
-                    setTopLanguages(languagesData?.points || []);
+                if (result.data.length === 0) {
+                    setHasMore(false);
+                } else {
+                    setEvents(prev => (page === 1 ? result.data : [...prev, ...result.data]));
+                    setHasMore(result.data.length === 50);
                 }
             } catch (e) {
-                console.error('Analytics loading error:', e);
-                if (!cancelled) {
-                    setMonthly([]);
-                    setTopNamespaces([]);
-                    setTopApiCalls([]);
-                    setTopLanguages([]);
-                }
+                console.error('Failed to load events:', e);
             } finally {
-                if (!cancelled) setLoading(false);
+                setLoading(false);
             }
         }
-        if (organization) {
-            load();
+
+        loadEvents();
+    }, [organization, timeRange, page, getEvents, hasMore]);
+
+    const handleLoadMore = () => {
+        if (!loading && hasMore) {
+            setPage(prev => prev + 1);
         }
-        return () => {
-            cancelled = true;
-        };
-    }, [organization, months, getMonthlySuccess, getTopNamespacesAction, getTopApiCallsAction, getTopLanguagesAction]);
+    };
 
-    const monthlyChartData = useMemo(() => {
-        return monthly
-            .map(p => {
-                const d = new Date(p.time);
-                const label = isNaN(d.getTime()) ? String(p.time) : d.toLocaleDateString('en-US', { month: 'short' });
-                return {
-                    label,
-                    success: Number(p.success || 0),
-                    total: Number(p.total_requests || 0),
-                };
-            })
-            .reverse();
-    }, [monthly]);
+    const handleEventSelect = (event: OpenpanelEvent) => {
+        setSelectedEvent(event);
+        setIsSheetOpen(true);
+    };
 
-    const apiCallsChartData = useMemo(() => {
-        return topApiCalls
-            ? topApiCalls.map(c => ({
-                  name: c.apiCallName || 'unknown',
-                  success: Number(c.success || 0),
-              }))
-            : [];
-    }, [topApiCalls]);
-
-    const namespacesChartData = useMemo(() => {
-        return topNamespaces
-            ? topNamespaces.map(n => ({
-                  name: n.namespace || 'unknown',
-                  success: Number(n.success || 0),
-              }))
-            : [];
-    }, [topNamespaces]);
-
-    const languagesChartData = useMemo(() => {
-        return topLanguages
-            ? topLanguages.map(l => ({
-                  name: (l.languageCode || 'unknown').toUpperCase(),
-                  success: Number(l.success || 0),
-              }))
-            : [];
-    }, [topLanguages]);
-
-    const monthlyConfig = useMemo(
-        () => ({
-            success: { label: 'Successful' },
-            total: { label: 'Total' },
-        }),
-        []
-    );
-
-    const singleSeriesConfig = useMemo(
-        () => ({
-            success: { label: 'Successful' },
-        }),
-        []
-    );
-
-    const totalRequests = useMemo(() => monthly.reduce((sum, p) => sum + (p.total_requests || 0), 0), [monthly]);
-    const successfulRequests = useMemo(() => monthly.reduce((sum, p) => sum + (p.success || 0), 0), [monthly]);
-    const successRate = useMemo(
-        () => (totalRequests > 0 ? Math.round((successfulRequests / totalRequests) * 100) : 0),
-        [totalRequests, successfulRequests]
-    );
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleString();
+    };
 
     if (!organization) {
         return (
@@ -151,113 +129,96 @@ export default function AnalyticsPage() {
                     <div className='flex items-center justify-between'>
                         <div className='flex flex-col gap-1'>
                             <CardTitle>Analytics</CardTitle>
-                            <CardDescription>Track your API usage and languages.</CardDescription>
+                            <CardDescription>View all events tracked for your workspace.</CardDescription>
                         </div>
                         <div className='flex items-center gap-2'>
-                            <Select
-                                aria-label='Date range in months'
-                                placeholder='Select a date range'
-                                value={months}
-                                onChange={value => {
-                                    if (value) {
-                                        setMonths(value);
-                                    }
-                                }}
-                                defaultValue={6}>
-                                <SelectTrigger />
-                                <SelectContent
-                                    items={[
-                                        { id: 3, name: 'Last 3 months' },
-                                        { id: 6, name: 'Last 6 months' },
-                                        { id: 12, name: 'Last 12 months' },
-                                    ]}>
-                                    {item => (
-                                        <SelectItem id={item.id} textValue={item.name}>
-                                            {item.name}
-                                        </SelectItem>
-                                    )}
-                                </SelectContent>
-                            </Select>
+                            <Button
+                                variant={timeRange === '24h' ? 'primary' : 'secondary'}
+                                onPress={() => setTimeRange('24h')}>
+                                24H
+                            </Button>
+                            <Button
+                                variant={timeRange === '7d' ? 'primary' : 'secondary'}
+                                onPress={() => setTimeRange('7d')}>
+                                7D
+                            </Button>
+                            {isPremium && (
+                                <Button
+                                    variant={timeRange === '30d' ? 'primary' : 'secondary'}
+                                    onPress={() => setTimeRange('30d')}>
+                                    30D
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className='flex flex-col gap-4'>
-                    <Card>
-                        <CardHeader>
-                            <div className='flex items-center justify-between'>
-                                <div className='flex flex-col gap-1'>
-                                    <CardTitle>API Usage</CardTitle>
-                                    <CardDescription>Success rate is {successRate}%.</CardDescription>
+                    {loading && events.length === 0 ? (
+                        <div className='flex items-center justify-center py-12'>
+                            <Loader />
+                        </div>
+                    ) : events.length === 0 ? (
+                        <div className='flex items-center justify-center py-12 text-muted-fg'>
+                            No events found for the selected time range.
+                        </div>
+                    ) : (
+                        <>
+                            <GridList
+                                aria-label='Analytics events'
+                                selectionMode='single'
+                                onAction={key => {
+                                    const event = events.find(e => e.id === key);
+                                    if (event) handleEventSelect(event);
+                                }}>
+                                {events.map(event => (
+                                    <GridListItem key={event.id} id={event.id}>
+                                        <div className='flex flex-col gap-1'>
+                                            <div className='font-medium'>{event.name}</div>
+                                            <div className='text-sm text-muted-fg'>{formatDate(event.created_at)}</div>
+                                        </div>
+                                    </GridListItem>
+                                ))}
+                            </GridList>
+
+                            {hasMore && (
+                                <div className='flex items-center justify-center py-4'>
+                                    <Button onPress={handleLoadMore} isDisabled={loading}>
+                                        {loading ? 'Loading...' : 'Load More'}
+                                    </Button>
                                 </div>
-                                {loading ? <Loader /> : null}
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <AreaChart
-                                className='aspect-video h-56 min-h-[224px] sm:h-72 sm:min-h-[288px]'
-                                data={monthlyChartData}
-                                dataKey='label'
-                                xAxisProps={{ interval: 0 }}
-                                config={monthlyConfig}
-                            />
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <div className='flex items-center justify-between'>
-                                <CardTitle>API Calls</CardTitle>
-                                {loading ? <Loader /> : null}
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <BarChart
-                                className='aspect-video h-56 min-h-[224px] sm:h-72 sm:min-h-[288px]'
-                                data={apiCallsChartData}
-                                dataKey='name'
-                                xAxisProps={{ interval: 0 }}
-                                config={singleSeriesConfig}
-                            />
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <div className='flex items-center justify-between'>
-                                <CardTitle>Namespaces</CardTitle>
-                                {loading ? <Loader /> : null}
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <BarChart
-                                className='aspect-video h-56 min-h-[224px] sm:h-72 sm:min-h-[288px]'
-                                data={namespacesChartData}
-                                dataKey='name'
-                                xAxisProps={{ interval: 0 }}
-                                config={singleSeriesConfig}
-                            />
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <div className='flex items-center justify-between'>
-                                <CardTitle>Languages</CardTitle>
-                                {loading ? <Loader /> : null}
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <BarChart
-                                className='aspect-video h-56 min-h-[224px] sm:h-72 sm:min-h-[288px]'
-                                data={languagesChartData}
-                                dataKey='name'
-                                xAxisProps={{ interval: 0 }}
-                                config={singleSeriesConfig}
-                            />
-                        </CardContent>
-                    </Card>
+                            )}
+                        </>
+                    )}
                 </CardContent>
             </Card>
+
+            <Sheet isOpen={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                <SheetContent side='right'>
+                    {selectedEvent && (
+                        <>
+                            <SheetHeader>
+                                <SheetTitle>Event Details</SheetTitle>
+                            </SheetHeader>
+                            <SheetBody>
+                                <DescriptionList>
+                                    <DescriptionTerm>Date</DescriptionTerm>
+                                    <DescriptionDetails>{formatDate(selectedEvent.created_at)}</DescriptionDetails>
+
+                                    <DescriptionTerm>Event Name</DescriptionTerm>
+                                    <DescriptionDetails>{selectedEvent.name}</DescriptionDetails>
+
+                                    <DescriptionTerm>Properties</DescriptionTerm>
+                                    <DescriptionDetails>
+                                        <pre className='text-xs overflow-auto max-h-96 bg-muted p-2 rounded'>
+                                            {JSON.stringify(selectedEvent.properties, null, 2)}
+                                        </pre>
+                                    </DescriptionDetails>
+                                </DescriptionList>
+                            </SheetBody>
+                        </>
+                    )}
+                </SheetContent>
+            </Sheet>
         </DashboardSidebar>
     );
 }
