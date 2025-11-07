@@ -7,7 +7,7 @@ import { CreditCardIcon } from '@heroicons/react/24/outline';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import DashboardSidebar, { WorkspaceWithPremium } from '../components/dashboard-sidebar';
-import { useOrganization } from '@clerk/nextjs';
+import { useAuth } from '@workos-inc/authkit-nextjs';
 import { toast } from 'sonner';
 import { CheckoutLink, CustomerPortalLink } from '@convex-dev/polar/react';
 import { Form } from '@/components/ui/form';
@@ -22,7 +22,8 @@ import { Label } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 
 export default function BillingPage() {
-    const { organization } = useOrganization();
+    const { user } = useAuth();
+    const organization = { id: user?.organizationId };
 
     const [workspace, setWorkspace] = useState<WorkspaceWithPremium | null>(null);
     const [contactEmail, setContactEmail] = useState('');

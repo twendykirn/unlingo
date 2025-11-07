@@ -1,68 +1,72 @@
 'use client';
 
-import { useOrganization, useOrganizationList } from '@clerk/nextjs';
+import { useAuth } from '@workos-inc/authkit-nextjs';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Building2, ArrowRight } from 'lucide-react';
 
+interface Organization {
+    id: string;
+    name: string;
+}
+
 export function OrgRedirect() {
-    const { organization, isLoaded: orgLoaded } = useOrganization();
-    const {
-        userMemberships,
-        isLoaded: orgListLoaded,
-        setActive,
-    } = useOrganizationList({
-        userMemberships: {
-            infinite: true,
-        },
-    });
+    const { user, loading, refreshAuth } = useAuth();
     const router = useRouter();
     const [selectedOrgId, setSelectedOrgId] = useState<string>('');
-    const [didRevalidate, setDidRevalidate] = useState(false);
-
-    const userOrgs = useMemo(() => {
-        if (!orgListLoaded) return null;
-
-        return userMemberships.data.filter(org => org.organization);
-    }, [orgListLoaded, userMemberships.data]);
-
-    const revalidateUserOrgs = async () => {
-        if (!userMemberships.isLoading || didRevalidate) return;
-
-        await userMemberships.revalidate();
-        setDidRevalidate(true);
-    };
+    const [organizations, setOrganizations] = useState<Organization[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!userOrgs || !orgListLoaded || !orgLoaded || userMemberships.isLoading) return;
+        if (loading) return;
 
-        revalidateUserOrgs();
-
-        if (organization?.id) {
+        // If user has an active organization, redirect to dashboard
+        if (user?.organizationId) {
             router.push('/dashboard');
-        } else if (userOrgs.length === 0) {
-            router.push('/dashboard/new');
-        } else if (userOrgs.length === 1) {
-            const org = userOrgs[0]?.organization;
-            if (org) {
-                setActive?.({ organization: org });
-                router.push('/dashboard');
-            }
+            return;
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userOrgs, setActive, router, orgListLoaded, orgLoaded, userMemberships, organization, didRevalidate]);
+
+        // Fetch user's organizations from the backend
+        const fetchOrganizations = async () => {
+            try {
+                const response = await fetch('/api/organizations/list');
+                const data = await response.json();
+
+                if (data.organizations && data.organizations.length > 0) {
+                    setOrganizations(data.organizations);
+
+                    // If user has exactly one organization, auto-select it
+                    if (data.organizations.length === 1) {
+                        const orgId = data.organizations[0].id;
+                        await refreshAuth({ organizationId: orgId });
+                        router.push('/dashboard');
+                    }
+                } else {
+                    // No organizations, redirect to create new
+                    router.push('/dashboard/new');
+                }
+            } catch (error) {
+                console.error('Failed to fetch organizations:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchOrganizations();
+    }, [user, loading, router, refreshAuth]);
 
     const handleOrgSelection = async (orgId: string) => {
-        const selectedOrg = userMemberships.data?.find(org => org.organization?.id === orgId)?.organization;
-        if (selectedOrg) {
-            await setActive?.({ organization: selectedOrg });
+        try {
+            await refreshAuth({ organizationId: orgId });
             router.push('/dashboard');
+        } catch (error) {
+            console.error('Failed to set active organization:', error);
         }
     };
 
-    if (!orgListLoaded || !orgLoaded || userMemberships.isLoading) {
+    if (loading || isLoading) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
                 <div className='text-center'>
@@ -73,7 +77,7 @@ export function OrgRedirect() {
         );
     }
 
-    if (userOrgs && userOrgs.length <= 1) {
+    if (organizations.length <= 1) {
         return (
             <div className='min-h-screen bg-black text-white flex items-center justify-center'>
                 <div className='text-center'>
@@ -86,83 +90,78 @@ export function OrgRedirect() {
 
     return (
         <div className='min-h-screen bg-black text-white flex items-center justify-center p-6'>
-            {userOrgs ? (
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className='w-full max-w-md space-y-8'>
-                    <div className='text-center'>
-                        <div className='mx-auto w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mb-6'>
-                            <Building2 className='h-8 w-8 text-white' />
-                        </div>
-                        <h1 className='text-3xl font-bold mb-2'>Select Organization</h1>
-                        <p className='text-gray-400'>Choose which organization you'd like to work with</p>
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className='w-full max-w-md space-y-8'>
+                <div className='text-center'>
+                    <div className='mx-auto w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mb-6'>
+                        <Building2 className='h-8 w-8 text-white' />
                     </div>
+                    <h1 className='text-3xl font-bold mb-2'>Select Organization</h1>
+                    <p className='text-gray-400'>Choose which organization you'd like to work with</p>
+                </div>
+                <motion.div
+                    className='space-y-3'
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}>
+                    {organizations.map(org => {
+                        return (
+                            <motion.div
+                                key={org.id}
+                                className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+                                    selectedOrgId === org.id
+                                        ? 'border-white bg-gray-900'
+                                        : 'border-gray-700 bg-gray-800 hover:border-gray-600 hover:bg-gray-700'
+                                }`}
+                                onClick={() => setSelectedOrgId(org.id)}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}>
+                                <div className='flex items-center justify-between'>
+                                    <div className='flex items-center space-x-3'>
+                                        <div className='w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center'>
+                                            <Building2 className='h-5 w-5 text-gray-300' />
+                                        </div>
+                                        <div>
+                                            <h3 className='font-medium text-white'>{org.name}</h3>
+                                            <p className='text-sm text-gray-400'>Member</p>
+                                        </div>
+                                    </div>
+                                    {selectedOrgId === org.id && (
+                                        <div className='w-4 h-4 bg-white rounded-full flex items-center justify-center'>
+                                            <div className='w-2 h-2 bg-black rounded-full'></div>
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
+                        );
+                    })}
+                </motion.div>
+                <Button
+                    onClick={() => handleOrgSelection(selectedOrgId)}
+                    disabled={!selectedOrgId}
+                    className='w-full bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed py-3'>
+                    <div className='flex items-center justify-center space-x-2'>
+                        <span>Continue</span>
+                        <ArrowRight className='h-4 w-4' />
+                    </div>
+                </Button>
+                {organizations.length < 5 ? (
                     <motion.div
-                        className='space-y-3'
+                        className='text-center'
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2, duration: 0.5 }}>
-                        {userOrgs.map(orgMembership => {
-                            const org = orgMembership.organization;
-                            return (
-                                <motion.div
-                                    key={org.id}
-                                    className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
-                                        selectedOrgId === org.id
-                                            ? 'border-white bg-gray-900'
-                                            : 'border-gray-700 bg-gray-800 hover:border-gray-600 hover:bg-gray-700'
-                                    }`}
-                                    onClick={() => setSelectedOrgId(org.id)}
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}>
-                                    <div className='flex items-center justify-between'>
-                                        <div className='flex items-center space-x-3'>
-                                            <div className='w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center'>
-                                                <Building2 className='h-5 w-5 text-gray-300' />
-                                            </div>
-                                            <div>
-                                                <h3 className='font-medium text-white'>{org.name}</h3>
-                                                <p className='text-sm text-gray-400'>
-                                                    {orgMembership.role || 'Member'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {selectedOrgId === org.id && (
-                                            <div className='w-4 h-4 bg-white rounded-full flex items-center justify-center'>
-                                                <div className='w-2 h-2 bg-black rounded-full'></div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
+                        transition={{ delay: 0.4, duration: 0.5 }}>
+                        <button
+                            onClick={() => router.push('/dashboard/new')}
+                            className='text-sm text-gray-400 hover:text-white transition-colors underline'>
+                            Or create a new organization
+                        </button>
                     </motion.div>
-                    <Button
-                        onClick={() => handleOrgSelection(selectedOrgId)}
-                        disabled={!selectedOrgId}
-                        className='w-full bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed py-3'>
-                        <div className='flex items-center justify-center space-x-2'>
-                            <span>Continue</span>
-                            <ArrowRight className='h-4 w-4' />
-                        </div>
-                    </Button>
-                    {userOrgs.length < 5 ? (
-                        <motion.div
-                            className='text-center'
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.4, duration: 0.5 }}>
-                            <button
-                                onClick={() => router.push('/dashboard/new')}
-                                className='text-sm text-gray-400 hover:text-white transition-colors underline'>
-                                Or create a new organization
-                            </button>
-                        </motion.div>
-                    ) : null}
-                </motion.div>
-            ) : null}
+                ) : null}
+            </motion.div>
         </div>
     );
 }

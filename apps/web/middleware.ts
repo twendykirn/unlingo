@@ -1,26 +1,38 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { authkitMiddleware } from '@workos-inc/authkit-nextjs';
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)']);
-const isOrgSelectionRoute = createRouteMatcher(['/select-org']);
+export default authkitMiddleware({
+    middlewareAuth: {
+        enabled: true,
+        unauthenticatedPaths: ['/', '/sign-in', '/sign-up', '/callback', '/sign-out'],
+    },
+    async afterAuth(req: NextRequest, { user }) {
+        const url = req.nextUrl;
 
-export default clerkMiddleware(async (auth, req) => {
-    const { userId, orgId } = await auth();
+        // Check if accessing protected routes
+        const isProtectedRoute = url.pathname.startsWith('/dashboard');
+        const isOrgSelectionRoute = url.pathname === '/select-org';
 
-    // Protect dashboard routes
-    if (isProtectedRoute(req)) {
-        await auth.protect();
+        if (isProtectedRoute || isOrgSelectionRoute) {
+            // If not authenticated, redirect to sign-in
+            if (!user) {
+                return NextResponse.redirect(new URL('/sign-in', req.url));
+            }
 
-        // If user is accessing dashboard directly, redirect to org selection
-        if (userId && !orgId && req.nextUrl.pathname !== '/dashboard/new') {
-            return NextResponse.redirect(new URL('/select-org', req.url));
+            // If accessing dashboard directly without an organization, redirect to org selection
+            if (
+                isProtectedRoute &&
+                user &&
+                !user.organizationId &&
+                url.pathname !== '/dashboard/new'
+            ) {
+                return NextResponse.redirect(new URL('/select-org', req.url));
+            }
         }
-    }
 
-    // Protect org selection routes
-    if (isOrgSelectionRoute(req)) {
-        await auth.protect();
-    }
+        return NextResponse.next();
+    },
 });
 
 export const config = {

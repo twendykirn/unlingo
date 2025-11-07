@@ -19,7 +19,7 @@ import {
 import { useState } from 'react';
 import type React from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, SignOutButton, useSignUp } from '@clerk/nextjs';
+import { useAuth } from '@workos-inc/authkit-nextjs';
 import { Button } from '@/components/ui/button';
 import { Gradient } from '@/components/ui/gradient';
 import SpotlightCard from '@/components/ui/spotlight-card';
@@ -254,8 +254,8 @@ export default function Page() {
     const [isVerifying, setIsVerifying] = useState(false);
 
     const router = useRouter();
-    const { isSignedIn } = useUser();
-    const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
+    const { user, loading } = useAuth();
+    const isSignedIn = !!user;
 
     const scrollToSection = (sectionId: string) => {
         const element = document.getElementById(sectionId);
@@ -276,51 +276,18 @@ export default function Page() {
             setEmailError('Please enter a valid email');
             return;
         }
-        if (!signUpLoaded) return;
 
-        try {
-            setIsSubmitting(true);
-            await signUp.create({ emailAddress: trimmed, legalAccepted: true });
-            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-            setIsVerifyOpen(true);
-        } catch (err: any) {
-            const message = err?.errors?.[0]?.message || 'Could not start sign up. Please try again.';
-            setGeneralError(message);
-        } finally {
-            setIsSubmitting(false);
-        }
+        // Redirect to WorkOS sign-up with email pre-filled
+        router.push('/sign-up');
     };
 
     const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!signUpLoaded) return;
-        setVerifyError(undefined);
-
-        try {
-            setIsVerifying(true);
-            const res = await signUp.attemptEmailAddressVerification({ code });
-            if (res.status === 'complete') {
-                await setActive({ session: res.createdSessionId });
-                router.push('/dashboard/new');
-            } else {
-                setVerifyError({ code: 'Verification incomplete. Please try again.' });
-            }
-        } catch (err: any) {
-            const message = err?.errors?.[0]?.message || 'Invalid code. Please try again.';
-            setVerifyError({ code: message });
-        } finally {
-            setIsVerifying(false);
-        }
+        // No longer needed with WorkOS - they handle verification
     };
 
     const handleResend = async () => {
-        if (!signUpLoaded) return;
-        setVerifyError(undefined);
-        try {
-            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-        } catch (_) {
-            // Clerk will throttle appropriately
-        }
+        // No longer needed with WorkOS - they handle verification
     };
 
     return (
@@ -373,9 +340,9 @@ export default function Page() {
                             <GithubStarButton />
                             {isSignedIn ? (
                                 <>
-                                    <SignOutButton>
-                                        <Button intent='outline'>Sign Out</Button>
-                                    </SignOutButton>
+                                    <Button intent='outline' onClick={() => router.push('/sign-out')}>
+                                        Sign Out
+                                    </Button>
                                     <Button onClick={() => router.push('/dashboard')}>Dashboard</Button>
                                 </>
                             ) : (
@@ -460,8 +427,6 @@ export default function Page() {
                                     placeholder='you@company.com'
                                     className='h-8 md:h-9 bg-black/40 border-gray-800 placeholder:text-gray-500 text-sm'
                                 />
-
-                                <div id='clerk-captcha' data-cl-theme='dark' data-cl-size='flexible' />
 
                                 <Button type='submit' className='w-full' isDisabled={isSubmitting}>
                                     {isSubmitting ? 'Sending code…' : 'Create workspace'}

@@ -1,17 +1,29 @@
 'use client';
 
-import { ConvexProviderWithClerk } from 'convex/react-clerk';
+import { ConvexProviderWithAuth } from 'convex/react';
 import { ConvexReactClient } from 'convex/react';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth } from '@workos-inc/authkit-nextjs';
 import { Authenticated, Unauthenticated } from 'convex/react';
 import { Toast } from '@/components/ui/toast';
 import { Providers } from '@/components/providers';
+import { useCallback } from 'react';
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+    const { getAccessToken } = useAuth();
+
+    const fetchAccessToken = useCallback(async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
+        try {
+            const token = await getAccessToken();
+            return token || null;
+        } catch (error) {
+            return null;
+        }
+    }, [getAccessToken]);
+
     return (
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+        <ConvexProviderWithAuth client={convex} useAuth={fetchAccessToken}>
             <Authenticated>
                 <Providers>
                     <Toast />
@@ -26,6 +38,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                 </div>
             </Unauthenticated>
-        </ConvexProviderWithClerk>
+        </ConvexProviderWithAuth>
     );
 }

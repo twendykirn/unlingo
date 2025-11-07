@@ -1,12 +1,20 @@
+const clientId = process.env.WORKOS_CLIENT_ID;
+
 export default {
     providers: [
         {
-            // Replace with your own Clerk Issuer URL from your "convex" JWT template
-            // or with `process.env.CLERK_JWT_ISSUER_DOMAIN`
-            // and configure CLERK_JWT_ISSUER_DOMAIN on the Convex Dashboard
-            // See https://docs.convex.dev/auth/clerk#configuring-dev-and-prod-instances
-            domain: process.env.CLERK_JWT_ISSUER_DOMAIN,
-            applicationID: 'convex',
+            type: 'customJwt',
+            issuer: 'https://api.workos.com/',
+            algorithm: 'RS256',
+            jwks: `https://api.workos.com/sso/jwks/${clientId}`,
+            applicationID: clientId,
+        },
+        {
+            type: 'customJwt',
+            issuer: `https://api.workos.com/user_management/${clientId}`,
+            algorithm: 'RS256',
+            jwks: `https://api.workos.com/sso/jwks/${clientId}`,
+            applicationID: clientId,
         },
     ],
 };

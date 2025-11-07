@@ -1,7 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
-import { ClerkProvider } from '@clerk/nextjs';
+import { AuthKitProvider } from '@workos-inc/authkit-nextjs';
 import { HeroUIProvider } from '@heroui/react';
 import { OpenPanelComponent } from '@openpanel/nextjs';
 
@@ -80,9 +80,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return (
         <html lang='en' className='dark'>
             <body className={geist.className}>
-                <ClerkProvider>
+                <AuthKitProvider>
                     <HeroUIProvider>{children}</HeroUIProvider>
-                </ClerkProvider>
+                </AuthKitProvider>
                 <OpenPanelComponent
                     clientId={process.env.NEXT_PUBLIC_OPEN_PANEL_CLIENT_ID!}
                     trackScreenViews={true}

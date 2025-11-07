@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useOrganizationList, useUser } from '@clerk/nextjs';
+import { useAuth } from '@workos-inc/authkit-nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { Building2, ArrowRight, Mail, CheckCircle, ArrowLeft } from 'lucide-reac
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import slugify from 'slugify';
+import { createOrganization } from '@/app/actions/organizations';
 
 export default function NewOrganizationPage() {
     const router = useRouter();
@@ -22,15 +23,14 @@ export default function NewOrganizationPage() {
     const [isCompletingSetup, setIsCompletingSetup] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
-    const { user } = useUser();
-    const { createOrganization, setActive } = useOrganizationList();
+    const { user, refreshAuth } = useAuth();
 
     const createWorkspaceMutation = useMutation(api.workspaces.createOrganizationWorkspace);
     const verifyWorkspaceContactEmailMutation = useMutation(api.workspaces.verifyWorkspaceContactEmail);
 
     useEffect(() => {
-        if (user?.primaryEmailAddress?.emailAddress && !contactEmail) {
-            setContactEmail(user.primaryEmailAddress.emailAddress);
+        if (user?.email && !contactEmail) {
+            setContactEmail(user.email);
         }
     }, [user, contactEmail]);
 
@@ -84,18 +84,19 @@ export default function NewOrganizationPage() {
                 return;
             }
 
-            const organization = await createOrganization?.({
-                name: name.trim(),
-                slug: slug.trim(),
-            });
+            // Create organization via WorkOS
+            const result = await createOrganization(name.trim());
 
-            if (organization) {
+            if (result.success && result.organizationId) {
+                // Create workspace in Convex
                 await createWorkspaceMutation({
-                    clerkOrgId: organization.id,
+                    workosOrgId: result.organizationId,
                     contactEmail: contactEmail.trim(),
                 });
 
-                await setActive?.({ organization: organization.id });
+                // Refresh auth with new organization context
+                await refreshAuth({ organizationId: result.organizationId });
+
                 setTimeout(() => {
                     router.push('/dashboard');
                 }, 500);

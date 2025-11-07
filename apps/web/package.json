@@ -11,9 +11,9 @@
         "check-types": "tsc --noEmit"
     },
     "dependencies": {
-        "@clerk/backend": "^2.6.1",
-        "@clerk/nextjs": "^6.28.0",
-        "@clerk/themes": "^2.4.3",
+        "@workos-inc/authkit-nextjs": "^1.0.0",
+        "@workos-inc/node": "^7.36.0",
+        "@convex-dev/workos": "^0.2.0",
         "@convex-dev/polar": "^0.6.3",
         "@convex-dev/resend": "^0.1.10",
         "@convex-dev/workpool": "^0.2.19",

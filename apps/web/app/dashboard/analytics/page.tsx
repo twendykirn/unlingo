@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useOrganization } from '@clerk/nextjs';
+import { useAuth } from '@workos-inc/authkit-nextjs';
 import { useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Select, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select';
@@ -19,7 +19,8 @@ type ApiCallPoint = { apiCallName: string; success: number; total_requests: numb
 type LanguagePoint = { languageCode: string; success: number };
 
 export default function AnalyticsPage() {
-    const { organization } = useOrganization();
+    const { user } = useAuth();
+    const organization = { id: user?.organizationId };
 
     const getMonthlySuccess = useAction(api.analytics.getMonthlySuccess);
     const getTopNamespacesAction = useAction(api.analytics.getTopNamespacesAction);

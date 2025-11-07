@@ -1,4 +1,4 @@
-import { createClerkClient, type WebhookEvent } from '@clerk/backend';
+import { WorkOS } from '@workos-inc/node';
 import { httpRouter } from 'convex/server';
 import { Webhook } from 'svix';
 import { internal } from './_generated/api';
@@ -7,18 +7,20 @@ import { polar } from './polar';
 import { Id } from './_generated/dataModel';
 import { resend } from './resend';
 
-async function validateRequest(req: Request): Promise<WebhookEvent | null> {
+const workos = new WorkOS(process.env.WORKOS_API_KEY!);
+
+async function validateWorkOSWebhook(req: Request): Promise<any | null> {
     const payloadString = await req.text();
     const svixHeaders = {
         'svix-id': req.headers.get('svix-id')!,
         'svix-timestamp': req.headers.get('svix-timestamp')!,
         'svix-signature': req.headers.get('svix-signature')!,
     };
-    const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
+    const wh = new Webhook(process.env.WORKOS_WEBHOOK_SECRET!);
     try {
-        return wh.verify(payloadString, svixHeaders) as unknown as WebhookEvent;
+        return wh.verify(payloadString, svixHeaders);
     } catch (error) {
-        console.error('Error verifying webhook event', error);
+        console.error('Error verifying WorkOS webhook event', error);
         return null;
     }
 }
@@ -62,52 +64,50 @@ function getTierFromProduct(productId?: string) {
 const http = httpRouter();
 
 http.route({
-    path: '/clerk-users-webhook',
+    path: '/workos-webhook',
     method: 'POST',
     handler: httpAction(async (ctx, request) => {
-        const evt = await validateRequest(request);
+        const evt = await validateWorkOSWebhook(request);
         const svixId = request.headers.get('svix-id');
 
-        if (!evt || !evt.type || !evt.data || !evt.data.id || !svixId) {
-            console.error('HTTP Action: Webhook payload missing required fields (type, data.id).', event);
+        if (!evt || !evt.event || !evt.data) {
+            console.error('HTTP Action: Webhook payload missing required fields', evt);
             return new Response('Invalid payload structure', { status: 400 });
         }
 
-        console.log(`HTTP Action: Received Clerk event: ${evt.type} (ID: ${svixId})`);
+        console.log(`HTTP Action: Received WorkOS event: ${evt.event} (ID: ${svixId})`);
 
         try {
-            let primaryEmail;
-            switch (evt.type) {
+            switch (evt.event) {
                 case 'user.created':
-                    primaryEmail = evt.data.email_addresses.find(e => e.id === evt.data.primary_email_address_id);
-
-                    if (primaryEmail) {
+                    // Send welcome email when a user is created
+                    if (evt.data.email) {
                         await ctx.scheduler.runAfter(0, internal.resend.sendWelcomeEmail, {
-                            userEmail: primaryEmail.email_address,
+                            userEmail: evt.data.email,
                         });
                     } else {
-                        console.log('Not found primary email address for user: ', evt.data.id);
-                    }
-                    break;
-                case 'organizationMembership.deleted':
-                    if (evt.data.organization.members_count === 0) {
-                        const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
-                        await clerk.organizations.deleteOrganization(evt.data.organization.id);
+                        console.log('Not found email address for user: ', evt.data.id);
                     }
                     break;
                 case 'organization.deleted':
+                    // Delete workspace when organization is deleted
                     await ctx.runMutation(internal.workspaces.deleteOrganizationWorkspace, {
-                        clerkOrgId: evt.data.id,
+                        workosOrgId: evt.data.id,
                     });
                     break;
+                case 'session.created':
+                    console.log('Session created for user:', evt.data.user_id);
+                    break;
+                case 'session.revoked':
+                    console.log('Session revoked for user:', evt.data.user_id);
+                    break;
                 default:
-                    console.log('Ignored Clerk webhook event', evt.type);
+                    console.log('Ignored WorkOS webhook event', evt.event);
             }
 
             return new Response(null, { status: 200 });
         } catch (error: any) {
-            console.error(`Error processing Clerk event ${svixId} (${evt.type}):`, error);
-            // Avoid recording event ID on failure here to allow potential retries from Clerk
+            console.error(`Error processing WorkOS event ${svixId} (${evt.event}):`, error);
             return new Response(`Webhook handler error: ${error.message || 'Unknown error'}`, { status: 500 });
         }
     }),
