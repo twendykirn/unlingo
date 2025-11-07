@@ -221,7 +221,10 @@ export const mergeNamespaceVersions = action({
         }
 
         // Verify workspace access
-        const clerkId = typeof identity.org === 'string' ? identity.org : '';
+        if (typeof identity.org !== 'string') {
+            throw new Error('Invalid organization identifier');
+        }
+        const clerkId = identity.org;
         const workspace = await ctx.runMutation(internal.namespaceVersions.getWorkspace, {
             workspaceId: args.workspaceId,
             clerkId,
@@ -276,9 +279,9 @@ export const mergeNamespaceVersions = action({
         // Prepare merge operations
         type MergeOperation = {
             languageCode: string;
-            sourceLanguageId: Id<'languages'>;
+            sourceLanguageId?: Id<'languages'>;
             targetLanguageId?: Id<'languages'>;
-            operation: 'create' | 'update';
+            operation: 'create' | 'update' | 'delete';
         };
 
         const mergeOperations: MergeOperation[] = [];
@@ -308,18 +311,17 @@ export const mergeNamespaceVersions = action({
             }
         }
 
-        // Remaining target languages need to be deleted
+        // Remaining target languages need to be deleted - add them to the workpool batch
         const languagesToDelete = Array.from(targetLanguageMap.values());
-
-        // Delete languages that don't exist in source
         for (const langToDelete of languagesToDelete) {
-            await ctx.runMutation(internal.namespaceVersions.deleteLanguageForMerge, {
-                languageId: langToDelete._id,
-                versionId: targetVersionDoc._id,
+            mergeOperations.push({
+                languageCode: langToDelete.languageCode,
+                targetLanguageId: langToDelete._id,
+                operation: 'delete',
             });
         }
 
-        // Use workpool to process merge operations
+        // Use workpool to process merge operations (including deletions for atomicity)
         await mergeWorkpool.enqueueActionBatch(
             ctx,
             internal.namespaceVersions.mergeLanguage,
@@ -340,6 +342,8 @@ export const mergeNamespaceVersions = action({
             }
         );
 
+        // Note: Returns immediately after enqueuing. Actual merge completes asynchronously via workpool.
+        // The completeMerge callback will clear the merging status and update usage metrics when finished.
         return { success: true };
     },
 });
@@ -347,23 +351,39 @@ export const mergeNamespaceVersions = action({
 export const mergeLanguage = internalAction({
     args: {
         languageCode: v.string(),
-        sourceLanguageId: v.id('languages'),
+        sourceLanguageId: v.optional(v.id('languages')),
         targetLanguageId: v.optional(v.id('languages')),
-        operation: v.union(v.literal('create'), v.literal('update')),
+        operation: v.union(v.literal('create'), v.literal('update'), v.literal('delete')),
         targetVersionId: v.id('namespaceVersions'),
         sourceVersionId: v.id('namespaceVersions'),
         namespaceId: v.id('namespaces'),
         workspaceId: v.id('workspaces'),
     },
     handler: async (ctx, args) => {
+        // Handle delete operation
+        if (args.operation === 'delete') {
+            if (!args.targetLanguageId) {
+                throw new Error(`No target language ID provided for delete operation: ${args.languageCode}`);
+            }
+            await ctx.runMutation(internal.namespaceVersions.deleteLanguageForMerge, {
+                languageId: args.targetLanguageId,
+                versionId: args.targetVersionId,
+            });
+            return;
+        }
+
+        // For create/update operations, we need source language
+        if (!args.sourceLanguageId) {
+            throw new Error(`No source language ID provided for ${args.operation} operation: ${args.languageCode}`);
+        }
+
         // Get source language file
         const sourceLanguage = await ctx.runMutation(internal.namespaceVersions.getLanguageById, {
             languageId: args.sourceLanguageId,
         });
 
         if (!sourceLanguage?.fileId) {
-            console.warn(`No file found for source language: ${args.languageCode}`);
-            return;
+            throw new Error(`No file found for source language: ${args.languageCode}`);
         }
 
         // Download source file content
@@ -373,6 +393,9 @@ export const mergeLanguage = internalAction({
         }
 
         const response = await fetch(fileUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to download source file for ${args.languageCode}: ${response.statusText}`);
+        }
         const content = await response.text();
 
         // Upload content to target version
@@ -384,6 +407,9 @@ export const mergeLanguage = internalAction({
             body: contentBlob,
         });
 
+        if (!uploadResponse.ok) {
+            throw new Error(`Failed to upload file for ${args.languageCode}: ${uploadResponse.statusText}`);
+        }
         const { storageId } = await uploadResponse.json();
 
         if (args.operation === 'update' && args.targetLanguageId) {
@@ -437,14 +463,6 @@ export const completeMerge = internalMutation({
             },
             updatedAt: Date.now(),
         });
-
-        // Update namespace usage (total unique languages across versions)
-        const allVersions = await ctx.db
-            .query('namespaceVersions')
-            .withIndex('by_namespace_version', q => q.eq('namespaceId', context.namespaceId))
-            .collect();
-
-        // Nothing to update for namespace usage since versions count doesn't change
     },
 });
 
