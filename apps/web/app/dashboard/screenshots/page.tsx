@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Upload, Image as ImageIcon, Trash2, Edit3, Calendar, HardDrive, Languages } from 'lucide-react';
 import { usePaginatedQuery, useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Doc, Id } from '@/convex/_generated/dataModel';
@@ -10,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useRouter, useSearchParams } from 'next/navigation';
 import NextImage from 'next/image';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, PencilSquareIcon, EllipsisVerticalIcon, LanguageIcon } from '@heroicons/react/24/outline';
 import DashboardSidebar, { WorkspaceWithPremium } from '../components/dashboard-sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import ProjectsSelector from '../components/projects-selector';
@@ -24,19 +23,23 @@ import {
     ModalHeader,
     ModalTitle,
 } from '@/components/ui/modal';
-import { Heading } from '@/components/ui/heading';
-import { Description, Label } from '@/components/ui/field';
-import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/field';
 import { FileTrigger } from '@/components/ui/file-trigger';
 import { toast } from 'sonner';
 import { DescriptionDetails, DescriptionList, DescriptionTerm } from '@/components/ui/description-list';
 import { TextField } from '@/components/ui/text-field';
+import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@/components/ui/table';
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
+import { Collection, TableLoadMoreItem } from 'react-aria-components';
+import { useDateFormatter } from '@react-aria/i18n';
+import { Badge } from '@/components/ui/badge';
 
 export default function ScreenshotsPage() {
     const searchParams = useSearchParams();
     const searchParamProjectId = searchParams.get('projectId');
 
     const router = useRouter();
+    const formatter = useDateFormatter({ dateStyle: 'long' });
 
     const [workspace, setWorkspace] = useState<WorkspaceWithPremium | null>(null);
     const [selectedProjectId, setSelectedProjectId] = useState<Id<'projects'> | null>(null);
@@ -178,14 +181,6 @@ export default function ScreenshotsPage() {
         router.push(`/dashboard/screenshots/${screenshotId}?mode=${mode}`);
     };
 
-    const formatDate = (timestamp: number) => {
-        return new Date(timestamp).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-        });
-    };
-
     const formatFileSize = (bytes: number) => {
         if (bytes === 0) return '0 B';
         const k = 1024;
@@ -194,214 +189,209 @@ export default function ScreenshotsPage() {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     };
 
+    const handleLoadingMore = () => {
+        if (status === 'CanLoadMore') {
+            loadMore(12);
+        }
+    };
+
     return (
         <DashboardSidebar activeItem='screenshots' onWorkspaceChange={setWorkspace}>
             {workspace ? (
-                <Card>
-                    <CardHeader>
-                        <div className='flex items-center justify-between mb-4'>
-                            <div className='flex flex-col gap-1'>
-                                <CardTitle>Screenshots</CardTitle>
-                                <CardDescription>
-                                    Create visual translation mappings for your UI elements
-                                </CardDescription>
-                            </div>
-                            <div className='flex items-end gap-2'>
-                                <ProjectsSelector
-                                    workspace={workspace}
-                                    selectedProjectId={selectedProjectId}
-                                    defaultProjectId={(searchParamProjectId as Id<'projects'>) || undefined}
-                                    setSelectedProjectId={setSelectedProjectId}
-                                    label='Project'
-                                    isPreSelectLonelyItem
-                                />
-                                <Button isDisabled={!project} onClick={() => setIsUploadDialogOpen(true)}>
-                                    <PlusIcon />
-                                </Button>
-                            </div>
-                        </div>
-                        <Separator />
-                    </CardHeader>
-                    <CardContent className='space-y-6'>
-                        {screenshots && screenshots.length > 0 ? (
-                            <div className='space-y-6'>
-                                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
-                                    {screenshots.map(screenshot => (
-                                        <div
-                                            key={screenshot._id}
-                                            className='group bg-gray-800/50 rounded-xl overflow-hidden border border-gray-700/50 transition-all duration-200'>
-                                            <div className='aspect-video bg-gray-900/50 flex items-center justify-center relative overflow-hidden'>
-                                                {screenshot.imageUrl ? (
-                                                    <NextImage
-                                                        src={screenshot.imageUrl}
-                                                        alt={screenshot.name}
-                                                        width={320}
-                                                        height={180}
-                                                        className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-200'
-                                                    />
-                                                ) : (
-                                                    <ImageIcon className='h-12 w-12 text-gray-600' />
-                                                )}
-
-                                                <div className='absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center space-x-2'>
-                                                    <Button
-                                                        size='sm'
-                                                        intent='warning'
-                                                        onClick={() => openScreenshotEditor(screenshot._id, 'edit')}>
-                                                        <Edit3 className='h-4 w-4 mr-1' />
-                                                        Mappings
-                                                    </Button>
-                                                    <Button
-                                                        size='sm'
-                                                        onClick={() =>
-                                                            openScreenshotEditor(screenshot._id, 'translate')
-                                                        }>
-                                                        <Languages className='h-4 w-4 mr-1' />
-                                                        Translate
-                                                    </Button>
-                                                    <Button
-                                                        size='sm'
-                                                        intent='danger'
-                                                        onClick={e => {
-                                                            e.stopPropagation();
-                                                            setScreenshotToDelete(screenshot._id);
-                                                            setDeleteConfirmOpen(true);
-                                                        }}>
-                                                        <Trash2 className='h-4 w-4' />
-                                                    </Button>
-                                                </div>
-                                            </div>
-
-                                            <div className='p-4'>
-                                                <Heading level={4} className='mb-2'>
-                                                    {screenshot.name}
-                                                </Heading>
-                                                {screenshot.description ? (
-                                                    <Description className='mb-2'>{screenshot.description}</Description>
-                                                ) : null}
-                                                <div className='space-y-2'>
-                                                    <div className='flex items-center justify-between text-xs text-gray-500'>
-                                                        <span className='flex items-center'>
-                                                            <ImageIcon className='h-3 w-3 mr-1' />
-                                                            {screenshot.dimensions.width} ×{' '}
-                                                            {screenshot.dimensions.height}
-                                                        </span>
-                                                        <span className='flex items-center'>
-                                                            <HardDrive className='h-3 w-3 mr-1' />
-                                                            {formatFileSize(screenshot.imageSize)}
-                                                        </span>
-                                                    </div>
-                                                    <div className='flex items-center text-xs text-gray-500'>
-                                                        <Calendar className='h-3 w-3 mr-1' />
-                                                        {formatDate(screenshot._creationTime)}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
+                <>
+                    <Card>
+                        <CardHeader>
+                            <div className='flex items-center justify-between'>
+                                <div className='flex flex-col gap-1'>
+                                    <CardTitle>Screenshots</CardTitle>
+                                    <CardDescription>
+                                        Create visual translation mappings for your UI elements
+                                    </CardDescription>
                                 </div>
-
-                                {status === 'CanLoadMore' && (
-                                    <div className='flex justify-center pt-6'>
-                                        <Button
-                                            onClick={() => loadMore(12)}
-                                            intent='outline'
-                                            className='border-gray-700 text-gray-300 hover:bg-gray-800'>
-                                            Load More Screenshots
-                                        </Button>
-                                    </div>
-                                )}
+                                <div className='flex items-end gap-2'>
+                                    <ProjectsSelector
+                                        workspace={workspace}
+                                        selectedProjectId={selectedProjectId}
+                                        defaultProjectId={(searchParamProjectId as Id<'projects'>) || undefined}
+                                        setSelectedProjectId={setSelectedProjectId}
+                                        label='Project'
+                                        isPreSelectLonelyItem
+                                    />
+                                    <Button
+                                        intent='plain'
+                                        isDisabled={!project}
+                                        onClick={() => setIsUploadDialogOpen(true)}>
+                                        <PlusIcon />
+                                    </Button>
+                                </div>
                             </div>
-                        ) : (
-                            <div className='text-center py-16 space-y-2'>
-                                <Heading level={3}>No screenshots yet</Heading>
-                                <Description>
-                                    Upload your first screenshot to start creating visual translation mappings.
-                                </Description>
-                            </div>
-                        )}
-
-                        <ModalContent
-                            isBlurred
-                            isOpen={isUploadDialogOpen}
-                            onOpenChange={isOpen => {
-                                if (!isOpen) {
-                                    setUploadForm({ name: '', description: '' });
-                                    setSelectedFile(null);
-                                }
-
-                                setIsUploadDialogOpen(isOpen);
-                            }}>
-                            <ModalHeader>
-                                <ModalTitle>Upload Screenshot</ModalTitle>
-                                <ModalDescription>
-                                    Are you sure you want to delete this screenshot? This will also remove all
-                                    associated key mappings. This action cannot be undone.
-                                </ModalDescription>
-                            </ModalHeader>
-                            <ModalBody>
-                                <div className='prose prose-zinc dark:prose-invert prose-h3:text-sm/6 prose-h4:text-sm/6 prose-p:text-muted-fg flex flex-col gap-4'>
-                                    <div className='flex flex-col gap-2'>
-                                        <Label>Select Image File:</Label>
-                                        <FileTrigger onSelect={handleFileSelect} />
-                                    </div>
-                                    {selectedFile ? (
-                                        <DescriptionList>
-                                            <DescriptionTerm>File Name</DescriptionTerm>
-                                            <DescriptionDetails>{selectedFile.name}</DescriptionDetails>
-                                            <DescriptionTerm>File Size</DescriptionTerm>
-                                            <DescriptionDetails>
-                                                {' '}
-                                                {formatFileSize(selectedFile.size)}
-                                            </DescriptionDetails>
-                                        </DescriptionList>
+                        </CardHeader>
+                        <CardContent>
+                            <Table
+                                bleed
+                                className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
+                                aria-label='Screenshots'>
+                                <TableHeader>
+                                    <TableColumn className='w-0'>Preview</TableColumn>
+                                    <TableColumn isRowHeader>Name</TableColumn>
+                                    <TableColumn>Dimensions</TableColumn>
+                                    <TableColumn>Size</TableColumn>
+                                    <TableColumn>Created At</TableColumn>
+                                    <TableColumn />
+                                </TableHeader>
+                                <TableBody>
+                                    <Collection items={screenshots}>
+                                        {screenshot => (
+                                            <TableRow id={screenshot._id}>
+                                                <TableCell>
+                                                    <div className='size-16 flex items-center justify-center rounded overflow-hidden border'>
+                                                        {screenshot.imageUrl ? (
+                                                            <NextImage
+                                                                src={screenshot.imageUrl}
+                                                                alt={screenshot.name}
+                                                                width={64}
+                                                                height={64}
+                                                                className='size-full object-cover'
+                                                            />
+                                                        ) : null}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className='flex flex-col gap-1'>
+                                                        <div className='font-medium'>{screenshot.name}</div>
+                                                        {screenshot.description ? (
+                                                            <div className='text-xs text-muted-fg'>
+                                                                {screenshot.description}
+                                                            </div>
+                                                        ) : null}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {screenshot.dimensions.width} × {screenshot.dimensions.height}
+                                                </TableCell>
+                                                <TableCell>{formatFileSize(screenshot.imageSize)}</TableCell>
+                                                <TableCell>
+                                                    {formatter.format(new Date(screenshot._creationTime))}
+                                                </TableCell>
+                                                <TableCell className='flex justify-end'>
+                                                    <Menu>
+                                                        <MenuTrigger className='size-6'>
+                                                            <EllipsisVerticalIcon />
+                                                        </MenuTrigger>
+                                                        <MenuContent placement='left top'>
+                                                            <MenuItem
+                                                                onAction={() =>
+                                                                    openScreenshotEditor(screenshot._id, 'edit')
+                                                                }>
+                                                                <PencilSquareIcon /> Edit Mappings
+                                                            </MenuItem>
+                                                            <MenuItem
+                                                                onAction={() =>
+                                                                    openScreenshotEditor(screenshot._id, 'translate')
+                                                                }>
+                                                                <LanguageIcon /> Translate
+                                                            </MenuItem>
+                                                            <MenuSeparator />
+                                                            <MenuItem
+                                                                intent='danger'
+                                                                onAction={() => {
+                                                                    setScreenshotToDelete(screenshot._id);
+                                                                    setDeleteConfirmOpen(true);
+                                                                }}>
+                                                                <TrashIcon /> Delete
+                                                            </MenuItem>
+                                                        </MenuContent>
+                                                    </Menu>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </Collection>
+                                    {status !== 'Exhausted' ? (
+                                        <TableLoadMoreItem
+                                            className='sticky inset-x-0 bottom-0 h-16'
+                                            onLoadMore={handleLoadingMore}
+                                            isLoading={status === 'LoadingMore'}>
+                                            <Loader className='mx-auto' isIndeterminate aria-label='Loading more...' />
+                                        </TableLoadMoreItem>
                                     ) : null}
-                                    <TextField
-                                        value={uploadForm.name}
-                                        onChange={value => setUploadForm(prev => ({ ...prev, name: value }))}>
-                                        <Label>Name:</Label>
-                                        <Input placeholder='Enter screenshot name' />
-                                    </TextField>
-                                    <TextField
-                                        value={uploadForm.description}
-                                        onChange={value => setUploadForm(prev => ({ ...prev, description: value }))}>
-                                        <Label>Description:</Label>
-                                        <Textarea placeholder='Optional description' />
-                                    </TextField>
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                    <ModalContent
+                        isBlurred
+                        isOpen={isUploadDialogOpen}
+                        onOpenChange={isOpen => {
+                            if (!isOpen) {
+                                setUploadForm({ name: '', description: '' });
+                                setSelectedFile(null);
+                            }
+                            setIsUploadDialogOpen(isOpen);
+                        }}>
+                        <ModalHeader>
+                            <ModalTitle>Upload Screenshot</ModalTitle>
+                            <ModalDescription>
+                                Upload a new screenshot to create visual translation mappings.
+                            </ModalDescription>
+                        </ModalHeader>
+                        <ModalBody>
+                            <div className='flex flex-col gap-4'>
+                                <div className='flex flex-col gap-2'>
+                                    <Label>Select Image File</Label>
+                                    <FileTrigger onSelect={handleFileSelect} />
                                 </div>
-                            </ModalBody>
-                            <ModalFooter>
-                                <ModalClose>Cancel</ModalClose>
-                                <Button
-                                    onClick={handleUpload}
-                                    isPending={isUploading}
-                                    isDisabled={!selectedFile || !uploadForm.name.trim() || isUploading}>
-                                    {isUploading ? <Loader /> : 'Upload'}
-                                </Button>
-                            </ModalFooter>
-                        </ModalContent>
-
-                        <ModalContent
-                            role='alertdialog'
-                            isBlurred
-                            isOpen={deleteConfirmOpen}
-                            onOpenChange={setDeleteConfirmOpen}>
-                            <ModalHeader>
-                                <ModalTitle>Delete Screenshot</ModalTitle>
-                                <ModalDescription>
-                                    Are you sure you want to delete this screenshot? This will also remove all
-                                    associated key mappings. This action cannot be undone.
-                                </ModalDescription>
-                            </ModalHeader>
-                            <ModalFooter>
-                                <ModalClose>Cancel</ModalClose>
-                                <Button onClick={handleDeleteConfirm} isPending={isDeleting} intent='danger'>
-                                    {isDeleting ? <Loader /> : 'Delete'}
-                                </Button>
-                            </ModalFooter>
-                        </ModalContent>
-                    </CardContent>
-                </Card>
+                                {selectedFile ? (
+                                    <DescriptionList>
+                                        <DescriptionTerm>File Name</DescriptionTerm>
+                                        <DescriptionDetails>{selectedFile.name}</DescriptionDetails>
+                                        <DescriptionTerm>File Size</DescriptionTerm>
+                                        <DescriptionDetails>{formatFileSize(selectedFile.size)}</DescriptionDetails>
+                                    </DescriptionList>
+                                ) : null}
+                                <TextField
+                                    value={uploadForm.name}
+                                    onChange={value => setUploadForm(prev => ({ ...prev, name: value }))}>
+                                    <Label>Name</Label>
+                                    <Input placeholder='Enter screenshot name' />
+                                </TextField>
+                                <TextField
+                                    value={uploadForm.description}
+                                    onChange={value => setUploadForm(prev => ({ ...prev, description: value }))}>
+                                    <Label>Description (Optional)</Label>
+                                    <Textarea placeholder='Enter description' />
+                                </TextField>
+                            </div>
+                        </ModalBody>
+                        <ModalFooter>
+                            <ModalClose>Cancel</ModalClose>
+                            <Button
+                                onClick={handleUpload}
+                                isPending={isUploading}
+                                isDisabled={!selectedFile || !uploadForm.name.trim() || isUploading}>
+                                {isUploading ? <Loader /> : 'Upload'}
+                            </Button>
+                        </ModalFooter>
+                    </ModalContent>
+                    <ModalContent
+                        role='alertdialog'
+                        isBlurred
+                        isOpen={deleteConfirmOpen}
+                        onOpenChange={setDeleteConfirmOpen}>
+                        <ModalHeader>
+                            <ModalTitle>Delete Screenshot</ModalTitle>
+                            <ModalDescription>
+                                Are you sure you want to delete this screenshot? This will also remove all
+                                associated key mappings. This action cannot be undone.
+                            </ModalDescription>
+                        </ModalHeader>
+                        <ModalFooter>
+                            <ModalClose>Cancel</ModalClose>
+                            <Button onClick={handleDeleteConfirm} isPending={isDeleting} intent='danger'>
+                                {isDeleting ? <Loader /> : 'Delete'}
+                            </Button>
+                        </ModalFooter>
+                    </ModalContent>
+                </>
             ) : (
                 <Loader />
             )}
