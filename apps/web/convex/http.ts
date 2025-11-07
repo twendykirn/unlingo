@@ -6,6 +6,7 @@ import { httpAction } from './_generated/server';
 import { polar } from './polar';
 import { Id } from './_generated/dataModel';
 import { resend } from './resend';
+import { Unkey } from '@unkey/api';
 
 async function validateRequest(req: Request): Promise<WebhookEvent | null> {
     const payloadString = await req.text();
@@ -158,18 +159,41 @@ http.route({
         }
 
         try {
-            const apiKeyInfo = await ctx.runQuery(internal.apiKeys.verifyApiKey, { key: apiKey });
-            if (!apiKeyInfo) {
+            // Initialize Unkey client and verify the key
+            const unkey = new Unkey({ rootKey: process.env.UNKEY_ROOT_KEY! });
+
+            const verifyResponse = await unkey.keys.verify({
+                apiId: process.env.UNKEY_API_ID!,
+                key: apiKey,
+            });
+
+            if (verifyResponse.error || !verifyResponse.result.valid) {
                 return new Response(JSON.stringify({ error: 'Invalid API key' }), {
                     status: 401,
                     headers: { 'Content-Type': 'application/json' },
                 });
             }
 
+            // Extract metadata from Unkey response
+            const { meta } = verifyResponse.result;
+
+            if (!meta || !meta.workspaceId || !meta.projectId) {
+                return new Response(JSON.stringify({ error: 'Invalid API key metadata' }), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            }
+
+            const apiKeyInfo = {
+                workspaceId: meta.workspaceId as Id<'workspaces'>,
+                projectId: meta.projectId as Id<'projects'>,
+                projectName: meta.projectName as string | undefined,
+            };
+
             const ingestBase = {
                 workspaceId: apiKeyInfo.workspaceId as string,
                 projectId: apiKeyInfo.projectId as string,
-                projectName: apiKeyInfo.project?.name,
+                projectName: apiKeyInfo.projectName,
                 elementId: `ns:${namespace}`,
                 type: 'translations',
                 time: Date.now(),

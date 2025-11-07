@@ -73,11 +73,11 @@ export default defineSchema({
         workspaceId: v.id('workspaces'),
         projectId: v.id('projects'),
         name: v.string(),
-        keyHash: v.string(),
-        prefix: v.string(), // visible prefix (e.g., "ulg_live_" or "ulg_test_")
+        unkeyKeyId: v.string(), // Unkey key ID for management operations
+        prefix: v.string(), // visible prefix for display purposes
     })
         .index('by_workspace_project', ['workspaceId', 'projectId'])
-        .index('by_key_hash', ['keyHash']),
+        .index('by_unkey_id', ['unkeyKeyId']),
     screenshots: defineTable({
         projectId: v.id('projects'),
         name: v.string(),

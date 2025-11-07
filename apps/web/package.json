@@ -42,6 +42,7 @@
         "@tanstack/react-virtual": "^3.13.12",
         "@types/three": "^0.179.0",
         "@uiw/react-textarea-code-editor": "^3.1.1",
+        "@unkey/api": "^2.0.6",
         "ajv": "^8.17.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",

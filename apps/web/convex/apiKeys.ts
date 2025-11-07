@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import { internalQuery, mutation, query } from './_generated/server';
 import { paginationOptsValidator } from 'convex/server';
+import { Unkey } from '@unkey/api';
 
 export const getApiKeys = query({
     args: {
@@ -56,37 +57,47 @@ export const generateApiKey = mutation({
             throw new Error('Project not found or access denied');
         }
 
-        // Generate a cryptographically secure random API key
-        const randomBytes = new Uint8Array(32);
-        crypto.getRandomValues(randomBytes);
+        // Initialize Unkey client
+        const unkey = new Unkey({ rootKey: process.env.UNKEY_ROOT_KEY! });
 
-        // Convert to base64 and make URL-safe
-        const keyData = Array.from(randomBytes, byte => byte.toString(16).padStart(2, '0')).join('');
+        // Check if UNKEY_API_ID is set
+        if (!process.env.UNKEY_API_ID) {
+            throw new Error('UNKEY_API_ID environment variable is not set');
+        }
 
-        // Create prefix based on environment (you can customize this)
-        const prefix = 'ulg_live_';
-        const fullKey = `${prefix}${keyData}`;
+        // Create key via Unkey API
+        const unkeyResponse = await unkey.keys.create({
+            apiId: process.env.UNKEY_API_ID!,
+            name: args.name,
+            meta: {
+                workspaceId: args.workspaceId,
+                projectId: args.projectId,
+                projectName: project.name,
+            },
+        });
 
-        // Hash the key for storage (using Web Crypto API)
-        const encoder = new TextEncoder();
-        const data = encoder.encode(fullKey);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = new Uint8Array(hashBuffer);
-        const keyHash = Array.from(hashArray, byte => byte.toString(16).padStart(2, '0')).join('');
+        if (unkeyResponse.error) {
+            throw new Error(`Failed to create Unkey key: ${unkeyResponse.error.message}`);
+        }
 
-        // Store the hashed key in database
-        const keyId = await ctx.db.insert('apiKeys', {
+        const { key, keyId } = unkeyResponse.result;
+
+        // Extract prefix from the key (e.g., "prefix_xxxxx")
+        const prefix = key.split('_').slice(0, 2).join('_') + '_';
+
+        // Store the Unkey key ID in database
+        const dbKeyId = await ctx.db.insert('apiKeys', {
             workspaceId: args.workspaceId,
             projectId: args.projectId,
             name: args.name,
-            keyHash,
+            unkeyKeyId: keyId,
             prefix,
         });
 
         // Return the full key (this is the ONLY time it will be visible)
         return {
-            id: keyId,
-            key: fullKey,
+            id: dbKeyId,
+            key,
             name: args.name,
             prefix,
         };
@@ -114,6 +125,19 @@ export const deleteApiKey = mutation({
             throw new Error('API key not found or access denied');
         }
 
+        // Initialize Unkey client
+        const unkey = new Unkey({ rootKey: process.env.UNKEY_ROOT_KEY! });
+
+        // Delete key from Unkey
+        const unkeyResponse = await unkey.keys.delete({
+            keyId: apiKey.unkeyKeyId,
+        });
+
+        if (unkeyResponse.error) {
+            throw new Error(`Failed to delete Unkey key: ${unkeyResponse.error.message}`);
+        }
+
+        // Delete from database
         await ctx.db.delete(args.keyId);
     },
 });
@@ -123,30 +147,36 @@ export const verifyApiKey = internalQuery({
         key: v.string(),
     },
     handler: async (ctx, args) => {
-        // Hash the provided key
-        const encoder = new TextEncoder();
-        const data = encoder.encode(args.key);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = new Uint8Array(hashBuffer);
-        const keyHash = Array.from(hashArray, byte => byte.toString(16).padStart(2, '0')).join('');
+        // Initialize Unkey client
+        const unkey = new Unkey({ rootKey: process.env.UNKEY_ROOT_KEY! });
 
-        // Find the API key by hash
-        const apiKey = await ctx.db
-            .query('apiKeys')
-            .withIndex('by_key_hash', q => q.eq('keyHash', keyHash))
-            .first();
+        // Verify key via Unkey API
+        const verifyResponse = await unkey.keys.verify({
+            apiId: process.env.UNKEY_API_ID!,
+            key: args.key,
+        });
 
-        if (!apiKey) {
+        if (verifyResponse.error || !verifyResponse.result.valid) {
             return null;
         }
 
-        const workspace = await ctx.db.get(apiKey.workspaceId);
-        const project = await ctx.db.get(apiKey.projectId);
+        // Extract metadata from Unkey response
+        const { meta } = verifyResponse.result;
+
+        if (!meta || !meta.workspaceId || !meta.projectId) {
+            return null;
+        }
+
+        const workspace = await ctx.db.get(meta.workspaceId as any);
+        const project = await ctx.db.get(meta.projectId as any);
+
+        if (!workspace || !project) {
+            return null;
+        }
 
         return {
-            keyId: apiKey._id,
-            workspaceId: apiKey.workspaceId,
-            projectId: apiKey.projectId,
+            workspaceId: meta.workspaceId as any,
+            projectId: meta.projectId as any,
             workspace,
             project,
         };
