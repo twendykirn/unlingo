@@ -14,7 +14,7 @@ export default function PrivacyPolicy() {
                             </span>
                         </Link>
                         <Link href='/'>
-                            <Button variant='ghost' size='sm' className='text-gray-300 hover:text-white'>
+                            <Button intent='outline' size='sm' className='text-gray-300 hover:text-white'>
                                 <ArrowLeft className='h-4 w-4 mr-2' />
                                 Back to Home
                             </Button>
