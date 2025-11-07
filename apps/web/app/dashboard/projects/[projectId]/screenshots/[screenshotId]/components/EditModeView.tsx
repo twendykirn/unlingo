@@ -101,217 +101,204 @@ export default function EditModeView({
     }, [selectedContainerId, containers]);
 
     return (
-        <div className='h-screen overflow-hidden bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800'>
-            <div className='container mx-auto h-full flex flex-col px-4 sm:px-6 py-4 sm:py-6'>
-                <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-4 sm:p-6 backdrop-blur-sm mb-4 sm:mb-6'>
-                    <div className='flex items-center justify-between'>
-                        <div className='flex items-center space-x-3 sm:space-x-4'>
-                            <Button
-                                onClick={() => router.push(`/dashboard/projects/${projectId}`)}
-                                variant='ghost'
-                                size='icon'
-                                className='text-gray-400 hover:text-white'>
-                                <ArrowLeft className='h-4 w-4' />
-                            </Button>
-                            <div className='w-12 h-12 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-xl flex items-center justify-center border border-blue-500/20'>
-                                <Edit3 className='h-6 w-6 text-blue-400' />
-                            </div>
-                            <div>
-                                <h3 className='text-2xl font-semibold text-white'>Screenshot Editor</h3>
-                                <p className='text-gray-400 text-sm'>{screenshotName}</p>
-                            </div>
+        <div className='min-h-screen bg-black text-white overflow-hidden h-screen flex flex-col'>
+            <header className='bg-black border-b border-gray-800 px-6 py-4 backdrop-blur-sm'>
+                <div className='flex items-center justify-between'>
+                    <div className='flex items-center space-x-4'>
+                        <Button
+                            onClick={() => router.push(`/dashboard/projects/${projectId}`)}
+                            variant='ghost'
+                            size='icon'
+                            className='text-gray-400 hover:text-white'>
+                            <ArrowLeft className='h-4 w-4' />
+                        </Button>
+                        <h1 className='text-2xl font-bold'>
+                            <span className='bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent'>
+                                Unlingo
+                            </span>
+                        </h1>
+                        <div className='h-6 w-px bg-gray-600' />
+                        <div className='flex items-center space-x-2'>
+                            <Edit3 className='h-5 w-5 text-gray-400' />
+                            <h2 className='text-xl font-semibold text-white'>Edit Mode</h2>
                         </div>
-                        <div className='flex flex-wrap items-center gap-2'>
+                        <span className='text-gray-400'>•</span>
+                        <p className='text-gray-400 text-sm'>{screenshotName}</p>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                        <Button
+                            onClick={() => isAddingContainer$.set(true)}
+                            disabled={isAddingContainer}
+                            size='sm'>
+                            <Plus className='h-4 w-4 mr-2' />
+                            {isAddingContainer ? 'Click to Place' : 'Add Container'}
+                        </Button>
+                        {isAddingContainer ? (
                             <Button
-                                onClick={() => isAddingContainer$.set(true)}
-                                disabled={isAddingContainer}
-                                className='bg-blue-600 hover:bg-blue-700 text-white'>
-                                <Plus className='h-4 w-4 mr-2' />
-                                {isAddingContainer ? 'Click to Place' : 'Add Container'}
+                                onClick={() => isAddingContainer$.set(false)}
+                                variant='outline'
+                                size='sm'>
+                                Cancel
                             </Button>
-                            {isAddingContainer ? (
-                                <Button
-                                    onClick={() => isAddingContainer$.set(false)}
-                                    variant='outline'
-                                    className='border-gray-600 text-gray-300 hover:bg-gray-800'>
-                                    Cancel Placing
+                        ) : null}
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant='ghost' size='icon' className='text-gray-400 hover:text-white'>
+                                    <MoreVertical className='h-4 w-4' />
                                 </Button>
-                            ) : null}
-                            <Popover>
-                                <PopoverTrigger asChild>
+                            </PopoverTrigger>
+                            <PopoverContent align='end' className='w-56 bg-gray-900 border-gray-800 p-1'>
+                                <div className='flex flex-col'>
+                                    {isAddingContainer ? (
+                                        <Button
+                                            variant='ghost'
+                                            className='justify-start text-gray-300 hover:text-white hover:bg-gray-800'
+                                            onClick={() => isAddingContainer$.set(false)}>
+                                            Cancel Placing
+                                        </Button>
+                                    ) : null}
                                     <Button
                                         variant='ghost'
-                                        size='icon'
-                                        className='text-gray-400 hover:text-white hover:bg-gray-800/50'>
-                                        <MoreVertical className='h-4 w-4' />
+                                        className='justify-start text-gray-300 hover:text-white hover:bg-gray-800'
+                                        onClick={onSwitchToTranslate}>
+                                        <Languages className='h-4 w-4 mr-2' /> Switch to Translate
                                     </Button>
-                                </PopoverTrigger>
-                                <PopoverContent align='end' className='w-56 bg-gray-900 border-gray-800 p-1'>
-                                    <div className='flex flex-col'>
-                                        {isAddingContainer ? (
-                                            <Button
-                                                variant='ghost'
-                                                className='justify-start text-gray-300 hover:text-white hover:bg-gray-800'
-                                                onClick={() => isAddingContainer$.set(false)}>
-                                                Cancel Placing
-                                            </Button>
-                                        ) : null}
-                                        <Button
-                                            variant='ghost'
-                                            className='justify-start text-pink-400 hover:text-white hover:bg-pink-600/20'
-                                            onClick={onSwitchToTranslate}>
-                                            <Languages className='h-3 w-3 mr-2' /> Switch to Translate
-                                        </Button>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                 </div>
+            </header>
 
-                <div className='grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0'>
-                    <div className='order-2 lg:order-1 lg:col-span-1 space-y-6 min-h-0 lg:overflow-y-auto lg:pr-1'>
-                        <div className='bg-gray-950/50 border border-gray-800/50 rounded-2xl p-6 backdrop-blur-sm'>
-                            <h3 className='text-lg font-semibold text-white mb-2'>Container Tools</h3>
+            <div className='flex-1 flex gap-6 p-6 min-h-0 overflow-hidden'>
+                <div className='w-80 space-y-6 overflow-y-auto'>
+                    <div className='bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
+                        <h3 className='text-lg font-semibold text-white mb-4'>Instructions</h3>
+                        <ol className='text-sm text-gray-400 space-y-2'>
+                            <li>1. Click "Add Container" button</li>
+                            <li>2. Click on screenshot to place</li>
+                            <li>3. Select and resize as needed</li>
+                            <li>4. Select a container to edit details</li>
+                            <li>5. Switch to Translate mode when done</li>
+                        </ol>
+                    </div>
+
+                    {selectedContainerId && selectedContainer ? (
+                        <div className='bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
+                            <div className='flex items-center justify-between mb-4'>
+                                <h3 className='text-lg font-semibold text-white'>Container Details</h3>
+                                {!isEditingDetails ? (
+                                    <Button
+                                        size='icon'
+                                        variant='ghost'
+                                        onClick={() => setIsEditingDetails(true)}
+                                        className='text-gray-400 hover:text-white'>
+                                        <Edit3 className='h-4 w-4' />
+                                    </Button>
+                                ) : (
+                                    <div className='flex items-center gap-2'>
+                                        <Button
+                                            size='sm'
+                                            onClick={handleSaveDetails}
+                                            disabled={
+                                                selectedContainer
+                                                    ? detailsColor === (selectedContainer.backgroundColor || '#3b82f6') &&
+                                                      detailsDescription.trim() === (selectedContainer.description || '')
+                                                    : true
+                                            }>
+                                            Save
+                                        </Button>
+                                        <Button
+                                            size='sm'
+                                            variant='outline'
+                                            onClick={handleCancelDetails}>
+                                            Cancel
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
                             <div className='space-y-4'>
-                                <div className='pt-0'>
-                                    <p className='text-sm text-gray-400 mb-2'>Instructions:</p>
-                                    <ol className='text-xs text-gray-500 space-y-1'>
-                                        <li>1. Click "Add Container" button</li>
-                                        <li>2. Click on screenshot to place</li>
-                                        <li>3. Select and resize as needed</li>
-                                        <li>4. Select a container to edit details and color</li>
-                                        <li>5. Switch to Translate mode when done</li>
-                                    </ol>
+                                {!isEditingDetails ? (
+                                    <>
+                                        <div>
+                                            <label className='block text-sm font-medium text-gray-300 mb-2'>
+                                                Color
+                                            </label>
+                                            <div className='flex items-center gap-2'>
+                                                <div
+                                                    className='w-6 h-6 rounded border border-gray-600'
+                                                    style={{
+                                                        background: selectedContainer.backgroundColor || '#3b82f6',
+                                                    }}
+                                                />
+                                                <span className='text-sm text-gray-400'>
+                                                    {selectedContainer.backgroundColor || '#3b82f6'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className='block text-sm font-medium text-gray-300 mb-2'>
+                                                Description
+                                            </label>
+                                            <div className='p-3 bg-gray-800/50 border border-gray-700 rounded-lg'>
+                                                {selectedContainer.description ? (
+                                                    <p className='text-sm text-white break-words'>
+                                                        {selectedContainer.description}
+                                                    </p>
+                                                ) : (
+                                                    <p className='text-sm text-gray-400 italic'>No description</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <label className='block text-sm font-medium text-gray-300 mb-2'>
+                                                Container Color
+                                            </label>
+                                            <div className='flex items-center space-x-2'>
+                                                <input
+                                                    type='color'
+                                                    value={detailsColor}
+                                                    onChange={e => setDetailsColor(e.target.value)}
+                                                    className='w-8 h-8 rounded border border-gray-600 cursor-pointer'
+                                                />
+                                                <span className='text-sm text-gray-400'>{detailsColor}</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className='block text-sm font-medium text-gray-300 mb-2'>
+                                                Description (Optional)
+                                            </label>
+                                            <Input
+                                                value={detailsDescription}
+                                                onChange={e => setDetailsDescription(e.target.value)}
+                                                placeholder='Enter container description...'
+                                                className='bg-gray-800 border-gray-600 text-white placeholder-gray-400'
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className='text-xs text-gray-500'>
+                                    <p>ID: {selectedContainer._id}</p>
+                                </div>
+
+                                <div className='pt-3 border-t border-gray-800'>
+                                    <Button
+                                        variant='destructive'
+                                        onClick={() => handleContainerDelete(selectedContainerId)}
+                                        className='w-full'
+                                        size='sm'>
+                                        <Trash2 className='h-4 w-4 mr-2' /> Delete Container
+                                    </Button>
                                 </div>
                             </div>
                         </div>
-
-                        {selectedContainerId ? (
-                            <div className='bg-gray-950/50 border border-gray-800/50 rounded-2xl p-6 backdrop-blur-sm'>
-                                <div className='flex items-center justify-between mb-4'>
-                                    <h3 className='text-lg font-semibold text-white'>Container Details</h3>
-                                    {!isEditingDetails ? (
-                                        <Button
-                                            size='icon'
-                                            variant='ghost'
-                                            onClick={() => setIsEditingDetails(true)}
-                                            className='text-blue-400 hover:text-white hover:bg-blue-600/20'>
-                                            <Edit3 className='h-4 w-4' />
-                                        </Button>
-                                    ) : (
-                                        <div className='flex items-center gap-2'>
-                                            <Button
-                                                size='sm'
-                                                className='bg-white text-black hover:bg-gray-200'
-                                                onClick={handleSaveDetails}
-                                                disabled={
-                                                    selectedContainer
-                                                        ? detailsColor ===
-                                                              (selectedContainer.backgroundColor || '#3b82f6') &&
-                                                          detailsDescription.trim() ===
-                                                              (selectedContainer.description || '')
-                                                        : true
-                                                }>
-                                                Save
-                                            </Button>
-                                            <Button
-                                                size='sm'
-                                                variant='ghost'
-                                                onClick={handleCancelDetails}
-                                                className='text-gray-400 hover:text-white hover:bg-gray-800/50'>
-                                                Cancel
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                                {selectedContainer ? (
-                                    <div className='space-y-4'>
-                                        {!isEditingDetails ? (
-                                            <>
-                                                <div>
-                                                    <label className='block text-sm font-medium text-gray-300 mb-2'>
-                                                        Color
-                                                    </label>
-                                                    <div className='flex items-center gap-2'>
-                                                        <div
-                                                            className='w-6 h-6 rounded border border-gray-600'
-                                                            style={{
-                                                                background:
-                                                                    selectedContainer.backgroundColor || '#3b82f6',
-                                                            }}
-                                                        />
-                                                        <span className='text-sm text-gray-400'>
-                                                            {selectedContainer.backgroundColor || '#3b82f6'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className='block text-sm font-medium text-gray-300 mb-2'>
-                                                        Description
-                                                    </label>
-                                                    <div className='p-3 bg-gray-800/50 border border-gray-700 rounded-lg'>
-                                                        {selectedContainer.description ? (
-                                                            <p className='text-sm text-white break-words'>
-                                                                {selectedContainer.description}
-                                                            </p>
-                                                        ) : (
-                                                            <p className='text-sm text-gray-400 italic'>
-                                                                No description
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div>
-                                                    <label className='block text-sm font-medium text-gray-300 mb-2'>
-                                                        Container Color
-                                                    </label>
-                                                    <div className='flex items-center space-x-2'>
-                                                        <input
-                                                            type='color'
-                                                            value={detailsColor}
-                                                            onChange={e => setDetailsColor(e.target.value)}
-                                                            className='w-8 h-8 rounded border border-gray-600 cursor-pointer'
-                                                        />
-                                                        <span className='text-sm text-gray-400'>{detailsColor}</span>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className='block text-sm font-medium text-gray-300 mb-2'>
-                                                        Description (Optional)
-                                                    </label>
-                                                    <Input
-                                                        value={detailsDescription}
-                                                        onChange={e => setDetailsDescription(e.target.value)}
-                                                        placeholder='Enter container description...'
-                                                        className='bg-gray-800 border-gray-600 text-white placeholder-gray-400'
-                                                    />
-                                                </div>
-                                            </>
-                                        )}
-
-                                        <div className='text-xs text-gray-500'>
-                                            <p>ID: {selectedContainer._id}</p>
-                                        </div>
-
-                                        <div className='pt-3 border-t border-gray-800'>
-                                            <Button
-                                                variant='destructive'
-                                                onClick={() => handleContainerDelete(selectedContainerId)}
-                                                className='w-full'>
-                                                <Trash2 className='h-4 w-4 mr-2' /> Delete Container
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ) : null}
-                            </div>
-                        ) : null}
-                    </div>
-                    <div className='order-1 lg:order-2 lg:col-span-3 min-h-0'>{children}</div>
+                    ) : null}
                 </div>
+                <div className='flex-1 min-h-0 overflow-hidden'>{children}</div>
             </div>
         </div>
     );

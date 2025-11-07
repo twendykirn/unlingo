@@ -358,291 +358,266 @@ export default function TranslateModeView({
 
     return (
         <>
-            <div className='h-screen overflow-hidden bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800'>
-                <div className='container mx-auto h-full flex flex-col px-4 sm:px-6 py-4 sm:py-6'>
-                    <div className='bg-gray-950/50 border border-gray-800/50 rounded-xl p-4 sm:p-6 backdrop-blur-sm mb-4 sm:mb-6'>
-                        <div className='flex items-center justify-between'>
-                            <div className='flex items-center space-x-3 sm:space-x-4'>
-                                <Button
-                                    onClick={() => router.push(`/dashboard/projects/${projectId}`)}
-                                    variant='ghost'
-                                    size='icon'
-                                    className='text-gray-400 hover:text-white'>
-                                    <ArrowLeft className='h-4 w-4' />
-                                </Button>
-                                <div className='w-12 h-12 bg-gradient-to-br from-pink-500/10 to-purple-500/10 rounded-xl flex items-center justify-center border border-pink-500/20'>
-                                    <Languages className='h-6 w-6 text-pink-400' />
-                                </div>
-                                <div>
-                                    <h3 className='text-2xl font-semibold text-white'>Screenshot Editor</h3>
-                                    <p className='text-gray-400 text-sm'>{screenshotName}</p>
-                                </div>
+            <div className='min-h-screen bg-black text-white overflow-hidden h-screen flex flex-col'>
+                <header className='bg-black border-b border-gray-800 px-6 py-4 backdrop-blur-sm'>
+                    <div className='flex items-center justify-between'>
+                        <div className='flex items-center space-x-4'>
+                            <Button
+                                onClick={() => router.push(`/dashboard/projects/${projectId}`)}
+                                variant='ghost'
+                                size='icon'
+                                className='text-gray-400 hover:text-white'>
+                                <ArrowLeft className='h-4 w-4' />
+                            </Button>
+                            <h1 className='text-2xl font-bold'>
+                                <span className='bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent'>
+                                    Unlingo
+                                </span>
+                            </h1>
+                            <div className='h-6 w-px bg-gray-600' />
+                            <div className='flex items-center space-x-2'>
+                                <Languages className='h-5 w-5 text-gray-400' />
+                                <h2 className='text-xl font-semibold text-white'>Translate Mode</h2>
                             </div>
-                            <div className='flex items-center gap-2'>
-                                {hasChanges ? (
-                                    <Button
-                                        onClick={handleSaveChanges}
-                                        disabled={isSaving}
-                                        className='bg-green-600 hover:bg-green-700 text-white'>
-                                        {isSaving ? (
-                                            <>
-                                                <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
-                                                Saving...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Save className='h-4 w-4 mr-2' />
-                                                Save Changes ({pendingChanges.size})
-                                            </>
-                                        )}
+                            <span className='text-gray-400'>•</span>
+                            <p className='text-gray-400 text-sm'>{screenshotName}</p>
+                        </div>
+                        <div className='flex items-center gap-2'>
+                            {hasChanges ? (
+                                <Button onClick={handleSaveChanges} disabled={isSaving} size='sm'>
+                                    {isSaving ? (
+                                        <>
+                                            <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className='h-4 w-4 mr-2' />
+                                            Save Changes ({pendingChanges.size})
+                                        </>
+                                    )}
+                                </Button>
+                            ) : null}
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant='ghost' size='icon' className='text-gray-400 hover:text-white'>
+                                        <MoreVertical className='h-4 w-4' />
                                     </Button>
-                                ) : null}
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant='ghost'
-                                            size='icon'
-                                            className='text-gray-400 hover:text-white hover:bg-gray-800/50'>
-                                            <MoreVertical className='h-4 w-4' />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent align='end' className='w-56 bg-gray-900 border-gray-800 p-1'>
-                                        <div className='flex flex-col'>
-                                            {hasChanges ? (
-                                                <Button
-                                                    variant='ghost'
-                                                    className='justify-start text-red-400 hover:text-white hover:bg-red-600/20'
-                                                    onClick={handleDiscardChanges}>
-                                                    <Trash2 className='h-3 w-3 mr-2' /> Discard Changes
-                                                </Button>
-                                            ) : null}
+                                </PopoverTrigger>
+                                <PopoverContent align='end' className='w-56 bg-gray-900 border-gray-800 p-1'>
+                                    <div className='flex flex-col'>
+                                        {hasChanges ? (
                                             <Button
                                                 variant='ghost'
-                                                className='justify-start text-blue-400 hover:text-white hover:bg-blue-600/20'
-                                                onClick={onSwitchToEdit}>
-                                                <Edit3 className='h-3 w-3 mr-2' /> Switch to Edit
+                                                className='justify-start text-gray-300 hover:text-white hover:bg-gray-800'
+                                                onClick={handleDiscardChanges}>
+                                                <Trash2 className='h-4 w-4 mr-2' /> Discard Changes
                                             </Button>
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className='grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0'>
-                        <div className='order-2 lg:order-1 lg:col-span-1 space-y-6 min-h-0 lg:overflow-y-auto lg:pr-1'>
-                            {workflow.isLocked ? (
-                                <div className='bg-gray-950/50 border border-gray-800/50 rounded-2xl p-4 sm:p-6 backdrop-blur-sm'>
-                                    <div className='flex flex-col gap-3'>
-                                        <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
-                                            <div className='flex items-center gap-2 px-3 py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-lg min-w-0'>
-                                                <Globe className='h-4 w-4 text-cyan-400 shrink-0' />
-                                                <span className='text-sm font-medium text-white truncate'>
-                                                    {workflow.namespace?.name}
-                                                </span>
-                                            </div>
-                                            <div className='flex items-center gap-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg min-w-0'>
-                                                <GitBranch className='h-4 w-4 text-green-400 shrink-0' />
-                                                <span className='text-sm font-medium text-white truncate'>
-                                                    {workflow.version?.version}
-                                                </span>
-                                            </div>
-                                            <div className='flex items-center gap-2 px-3 py-2 bg-purple-500/10 border border-purple-500/20 rounded-lg min-w-0'>
-                                                <Languages className='h-4 w-4 text-purple-400 shrink-0' />
-                                                <span className='text-sm font-medium text-white truncate'>
-                                                    {workflow.language?.languageCode}
-                                                </span>
-                                            </div>
-                                        </div>
+                                        ) : null}
                                         <Button
-                                            onClick={handleUnlockWorkflow}
-                                            variant='outline'
-                                            size='sm'
-                                            className='text-yellow-400 border-yellow-400/50 hover:bg-yellow-400/10'>
-                                            <Unlock className='h-4 w-4 mr-2' />
-                                            Change Context
+                                            variant='ghost'
+                                            className='justify-start text-gray-300 hover:text-white hover:bg-gray-800'
+                                            onClick={onSwitchToEdit}>
+                                            <Edit3 className='h-4 w-4 mr-2' /> Switch to Edit
                                         </Button>
                                     </div>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                    </div>
+                </header>
+
+            <div className='flex-1 flex gap-6 p-6 min-h-0 overflow-hidden'>
+                <div className='w-80 space-y-6 overflow-y-auto'>
+                    {workflow.isLocked ? (
+                        <div className='bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
+                            <h3 className='text-lg font-semibold text-white mb-4'>Translation Context</h3>
+                            <div className='space-y-3'>
+                                <div className='flex items-center gap-2 px-3 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg'>
+                                    <Globe className='h-4 w-4 text-gray-400' />
+                                    <span className='text-sm font-medium text-white truncate'>
+                                        {workflow.namespace?.name}
+                                    </span>
                                 </div>
-                            ) : null}
-
-                            {!workflow.isLocked ? (
-                                <div className='bg-gray-950/50 border border-gray-800/50 rounded-2xl p-4 sm:p-6 backdrop-blur-sm'>
-                                    <h3 className='text-lg font-semibold text-white mb-4'>
-                                        Select Translation Context
-                                    </h3>
-                                    <div className='grid grid-cols-1 gap-4'>
-                                        <div className='grid grid-cols-1 gap-4'>
-                                            <div>
-                                                <label className='block text-sm font-medium text-gray-300 mb-2'>
-                                                    Namespace
-                                                </label>
-                                                <Select
-                                                    value={draftNamespace?._id || ''}
-                                                    onValueChange={val => {
-                                                        const ns = namespaces?.results?.find(
-                                                            n => n._id === (val as Id<'namespaces'>)
-                                                        );
-                                                        setDraftNamespace(ns);
-                                                        setDraftVersion(undefined);
-                                                        setDraftLanguage(undefined);
-                                                    }}>
-                                                    <SelectTrigger className='bg-gray-900 border-gray-700 text-white w-full'>
-                                                        <SelectValue placeholder='Select namespace' />
-                                                    </SelectTrigger>
-                                                    <SelectContent className='bg-gray-900 border-gray-700 text-white'>
-                                                        {namespaces?.results?.map(ns => (
-                                                            <SelectItem
-                                                                key={ns._id}
-                                                                value={ns._id}
-                                                                className='text-white'>
-                                                                {ns.name}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div>
-                                                <label className='block text-sm font-medium text-gray-300 mb-2'>
-                                                    Version
-                                                </label>
-                                                <Select
-                                                    value={draftVersion?._id || ''}
-                                                    onValueChange={val => {
-                                                        const v = versions?.results?.find(
-                                                            vv => vv._id === (val as Id<'namespaceVersions'>)
-                                                        );
-                                                        setDraftVersion(v);
-                                                        setDraftLanguage(undefined);
-                                                    }}
-                                                    disabled={!draftNamespace}>
-                                                    <SelectTrigger className='bg-gray-900 border-gray-700 text-white w-full'>
-                                                        <SelectValue placeholder='Select version' />
-                                                    </SelectTrigger>
-                                                    <SelectContent className='bg-gray-900 border-gray-700 text-white'>
-                                                        {versions?.results?.map(v => (
-                                                            <SelectItem
-                                                                key={v._id}
-                                                                value={v._id}
-                                                                className='text-white'>
-                                                                {v.version}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div>
-                                                <label className='block text-sm font-medium text-gray-300 mb-2'>
-                                                    Language
-                                                </label>
-                                                <Select
-                                                    value={draftLanguage?._id || ''}
-                                                    onValueChange={val => {
-                                                        const lang = languages?.results?.find(
-                                                            l => l._id === (val as Id<'languages'>)
-                                                        );
-                                                        setDraftLanguage(lang);
-                                                    }}
-                                                    disabled={!draftVersion}>
-                                                    <SelectTrigger className='bg-gray-900 border-gray-700 text-white w-full'>
-                                                        <SelectValue placeholder='Select language' />
-                                                    </SelectTrigger>
-                                                    <SelectContent className='bg-gray-900 border-gray-700 text-white'>
-                                                        {languages?.results?.map(l => (
-                                                            <SelectItem
-                                                                key={l._id}
-                                                                value={l._id}
-                                                                className='text-white'>
-                                                                {l.languageCode}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                        <div className='flex gap-2 flex-wrap'>
-                                            {didInitTranslateMode ? (
-                                                <Button
-                                                    variant='ghost'
-                                                    onClick={handleCancelWorkflowContext}
-                                                    className='text-gray-400 hover:text-white hover:bg-gray-800/50 flex-1'>
-                                                    Cancel
-                                                </Button>
-                                            ) : null}
-                                            <Button
-                                                onClick={handleSaveWorkflowContext}
-                                                disabled={!draftNamespace || !draftVersion || !draftLanguage}
-                                                className='bg-white text-black hover:bg-gray-200 flex-1'>
-                                                Save Context
-                                            </Button>
-                                        </div>
-                                    </div>
+                                <div className='flex items-center gap-2 px-3 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg'>
+                                    <GitBranch className='h-4 w-4 text-gray-400' />
+                                    <span className='text-sm font-medium text-white truncate'>
+                                        {workflow.version?.version}
+                                    </span>
                                 </div>
-                            ) : null}
+                                <div className='flex items-center gap-2 px-3 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg'>
+                                    <Languages className='h-4 w-4 text-gray-400' />
+                                    <span className='text-sm font-medium text-white truncate'>
+                                        {workflow.language?.languageCode}
+                                    </span>
+                                </div>
+                                <Button
+                                    onClick={handleUnlockWorkflow}
+                                    variant='outline'
+                                    size='sm'
+                                    className='w-full'>
+                                    <Unlock className='h-4 w-4 mr-2' />
+                                    Change Context
+                                </Button>
+                            </div>
+                        </div>
+                    ) : null}
 
-                            {selectedContainerId && workflow.isLocked ? (
-                                <div className='bg-gray-950/50 border border-gray-800/50 rounded-2xl p-6 backdrop-blur-sm flex flex-col min-h-0'>
-                                    <h3 className='text-lg font-semibold text-white mb-4'>Container Details</h3>
-
-                                    {selectedContainer?.description ? (
-                                        <div className='mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg'>
-                                            <div className='flex items-start space-x-2'>
-                                                <FileText className='h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0' />
-                                                <div>
-                                                    <p className='text-sm font-medium text-blue-400 mb-1'>
-                                                        Description
-                                                    </p>
-                                                    <p className='text-sm text-blue-200'>
-                                                        {selectedContainer.description}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : null}
-
-                                    <div className='flex items-center justify-between'>
-                                        <h4 className='text-md font-medium text-white'>Translation Keys</h4>
-                                        <div className='flex items-center gap-2'>
-                                            {memoizedMappings.length > 0 ? (
-                                                <>
-                                                    <span className='text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded'>
-                                                        {memoizedMappings.length}
-                                                    </span>
-                                                    {unsavedCount > 0 ? (
-                                                        <span className='text-xs text-yellow-300 bg-yellow-500/10 border border-yellow-500/30 px-2 py-1 rounded'>
-                                                            {unsavedCount}
-                                                        </span>
-                                                    ) : null}
-                                                </>
-                                            ) : null}
-                                            {selectedContainerId && workflow.isLocked ? (
-                                                <Button
-                                                    size='icon'
-                                                    variant='ghost'
-                                                    onClick={() => setIsKeyDialogOpen(true)}
-                                                    className='text-pink-400 hover:text-white hover:bg-pink-600/20'>
-                                                    <Plus className='h-4 w-4' />
-                                                </Button>
-                                            ) : null}
-                                        </div>
-                                    </div>
-                                    {memoizedMappings.length === 0 ? (
-                                        <p className='text-gray-400 text-sm mt-3'>No keys assigned to this container</p>
+                    {!workflow.isLocked ? (
+                        <div className='bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
+                            <h3 className='text-lg font-semibold text-white mb-4'>Select Translation Context</h3>
+                            <div className='space-y-4'>
+                                <div>
+                                    <label className='block text-sm font-medium text-gray-300 mb-2'>Namespace</label>
+                                    <Select
+                                        value={draftNamespace?._id || ''}
+                                        onValueChange={val => {
+                                            const ns = namespaces?.results?.find(
+                                                n => n._id === (val as Id<'namespaces'>)
+                                            );
+                                            setDraftNamespace(ns);
+                                            setDraftVersion(undefined);
+                                            setDraftLanguage(undefined);
+                                        }}>
+                                        <SelectTrigger className='bg-gray-900 border-gray-700 text-white w-full'>
+                                            <SelectValue placeholder='Select namespace' />
+                                        </SelectTrigger>
+                                        <SelectContent className='bg-gray-900 border-gray-700 text-white'>
+                                            {namespaces?.results?.map(ns => (
+                                                <SelectItem key={ns._id} value={ns._id} className='text-white'>
+                                                    {ns.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <label className='block text-sm font-medium text-gray-300 mb-2'>Version</label>
+                                    <Select
+                                        value={draftVersion?._id || ''}
+                                        onValueChange={val => {
+                                            const v = versions?.results?.find(
+                                                vv => vv._id === (val as Id<'namespaceVersions'>)
+                                            );
+                                            setDraftVersion(v);
+                                            setDraftLanguage(undefined);
+                                        }}
+                                        disabled={!draftNamespace}>
+                                        <SelectTrigger className='bg-gray-900 border-gray-700 text-white w-full'>
+                                            <SelectValue placeholder='Select version' />
+                                        </SelectTrigger>
+                                        <SelectContent className='bg-gray-900 border-gray-700 text-white'>
+                                            {versions?.results?.map(v => (
+                                                <SelectItem key={v._id} value={v._id} className='text-white'>
+                                                    {v.version}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <label className='block text-sm font-medium text-gray-300 mb-2'>Language</label>
+                                    <Select
+                                        value={draftLanguage?._id || ''}
+                                        onValueChange={val => {
+                                            const lang = languages?.results?.find(
+                                                l => l._id === (val as Id<'languages'>)
+                                            );
+                                            setDraftLanguage(lang);
+                                        }}
+                                        disabled={!draftVersion}>
+                                        <SelectTrigger className='bg-gray-900 border-gray-700 text-white w-full'>
+                                            <SelectValue placeholder='Select language' />
+                                        </SelectTrigger>
+                                        <SelectContent className='bg-gray-900 border-gray-700 text-white'>
+                                            {languages?.results?.map(l => (
+                                                <SelectItem key={l._id} value={l._id} className='text-white'>
+                                                    {l.languageCode}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className='flex gap-2 pt-2'>
+                                    {didInitTranslateMode ? (
+                                        <Button
+                                            variant='outline'
+                                            onClick={handleCancelWorkflowContext}
+                                            size='sm'
+                                            className='flex-1'>
+                                            Cancel
+                                        </Button>
                                     ) : null}
                                     <Button
+                                        onClick={handleSaveWorkflowContext}
+                                        disabled={!draftNamespace || !draftVersion || !draftLanguage}
                                         size='sm'
-                                        variant='outline'
-                                        onClick={() => setIsMappingsDialogOpen(true)}
-                                        className='border-gray-600 text-gray-300 hover:bg-gray-800 mt-3'>
-                                        Explore
+                                        className='flex-1'>
+                                        Save Context
                                     </Button>
                                 </div>
-                            ) : null}
+                            </div>
                         </div>
-                        <div className='order-1 lg:order-2 lg:col-span-3 min-h-0'>{children}</div>
-                    </div>
+                    ) : null}
+
+                    {selectedContainerId && workflow.isLocked ? (
+                        <div className='bg-gray-900/50 border border-gray-800/50 rounded-xl p-6 backdrop-blur-sm'>
+                            <h3 className='text-lg font-semibold text-white mb-4'>Container Details</h3>
+
+                            {selectedContainer?.description ? (
+                                <div className='mb-4 p-3 bg-gray-800/50 border border-gray-700/50 rounded-lg'>
+                                    <div className='flex items-start space-x-2'>
+                                        <FileText className='h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0' />
+                                        <div>
+                                            <p className='text-sm font-medium text-gray-300 mb-1'>Description</p>
+                                            <p className='text-sm text-gray-400'>{selectedContainer.description}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
+
+                            <div className='flex items-center justify-between mb-3'>
+                                <h4 className='text-md font-medium text-white'>Translation Keys</h4>
+                                <div className='flex items-center gap-2'>
+                                    {memoizedMappings.length > 0 ? (
+                                        <>
+                                            <span className='text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded'>
+                                                {memoizedMappings.length}
+                                            </span>
+                                            {unsavedCount > 0 ? (
+                                                <span className='text-xs text-gray-300 bg-gray-700/50 px-2 py-1 rounded'>
+                                                    {unsavedCount} unsaved
+                                                </span>
+                                            ) : null}
+                                        </>
+                                    ) : null}
+                                    {selectedContainerId && workflow.isLocked ? (
+                                        <Button
+                                            size='icon'
+                                            variant='ghost'
+                                            onClick={() => setIsKeyDialogOpen(true)}
+                                            className='text-gray-400 hover:text-white h-8 w-8'>
+                                            <Plus className='h-4 w-4' />
+                                        </Button>
+                                    ) : null}
+                                </div>
+                            </div>
+                            {memoizedMappings.length === 0 ? (
+                                <p className='text-gray-400 text-sm mb-3'>No keys assigned to this container</p>
+                            ) : null}
+                            <Button
+                                size='sm'
+                                variant='outline'
+                                onClick={() => setIsMappingsDialogOpen(true)}
+                                className='w-full'>
+                                View All Keys
+                            </Button>
+                        </div>
+                    ) : null}
                 </div>
+                <div className='flex-1 min-h-0 overflow-hidden'>{children}</div>
             </div>
+        </div>
             <ScreenshotDialogs
                 isKeyDialogOpen={isKeyDialogOpen}
                 isMappingsDialogOpen={isMappingsDialogOpen}
