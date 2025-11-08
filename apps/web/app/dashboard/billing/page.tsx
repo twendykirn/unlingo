@@ -78,6 +78,9 @@ export default function BillingPage() {
         let name = undefined;
 
         switch (requests) {
+            case 10000:
+                name = products.pro10kRequests?.name;
+                break;
             case 50000:
                 name = products.pro50kRequests?.name;
                 break;
@@ -117,8 +120,8 @@ export default function BillingPage() {
     }, [workspace]);
 
     useEffect(() => {
-        if (products && products.pro50kRequests) {
-            setSelectedPackage(products.pro50kRequests.id);
+        if (products && products.pro10kRequests) {
+            setSelectedPackage(products.pro10kRequests.id);
         }
     }, [products]);
 

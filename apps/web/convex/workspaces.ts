@@ -65,7 +65,7 @@ export const createOrganizationWorkspace = mutation({
                 requests: 10000,
                 projects: 1,
                 namespacesPerProject: 5,
-                languagesPerVersion: 6,
+                languagesPerVersion: 90,
                 versionsPerNamespace: 2,
             },
             workspaceUsageId,
@@ -390,7 +390,7 @@ export const updateWorkspaceLimits = internalMutation({
                     projects: 1,
                     namespacesPerProject: 5,
                     versionsPerNamespace: 2,
-                    languagesPerVersion: 6,
+                    languagesPerVersion: 90,
                 };
                 break;
             case 'starter':
@@ -399,7 +399,7 @@ export const updateWorkspaceLimits = internalMutation({
                     projects: 3,
                     namespacesPerProject: 12,
                     versionsPerNamespace: 2,
-                    languagesPerVersion: 25,
+                    languagesPerVersion: 90,
                 };
                 break;
             case 'premium':

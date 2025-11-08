@@ -6,6 +6,7 @@ import { useAuth } from '@clerk/nextjs';
 import { Authenticated, Unauthenticated } from 'convex/react';
 import { Toast } from '@/components/ui/toast';
 import { Providers } from '@/components/providers';
+import { SubscriptionRequiredModal } from './components/subscription-required-modal';
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -15,6 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Authenticated>
                 <Providers>
                     <Toast />
+                    <SubscriptionRequiredModal />
                     {children}
                 </Providers>
             </Authenticated>

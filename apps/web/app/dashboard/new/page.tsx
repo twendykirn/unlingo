@@ -7,10 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { motion } from 'motion/react';
-import { Building2, ArrowRight, Mail, CheckCircle, ArrowLeft } from 'lucide-react';
-import { useMutation } from 'convex/react';
+import { Building2, ArrowRight, Mail, CheckCircle, ArrowLeft, CreditCard } from 'lucide-react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import slugify from 'slugify';
+import { CheckoutLink } from '@convex-dev/polar/react';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import type { Key } from 'react-aria-components';
 
 export default function NewOrganizationPage() {
     const router = useRouter();
@@ -21,18 +24,26 @@ export default function NewOrganizationPage() {
     const [contactEmail, setContactEmail] = useState('');
     const [isCompletingSetup, setIsCompletingSetup] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
+    const [selectedPackage, setSelectedPackage] = useState<Key | null>('');
 
     const { user } = useUser();
     const { createOrganization, setActive } = useOrganizationList();
 
     const createWorkspaceMutation = useMutation(api.workspaces.createOrganizationWorkspace);
     const verifyWorkspaceContactEmailMutation = useMutation(api.workspaces.verifyWorkspaceContactEmail);
+    const products = useQuery(api.polar.getConfiguredProducts);
 
     useEffect(() => {
         if (user?.primaryEmailAddress?.emailAddress && !contactEmail) {
             setContactEmail(user.primaryEmailAddress.emailAddress);
         }
     }, [user, contactEmail]);
+
+    useEffect(() => {
+        if (products && products.pro10kRequests) {
+            setSelectedPackage(products.pro10kRequests.id);
+        }
+    }, [products]);
 
     const handleNameChange = (value: string) => {
         setName(value);
@@ -61,14 +72,13 @@ export default function NewOrganizationPage() {
         setCurrentStep(2);
     };
 
-    const handleCompleteSetup = async (e: React.FormEvent) => {
+    const handleEmailSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!contactEmail.trim() || !name.trim() || !slug.trim()) {
+        if (!contactEmail.trim()) {
             return;
         }
 
-        setIsCompletingSetup(true);
         setErrorMessage('');
 
         try {
@@ -77,13 +87,28 @@ export default function NewOrganizationPage() {
             });
 
             if (!verifyContactEmail.success) {
-                setIsCompletingSetup(false);
                 setErrorMessage(
                     'This email is already associated with another workspace. Please use a different email address.'
                 );
                 return;
             }
 
+            setCurrentStep(3);
+        } catch (error) {
+            console.error('Failed to verify email:', error);
+            setErrorMessage('Failed to verify email. Please try again.');
+        }
+    };
+
+    const handleCompleteSetup = async () => {
+        if (!contactEmail.trim() || !name.trim() || !slug.trim()) {
+            return;
+        }
+
+        setIsCompletingSetup(true);
+        setErrorMessage('');
+
+        try {
             const organization = await createOrganization?.({
                 name: name.trim(),
                 slug: slug.trim(),
@@ -120,6 +145,7 @@ export default function NewOrganizationPage() {
     const stepperItems = [
         { number: 1, title: 'Organization', description: 'Create your organization' },
         { number: 2, title: 'Contact Email', description: 'Set up contact details' },
+        { number: 3, title: 'Subscription', description: 'Choose your plan' },
     ];
 
     if (!user?.id) {
@@ -245,7 +271,7 @@ export default function NewOrganizationPage() {
                             <p className='text-gray-400'>We need your contact email to complete the setup</p>
                         </div>
 
-                        <form onSubmit={handleCompleteSetup} className='space-y-6'>
+                        <form onSubmit={handleEmailSubmit} className='space-y-6'>
                             <div className='space-y-2'>
                                 <Label htmlFor='contactEmail' className='text-sm font-medium text-gray-300'>
                                     Contact Email
@@ -283,22 +309,117 @@ export default function NewOrganizationPage() {
                                 </Button>
                                 <Button
                                     type='submit'
-                                    isDisabled={!isEmailFormValid || isCompletingSetup}
+                                    isDisabled={!isEmailFormValid}
                                     className='flex-1 bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed'>
-                                    {isCompletingSetup ? (
-                                        <div className='flex items-center justify-center space-x-2'>
-                                            <div className='w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin'></div>
-                                            <span>Completing...</span>
-                                        </div>
-                                    ) : (
-                                        <div className='flex items-center justify-center space-x-2'>
-                                            <CheckCircle className='h-4 w-4' />
-                                            <span>Complete Setup</span>
-                                        </div>
-                                    )}
+                                    <div className='flex items-center justify-center space-x-2'>
+                                        <span>Continue</span>
+                                        <ArrowRight className='h-4 w-4' />
+                                    </div>
                                 </Button>
                             </div>
                         </form>
+                    </motion.div>
+                ) : null}
+
+                {currentStep === 3 ? (
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3 }}>
+                        <div className='text-center mb-8'>
+                            <div className='mx-auto w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mb-6'>
+                                <CreditCard className='h-8 w-8 text-white' />
+                            </div>
+                            <h1 className='text-3xl font-bold mb-2'>Choose Your Subscription</h1>
+                            <p className='text-gray-400'>Select a plan to continue with your organization setup</p>
+                        </div>
+
+                        <div className='space-y-6'>
+                            <div className='bg-gray-900/50 border border-gray-800 rounded-lg p-6'>
+                                <h3 className='text-xl font-semibold mb-4'>Subscription Plan</h3>
+                                <p className='text-gray-400 mb-6'>
+                                    All plans include 90 languages per version and access to premium features. Start with a 7-day free trial!
+                                </p>
+
+                                {products ? (
+                                    <div className='space-y-4'>
+                                        <div className='space-y-2'>
+                                            <Label>Select a subscription package</Label>
+                                            <Select
+                                                value={selectedPackage}
+                                                onChange={setSelectedPackage}
+                                                aria-label='Select a subscription package'>
+                                                <SelectTrigger />
+                                                <SelectContent
+                                                    items={Object.values(products)
+                                                        .filter(p => p !== undefined)
+                                                        .map(p => ({ id: p.id, title: p.name }))}>
+                                                    {item => (
+                                                        <SelectItem id={item.id} textValue={item.title}>
+                                                            {item.title}
+                                                        </SelectItem>
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className='flex items-center justify-center py-8'>
+                                        <div className='w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin'></div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className='flex space-x-3'>
+                                <Button
+                                    type='button'
+                                    intent='outline'
+                                    onClick={() => setCurrentStep(2)}
+                                    isDisabled={isCompletingSetup}
+                                    className='flex-1 border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white'>
+                                    <ArrowLeft className='h-4 w-4 mr-2' />
+                                    Back
+                                </Button>
+                                {selectedPackage ? (
+                                    <CheckoutLink
+                                        polarApi={api.polar}
+                                        productIds={[selectedPackage as string]}
+                                        onSuccess={handleCompleteSetup}>
+                                        <Button
+                                            isDisabled={isCompletingSetup}
+                                            className='flex-1 bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed'>
+                                            {isCompletingSetup ? (
+                                                <div className='flex items-center justify-center space-x-2'>
+                                                    <div className='w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin'></div>
+                                                    <span>Setting up...</span>
+                                                </div>
+                                            ) : (
+                                                <div className='flex items-center justify-center space-x-2'>
+                                                    <CheckCircle className='h-4 w-4' />
+                                                    <span>Subscribe & Complete</span>
+                                                </div>
+                                            )}
+                                        </Button>
+                                    </CheckoutLink>
+                                ) : (
+                                    <Button
+                                        isDisabled
+                                        className='flex-1 bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed'>
+                                        Select a plan to continue
+                                    </Button>
+                                )}
+                            </div>
+
+                            {errorMessage ? (
+                                <p className='text-xs text-red-400 text-center'>{errorMessage}</p>
+                            ) : null}
+
+                            <div className='text-center'>
+                                <p className='text-sm text-gray-500'>
+                                    Need help? <a href='mailto:support@unlingo.com' className='text-white hover:underline'>Contact our support team</a>
+                                </p>
+                            </div>
+                        </div>
                     </motion.div>
                 ) : null}
             </motion.div>

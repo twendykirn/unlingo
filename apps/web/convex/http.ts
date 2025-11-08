@@ -27,6 +27,7 @@ function getRequestLimitFromProduct(productId?: string): number | undefined {
     if (!productId) return undefined;
 
     const requestLimits: Record<string, number> = {
+        [process.env.POLAR_PRO_10K_PRODUCT_ID!]: 10000,
         [process.env.POLAR_PRO_50K_PRODUCT_ID!]: 50000,
         [process.env.POLAR_PRO_250K_PRODUCT_ID!]: 250000,
         [process.env.POLAR_PRO_500K_PRODUCT_ID!]: 500000,
@@ -44,6 +45,8 @@ function getTierFromProduct(productId?: string) {
     if (!productId) return 'free';
 
     switch (productId) {
+        case process.env.POLAR_PRO_10K_PRODUCT_ID!:
+            return 'starter';
         case process.env.POLAR_PRO_50K_PRODUCT_ID!:
             return 'starter';
         case process.env.POLAR_PRO_250K_PRODUCT_ID!:
