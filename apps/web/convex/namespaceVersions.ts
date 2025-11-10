@@ -307,6 +307,21 @@ export const mergeNamespaceVersions = action({
             });
         }
 
+        // Handle schema file transfer BEFORE workpool operations
+        // Delete old target schema file and prepare to use source schema
+        await ctx.runMutation(internal.namespaceVersions.replaceSchemaFile, {
+            targetVersionId: targetVersionDoc._id,
+            sourceSchemaFileId: sourceVersionDoc.jsonSchemaFileId,
+            sourceSchemaSize: sourceVersionDoc.jsonSchemaSize,
+        });
+
+        // Set all languages in both versions to 'merging' status
+        await ctx.runMutation(internal.namespaceVersions.setLanguagesStatus, {
+            sourceVersionId: sourceVersionDoc._id,
+            targetVersionId: targetVersionDoc._id,
+            status: 'merging',
+        });
+
         await mergeWorkpool.enqueueActionBatch(
             ctx,
             internal.namespaceVersions.mergeLanguage,
@@ -323,12 +338,11 @@ export const mergeNamespaceVersions = action({
                     sourceVersionId: sourceVersionDoc._id,
                     targetVersionId: targetVersionDoc._id,
                     namespaceId: args.namespaceId,
-                    sourceSchemaFileId: sourceVersionDoc.jsonSchemaFileId,
-                    sourceSchemaSize: sourceVersionDoc.jsonSchemaSize,
                 },
             }
         );
 
+        // Note: Returns immediately after enqueuing. Actual merge completes asynchronously via workpool.
         return { success: true };
     },
 });
@@ -415,39 +429,51 @@ export const completeMerge = internalMutation({
             sourceVersionId: v.id('namespaceVersions'),
             targetVersionId: v.id('namespaceVersions'),
             namespaceId: v.id('namespaces'),
-            sourceSchemaFileId: v.optional(v.id('_storage')),
-            sourceSchemaSize: v.optional(v.number()),
         })
     ),
     handler: async (ctx, { context }) => {
+        // Clear version statuses
         await ctx.db.patch(context.sourceVersionId, {
             status: undefined,
             updatedAt: Date.now(),
         });
 
-        // Get target version to check if it has an existing schema file to delete
-        const targetVersion = await ctx.db.get(context.targetVersionId);
+        // Get all languages from source version
+        const sourceLanguages = await ctx.db
+            .query('languages')
+            .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', context.sourceVersionId))
+            .collect();
 
-        // Delete old target schema file if it exists
-        if (targetVersion?.jsonSchemaFileId) {
-            await ctx.storage.delete(targetVersion.jsonSchemaFileId);
-        }
-
+        // Get all languages from target version
         const targetLanguages = await ctx.db
             .query('languages')
             .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', context.targetVersionId))
             .collect();
 
-        // Update target version: clear merging status, update usage, and set new schema (if source has one)
+        // Update target version: clear merging status and update usage
         await ctx.db.patch(context.targetVersionId, {
             status: undefined,
-            jsonSchemaFileId: context.sourceSchemaFileId,
-            jsonSchemaSize: context.sourceSchemaSize,
             usage: {
                 languages: targetLanguages.length,
             },
             updatedAt: Date.now(),
         });
+
+        // Clear 'merging' status from all source languages
+        for (const language of sourceLanguages) {
+            await ctx.db.patch(language._id, {
+                status: undefined,
+                updatedAt: Date.now(),
+            });
+        }
+
+        // Clear 'merging' status from all target languages
+        for (const language of targetLanguages) {
+            await ctx.db.patch(language._id, {
+                status: undefined,
+                updatedAt: Date.now(),
+            });
+        }
     },
 });
 
@@ -581,5 +607,68 @@ export const createLanguageForMerge = internalMutation({
             fileSize: args.fileSize,
             updatedAt: Date.now(),
         });
+    },
+});
+
+export const replaceSchemaFile = internalMutation({
+    args: {
+        targetVersionId: v.id('namespaceVersions'),
+        sourceSchemaFileId: v.optional(v.id('_storage')),
+        sourceSchemaSize: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const targetVersion = await ctx.db.get(args.targetVersionId);
+        if (!targetVersion) {
+            throw new Error('Target version not found');
+        }
+
+        // Delete old target schema file if it exists
+        if (targetVersion.jsonSchemaFileId) {
+            await ctx.storage.delete(targetVersion.jsonSchemaFileId);
+        }
+
+        // Update target version with source schema file (or undefined if source has no schema)
+        await ctx.db.patch(args.targetVersionId, {
+            jsonSchemaFileId: args.sourceSchemaFileId,
+            jsonSchemaSize: args.sourceSchemaSize,
+            updatedAt: Date.now(),
+        });
+    },
+});
+
+export const setLanguagesStatus = internalMutation({
+    args: {
+        sourceVersionId: v.id('namespaceVersions'),
+        targetVersionId: v.id('namespaceVersions'),
+        status: v.optional(v.union(v.literal('merging'), v.literal('syncing'))),
+    },
+    handler: async (ctx, args) => {
+        // Get all languages from source version
+        const sourceLanguages = await ctx.db
+            .query('languages')
+            .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', args.sourceVersionId))
+            .collect();
+
+        // Get all languages from target version
+        const targetLanguages = await ctx.db
+            .query('languages')
+            .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', args.targetVersionId))
+            .collect();
+
+        // Set status for all source languages
+        for (const language of sourceLanguages) {
+            await ctx.db.patch(language._id, {
+                status: args.status,
+                updatedAt: Date.now(),
+            });
+        }
+
+        // Set status for all target languages
+        for (const language of targetLanguages) {
+            await ctx.db.patch(language._id, {
+                status: args.status,
+                updatedAt: Date.now(),
+            });
+        }
     },
 });
