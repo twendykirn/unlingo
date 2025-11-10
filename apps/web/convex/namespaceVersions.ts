@@ -323,6 +323,8 @@ export const mergeNamespaceVersions = action({
                     sourceVersionId: sourceVersionDoc._id,
                     targetVersionId: targetVersionDoc._id,
                     namespaceId: args.namespaceId,
+                    sourceSchemaFileId: sourceVersionDoc.jsonSchemaFileId,
+                    sourceSchemaSize: sourceVersionDoc.jsonSchemaSize,
                 },
             }
         );
@@ -413,6 +415,8 @@ export const completeMerge = internalMutation({
             sourceVersionId: v.id('namespaceVersions'),
             targetVersionId: v.id('namespaceVersions'),
             namespaceId: v.id('namespaces'),
+            sourceSchemaFileId: v.optional(v.id('_storage')),
+            sourceSchemaSize: v.optional(v.number()),
         })
     ),
     handler: async (ctx, { context }) => {
@@ -421,17 +425,24 @@ export const completeMerge = internalMutation({
             updatedAt: Date.now(),
         });
 
-        await ctx.db.patch(context.targetVersionId, {
-            status: undefined,
-            updatedAt: Date.now(),
-        });
+        // Get target version to check if it has an existing schema file to delete
+        const targetVersion = await ctx.db.get(context.targetVersionId);
+
+        // Delete old target schema file if it exists
+        if (targetVersion?.jsonSchemaFileId) {
+            await ctx.storage.delete(targetVersion.jsonSchemaFileId);
+        }
 
         const targetLanguages = await ctx.db
             .query('languages')
             .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', context.targetVersionId))
             .collect();
 
+        // Update target version: clear merging status, update usage, and set new schema (if source has one)
         await ctx.db.patch(context.targetVersionId, {
+            status: undefined,
+            jsonSchemaFileId: context.sourceSchemaFileId,
+            jsonSchemaSize: context.sourceSchemaSize,
             usage: {
                 languages: targetLanguages.length,
             },
