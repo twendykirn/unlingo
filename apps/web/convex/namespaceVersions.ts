@@ -364,7 +364,7 @@ export const mergeNamespaceVersions = action({
                 context: {
                     sourceVersionId: sourceVersionDoc._id,
                     targetVersionId: targetVersionDoc._id,
-                    namespaceId: args.namespaceId,
+                    primaryLanguageId: sourceVersionDoc.primaryLanguageId,
                 },
             }
         );
@@ -454,6 +454,7 @@ export const completeMerge = internalMutation({
         v.object({
             sourceVersionId: v.id('namespaceVersions'),
             targetVersionId: v.id('namespaceVersions'),
+            primaryLanguageId: v.id('languages'),
         })
     ),
     handler: async (ctx, { context }) => {
@@ -472,11 +473,26 @@ export const completeMerge = internalMutation({
             .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', context.targetVersionId))
             .collect();
 
+        let primaryLanguageId;
+
+        const primaryLanguageSource = sourceLanguages.find(language => language._id === context.primaryLanguageId);
+
+        if (primaryLanguageSource) {
+            const primaryLanguageTarget = targetLanguages.find(
+                language => language.languageCode === primaryLanguageSource.languageCode
+            );
+
+            if (primaryLanguageTarget) {
+                primaryLanguageId = primaryLanguageTarget._id;
+            }
+        }
+
         await ctx.db.patch(context.targetVersionId, {
             status: undefined,
             usage: {
                 languages: targetLanguages.length,
             },
+            primaryLanguageId,
             updatedAt: Date.now(),
         });
 
