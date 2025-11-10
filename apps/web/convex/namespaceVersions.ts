@@ -220,10 +220,10 @@ export const mergeNamespaceVersions = action({
             throw new Error('Source and target versions must be different');
         }
 
-        // Verify workspace access
         if (typeof identity.org !== 'string') {
             throw new Error('Invalid organization identifier');
         }
+
         const clerkId = identity.org;
         const workspace = await ctx.runMutation(internal.namespaceVersions.getWorkspace, {
             workspaceId: args.workspaceId,
@@ -234,13 +234,6 @@ export const mergeNamespaceVersions = action({
             throw new Error('Workspace not found or access denied');
         }
 
-        // Get namespace and verify access
-        const namespace = await ctx.runMutation(internal.namespaceVersions.getNamespaceForMerge, {
-            namespaceId: args.namespaceId,
-            workspaceId: args.workspaceId,
-        });
-
-        // Get source and target versions
         const sourceVersionDoc = await ctx.runMutation(internal.namespaceVersions.getVersionByName, {
             namespaceId: args.namespaceId,
             version: args.sourceVersion,
@@ -255,7 +248,6 @@ export const mergeNamespaceVersions = action({
             throw new Error('Source or target version not found');
         }
 
-        // Set both versions to merging status
         await ctx.runMutation(internal.namespaceVersions.setVersionStatus, {
             versionId: sourceVersionDoc._id,
             status: 'merging',
@@ -266,17 +258,14 @@ export const mergeNamespaceVersions = action({
             status: 'merging',
         });
 
-        // Get all languages from source version
         const sourceLanguages = await ctx.runMutation(internal.namespaceVersions.getVersionLanguages, {
             versionId: sourceVersionDoc._id,
         });
 
-        // Get all languages from target version
         const targetLanguages = await ctx.runMutation(internal.namespaceVersions.getVersionLanguages, {
             versionId: targetVersionDoc._id,
         });
 
-        // Prepare merge operations
         type MergeOperation = {
             languageCode: string;
             sourceLanguageId?: Id<'languages'>;
@@ -286,12 +275,10 @@ export const mergeNamespaceVersions = action({
 
         const mergeOperations: MergeOperation[] = [];
 
-        // Map target languages by code for easy lookup
         const targetLanguageMap = new Map(
             targetLanguages.map(lang => [lang.languageCode, lang] as [string, typeof lang])
         );
 
-        // Process source languages
         for (const sourceLang of sourceLanguages) {
             const targetLang = targetLanguageMap.get(sourceLang.languageCode);
             if (targetLang) {
@@ -311,7 +298,6 @@ export const mergeNamespaceVersions = action({
             }
         }
 
-        // Remaining target languages need to be deleted - add them to the workpool batch
         const languagesToDelete = Array.from(targetLanguageMap.values());
         for (const langToDelete of languagesToDelete) {
             mergeOperations.push({
@@ -321,7 +307,6 @@ export const mergeNamespaceVersions = action({
             });
         }
 
-        // Use workpool to process merge operations (including deletions for atomicity)
         await mergeWorkpool.enqueueActionBatch(
             ctx,
             internal.namespaceVersions.mergeLanguage,
@@ -342,8 +327,6 @@ export const mergeNamespaceVersions = action({
             }
         );
 
-        // Note: Returns immediately after enqueuing. Actual merge completes asynchronously via workpool.
-        // The completeMerge callback will clear the merging status and update usage metrics when finished.
         return { success: true };
     },
 });
@@ -360,7 +343,6 @@ export const mergeLanguage = internalAction({
         workspaceId: v.id('workspaces'),
     },
     handler: async (ctx, args) => {
-        // Handle delete operation
         if (args.operation === 'delete') {
             if (!args.targetLanguageId) {
                 throw new Error(`No target language ID provided for delete operation: ${args.languageCode}`);
@@ -372,12 +354,10 @@ export const mergeLanguage = internalAction({
             return;
         }
 
-        // For create/update operations, we need source language
         if (!args.sourceLanguageId) {
             throw new Error(`No source language ID provided for ${args.operation} operation: ${args.languageCode}`);
         }
 
-        // Get source language file
         const sourceLanguage = await ctx.runMutation(internal.namespaceVersions.getLanguageById, {
             languageId: args.sourceLanguageId,
         });
@@ -386,7 +366,6 @@ export const mergeLanguage = internalAction({
             throw new Error(`No file found for source language: ${args.languageCode}`);
         }
 
-        // Download source file content
         const fileUrl = await ctx.storage.getUrl(sourceLanguage.fileId);
         if (!fileUrl) {
             throw new Error(`Failed to get URL for source language file: ${args.languageCode}`);
@@ -398,7 +377,6 @@ export const mergeLanguage = internalAction({
         }
         const content = await response.text();
 
-        // Upload content to target version
         const contentBlob = new Blob([content], { type: 'application/json' });
         const uploadUrl = await ctx.storage.generateUploadUrl();
         const uploadResponse = await fetch(uploadUrl, {
@@ -413,14 +391,12 @@ export const mergeLanguage = internalAction({
         const { storageId } = await uploadResponse.json();
 
         if (args.operation === 'update' && args.targetLanguageId) {
-            // Update existing language
             await ctx.runMutation(internal.namespaceVersions.updateLanguageForMerge, {
                 languageId: args.targetLanguageId,
                 fileId: storageId,
                 fileSize: contentBlob.size,
             });
         } else if (args.operation === 'create') {
-            // Create new language
             await ctx.runMutation(internal.namespaceVersions.createLanguageForMerge, {
                 versionId: args.targetVersionId,
                 languageCode: args.languageCode,
@@ -440,7 +416,6 @@ export const completeMerge = internalMutation({
         })
     ),
     handler: async (ctx, { context }) => {
-        // Clear merging status
         await ctx.db.patch(context.sourceVersionId, {
             status: undefined,
             updatedAt: Date.now(),
@@ -451,7 +426,6 @@ export const completeMerge = internalMutation({
             updatedAt: Date.now(),
         });
 
-        // Recalculate language counts
         const targetLanguages = await ctx.db
             .query('languages')
             .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', context.targetVersionId))
@@ -466,8 +440,6 @@ export const completeMerge = internalMutation({
     },
 });
 
-// Internal queries and mutations for merge operations
-
 export const getWorkspace = internalMutation({
     args: {
         workspaceId: v.id('workspaces'),
@@ -479,26 +451,6 @@ export const getWorkspace = internalMutation({
             return null;
         }
         return workspace;
-    },
-});
-
-export const getNamespaceForMerge = internalMutation({
-    args: {
-        namespaceId: v.id('namespaces'),
-        workspaceId: v.id('workspaces'),
-    },
-    handler: async (ctx, args) => {
-        const namespace = await ctx.db.get(args.namespaceId);
-        if (!namespace) {
-            throw new Error('Namespace not found');
-        }
-
-        const project = await ctx.db.get(namespace.projectId);
-        if (!project || project.workspaceId !== args.workspaceId) {
-            throw new Error('Access denied');
-        }
-
-        return namespace;
     },
 });
 
@@ -560,7 +512,6 @@ export const deleteLanguageForMerge = internalMutation({
             return;
         }
 
-        // Delete screenshot mappings
         const mappings = await ctx.db
             .query('screenshotKeyMappings')
             .withIndex('by_version_language_key', q =>
@@ -572,12 +523,10 @@ export const deleteLanguageForMerge = internalMutation({
             await ctx.db.delete(mapping._id);
         }
 
-        // Delete file
         if (language.fileId) {
             await ctx.storage.delete(language.fileId);
         }
 
-        // Delete language
         await ctx.db.delete(args.languageId);
     },
 });
@@ -594,12 +543,10 @@ export const updateLanguageForMerge = internalMutation({
             throw new Error('Language not found');
         }
 
-        // Delete old file
         if (language.fileId) {
             await ctx.storage.delete(language.fileId);
         }
 
-        // Update language with new file
         await ctx.db.patch(args.languageId, {
             fileId: args.fileId,
             fileSize: args.fileSize,
