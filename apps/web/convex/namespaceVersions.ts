@@ -1,11 +1,12 @@
 import { paginationOptsValidator } from 'convex/server';
-import { action, internalAction, internalMutation, mutation, query } from './_generated/server';
+import { action, internalAction, internalMutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { Workpool, vOnCompleteArgs } from '@convex-dev/workpool';
 import { components, internal } from './_generated/api';
 import { Id } from './_generated/dataModel';
 
-const mergeWorkpool = new Workpool((components as any).mergeWorkpool, {
+const mergeWorkpool = new Workpool(components.mergeWorkpool, {
+    maxParallelism: 25,
     retryActionsByDefault: true,
     defaultRetryBehavior: { maxAttempts: 3, initialBackoffMs: 1000, base: 2 },
 });
@@ -307,19 +308,45 @@ export const mergeNamespaceVersions = action({
             });
         }
 
-        // Handle schema file transfer BEFORE workpool operations
-        // Delete old target schema file and prepare to use source schema
-        await ctx.runMutation(internal.namespaceVersions.replaceSchemaFile, {
-            targetVersionId: targetVersionDoc._id,
-            sourceSchemaFileId: sourceVersionDoc.jsonSchemaFileId,
-            sourceSchemaSize: sourceVersionDoc.jsonSchemaSize,
+        const languageIds = [...sourceLanguages.map(lang => lang._id), ...languagesToDelete.map(lang => lang._id)];
+
+        if (!sourceVersionDoc.jsonSchemaFileId || !sourceVersionDoc.jsonSchemaSize) {
+            throw new Error(`Version schema not found for ${sourceVersionDoc.version}`);
+        }
+
+        const fileUrl = await ctx.storage.getUrl(sourceVersionDoc.jsonSchemaFileId);
+        if (!fileUrl) {
+            throw new Error(`Failed to get URL for version schema: ${sourceVersionDoc.version}`);
+        }
+
+        const response = await fetch(fileUrl);
+        if (!response.ok) {
+            throw new Error(
+                `Failed to download version schema for ${sourceVersionDoc.version}: ${response.statusText}`
+            );
+        }
+        const content = await response.text();
+
+        const schemaContent = JSON.stringify(content, null, 2);
+        const schemaBlob = new Blob([schemaContent], { type: 'application/json' });
+
+        const schemaUploadUrl = await ctx.storage.generateUploadUrl();
+        const schemaUploadResponse = await fetch(schemaUploadUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: schemaBlob,
         });
 
-        // Set all languages in both versions to 'merging' status
-        await ctx.runMutation(internal.namespaceVersions.setLanguagesStatus, {
-            sourceVersionId: sourceVersionDoc._id,
+        const { storageId: schemaStorageId } = await schemaUploadResponse.json();
+
+        await ctx.runMutation(internal.namespaceVersions.replaceSchemaFile, {
             targetVersionId: targetVersionDoc._id,
-            status: 'merging',
+            sourceSchemaFileId: schemaStorageId,
+            sourceSchemaSize: schemaBlob.size,
+        });
+
+        await ctx.runMutation(internal.namespaceVersions.setLanguagesStatusToMerging, {
+            languages: languageIds,
         });
 
         await mergeWorkpool.enqueueActionBatch(
@@ -342,7 +369,6 @@ export const mergeNamespaceVersions = action({
             }
         );
 
-        // Note: Returns immediately after enqueuing. Actual merge completes asynchronously via workpool.
         return { success: true };
     },
 });
@@ -428,29 +454,24 @@ export const completeMerge = internalMutation({
         v.object({
             sourceVersionId: v.id('namespaceVersions'),
             targetVersionId: v.id('namespaceVersions'),
-            namespaceId: v.id('namespaces'),
         })
     ),
     handler: async (ctx, { context }) => {
-        // Clear version statuses
         await ctx.db.patch(context.sourceVersionId, {
             status: undefined,
             updatedAt: Date.now(),
         });
 
-        // Get all languages from source version
         const sourceLanguages = await ctx.db
             .query('languages')
             .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', context.sourceVersionId))
             .collect();
 
-        // Get all languages from target version
         const targetLanguages = await ctx.db
             .query('languages')
             .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', context.targetVersionId))
             .collect();
 
-        // Update target version: clear merging status and update usage
         await ctx.db.patch(context.targetVersionId, {
             status: undefined,
             usage: {
@@ -459,16 +480,7 @@ export const completeMerge = internalMutation({
             updatedAt: Date.now(),
         });
 
-        // Clear 'merging' status from all source languages
-        for (const language of sourceLanguages) {
-            await ctx.db.patch(language._id, {
-                status: undefined,
-                updatedAt: Date.now(),
-            });
-        }
-
-        // Clear 'merging' status from all target languages
-        for (const language of targetLanguages) {
+        for (const language of [...sourceLanguages, ...targetLanguages]) {
             await ctx.db.patch(language._id, {
                 status: undefined,
                 updatedAt: Date.now(),
@@ -622,12 +634,10 @@ export const replaceSchemaFile = internalMutation({
             throw new Error('Target version not found');
         }
 
-        // Delete old target schema file if it exists
         if (targetVersion.jsonSchemaFileId) {
             await ctx.storage.delete(targetVersion.jsonSchemaFileId);
         }
 
-        // Update target version with source schema file (or undefined if source has no schema)
         await ctx.db.patch(args.targetVersionId, {
             jsonSchemaFileId: args.sourceSchemaFileId,
             jsonSchemaSize: args.sourceSchemaSize,
@@ -636,37 +646,16 @@ export const replaceSchemaFile = internalMutation({
     },
 });
 
-export const setLanguagesStatus = internalMutation({
+export const setLanguagesStatusToMerging = internalMutation({
     args: {
-        sourceVersionId: v.id('namespaceVersions'),
-        targetVersionId: v.id('namespaceVersions'),
-        status: v.optional(v.union(v.literal('merging'), v.literal('syncing'))),
+        languages: v.array(v.id('languages')),
     },
     handler: async (ctx, args) => {
-        // Get all languages from source version
-        const sourceLanguages = await ctx.db
-            .query('languages')
-            .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', args.sourceVersionId))
-            .collect();
+        const { languages } = args;
 
-        // Get all languages from target version
-        const targetLanguages = await ctx.db
-            .query('languages')
-            .withIndex('by_namespace_version_language', q => q.eq('namespaceVersionId', args.targetVersionId))
-            .collect();
-
-        // Set status for all source languages
-        for (const language of sourceLanguages) {
-            await ctx.db.patch(language._id, {
-                status: args.status,
-                updatedAt: Date.now(),
-            });
-        }
-
-        // Set status for all target languages
-        for (const language of targetLanguages) {
-            await ctx.db.patch(language._id, {
-                status: args.status,
+        for (const language of languages) {
+            await ctx.db.patch(language, {
+                status: 'merging',
                 updatedAt: Date.now(),
             });
         }
