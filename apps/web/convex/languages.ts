@@ -9,11 +9,13 @@ import { applyLanguageChanges } from './utils/applyLanguageChanges';
 import { Workpool } from '@convex-dev/workpool';
 
 const languagePool = new Workpool(components.languageWorkpool, {
+    maxParallelism: 25,
     retryActionsByDefault: true,
     defaultRetryBehavior: { maxAttempts: 3, initialBackoffMs: 1000, base: 2 },
 });
 
 const createLanguagePool = new Workpool(components.createLanguageWorkpool, {
+    maxParallelism: 25,
     retryActionsByDefault: true,
     defaultRetryBehavior: { maxAttempts: 3, initialBackoffMs: 1000, base: 2 },
 });

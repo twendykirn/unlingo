@@ -3,7 +3,14 @@
 import { usePaginatedQuery, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useEffect, useState } from 'react';
-import { PlusIcon, TrashIcon, PencilSquareIcon, EllipsisVerticalIcon, EyeIcon } from '@heroicons/react/24/outline';
+import {
+    PlusIcon,
+    TrashIcon,
+    PencilSquareIcon,
+    EllipsisVerticalIcon,
+    EyeIcon,
+    ArrowsRightLeftIcon,
+} from '@heroicons/react/24/outline';
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@/components/ui/table';
@@ -17,6 +24,7 @@ import ProjectsSelector from '../components/projects-selector';
 import NamespaceCreateSheet from './components/namespace-create-sheet';
 import NamespaceEditSheet from './components/namespace-edit-sheet';
 import NamespaceRemoveModal from './components/namespace-remove-modal';
+import NamespaceMergeModal from './components/namespace-merge-modal';
 import { useDateFormatter } from '@react-aria/i18n';
 
 export default function NamespacesPage() {
@@ -29,6 +37,7 @@ export default function NamespacesPage() {
     const [isEditNamespaceSheetOpen, setIsEditNamespaceSheetOpen] = useState(false);
     const [isDeleteNamespaceModalOpen, setIsDeleteNamespaceModalOpen] = useState(false);
     const [isCreateNamespaceSheetOpen, setIsCreateNamespaceSheetOpen] = useState(false);
+    const [isMergeNamespaceModalOpen, setIsMergeNamespaceModalOpen] = useState(false);
     const [selectedNamespace, setSelectedNamespace] = useState<Doc<'namespaces'> | null>(null);
 
     const formatter = useDateFormatter({ dateStyle: 'long' });
@@ -139,6 +148,13 @@ export default function NamespacesPage() {
                                                                 }}>
                                                                 <PencilSquareIcon /> Edit
                                                             </MenuItem>
+                                                            <MenuItem
+                                                                onClick={() => {
+                                                                    setIsMergeNamespaceModalOpen(true);
+                                                                    setSelectedNamespace(item);
+                                                                }}>
+                                                                <ArrowsRightLeftIcon /> Merge Versions
+                                                            </MenuItem>
                                                             <MenuSeparator />
                                                             <MenuItem
                                                                 intent='danger'
@@ -185,6 +201,15 @@ export default function NamespacesPage() {
                                     setSelectedNamespace(null);
                                 }}
                                 project={project}
+                                namespace={selectedNamespace}
+                                workspace={workspace}
+                            />
+                            <NamespaceMergeModal
+                                isOpen={isMergeNamespaceModalOpen}
+                                setIsOpen={value => {
+                                    setIsMergeNamespaceModalOpen(value);
+                                    setSelectedNamespace(null);
+                                }}
                                 namespace={selectedNamespace}
                                 workspace={workspace}
                             />
