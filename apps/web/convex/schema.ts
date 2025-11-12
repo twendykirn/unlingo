@@ -69,15 +69,6 @@ export default defineSchema({
         updatedAt: v.number(),
         status: v.optional(v.union(v.literal('merging'), v.literal('syncing'))),
     }).index('by_namespace_version_language', ['namespaceVersionId', 'languageCode']),
-    apiKeys: defineTable({
-        workspaceId: v.id('workspaces'),
-        projectId: v.id('projects'),
-        name: v.string(),
-        keyHash: v.string(),
-        prefix: v.string(), // visible prefix (e.g., "ulg_live_" or "ulg_test_")
-    })
-        .index('by_workspace_project', ['workspaceId', 'projectId'])
-        .index('by_key_hash', ['keyHash']),
     screenshots: defineTable({
         projectId: v.id('projects'),
         name: v.string(),

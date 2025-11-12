@@ -34,6 +34,8 @@ const ProjectCreateSheet = ({ isOpen, setIsOpen, workspace }: Props) => {
     const createProject = useMutation(api.projects.createProject);
 
     const handleCreate = async (close: () => void) => {
+        if (!name.trim()) return;
+
         if (workspace.currentUsage.projects >= workspace.limits.projects) {
             toast.error('Cannot create project. Please check your subscription limits.');
             return;
@@ -89,7 +91,7 @@ const ProjectCreateSheet = ({ isOpen, setIsOpen, workspace }: Props) => {
                                 <Input placeholder='Enter project name' />
                                 <FieldError />
                             </TextField>
-                            <TextField isRequired value={description} onChange={setDescription}>
+                            <TextField value={description} onChange={setDescription}>
                                 <Label>Description</Label>
                                 <Textarea placeholder='Enter project description' />
                                 <FieldError />

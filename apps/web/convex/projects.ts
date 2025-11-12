@@ -1,6 +1,7 @@
 import { paginationOptsValidator } from 'convex/server';
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
+import { internal } from './_generated/api';
 
 export const getProjects = query({
     args: {
@@ -98,6 +99,11 @@ export const createProject = mutation({
             },
         });
 
+        await ctx.scheduler.runAfter(0, internal.keys.createUnkeyIdentity, {
+            projectId,
+            workspaceId: workspace._id,
+        });
+
         return projectId;
     },
 });
@@ -171,6 +177,11 @@ export const deleteProject = mutation({
             throw new Error('Project not found or access denied');
         }
 
+        await ctx.scheduler.runAfter(0, internal.keys.deleteUnkeyIdentity, {
+            projectId: project._id,
+            workspaceId: workspace._id,
+        });
+
         const releases = await ctx.db
             .query('releases')
             .withIndex('by_project_tag', q => q.eq('projectId', args.projectId))
@@ -243,17 +254,6 @@ export const deleteProject = mutation({
             }
 
             await ctx.db.delete(namespace._id);
-        }
-
-        const apiKeys = await ctx.db
-            .query('apiKeys')
-            .withIndex('by_workspace_project', q =>
-                q.eq('workspaceId', args.workspaceId).eq('projectId', args.projectId)
-            )
-            .collect();
-
-        for (const apiKey of apiKeys) {
-            await ctx.db.delete(apiKey._id);
         }
 
         await ctx.db.delete(args.projectId);
