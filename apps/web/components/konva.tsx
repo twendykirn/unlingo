@@ -5,14 +5,12 @@ import { Stage, Layer, Image as KonvaImage } from 'react-konva';
 import { Doc, Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
-import {
-    isAddingContainer$,
-    selectedContainerId$,
-} from '@/app/dashboard/projects/[projectId]/screenshots/[screenshotId]/store';
+import { isAddingContainer$, selectedContainerId$ } from '@/app/dashboard/screenshots/[screenshotId]/store';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import KonvaContainer from './konva-container';
 import { use$ } from '@legendapp/state/react';
+import { ButtonGroup, ButtonGroupText } from './ui/button-group';
 
 interface ScreenshotCanvasProps {
     workspaceId: Id<'workspaces'>;
@@ -208,30 +206,18 @@ export default function ScreenshotCanvas({
                         : 'Use wheel to zoom • Drag to pan • Click containers to select and assign keys'}
                 </div>
 
-                <div className='flex items-center space-x-2'>
-                    <Button
-                        onClick={handleZoomOut}
-                        variant='outline'
-                        size='sm'
-                        className='border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white'>
+                <ButtonGroup>
+                    <Button onClick={handleZoomOut} intent='outline' size='sm'>
                         <ZoomOut className='h-4 w-4' />
                     </Button>
-                    <span className='text-sm text-gray-400 min-w-12 text-center'>{Math.round(scale * 100)}%</span>
-                    <Button
-                        onClick={handleZoomIn}
-                        variant='outline'
-                        size='sm'
-                        className='border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white'>
+                    <ButtonGroupText>{Math.round(scale * 100)}%</ButtonGroupText>
+                    <Button onClick={handleZoomIn} intent='outline' size='sm'>
                         <ZoomIn className='h-4 w-4' />
                     </Button>
-                    <Button
-                        onClick={handleResetZoom}
-                        variant='outline'
-                        size='sm'
-                        className='border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white'>
+                    <Button onClick={handleResetZoom} intent='outline' size='sm'>
                         <RotateCcw className='h-4 w-4' />
                     </Button>
-                </div>
+                </ButtonGroup>
             </div>
 
             <div
