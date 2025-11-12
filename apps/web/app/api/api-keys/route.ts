@@ -19,6 +19,8 @@ export async function GET(request: NextRequest) {
         const searchParams = request.nextUrl.searchParams;
         const projectId = searchParams.get('projectId');
         const workspaceId = searchParams.get('workspaceId');
+        const cursor = searchParams.get('cursor');
+        const limit = searchParams.get('limit');
 
         if (!projectId || !workspaceId) {
             return NextResponse.json({ error: 'Missing projectId or workspaceId' }, { status: 400 });
@@ -46,18 +48,34 @@ export async function GET(request: NextRequest) {
         // Initialize Unkey client
         const unkey = new Unkey({ rootKey: process.env.UNKEY_ROOT_KEY! });
 
-        // List keys from Unkey that match this project
-        const listResponse = await unkey.keys.list({
+        // List keys from Unkey with pagination and externalId filter
+        const listParams: {
+            apiId: string;
+            externalId?: string;
+            cursor?: string;
+            limit?: number;
+        } = {
             apiId: process.env.UNKEY_API_ID!,
-        });
+            externalId: workspace._id,
+        };
+
+        if (cursor) {
+            listParams.cursor = cursor;
+        }
+
+        if (limit) {
+            listParams.limit = parseInt(limit, 10);
+        }
+
+        const listResponse = await unkey.keys.list(listParams);
 
         if (listResponse.error) {
             return NextResponse.json({ error: 'Failed to list API keys' }, { status: 500 });
         }
 
-        // Filter keys by project metadata
+        // Filter keys by project metadata (since we're already filtering by workspace via externalId)
         const projectKeys = listResponse.result.keys.filter(
-            (key) => key.meta?.projectId === projectId && key.meta?.workspaceId === workspaceId
+            (key) => key.meta?.projectId === projectId
         );
 
         // Format the response
@@ -68,7 +86,11 @@ export async function GET(request: NextRequest) {
             createdAt: key.createdAt,
         }));
 
-        return NextResponse.json({ keys: formattedKeys });
+        return NextResponse.json({
+            keys: formattedKeys,
+            cursor: listResponse.result.cursor,
+            total: listResponse.result.total,
+        });
     } catch (error) {
         console.error('Error listing API keys:', error);
         return NextResponse.json(
@@ -125,6 +147,7 @@ export async function POST(request: NextRequest) {
         const unkeyResponse = await unkey.keys.create({
             apiId: process.env.UNKEY_API_ID!,
             name,
+            externalId: workspace._id,
             meta: {
                 workspaceId,
                 projectId,

@@ -46,6 +46,8 @@ export default function ApiKeysPage() {
 
     const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [cursor, setCursor] = useState<string | undefined>(undefined);
+    const [hasMore, setHasMore] = useState(false);
 
     const formatter = useDateFormatter({ dateStyle: 'long' });
 
@@ -60,21 +62,35 @@ export default function ApiKeysPage() {
     );
 
     // Fetch API keys from Next.js API route
-    const fetchApiKeys = async () => {
+    const fetchApiKeys = async (loadMore: boolean = false) => {
         if (!workspace || !project) return;
 
         setIsLoading(true);
         try {
-            const response = await fetch(
-                `/api/api-keys?projectId=${project._id}&workspaceId=${workspace._id}`
-            );
+            const url = new URL('/api/api-keys', window.location.origin);
+            url.searchParams.append('projectId', project._id);
+            url.searchParams.append('workspaceId', workspace._id);
+
+            if (loadMore && cursor) {
+                url.searchParams.append('cursor', cursor);
+            }
+
+            const response = await fetch(url.toString());
 
             if (!response.ok) {
                 throw new Error('Failed to fetch API keys');
             }
 
             const data = await response.json();
-            setApiKeys(data.keys || []);
+
+            if (loadMore) {
+                setApiKeys(prev => [...prev, ...(data.keys || [])]);
+            } else {
+                setApiKeys(data.keys || []);
+            }
+
+            setCursor(data.cursor);
+            setHasMore(!!data.cursor);
         } catch (error) {
             console.error('Error fetching API keys:', error);
         } finally {
@@ -167,6 +183,13 @@ export default function ApiKeysPage() {
                                         </Collection>
                                     </TableBody>
                                 </Table>
+                            )}
+                            {!isLoading && hasMore && (
+                                <div className='flex justify-center mt-4'>
+                                    <Button onClick={() => fetchApiKeys(true)}>
+                                        Load More
+                                    </Button>
+                                </div>
                             )}
                         </CardContent>
                     </Card>
