@@ -28,11 +28,12 @@ interface Props {
     isOpen: boolean;
     setIsOpen: (value: boolean) => void;
     workspace: Doc<'workspaces'>;
+    project: Doc<'projects'>;
     apiKey: ApiKey;
     onDeleted?: () => void;
 }
 
-const ApiKeyRemoveModal = ({ isOpen, setIsOpen, workspace, apiKey, onDeleted }: Props) => {
+const ApiKeyRemoveModal = ({ isOpen, setIsOpen, workspace, project, apiKey, onDeleted }: Props) => {
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -44,9 +45,12 @@ const ApiKeyRemoveModal = ({ isOpen, setIsOpen, workspace, apiKey, onDeleted }: 
         setIsLoading(true);
 
         try {
-            const response = await fetch(`/api/api-keys/${apiKey.id}?workspaceId=${workspace._id}`, {
-                method: 'DELETE',
-            });
+            const response = await fetch(
+                `/api/api-keys/${apiKey.id}?workspaceId=${workspace._id}&projectId=${project._id}`,
+                {
+                    method: 'DELETE',
+                }
+            );
 
             if (!response.ok) {
                 const error = await response.json();
@@ -57,7 +61,6 @@ const ApiKeyRemoveModal = ({ isOpen, setIsOpen, workspace, apiKey, onDeleted }: 
             setIsOpen(false);
             setDeleteConfirmation('');
 
-            // Refresh the list
             if (onDeleted) {
                 onDeleted();
             }

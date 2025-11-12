@@ -6,7 +6,6 @@ import { httpAction } from './_generated/server';
 import { polar } from './polar';
 import { Id } from './_generated/dataModel';
 import { resend } from './resend';
-import { Unkey } from '@unkey/api';
 
 async function validateRequest(req: Request): Promise<WebhookEvent | null> {
     const payloadString = await req.text();
@@ -159,51 +158,31 @@ http.route({
         }
 
         try {
-            // Initialize Unkey client and verify the key
-            const unkey = new Unkey({ rootKey: process.env.UNKEY_ROOT_KEY! });
-
-            const verifyResponse = await unkey.keys.verify({
-                apiId: process.env.UNKEY_API_ID!,
+            const verifyResponse = await ctx.runAction(internal.keys.verifyUnkeyKey, {
                 key: apiKey,
             });
 
-            if (verifyResponse.error || !verifyResponse.result.valid) {
+            if (!verifyResponse.valid || !verifyResponse.permissions.includes('translations.read')) {
                 return new Response(JSON.stringify({ error: 'Invalid API key' }), {
                     status: 401,
                     headers: { 'Content-Type': 'application/json' },
                 });
             }
 
-            // Extract metadata from Unkey response
-            const { meta } = verifyResponse.result;
+            const { externalId } = verifyResponse.identity;
+            const workspaceId = externalId.split('_')[0];
+            const projectId = externalId.split('_')[1];
 
-            if (!meta || !meta.workspaceId || !meta.projectId) {
+            if (!workspaceId || !projectId) {
                 return new Response(JSON.stringify({ error: 'Invalid API key metadata' }), {
                     status: 401,
                     headers: { 'Content-Type': 'application/json' },
                 });
             }
 
-            const apiKeyInfo = {
-                workspaceId: meta.workspaceId as Id<'workspaces'>,
-                projectId: meta.projectId as Id<'projects'>,
-                projectName: meta.projectName as string | undefined,
-            };
-
-            const ingestBase = {
-                workspaceId: apiKeyInfo.workspaceId as string,
-                projectId: apiKeyInfo.projectId as string,
-                projectName: apiKeyInfo.projectName,
-                elementId: `ns:${namespace}`,
-                type: 'translations',
-                time: Date.now(),
-                apiCallName: 'api/v1/translations',
-                languageCode: lang,
-                namespaceName: namespace,
-            };
-
             const limitCheck = await ctx.runMutation(internal.internalWorkspaces.checkAndUpdateRequestUsage, {
-                workspaceId: apiKeyInfo.workspaceId,
+                workspaceId,
+                projectId,
             });
 
             if (limitCheck.nearLimit) {
@@ -227,6 +206,18 @@ http.route({
                 });
             }
 
+            const ingestBase = {
+                workspaceId,
+                projectId,
+                projectName: limitCheck.project.name,
+                elementId: `ns:${namespace}`,
+                type: 'translations',
+                time: Date.now(),
+                apiCallName: 'api/v1/translations',
+                languageCode: lang,
+                namespaceName: namespace,
+            };
+
             if (!limitCheck.isRequestAllowed) {
                 await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
                     ...ingestBase,
@@ -247,8 +238,8 @@ http.route({
             }
 
             const release = await ctx.runQuery(internal.releases.getReleaseByTag, {
-                projectId: apiKeyInfo.projectId,
-                workspaceId: apiKeyInfo.workspaceId,
+                projectId,
+                workspaceId,
                 tag: releaseTag,
             });
 
@@ -272,8 +263,8 @@ http.route({
             for (const nv of release.namespaceVersions) {
                 const namespaceDoc = await ctx.runQuery(internal.namespaces.getNamespaceInternal, {
                     namespaceId: nv.namespaceId,
-                    projectId: apiKeyInfo.projectId,
-                    workspaceId: apiKeyInfo.workspaceId,
+                    projectId,
+                    workspaceId,
                 });
 
                 if (namespaceDoc && namespaceDoc.name === namespace) {
@@ -301,7 +292,7 @@ http.route({
             const language = await ctx.runQuery(internal.languages.getLanguageByCode, {
                 namespaceVersionId: targetNamespaceVersion.versionId,
                 languageCode: lang,
-                workspaceId: apiKeyInfo.workspaceId,
+                workspaceId,
             });
 
             if (!language || !language.fileId) {

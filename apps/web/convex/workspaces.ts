@@ -133,16 +133,10 @@ async function deleteWorkspaceAndRelatedData(
         .collect();
 
     for (const project of projects) {
-        const apiKeys = await ctx.db
-            .query('apiKeys')
-            .withIndex('by_workspace_project', q =>
-                q.eq('workspaceId', project.workspaceId).eq('projectId', project._id)
-            )
-            .collect();
-
-        for (const apiKey of apiKeys) {
-            await ctx.db.delete(apiKey._id);
-        }
+        await ctx.scheduler.runAfter(0, internal.keys.deleteUnkeyIdentity, {
+            projectId: project._id,
+            workspaceId,
+        });
 
         const releases = await ctx.db
             .query('releases')

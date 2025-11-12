@@ -90,7 +90,7 @@ const ProjectEditSheet = ({ isOpen, setIsOpen, project, workspace }: Props) => {
                                 <Input placeholder='Enter project name' />
                                 <FieldError />
                             </TextField>
-                            <TextField isRequired value={description} onChange={setDescription}>
+                            <TextField value={description} onChange={setDescription}>
                                 <Label>Description</Label>
                                 <Textarea placeholder='Enter project description' />
                                 <FieldError />

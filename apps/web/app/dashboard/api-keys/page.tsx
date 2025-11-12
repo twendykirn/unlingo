@@ -17,6 +17,7 @@ import ApiKeyRemoveModal from './components/api-key-remove-modal';
 import ApiKeyCreateModal from './components/api-key-create-modal';
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/menu';
 import { useDateFormatter } from '@react-aria/i18n';
+import { toast } from 'sonner';
 
 const formatKeyDisplay = (key: string) => {
     if (!key) return '';
@@ -46,8 +47,6 @@ export default function ApiKeysPage() {
 
     const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [cursor, setCursor] = useState<string | undefined>(undefined);
-    const [hasMore, setHasMore] = useState(false);
 
     const formatter = useDateFormatter({ dateStyle: 'long' });
 
@@ -61,8 +60,7 @@ export default function ApiKeysPage() {
             : 'skip'
     );
 
-    // Fetch API keys from Next.js API route
-    const fetchApiKeys = async (loadMore: boolean = false) => {
+    const fetchApiKeys = async () => {
         if (!workspace || !project) return;
 
         setIsLoading(true);
@@ -71,28 +69,17 @@ export default function ApiKeysPage() {
             url.searchParams.append('projectId', project._id);
             url.searchParams.append('workspaceId', workspace._id);
 
-            if (loadMore && cursor) {
-                url.searchParams.append('cursor', cursor);
-            }
-
             const response = await fetch(url.toString());
 
             if (!response.ok) {
-                throw new Error('Failed to fetch API keys');
+                throw new Error('Bad response');
             }
 
             const data = await response.json();
 
-            if (loadMore) {
-                setApiKeys(prev => [...prev, ...(data.keys || [])]);
-            } else {
-                setApiKeys(data.keys || []);
-            }
-
-            setCursor(data.cursor);
-            setHasMore(!!data.cursor);
+            setApiKeys(data.keys || []);
         } catch (error) {
-            console.error('Error fetching API keys:', error);
+            toast.error(`Failed to fetch API keys: ${error}`);
         } finally {
             setIsLoading(false);
         }
@@ -106,6 +93,7 @@ export default function ApiKeysPage() {
 
     useEffect(() => {
         fetchApiKeys();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [workspace, project]);
 
     return (
@@ -184,35 +172,31 @@ export default function ApiKeysPage() {
                                     </TableBody>
                                 </Table>
                             )}
-                            {!isLoading && hasMore && (
-                                <div className='flex justify-center mt-4'>
-                                    <Button onClick={() => fetchApiKeys(true)}>
-                                        Load More
-                                    </Button>
-                                </div>
-                            )}
                         </CardContent>
                     </Card>
-                    {selectedApiKey ? (
-                        <ApiKeyRemoveModal
-                            isOpen={isDeleteApiKeyModalOpen}
-                            setIsOpen={value => {
-                                setIsDeleteApiKeyModalOpen(value);
-                                setSelectedApiKey(null);
-                            }}
-                            apiKey={selectedApiKey}
-                            workspace={workspace}
-                            onDeleted={fetchApiKeys}
-                        />
-                    ) : null}
                     {project ? (
-                        <ApiKeyCreateModal
-                            isOpen={isCreateApiKeySheetOpen}
-                            setIsOpen={setIsCreateApiKeySheetOpen}
-                            workspace={workspace}
-                            project={project}
-                            onCreated={fetchApiKeys}
-                        />
+                        <>
+                            {selectedApiKey ? (
+                                <ApiKeyRemoveModal
+                                    isOpen={isDeleteApiKeyModalOpen}
+                                    setIsOpen={value => {
+                                        setIsDeleteApiKeyModalOpen(value);
+                                        setSelectedApiKey(null);
+                                    }}
+                                    apiKey={selectedApiKey}
+                                    workspace={workspace}
+                                    project={project}
+                                    onDeleted={fetchApiKeys}
+                                />
+                            ) : null}
+                            <ApiKeyCreateModal
+                                isOpen={isCreateApiKeySheetOpen}
+                                setIsOpen={setIsCreateApiKeySheetOpen}
+                                workspace={workspace}
+                                project={project}
+                                onCreated={fetchApiKeys}
+                            />
+                        </>
                     ) : null}
                 </>
             ) : (
