@@ -19,7 +19,7 @@ import {
 import { useState } from 'react';
 import type React from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, SignOutButton, useSignUp } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Gradient } from '@/components/ui/gradient';
 import SpotlightCard from '@/components/ui/spotlight-card';
@@ -30,10 +30,6 @@ import Link from 'next/link';
 import { CodeEditor } from '@/components/code-editor';
 import GithubSpaceLogo from '@/components/github-space-logo';
 import HeroVideoDialog from '@/components/magicui/hero-video-dialog';
-import { Input } from '@/components/ui/input';
-import GithubStarButton from '@/components/github-star-button';
-import { ModalBody, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@/components/ui/modal';
-import { Form } from '@/components/ui/form';
 import type { Key } from 'react-aria-components';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Label } from '@/components/ui/field';
@@ -244,82 +240,14 @@ export default function Page() {
     const [selectedPricing, setSelectedPricing] = useState<Key>('12');
     const [activeLibrary, setActiveLibrary] = useState('i18next');
     const [isCopied, setIsCopied] = useState(false);
-    const [email, setEmail] = useState('');
-    const [emailError, setEmailError] = useState<string | null>(null);
-    const [generalError, setGeneralError] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isVerifyOpen, setIsVerifyOpen] = useState(false);
-    const [code, setCode] = useState('');
-    const [verifyError, setVerifyError] = useState<Record<string, string> | undefined>(undefined);
-    const [isVerifying, setIsVerifying] = useState(false);
 
     const router = useRouter();
     const { isSignedIn } = useUser();
-    const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
 
     const scrollToSection = (sectionId: string) => {
         const element = document.getElementById(sectionId);
         if (element) {
             element.scrollIntoView({ behavior: 'smooth' });
-        }
-    };
-
-    const handleQuickSignup = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setEmailError(null);
-        setGeneralError(null);
-
-        const trimmed = email.trim();
-        const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-
-        if (!isValid) {
-            setEmailError('Please enter a valid email');
-            return;
-        }
-        if (!signUpLoaded) return;
-
-        try {
-            setIsSubmitting(true);
-            await signUp.create({ emailAddress: trimmed, legalAccepted: true });
-            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-            setIsVerifyOpen(true);
-        } catch (err: any) {
-            const message = err?.errors?.[0]?.message || 'Could not start sign up. Please try again.';
-            setGeneralError(message);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleVerify = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!signUpLoaded) return;
-        setVerifyError(undefined);
-
-        try {
-            setIsVerifying(true);
-            const res = await signUp.attemptEmailAddressVerification({ code });
-            if (res.status === 'complete') {
-                await setActive({ session: res.createdSessionId });
-                router.push('/dashboard/new');
-            } else {
-                setVerifyError({ code: 'Verification incomplete. Please try again.' });
-            }
-        } catch (err: any) {
-            const message = err?.errors?.[0]?.message || 'Invalid code. Please try again.';
-            setVerifyError({ code: message });
-        } finally {
-            setIsVerifying(false);
-        }
-    };
-
-    const handleResend = async () => {
-        if (!signUpLoaded) return;
-        setVerifyError(undefined);
-        try {
-            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-        } catch (_) {
-            // Clerk will throttle appropriately
         }
     };
 
@@ -361,10 +289,16 @@ export default function Page() {
                                 Pricing
                             </button>
                             <Link
+                                href='https://unlingo.userjot.com/roadmap'
+                                target='_blank'
+                                className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
+                                Roadmap
+                            </Link>
+                            <Link
                                 href='https://docs.unlingo.com'
                                 target='_blank'
                                 className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
-                                Documentation
+                                Docs
                             </Link>
                         </div>
 
@@ -1096,6 +1030,12 @@ export default function Page() {
                                     target='_blank'
                                     className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Status
+                                </Link>
+                                <Link
+                                    href='https://unlingo.userjot.com/roadmap'
+                                    target='_blank'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                    Roadmap
                                 </Link>
                             </div>
                         </div>
