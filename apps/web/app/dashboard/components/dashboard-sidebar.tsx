@@ -125,7 +125,7 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
             const uj = (window as any).uj;
 
             if (uj) {
-                uj.init('cmhxden6400i615qplccwlxhq', {
+                uj.init(process.env.NEXT_PUBLIC_USERJOT_ID, {
                     widget: true,
                     position: 'right',
                     theme: 'auto',
