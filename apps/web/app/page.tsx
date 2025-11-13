@@ -649,8 +649,6 @@ export default function Page() {
                         transition={{ duration: 0.6, delay: 0.2 }}
                         viewport={{ once: true }}
                         className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-center justify-items-center max-w-5xl mx-auto'>
-                        {/* First Row */}
-                        {/* Convex */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://convex.dev' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-orange-500/30 transition-all duration-300'
@@ -664,7 +662,6 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* Clerk */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://clerk.com' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-indigo-500/30 transition-all duration-300'
@@ -678,7 +675,6 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* Vercel */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://vercel.com' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-white/30 transition-all duration-300'
@@ -692,8 +688,6 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* Second Row */}
-                        {/* Polar */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://polar.sh' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-blue-500/30 transition-all duration-300'
@@ -707,21 +701,19 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* Databuddy */}
-                        <Link className='w-full h-24 cursor-pointer group' href='https://databuddy.cc' target='_blank'>
+                        <Link className='w-full h-24 cursor-pointer group' href='https://openpanel.dev' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-[#3C83F6]/30 transition-all duration-300'
                                 spotlightColor='rgba(60, 131, 246, 0.15)'>
                                 <div className='text-center'>
                                     <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-[#3C83F6] transition-colors'>
-                                        Databuddy
+                                        OpenPanel
                                     </div>
-                                    <div className='text-xs text-gray-500'>Web Analytics</div>
+                                    <div className='text-xs text-gray-500'>Analytics</div>
                                 </div>
                             </SpotlightCard>
                         </Link>
 
-                        {/* Resend */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://resend.com' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-violet-500/30 transition-all duration-300'
@@ -731,23 +723,6 @@ export default function Page() {
                                         Resend
                                     </div>
                                     <div className='text-xs text-gray-500'>Email API</div>
-                                </div>
-                            </SpotlightCard>
-                        </Link>
-
-                        {/* PostHog */}
-                        <Link
-                            className='w-full h-24 cursor-pointer group sm:col-start-1 lg:col-start-2'
-                            href='https://posthog.com'
-                            target='_blank'>
-                            <SpotlightCard
-                                className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-yellow-500/30 transition-all duration-300'
-                                spotlightColor='rgba(234, 179, 8, 0.15)'>
-                                <div className='text-center'>
-                                    <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-yellow-500 transition-colors'>
-                                        PostHog
-                                    </div>
-                                    <div className='text-xs text-gray-500'>API Analytics</div>
                                 </div>
                             </SpotlightCard>
                         </Link>

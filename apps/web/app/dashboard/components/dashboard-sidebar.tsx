@@ -297,12 +297,9 @@ const DashboardSidebar = ({ activeItem, children, onWorkspaceChange }: Props) =>
                                 <KeyIcon />
                                 <SidebarLabel>API Keys</SidebarLabel>
                             </SidebarItem>
-                            <SidebarItem
-                                href='/dashboard/analytics'
-                                tooltip='Analytics'
-                                isCurrent={activeItem === 'analytics'}>
+                            <SidebarItem href='/dashboard/logs' tooltip='Logs' isCurrent={activeItem === 'analytics'}>
                                 <ChartBarIcon />
-                                <SidebarLabel>Analytics</SidebarLabel>
+                                <SidebarLabel>Logs</SidebarLabel>
                             </SidebarItem>
                             <SidebarItem href='https://docs.unlingo.com' target='_blank' tooltip='Documentation'>
                                 <DocumentTextIcon />
