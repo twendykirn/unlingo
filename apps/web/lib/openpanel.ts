@@ -166,8 +166,6 @@ export async function fetchEvents(params: {
 
         const url = `${OPEN_PANEL_API_URL}/export/events?${queryParams.toString()}`;
 
-        console.log(url);
-
         const response = await fetch(url, {
             headers: {
                 'openpanel-client-id': process.env.OPENPANEL_READ_CLIENT_ID!,
@@ -180,7 +178,6 @@ export async function fetchEvents(params: {
         }
 
         const result = await response.json();
-        console.log(result);
         return result;
     } catch (error) {
         console.error('Openpanel fetch events failed:', error);

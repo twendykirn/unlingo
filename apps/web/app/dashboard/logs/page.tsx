@@ -234,7 +234,6 @@ export default function LogsPage() {
                                         {formatter.format(new Date(selectedEvent.createdAt))}
                                     </DescriptionDetails>
                                     {Object.entries(selectedEvent.properties).map(entries => {
-                                        console.log(entries);
                                         const value =
                                             entries[0] === 'timestamp'
                                                 ? formatter.format(new Date(parseFloat(entries[1])))
