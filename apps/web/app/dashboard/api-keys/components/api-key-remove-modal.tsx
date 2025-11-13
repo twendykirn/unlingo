@@ -12,25 +12,30 @@ import {
     ModalTitle,
 } from '@/components/ui/modal';
 import { TextField } from '@/components/ui/text-field';
-import { api } from '@/convex/_generated/api';
 import { Doc } from '@/convex/_generated/dataModel';
 import { Snippet } from '@heroui/react';
-import { useMutation } from 'convex/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+
+interface ApiKey {
+    id: string;
+    name: string;
+    prefix: string;
+    createdAt: number;
+}
 
 interface Props {
     isOpen: boolean;
     setIsOpen: (value: boolean) => void;
     workspace: Doc<'workspaces'>;
-    apiKey: Doc<'apiKeys'>;
+    project: Doc<'projects'>;
+    apiKey: ApiKey;
+    onDeleted?: () => void;
 }
 
-const ApiKeyRemoveModal = ({ isOpen, setIsOpen, workspace, apiKey }: Props) => {
+const ApiKeyRemoveModal = ({ isOpen, setIsOpen, workspace, project, apiKey, onDeleted }: Props) => {
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-
-    const deleteApiKey = useMutation(api.apiKeys.deleteApiKey);
 
     const canDelete = deleteConfirmation === apiKey.name;
 
@@ -40,16 +45,27 @@ const ApiKeyRemoveModal = ({ isOpen, setIsOpen, workspace, apiKey }: Props) => {
         setIsLoading(true);
 
         try {
-            await deleteApiKey({
-                keyId: apiKey._id,
-                workspaceId: workspace._id,
-            });
+            const response = await fetch(
+                `/api/api-keys/${apiKey.id}?workspaceId=${workspace._id}&projectId=${project._id}`,
+                {
+                    method: 'DELETE',
+                }
+            );
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete API key');
+            }
 
             toast.success('API key deleted successfully');
             setIsOpen(false);
             setDeleteConfirmation('');
+
+            if (onDeleted) {
+                onDeleted();
+            }
         } catch (error) {
-            toast.error(`Failed to delete API key: ${error}`);
+            toast.error(`Failed to delete API key: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             setIsLoading(false);
         }

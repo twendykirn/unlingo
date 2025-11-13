@@ -19,7 +19,7 @@ import {
 import { useState } from 'react';
 import type React from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, SignOutButton, useSignUp } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Gradient } from '@/components/ui/gradient';
 import SpotlightCard from '@/components/ui/spotlight-card';
@@ -30,13 +30,9 @@ import Link from 'next/link';
 import { CodeEditor } from '@/components/code-editor';
 import GithubSpaceLogo from '@/components/github-space-logo';
 import HeroVideoDialog from '@/components/magicui/hero-video-dialog';
-import { Input } from '@/components/ui/input';
-import GithubStarButton from '@/components/github-star-button';
-import { ModalBody, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@/components/ui/modal';
-import { Form } from '@/components/ui/form';
 import type { Key } from 'react-aria-components';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import { InputOTP } from '@/components/ui/input-otp';
+import { Label } from '@/components/ui/field';
 
 const features = [
     {
@@ -244,82 +240,14 @@ export default function Page() {
     const [selectedPricing, setSelectedPricing] = useState<Key>('12');
     const [activeLibrary, setActiveLibrary] = useState('i18next');
     const [isCopied, setIsCopied] = useState(false);
-    const [email, setEmail] = useState('');
-    const [emailError, setEmailError] = useState<string | null>(null);
-    const [generalError, setGeneralError] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isVerifyOpen, setIsVerifyOpen] = useState(false);
-    const [code, setCode] = useState('');
-    const [verifyError, setVerifyError] = useState<Record<string, string> | undefined>(undefined);
-    const [isVerifying, setIsVerifying] = useState(false);
 
     const router = useRouter();
     const { isSignedIn } = useUser();
-    const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
 
     const scrollToSection = (sectionId: string) => {
         const element = document.getElementById(sectionId);
         if (element) {
             element.scrollIntoView({ behavior: 'smooth' });
-        }
-    };
-
-    const handleQuickSignup = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setEmailError(null);
-        setGeneralError(null);
-
-        const trimmed = email.trim();
-        const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-
-        if (!isValid) {
-            setEmailError('Please enter a valid email');
-            return;
-        }
-        if (!signUpLoaded) return;
-
-        try {
-            setIsSubmitting(true);
-            await signUp.create({ emailAddress: trimmed, legalAccepted: true });
-            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-            setIsVerifyOpen(true);
-        } catch (err: any) {
-            const message = err?.errors?.[0]?.message || 'Could not start sign up. Please try again.';
-            setGeneralError(message);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleVerify = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!signUpLoaded) return;
-        setVerifyError(undefined);
-
-        try {
-            setIsVerifying(true);
-            const res = await signUp.attemptEmailAddressVerification({ code });
-            if (res.status === 'complete') {
-                await setActive({ session: res.createdSessionId });
-                router.push('/dashboard/new');
-            } else {
-                setVerifyError({ code: 'Verification incomplete. Please try again.' });
-            }
-        } catch (err: any) {
-            const message = err?.errors?.[0]?.message || 'Invalid code. Please try again.';
-            setVerifyError({ code: message });
-        } finally {
-            setIsVerifying(false);
-        }
-    };
-
-    const handleResend = async () => {
-        if (!signUpLoaded) return;
-        setVerifyError(undefined);
-        try {
-            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-        } catch (_) {
-            // Clerk will throttle appropriately
         }
     };
 
@@ -361,30 +289,25 @@ export default function Page() {
                                 Pricing
                             </button>
                             <Link
+                                href='https://unlingo.userjot.com/roadmap'
+                                target='_blank'
+                                className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
+                                Roadmap
+                            </Link>
+                            <Link
                                 href='https://docs.unlingo.com'
                                 target='_blank'
                                 className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
-                                Documentation
+                                Docs
                             </Link>
                         </div>
 
                         {/* Auth Buttons */}
                         <div className='flex items-center space-x-4'>
-                            <GithubStarButton />
                             {isSignedIn ? (
-                                <>
-                                    <SignOutButton>
-                                        <Button intent='outline'>Sign Out</Button>
-                                    </SignOutButton>
-                                    <Button onClick={() => router.push('/dashboard')}>Dashboard</Button>
-                                </>
+                                <Button onClick={() => router.push('/dashboard')}>Dashboard</Button>
                             ) : (
-                                <>
-                                    <Button intent='outline' onClick={() => router.push('/sign-in')}>
-                                        Sign in
-                                    </Button>
-                                    <Button onClick={() => router.push('/sign-up')}>Get Started</Button>
-                                </>
+                                <Button onClick={() => router.push('/sign-in')}>Log in</Button>
                             )}
                         </div>
                     </div>
@@ -398,7 +321,7 @@ export default function Page() {
             </div>
 
             {/* Hero Section */}
-            <section id='hero' className='relative min-h-screen flex items-center justify-center px-6 pt-28 sm:pt-48'>
+            <section id='hero' className='relative min-h-screen flex justify-center px-6 pt-28 sm:pt-48'>
                 {/* Elegant subtle background (radial glow + faint grid) */}
                 <div
                     className='absolute inset-0 pointer-events-none'
@@ -432,55 +355,16 @@ export default function Page() {
                         </p>
                     </motion.div>
 
-                    {isSignedIn ? (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 0.2 }}
-                            className='flex flex-col sm:flex-row gap-2 items-center justify-center'>
-                            <Button onClick={() => router.push('/dashboard')}>Go to Dashboard</Button>
-                            <Link href='https://docs.unlingo.com' target='_blank'>
-                                <Button intent='outline'>Docs</Button>
-                            </Link>
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 0.2 }}
-                            className='flex flex-col gap-3 items-center w-full max-w-2xs mx-auto'>
-                            <form onSubmit={handleQuickSignup} className='w-full space-y-3'>
-                                <Input
-                                    type='email'
-                                    inputMode='email'
-                                    autoComplete='email'
-                                    required
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    placeholder='you@company.com'
-                                    className='h-8 md:h-9 bg-black/40 border-gray-800 placeholder:text-gray-500 text-sm'
-                                />
-
-                                <div id='clerk-captcha' data-cl-theme='dark' data-cl-size='flexible' />
-
-                                <Button type='submit' className='w-full' isDisabled={isSubmitting}>
-                                    {isSubmitting ? 'Sending code…' : 'Create workspace'}
-                                </Button>
-                            </form>
-                            {emailError || generalError ? (
-                                <div className='text-sm text-red-400'>{emailError || generalError}</div>
-                            ) : null}
-                            <div className='text-xs text-gray-500'>No credit card required</div>
-                            <div className='flex gap-2 pt-1'>
-                                <Link href='/sign-in'>
-                                    <Button intent='plain'>Already have an account</Button>
-                                </Link>
-                                <Link href='https://docs.unlingo.com' target='_blank'>
-                                    <Button intent='plain'>Docs</Button>
-                                </Link>
-                            </div>
-                        </motion.div>
-                    )}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, delay: 0.2 }}
+                        className='flex flex-col sm:flex-row gap-2 items-center justify-center'>
+                        <Button onClick={() => router.push('/dashboard')}>Get Started</Button>
+                        <Link href='/resources/why'>
+                            <Button intent='outline'>Why Unlingo</Button>
+                        </Link>
+                    </motion.div>
 
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -500,34 +384,6 @@ export default function Page() {
                     </motion.div>
                 </div>
             </section>
-
-            {/* Verify Email Dialog */}
-            <ModalContent isOpen={isVerifyOpen} onOpenChange={setIsVerifyOpen}>
-                <ModalHeader>
-                    <ModalTitle>Verify your email</ModalTitle>
-                    <ModalDescription>We sent a 6-digit code to {email}.</ModalDescription>
-                </ModalHeader>
-                <Form onSubmit={handleVerify} validationErrors={verifyError}>
-                    <ModalBody>
-                        <InputOTP maxLength={6} value={code} onChange={setCode} autoFocus className='max-w-full'>
-                            <InputOTP.Group>
-                                {[...Array(6)].map((_, index) => (
-                                    <InputOTP.Slot key={index} index={index} />
-                                ))}
-                            </InputOTP.Group>
-                        </InputOTP>
-                        {verifyError && <div className='text-sm text-red-400 mt-2'>{verifyError.code}</div>}
-                    </ModalBody>
-                    <ModalFooter>
-                        <Button intent='outline' onClick={handleResend}>
-                            Resend code
-                        </Button>
-                        <Button type='submit' isDisabled={isVerifying}>
-                            {isVerifying ? 'Verifying…' : 'Verify'}
-                        </Button>
-                    </ModalFooter>
-                </Form>
-            </ModalContent>
 
             {/* Code Examples Section */}
             <section id='examples' className='relative py-32 px-6'>
@@ -985,15 +841,16 @@ export default function Page() {
 
                                     {/* Dropdown for request amounts */}
                                     <Select
-                                        selectedKey={selectedPricing}
-                                        onSelectionChange={value => {
+                                        value={selectedPricing}
+                                        onChange={value => {
                                             if (value) {
                                                 setSelectedPricing(value);
                                             }
                                         }}
-                                        label='Monthly requests'
-                                        defaultSelectedKey={pricingOptions[0]?.id}
+                                        aria-label='Monthly requests'
+                                        defaultValue={pricingOptions[0]?.id}
                                         className='mb-6'>
+                                        <Label>Monthly requests</Label>
                                         <SelectTrigger />
                                         <SelectContent items={pricingOptions}>
                                             {item => (
@@ -1174,6 +1031,12 @@ export default function Page() {
                                     className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Status
                                 </Link>
+                                <Link
+                                    href='https://unlingo.userjot.com/roadmap'
+                                    target='_blank'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                    Roadmap
+                                </Link>
                             </div>
                         </div>
 
@@ -1219,29 +1082,6 @@ export default function Page() {
                                     Privacy Policy
                                 </Link>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Sliding Unlingo Text Animation */}
-                <div className='bg-black overflow-hidden'>
-                    <div className='flex justify-center'>
-                        <div className='text-[4rem] xs:text-[6rem] sm:text-[8rem] md:text-[12rem] lg:text-[16rem] xl:text-[20rem] font-bold tracking-wider'>
-                            {['U', 'n', 'l', 'i', 'n', 'g', 'o'].map((letter, index) => (
-                                <motion.span
-                                    key={index}
-                                    initial={{ y: 100, opacity: 0 }}
-                                    whileInView={{ y: 0, opacity: 0.3 }}
-                                    transition={{
-                                        duration: 0.8,
-                                        ease: 'easeOut',
-                                        delay: index * 0.15,
-                                    }}
-                                    viewport={{ once: true }}
-                                    className='inline-block bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent select-none'>
-                                    {letter}
-                                </motion.span>
-                            ))}
                         </div>
                     </div>
                 </div>

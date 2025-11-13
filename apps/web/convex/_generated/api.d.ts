@@ -9,12 +9,12 @@
  */
 
 import type * as analytics from "../analytics.js";
-import type * as apiKeys from "../apiKeys.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as internalLang from "../internalLang.js";
 import type * as internalNamespaces from "../internalNamespaces.js";
 import type * as internalWorkspaces from "../internalWorkspaces.js";
+import type * as keys from "../keys.js";
 import type * as languages from "../languages.js";
 import type * as namespaceVersions from "../namespaceVersions.js";
 import type * as namespaces from "../namespaces.js";
@@ -48,12 +48,12 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   analytics: typeof analytics;
-  apiKeys: typeof apiKeys;
   crons: typeof crons;
   http: typeof http;
   internalLang: typeof internalLang;
   internalNamespaces: typeof internalNamespaces;
   internalWorkspaces: typeof internalWorkspaces;
+  keys: typeof keys;
   languages: typeof languages;
   namespaceVersions: typeof namespaceVersions;
   namespaces: typeof namespaces;
@@ -822,6 +822,93 @@ export declare const components: {
     };
   };
   createLanguageWorkpool: {
+    lib: {
+      cancel: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          id: string;
+          logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+        },
+        any
+      >;
+      cancelAll: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          before?: number;
+          limit?: number;
+          logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+        },
+        any
+      >;
+      enqueue: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config: {
+            logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism: number;
+          };
+          fnArgs: any;
+          fnHandle: string;
+          fnName: string;
+          fnType: "action" | "mutation" | "query";
+          onComplete?: { context?: any; fnHandle: string };
+          retryBehavior?: {
+            base: number;
+            initialBackoffMs: number;
+            maxAttempts: number;
+          };
+          runAt: number;
+        },
+        string
+      >;
+      enqueueBatch: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config: {
+            logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism: number;
+          };
+          items: Array<{
+            fnArgs: any;
+            fnHandle: string;
+            fnName: string;
+            fnType: "action" | "mutation" | "query";
+            onComplete?: { context?: any; fnHandle: string };
+            retryBehavior?: {
+              base: number;
+              initialBackoffMs: number;
+              maxAttempts: number;
+            };
+            runAt: number;
+          }>;
+        },
+        Array<string>
+      >;
+      status: FunctionReference<
+        "query",
+        "internal",
+        { id: string },
+        | { previousAttempts: number; state: "pending" }
+        | { previousAttempts: number; state: "running" }
+        | { state: "finished" }
+      >;
+      statusBatch: FunctionReference<
+        "query",
+        "internal",
+        { ids: Array<string> },
+        Array<
+          | { previousAttempts: number; state: "pending" }
+          | { previousAttempts: number; state: "running" }
+          | { state: "finished" }
+        >
+      >;
+    };
+  };
+  mergeWorkpool: {
     lib: {
       cancel: FunctionReference<
         "mutation",

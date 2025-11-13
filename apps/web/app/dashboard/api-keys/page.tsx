@@ -1,22 +1,23 @@
 'use client';
 
-import { usePaginatedQuery, useQuery } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useEffect, useState } from 'react';
 import { PlusIcon, TrashIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@/components/ui/table';
-import { Doc, Id } from '@/convex/_generated/dataModel';
+import { Id } from '@/convex/_generated/dataModel';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import DashboardSidebar, { WorkspaceWithPremium } from '../components/dashboard-sidebar';
-import { Collection, TableLoadMoreItem } from 'react-aria-components';
+import { Collection } from 'react-aria-components';
 import { useSearchParams } from 'next/navigation';
 import ProjectsSelector from '../components/projects-selector';
 import ApiKeyRemoveModal from './components/api-key-remove-modal';
 import ApiKeyCreateModal from './components/api-key-create-modal';
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/menu';
 import { useDateFormatter } from '@react-aria/i18n';
+import { toast } from 'sonner';
 
 const formatKeyDisplay = (key: string) => {
     if (!key) return '';
@@ -25,6 +26,13 @@ const formatKeyDisplay = (key: string) => {
     const prefix = parts[0];
     return `${prefix}_${'*'.repeat(20)}`;
 };
+
+interface ApiKey {
+    id: string;
+    name: string;
+    prefix: string;
+    createdAt: number;
+}
 
 export default function ApiKeysPage() {
     const searchParams = useSearchParams();
@@ -35,7 +43,10 @@ export default function ApiKeysPage() {
 
     const [isDeleteApiKeyModalOpen, setIsDeleteApiKeyModalOpen] = useState(false);
     const [isCreateApiKeySheetOpen, setIsCreateApiKeySheetOpen] = useState(false);
-    const [selectedApiKey, setSelectedApiKey] = useState<Doc<'apiKeys'> | null>(null);
+    const [selectedApiKey, setSelectedApiKey] = useState<ApiKey | null>(null);
+
+    const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
     const formatter = useDateFormatter({ dateStyle: 'long' });
 
@@ -49,24 +60,28 @@ export default function ApiKeysPage() {
             : 'skip'
     );
 
-    const {
-        results: apiKeys,
-        status,
-        loadMore,
-    } = usePaginatedQuery(
-        api.apiKeys.getApiKeys,
-        workspace && project
-            ? {
-                  projectId: project._id,
-                  workspaceId: workspace._id,
-              }
-            : 'skip',
-        { initialNumItems: 20 }
-    );
+    const fetchApiKeys = async () => {
+        if (!workspace || !project) return;
 
-    const handleLoadingMore = () => {
-        if (status === 'CanLoadMore') {
-            loadMore(20);
+        setIsLoading(true);
+        try {
+            const url = new URL('/api/api-keys', window.location.origin);
+            url.searchParams.append('projectId', project._id);
+            url.searchParams.append('workspaceId', workspace._id);
+
+            const response = await fetch(url.toString());
+
+            if (!response.ok) {
+                throw new Error('Bad response');
+            }
+
+            const data = await response.json();
+
+            setApiKeys(data.keys || []);
+        } catch (error) {
+            toast.error(`Failed to fetch API keys: ${error}`);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -75,6 +90,11 @@ export default function ApiKeysPage() {
             setSelectedProjectId(searchParamProjectId as Id<'projects'>);
         }
     }, [workspace, searchParamProjectId]);
+
+    useEffect(() => {
+        fetchApiKeys();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [workspace, project]);
 
     return (
         <DashboardSidebar activeItem='api-keys' onWorkspaceChange={setWorkspace}>
@@ -103,77 +123,80 @@ export default function ApiKeysPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <Table
-                                bleed
-                                className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
-                                aria-label='API Keys'>
-                                <TableHeader>
-                                    <TableColumn className='w-0'>Name</TableColumn>
-                                    <TableColumn isRowHeader>Key</TableColumn>
-                                    <TableColumn>Created At</TableColumn>
-                                    <TableColumn />
-                                </TableHeader>
-                                <TableBody>
-                                    <Collection items={apiKeys}>
-                                        {item => (
-                                            <TableRow id={item._id}>
-                                                <TableCell>{item.name}</TableCell>
-                                                <TableCell>{formatKeyDisplay(item.prefix)}</TableCell>
-                                                <TableCell>
-                                                    <div className='flex gap-2 flex-1 items-center'>
-                                                        {formatter.format(new Date(item._creationTime))}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className='flex justify-end'>
-                                                    <Menu>
-                                                        <MenuTrigger className='size-6'>
-                                                            <EllipsisVerticalIcon />
-                                                        </MenuTrigger>
-                                                        <MenuContent placement='left top'>
-                                                            <MenuItem
-                                                                intent='danger'
-                                                                onClick={() => {
-                                                                    setIsDeleteApiKeyModalOpen(true);
-                                                                    setSelectedApiKey(item);
-                                                                }}>
-                                                                <TrashIcon /> Delete
-                                                            </MenuItem>
-                                                        </MenuContent>
-                                                    </Menu>
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </Collection>
-                                    {status !== 'Exhausted' ? (
-                                        <TableLoadMoreItem
-                                            className='sticky inset-x-0 bottom-0 h-16'
-                                            onLoadMore={handleLoadingMore}
-                                            isLoading={status === 'LoadingMore'}>
-                                            <Loader className='mx-auto' isIndeterminate aria-label='Loading more...' />
-                                        </TableLoadMoreItem>
-                                    ) : null}
-                                </TableBody>
-                            </Table>
+                            {isLoading ? (
+                                <div className='flex justify-center p-8'>
+                                    <Loader isIndeterminate aria-label='Loading API keys...' />
+                                </div>
+                            ) : (
+                                <Table
+                                    bleed
+                                    className='[--gutter:var(--card-spacing)] sm:[--gutter:var(--card-spacing)]'
+                                    aria-label='API Keys'>
+                                    <TableHeader>
+                                        <TableColumn className='w-0'>Name</TableColumn>
+                                        <TableColumn isRowHeader>Key</TableColumn>
+                                        <TableColumn>Created At</TableColumn>
+                                        <TableColumn />
+                                    </TableHeader>
+                                    <TableBody>
+                                        <Collection items={apiKeys}>
+                                            {item => (
+                                                <TableRow id={item.id}>
+                                                    <TableCell>{item.name}</TableCell>
+                                                    <TableCell>{formatKeyDisplay(item.prefix)}</TableCell>
+                                                    <TableCell>
+                                                        <div className='flex gap-2 flex-1 items-center'>
+                                                            {formatter.format(new Date(item.createdAt))}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className='flex justify-end'>
+                                                        <Menu>
+                                                            <MenuTrigger className='size-6'>
+                                                                <EllipsisVerticalIcon />
+                                                            </MenuTrigger>
+                                                            <MenuContent placement='left top'>
+                                                                <MenuItem
+                                                                    intent='danger'
+                                                                    onClick={() => {
+                                                                        setIsDeleteApiKeyModalOpen(true);
+                                                                        setSelectedApiKey(item);
+                                                                    }}>
+                                                                    <TrashIcon /> Delete
+                                                                </MenuItem>
+                                                            </MenuContent>
+                                                        </Menu>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </Collection>
+                                    </TableBody>
+                                </Table>
+                            )}
                         </CardContent>
                     </Card>
-                    {selectedApiKey ? (
-                        <ApiKeyRemoveModal
-                            isOpen={isDeleteApiKeyModalOpen}
-                            setIsOpen={value => {
-                                setIsDeleteApiKeyModalOpen(value);
-                                setSelectedApiKey(null);
-                            }}
-                            apiKey={selectedApiKey}
-                            workspace={workspace}
-                        />
-                    ) : null}
                     {project ? (
-                        <ApiKeyCreateModal
-                            isOpen={isCreateApiKeySheetOpen}
-                            setIsOpen={setIsCreateApiKeySheetOpen}
-                            workspace={workspace}
-                            project={project}
-                        />
+                        <>
+                            {selectedApiKey ? (
+                                <ApiKeyRemoveModal
+                                    isOpen={isDeleteApiKeyModalOpen}
+                                    setIsOpen={value => {
+                                        setIsDeleteApiKeyModalOpen(value);
+                                        setSelectedApiKey(null);
+                                    }}
+                                    apiKey={selectedApiKey}
+                                    workspace={workspace}
+                                    project={project}
+                                    onDeleted={fetchApiKeys}
+                                />
+                            ) : null}
+                            <ApiKeyCreateModal
+                                isOpen={isCreateApiKeySheetOpen}
+                                setIsOpen={setIsCreateApiKeySheetOpen}
+                                workspace={workspace}
+                                project={project}
+                                onCreated={fetchApiKeys}
+                            />
+                        </>
                     ) : null}
                 </>
             ) : (
