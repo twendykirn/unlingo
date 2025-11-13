@@ -344,12 +344,9 @@ export const getLanguageContent = action({
                 projectName: result.project.name,
                 namespaceId: result.namespace._id as string,
                 namespaceName: result.namespace.name,
-                elementId: `lang:${result.language.languageCode}`,
-                type: 'language_content',
-                apiCallName: 'getLanguageContent',
+                event: 'getLanguageContent',
                 languageCode: result.language.languageCode,
                 responseSize: new TextEncoder().encode(content).length,
-                time: Date.now(),
             });
 
             return parsedContent;
@@ -363,12 +360,9 @@ export const getLanguageContent = action({
                 projectName: result.project.name,
                 namespaceId: result.namespace._id as string,
                 namespaceName: result.namespace.name,
-                elementId: `lang:${result.language.languageCode}`,
-                type: 'language_content',
-                apiCallName: 'getLanguageContent',
+                event: 'getLanguageContent',
                 languageCode: result.language.languageCode,
                 deniedReason: 'fetch_error',
-                time: Date.now(),
             });
 
             return {};
@@ -413,11 +407,8 @@ export const getJsonSchema = action({
                 projectName: project.name,
                 namespaceId: namespace._id as string,
                 namespaceName: namespace.name,
-                elementId: `schema:${args.namespaceVersionId}`,
-                type: 'schema_content',
-                apiCallName: 'getJsonSchema',
+                event: 'getJsonSchema',
                 responseSize: new TextEncoder().encode(schemaContent).length,
-                time: Date.now(),
             });
 
             return schemaContent;
@@ -431,11 +422,8 @@ export const getJsonSchema = action({
                 projectName: project.name,
                 namespaceId: namespace._id as string,
                 namespaceName: namespace.name,
-                elementId: `schema:${args.namespaceVersionId}`,
-                type: 'schema_content',
-                apiCallName: 'getJsonSchema',
+                event: 'getJsonSchema',
                 deniedReason: 'fetch_error',
-                time: Date.now(),
             });
 
             return null;

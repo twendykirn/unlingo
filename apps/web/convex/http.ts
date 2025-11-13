@@ -210,10 +210,7 @@ http.route({
                 workspaceId,
                 projectId,
                 projectName: limitCheck.project.name,
-                elementId: `ns:${namespace}`,
-                type: 'translations',
-                time: Date.now(),
-                apiCallName: 'api/v1/translations',
+                event: 'api/v1/translations',
                 languageCode: lang,
                 namespaceName: namespace,
             };

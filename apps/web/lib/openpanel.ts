@@ -1,20 +1,19 @@
 import { z } from 'zod';
 
-// Schema definitions for Openpanel events
 export const ApiRequestEvent = z.object({
-    projectId: z.string(),
-    projectName: z.string().optional(),
-    elementId: z.string(),
-    type: z.string(),
     workspaceId: z.string(),
+    projectId: z.string(),
+    event: z.string(),
+    projectName: z.string().optional(),
     deniedReason: z.string().optional(),
     time: z.number().int(),
-    apiCallName: z.string().optional(),
     languageCode: z.string().optional(),
     namespaceId: z.string().optional(),
     namespaceName: z.string().optional(),
     responseSize: z.number().optional(),
 });
+
+const OPEN_PANEL_API_URL = 'https://api.openpanel.dev';
 
 export type ApiRequestEventType = z.infer<typeof ApiRequestEvent>;
 
@@ -38,9 +37,6 @@ function getOpenpanelConfig(): OpenpanelConfig {
     return { clientId, clientSecret, projectId };
 }
 
-/**
- * Identify a user in Openpanel
- */
 export async function identifyUser(
     profileId: string,
     userData: {
@@ -52,7 +48,7 @@ export async function identifyUser(
 ): Promise<void> {
     try {
         const config = getOpenpanelConfig();
-        const url = 'https://api.openpanel.dev/track';
+        const url = `${OPEN_PANEL_API_URL}/track`;
 
         await fetch(url, {
             method: 'POST',
@@ -77,17 +73,23 @@ export async function identifyUser(
     }
 }
 
-/**
- * Track an event in Openpanel
- */
-export async function trackEvent(
-    profileId: string,
-    eventName: string,
-    properties?: Record<string, any>
-): Promise<void> {
+export async function ingestApiRequest(params: ApiRequestEventType): Promise<void> {
     try {
+        const properties: Record<string, any> = {
+            projectId: params.projectId,
+            projectName: params.projectName || null,
+            workspaceId: params.workspaceId,
+            deniedReason: params.deniedReason || null,
+            timestamp: params.time,
+            languageCode: params.languageCode || null,
+            namespaceId: params.namespaceId || null,
+            namespaceName: params.namespaceName || null,
+            responseSize: params.responseSize || null,
+            success: !params.deniedReason,
+        };
+
         const config = getOpenpanelConfig();
-        const url = 'https://api.openpanel.dev/track';
+        const url = `${OPEN_PANEL_API_URL}/track`;
 
         await fetch(url, {
             method: 'POST',
@@ -99,39 +101,12 @@ export async function trackEvent(
             body: JSON.stringify({
                 type: 'track',
                 payload: {
-                    profileId,
-                    name: eventName,
+                    profileId: params.workspaceId,
+                    name: params.event,
                     properties: properties || {},
                 },
             }),
         });
-    } catch (error) {
-        console.error('Openpanel track failed:', error);
-    }
-}
-
-/**
- * Ingest an API request event to Openpanel
- */
-export async function ingestApiRequest(event: ApiRequestEventType): Promise<void> {
-    try {
-        const properties: Record<string, any> = {
-            projectId: event.projectId,
-            projectName: event.projectName || null,
-            elementId: event.elementId,
-            type: event.type,
-            workspaceId: event.workspaceId,
-            deniedReason: event.deniedReason || null,
-            timestamp: event.time,
-            apiCallName: event.apiCallName || null,
-            languageCode: event.languageCode || null,
-            namespaceId: event.namespaceId || null,
-            namespaceName: event.namespaceName || null,
-            responseSize: event.responseSize || null,
-            success: !event.deniedReason,
-        };
-
-        await trackEvent(event.workspaceId, 'api_request', properties);
     } catch (error) {
         console.error('Openpanel ingest failed:', error);
     }
@@ -140,27 +115,20 @@ export async function ingestApiRequest(event: ApiRequestEventType): Promise<void
 interface OpenpanelEvent {
     id: string;
     name: string;
-    created_at: string;
+    createdAt: string;
     properties: Record<string, any>;
-    profile?: {
-        id: string;
-        [key: string]: any;
-    };
-    meta?: Record<string, any>;
 }
 
 interface OpenpanelEventsResponse {
     data: OpenpanelEvent[];
     meta: {
-        total: number;
-        page: number;
-        per_page: number;
+        count: number;
+        totalCount: number;
+        pages: number;
+        current: number;
     };
 }
 
-/**
- * Fetch events from Openpanel
- */
 export async function fetchEvents(params: {
     profileId: string;
     event?: string | string[];
@@ -171,9 +139,8 @@ export async function fetchEvents(params: {
     includes?: string | string[];
 }): Promise<OpenpanelEventsResponse> {
     try {
-        const config = getOpenpanelConfig();
         const queryParams = new URLSearchParams({
-            projectId: config.projectId,
+            projectId: process.env.OPENPANEL_PROJECT_ID!,
             profileId: params.profileId,
             start: params.start,
             end: params.end,
@@ -190,16 +157,21 @@ export async function fetchEvents(params: {
         }
 
         if (params.includes) {
-            const includes = Array.isArray(params.includes) ? params.includes.join(',') : params.includes;
-            queryParams.append('includes', includes);
+            if (Array.isArray(params.includes)) {
+                params.includes.forEach(e => queryParams.append('includes', e));
+            } else {
+                queryParams.append('includes', params.includes);
+            }
         }
 
-        const url = `https://api.openpanel.dev/export/events?${queryParams.toString()}`;
+        const url = `${OPEN_PANEL_API_URL}/export/events?${queryParams.toString()}`;
+
+        console.log(url);
 
         const response = await fetch(url, {
             headers: {
-                'openpanel-client-id': config.clientId,
-                'openpanel-client-secret': config.clientSecret,
+                'openpanel-client-id': process.env.OPENPANEL_READ_CLIENT_ID!,
+                'openpanel-client-secret': process.env.OPENPANEL_READ_CLIENT_SECRET!,
             },
         });
 
@@ -208,15 +180,17 @@ export async function fetchEvents(params: {
         }
 
         const result = await response.json();
+        console.log(result);
         return result;
     } catch (error) {
         console.error('Openpanel fetch events failed:', error);
         return {
             data: [],
             meta: {
-                total: 0,
-                page: params.page || 1,
-                per_page: params.limit || 50,
+                count: 0,
+                totalCount: 0,
+                pages: 0,
+                current: 0,
             },
         };
     }
