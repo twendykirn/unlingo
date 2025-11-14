@@ -6,6 +6,7 @@ import { internal } from './_generated/api';
 import { customersDelete } from '@polar-sh/sdk/funcs/customersDelete.js';
 import { customersUpdate } from '@polar-sh/sdk/funcs/customersUpdate.js';
 import { getCurrentMonth } from './utils';
+import { r2 } from './files';
 
 export const verifyWorkspaceContactEmail = mutation({
     args: {
@@ -172,7 +173,7 @@ async function deleteWorkspaceAndRelatedData(
             }
 
             if (screenshot.imageFileId) {
-                await ctx.storage.delete(screenshot.imageFileId);
+                await r2.deleteObject(ctx, screenshot.imageFileId);
             }
 
             await ctx.db.delete(screenshot._id);
@@ -197,13 +198,13 @@ async function deleteWorkspaceAndRelatedData(
 
                 for (const language of languages) {
                     if (language.fileId) {
-                        await ctx.storage.delete(language.fileId);
+                        await r2.deleteObject(ctx, language.fileId);
                     }
                     await ctx.db.delete(language._id);
                 }
 
                 if (version.jsonSchemaFileId) {
-                    await ctx.storage.delete(version.jsonSchemaFileId);
+                    await r2.deleteObject(ctx, version.jsonSchemaFileId);
                 }
 
                 await ctx.db.delete(version._id);

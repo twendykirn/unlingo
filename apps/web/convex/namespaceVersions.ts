@@ -4,6 +4,7 @@ import { v } from 'convex/values';
 import { Workpool, vOnCompleteArgs } from '@convex-dev/workpool';
 import { components, internal } from './_generated/api';
 import { Id } from './_generated/dataModel';
+import { r2 } from './files';
 
 const mergeWorkpool = new Workpool(components.mergeWorkpool, {
     maxParallelism: 25,
@@ -181,13 +182,13 @@ export const deleteNamespaceVersion = internalMutation({
             }
 
             if (language.fileId) {
-                await ctx.storage.delete(language.fileId);
+                await r2.deleteObject(ctx, language.fileId);
             }
             await ctx.db.delete(language._id);
         }
 
         if (namespaceVersion.jsonSchemaFileId) {
-            await ctx.storage.delete(namespaceVersion.jsonSchemaFileId);
+            await r2.deleteObject(ctx, namespaceVersion.jsonSchemaFileId);
         }
 
         await ctx.db.delete(args.versionId);
@@ -314,7 +315,7 @@ export const mergeNamespaceVersions = action({
             throw new Error(`Version schema not found for ${sourceVersionDoc.version}`);
         }
 
-        const fileUrl = await ctx.storage.getUrl(sourceVersionDoc.jsonSchemaFileId);
+        const fileUrl = await r2.getUrl(sourceVersionDoc.jsonSchemaFileId);
         if (!fileUrl) {
             throw new Error(`Failed to get URL for version schema: ${sourceVersionDoc.version}`);
         }
@@ -325,19 +326,8 @@ export const mergeNamespaceVersions = action({
                 `Failed to download version schema for ${sourceVersionDoc.version}: ${response.statusText}`
             );
         }
-        const content = await response.text();
-
-        const schemaContent = JSON.stringify(content, null, 2);
-        const schemaBlob = new Blob([schemaContent], { type: 'application/json' });
-
-        const schemaUploadUrl = await ctx.storage.generateUploadUrl();
-        const schemaUploadResponse = await fetch(schemaUploadUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: schemaBlob,
-        });
-
-        const { storageId: schemaStorageId } = await schemaUploadResponse.json();
+        const schemaBlob = await response.blob();
+        const schemaStorageId = await r2.store(ctx, schemaBlob);
 
         await ctx.runMutation(internal.namespaceVersions.replaceSchemaFile, {
             targetVersionId: targetVersionDoc._id,
@@ -408,7 +398,7 @@ export const mergeLanguage = internalAction({
             throw new Error(`No file found for source language: ${args.languageCode}`);
         }
 
-        const fileUrl = await ctx.storage.getUrl(sourceLanguage.fileId);
+        const fileUrl = await r2.getUrl(sourceLanguage.fileId);
         if (!fileUrl) {
             throw new Error(`Failed to get URL for source language file: ${args.languageCode}`);
         }
@@ -417,20 +407,8 @@ export const mergeLanguage = internalAction({
         if (!response.ok) {
             throw new Error(`Failed to download source file for ${args.languageCode}: ${response.statusText}`);
         }
-        const content = await response.text();
-
-        const contentBlob = new Blob([content], { type: 'application/json' });
-        const uploadUrl = await ctx.storage.generateUploadUrl();
-        const uploadResponse = await fetch(uploadUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: contentBlob,
-        });
-
-        if (!uploadResponse.ok) {
-            throw new Error(`Failed to upload file for ${args.languageCode}: ${uploadResponse.statusText}`);
-        }
-        const { storageId } = await uploadResponse.json();
+        const contentBlob = await response.blob();
+        const storageId = await r2.store(ctx, contentBlob);
 
         if (args.operation === 'update' && args.targetLanguageId) {
             await ctx.runMutation(internal.namespaceVersions.updateLanguageForMerge, {
@@ -589,7 +567,7 @@ export const deleteLanguageForMerge = internalMutation({
         }
 
         if (language.fileId) {
-            await ctx.storage.delete(language.fileId);
+            await r2.deleteObject(ctx, language.fileId);
         }
 
         await ctx.db.delete(args.languageId);
@@ -599,7 +577,7 @@ export const deleteLanguageForMerge = internalMutation({
 export const updateLanguageForMerge = internalMutation({
     args: {
         languageId: v.id('languages'),
-        fileId: v.id('_storage'),
+        fileId: v.string(),
         fileSize: v.number(),
     },
     handler: async (ctx, args) => {
@@ -609,7 +587,7 @@ export const updateLanguageForMerge = internalMutation({
         }
 
         if (language.fileId) {
-            await ctx.storage.delete(language.fileId);
+            await r2.deleteObject(ctx, language.fileId);
         }
 
         await ctx.db.patch(args.languageId, {
@@ -624,7 +602,7 @@ export const createLanguageForMerge = internalMutation({
     args: {
         versionId: v.id('namespaceVersions'),
         languageCode: v.string(),
-        fileId: v.id('_storage'),
+        fileId: v.string(),
         fileSize: v.number(),
     },
     handler: async (ctx, args) => {
@@ -641,7 +619,7 @@ export const createLanguageForMerge = internalMutation({
 export const replaceSchemaFile = internalMutation({
     args: {
         targetVersionId: v.id('namespaceVersions'),
-        sourceSchemaFileId: v.optional(v.id('_storage')),
+        sourceSchemaFileId: v.optional(v.string()),
         sourceSchemaSize: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
@@ -651,7 +629,7 @@ export const replaceSchemaFile = internalMutation({
         }
 
         if (targetVersion.jsonSchemaFileId) {
-            await ctx.storage.delete(targetVersion.jsonSchemaFileId);
+            await r2.deleteObject(ctx, targetVersion.jsonSchemaFileId);
         }
 
         await ctx.db.patch(args.targetVersionId, {

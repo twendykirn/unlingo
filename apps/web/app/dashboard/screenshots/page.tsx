@@ -32,6 +32,7 @@ import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from 
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
 import { Collection, TableLoadMoreItem } from 'react-aria-components';
 import { useDateFormatter } from '@react-aria/i18n';
+import { useUploadFile } from '@convex-dev/r2/react';
 
 export default function ScreenshotsPage() {
     const searchParams = useSearchParams();
@@ -39,6 +40,8 @@ export default function ScreenshotsPage() {
 
     const router = useRouter();
     const formatter = useDateFormatter({ dateStyle: 'long' });
+
+    const uploadFile = useUploadFile(api.files);
 
     const [workspace, setWorkspace] = useState<WorkspaceWithPremium | null>(null);
     const [selectedProjectId, setSelectedProjectId] = useState<Id<'projects'> | null>(null);
@@ -80,7 +83,6 @@ export default function ScreenshotsPage() {
         { initialNumItems: 12 }
     );
 
-    const generateUploadUrl = useMutation(api.screenshots.generateUploadUrl);
     const createScreenshot = useMutation(api.screenshots.createScreenshot);
     const deleteScreenshot = useMutation(api.screenshots.deleteScreenshot);
 
@@ -112,19 +114,7 @@ export default function ScreenshotsPage() {
 
         setIsUploading(true);
         try {
-            const uploadUrl = await generateUploadUrl();
-
-            const result = await fetch(uploadUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': selectedFile.type },
-                body: selectedFile,
-            });
-
-            if (!result.ok) {
-                throw new Error('Failed to upload file');
-            }
-
-            const { storageId } = await result.json();
+            const storageId = await uploadFile(selectedFile);
 
             const dimensions = await new Promise<{ width: number; height: number }>(resolve => {
                 const img = new Image();

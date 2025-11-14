@@ -2,6 +2,7 @@ import { paginationOptsValidator } from 'convex/server';
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { internal } from './_generated/api';
+import { r2 } from './files';
 
 export const getProjects = query({
     args: {
@@ -216,7 +217,7 @@ export const deleteProject = mutation({
             }
 
             if (screenshot.imageFileId) {
-                await ctx.storage.delete(screenshot.imageFileId);
+                await r2.deleteObject(ctx, screenshot.imageFileId);
             }
 
             await ctx.db.delete(screenshot._id);
@@ -241,13 +242,13 @@ export const deleteProject = mutation({
 
                 for (const language of languages) {
                     if (language.fileId) {
-                        await ctx.storage.delete(language.fileId);
+                        await r2.deleteObject(ctx, language.fileId);
                     }
                     await ctx.db.delete(language._id);
                 }
 
                 if (version.jsonSchemaFileId) {
-                    await ctx.storage.delete(version.jsonSchemaFileId);
+                    await r2.deleteObject(ctx, version.jsonSchemaFileId);
                 }
 
                 await ctx.db.delete(version._id);

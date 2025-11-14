@@ -308,8 +308,11 @@ http.route({
                 );
             }
 
-            const blob = await ctx.storage.get(language.fileId);
-            if (!blob) {
+            const fileContent = await ctx.runAction(internal.files.getFileContent, {
+                fileId: language.fileId,
+            });
+
+            if (!fileContent) {
                 await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
                     ...ingestBase,
                     deniedReason: 'storage_blob_missing',
@@ -324,8 +327,6 @@ http.route({
                     }
                 );
             }
-
-            const fileContent = await blob.text();
 
             let parsedContent;
             try {

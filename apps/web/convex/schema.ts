@@ -52,7 +52,7 @@ export default defineSchema({
     namespaceVersions: defineTable({
         namespaceId: v.id('namespaces'),
         version: v.string(),
-        jsonSchemaFileId: v.optional(v.id('_storage')),
+        jsonSchemaFileId: v.optional(v.string()),
         jsonSchemaSize: v.optional(v.number()),
         primaryLanguageId: v.optional(v.id('languages')),
         usage: v.object({
@@ -64,7 +64,7 @@ export default defineSchema({
     languages: defineTable({
         namespaceVersionId: v.id('namespaceVersions'),
         languageCode: v.string(),
-        fileId: v.optional(v.id('_storage')),
+        fileId: v.optional(v.string()),
         fileSize: v.optional(v.number()),
         updatedAt: v.number(),
         status: v.optional(v.union(v.literal('merging'), v.literal('syncing'))),
@@ -73,7 +73,7 @@ export default defineSchema({
         projectId: v.id('projects'),
         name: v.string(),
         description: v.optional(v.string()),
-        imageFileId: v.id('_storage'),
+        imageFileId: v.string(),
         imageSize: v.number(), // size of image file in bytes
         imageMimeType: v.string(), // MIME type (image/png, image/jpeg, etc.)
         dimensions: v.object({

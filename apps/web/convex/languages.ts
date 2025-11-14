@@ -3,10 +3,11 @@ import { action, mutation, query, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
 import { generateSchemas } from '../lib/zodSchemaGenerator';
 import { components, internal } from './_generated/api';
-import { Doc, Id } from './_generated/dataModel';
+import { Doc } from './_generated/dataModel';
 import { flattenJson, unflattenJson } from './utils/jsonFlatten';
 import { applyLanguageChanges } from './utils/applyLanguageChanges';
 import { Workpool } from '@convex-dev/workpool';
+import { r2 } from './files';
 
 const languagePool = new Workpool(components.languageWorkpool, {
     maxParallelism: 25,
@@ -186,7 +187,7 @@ export const createLanguages = mutation({
             }
         }
 
-        let primaryFileId: Id<'_storage'> | undefined = undefined;
+        let primaryFileId: string | undefined = undefined;
 
         if (!isFirstLanguage && primaryLanguageId) {
             const primaryLanguage = await ctx.db.get(primaryLanguageId);
@@ -276,7 +277,7 @@ export const deleteLanguage = mutation({
         }
 
         if (language.fileId) {
-            await ctx.storage.delete(language.fileId);
+            await r2.deleteObject(ctx, language.fileId);
         }
 
         await ctx.db.delete(args.languageId);
@@ -285,7 +286,7 @@ export const deleteLanguage = mutation({
         const isLastFile = currentLanguageCount === 1;
 
         if (isLastFile && namespaceVersion.jsonSchemaFileId) {
-            await ctx.storage.delete(namespaceVersion.jsonSchemaFileId);
+            await r2.deleteObject(ctx, namespaceVersion.jsonSchemaFileId);
         }
 
         await ctx.db.patch(namespaceVersion._id, {
@@ -328,7 +329,7 @@ export const getLanguageContent = action({
         }
 
         try {
-            const fileUrl = await ctx.storage.getUrl(result.language.fileId);
+            const fileUrl = await r2.getUrl(result.language.fileId);
             if (!fileUrl) {
                 console.warn('File URL is null for language:', args.languageId);
                 return {};
@@ -391,7 +392,7 @@ export const getJsonSchema = action({
         }
 
         try {
-            const fileUrl = await ctx.storage.getUrl(jsonSchemaFileId);
+            const fileUrl = await r2.getUrl(jsonSchemaFileId);
             if (!fileUrl) {
                 console.warn('Schema file URL is null for namespace version:', args.namespaceVersionId);
                 return null;
@@ -495,7 +496,7 @@ export const applyChangeOperations = action({
             let currentContent: any = {};
 
             if (language.fileId) {
-                const fileUrl = await ctx.storage.getUrl(language.fileId);
+                const fileUrl = await r2.getUrl(language.fileId);
                 if (fileUrl) {
                     const response = await fetch(fileUrl);
                     const contentText = await response.text();
@@ -509,17 +510,11 @@ export const applyChangeOperations = action({
 
             const updatedContentString = JSON.stringify(newJson, null, 2);
             const contentBlob = new Blob([updatedContentString], { type: 'application/json' });
-            const uploadUrl = await ctx.storage.generateUploadUrl();
-            const uploadResponse = await fetch(uploadUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: contentBlob,
-            });
 
-            const { storageId } = await uploadResponse.json();
+            const storageId = await r2.store(ctx, contentBlob);
 
             if (language.fileId) {
-                await ctx.storage.delete(language.fileId);
+                await r2.deleteObject(ctx, language.fileId);
             }
 
             await ctx.runMutation(internal.internalLang.internalLanguageUpdate, {
@@ -535,17 +530,10 @@ export const applyChangeOperations = action({
                 const schemaContent = JSON.stringify(schema.jsonSchema, null, 2);
                 const schemaBlob = new Blob([schemaContent], { type: 'application/json' });
 
-                const schemaUploadUrl = await ctx.storage.generateUploadUrl();
-                const schemaUploadResponse = await fetch(schemaUploadUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: schemaBlob,
-                });
-
-                const { storageId: schemaStorageId } = await schemaUploadResponse.json();
+                const schemaStorageId = await r2.store(ctx, schemaBlob);
 
                 if (namespaceVersion.jsonSchemaFileId) {
-                    await ctx.storage.delete(namespaceVersion.jsonSchemaFileId);
+                    await r2.deleteObject(ctx, namespaceVersion.jsonSchemaFileId);
                 }
 
                 await ctx.runMutation(internal.internalLang.languageUpdateSchema, {
