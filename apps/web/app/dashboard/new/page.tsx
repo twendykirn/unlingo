@@ -94,7 +94,6 @@ export default function NewOrganizationPage() {
                     clerkOrgId: organization.id,
                     contactEmail: contactEmail.trim(),
                 });
-
                 await setActive?.({ organization: organization.id });
                 setTimeout(() => {
                     router.push('/dashboard');
@@ -103,7 +102,6 @@ export default function NewOrganizationPage() {
         } catch (error) {
             console.error('Failed to complete setup:', error);
             setIsCompletingSetup(false);
-
             if (error instanceof Error && error.message.includes('contact email already exists')) {
                 setErrorMessage(
                     'This email is already associated with another workspace. Please use a different email address.'

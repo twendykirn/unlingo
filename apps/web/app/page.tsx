@@ -98,7 +98,7 @@ const getPlanLimits = (requests: string) => {
         return {
             projects: 3,
             namespacesPerProject: 12,
-            languagesPerVersion: 25,
+            languagesPerVersion: 90,
         };
     } else {
         return {
@@ -746,18 +746,19 @@ export default function Page() {
                     </motion.div>
 
                     <div className='grid md:grid-cols-3 gap-6 md:gap-8 max-w-5xl mx-auto'>
-                        {/* Free Tier */}
+                        {/* Starter Tier */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5 }}
                             viewport={{ once: true }}
                             className='bg-gray-950/60 border border-gray-800 rounded-xl p-7 relative h-full'>
-                            <h3 className='text-2xl font-bold mb-2'>Free</h3>
-                            <div className='mb-6'>
-                                <span className='text-4xl font-bold'>$0</span>
+                            <h3 className='text-2xl font-bold mb-2'>Starter</h3>
+                            <div className='mb-2'>
+                                <span className='text-4xl font-bold'>$5</span>
                                 <span className='text-gray-400'>/month</span>
                             </div>
+                            <p className='text-sm text-green-400 mb-6'>7 days free trial</p>
                             <ul className='space-y-3 mb-8'>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
@@ -769,7 +770,7 @@ export default function Page() {
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>6 languages per version</span>
+                                    <span>90 languages per version</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
@@ -777,11 +778,23 @@ export default function Page() {
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
+                                    <span>7-day logs retention</span>
+                                </li>
+                                <li className='flex items-center'>
+                                    <Check className='h-5 w-5 text-green-400 mr-3' />
+                                    <span>AI translations</span>
+                                </li>
+                                <li className='flex items-center'>
+                                    <Check className='h-5 w-5 text-green-400 mr-3' />
+                                    <span>Screenshots</span>
+                                </li>
+                                <li className='flex items-center'>
+                                    <Check className='h-5 w-5 text-green-400 mr-3' />
                                     <span>Community support</span>
                                 </li>
                             </ul>
                             <Button intent='outline' className='w-full' onClick={() => router.push('/sign-up')}>
-                                Get Started Free
+                                Get Started
                             </Button>
                         </motion.div>
 
@@ -868,7 +881,15 @@ export default function Page() {
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>30-day logs retention</span>
+                                        </li>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
                                             <span>AI translations</span>
+                                        </li>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>Screenshots</span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
