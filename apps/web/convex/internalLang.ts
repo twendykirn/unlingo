@@ -1,6 +1,5 @@
 import { v } from 'convex/values';
 import { internalAction, internalMutation, internalQuery } from './_generated/server';
-import { Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
 import { flattenJson, unflattenJson } from './utils/jsonFlatten';
 import { applyLanguageChanges } from './utils/applyLanguageChanges';
@@ -8,6 +7,7 @@ import { vOnCompleteArgs } from '@convex-dev/workpool';
 import { translateContentUtil } from './utils/translateContentUtil';
 import { generateSchemas } from '../lib/zodSchemaGenerator';
 import { translateNewContentUtil } from './utils/translateNewContentUtil';
+import { r2 } from './files';
 
 export const languageChangesContext = internalQuery({
     args: {
@@ -115,7 +115,7 @@ export const internalVersionLanguages = internalQuery({
 export const languageUpdateSchema = internalMutation({
     args: {
         namespaceVersionId: v.id('namespaceVersions'),
-        jsonSchemaFileId: v.id('_storage'),
+        jsonSchemaFileId: v.string(),
         jsonSchemaSize: v.number(),
     },
     handler: async (ctx, args) => {
@@ -130,7 +130,7 @@ export const languageUpdateSchema = internalMutation({
 export const internalLanguageUpdate = internalMutation({
     args: {
         languageId: v.id('languages'),
-        fileId: v.id('_storage'),
+        fileId: v.string(),
         fileSize: v.number(),
     },
     handler: async (ctx, args) => {
@@ -175,8 +175,8 @@ export const languageUpdateContent = internalAction({
     args: {
         languageId: v.id('languages'),
         languageCode: v.string(),
-        languageFileId: v.optional(v.id('_storage')),
-        primaryLanguageFileId: v.id('_storage'),
+        languageFileId: v.optional(v.string()),
+        primaryLanguageFileId: v.string(),
         namespaceVersionId: v.id('namespaceVersions'),
         languageChanges: v.object({
             add: v.array(
@@ -219,7 +219,7 @@ export const languageUpdateContent = internalAction({
             args;
 
         try {
-            const fileUrl = await ctx.storage.getUrl(languageFileId || primaryLanguageFileId);
+            const fileUrl = await r2.getUrl(languageFileId || primaryLanguageFileId);
 
             if (!fileUrl) {
                 throw new Error('No file URL found');
@@ -254,17 +254,10 @@ export const languageUpdateContent = internalAction({
             }
 
             const syncedContentBlob = new Blob([JSON.stringify(targetContent, null, 2)], { type: 'application/json' });
-            const syncUploadUrl = await ctx.storage.generateUploadUrl();
-            const syncUploadResponse = await fetch(syncUploadUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: syncedContentBlob,
-            });
-
-            const { storageId: syncStorageId } = await syncUploadResponse.json();
+            const syncStorageId = await r2.store(ctx, syncedContentBlob);
 
             if (languageFileId) {
-                await ctx.storage.delete(languageFileId);
+                await r2.deleteObject(ctx, languageFileId);
             }
 
             await ctx.runMutation(internal.internalLang.internalLanguageUpdate, {
@@ -296,15 +289,7 @@ export const languageCreateSchema = internalAction({
 
             const schemaContent = JSON.stringify(schema.jsonSchema, null, 2);
             const schemaBlob = new Blob([schemaContent], { type: 'application/json' });
-
-            const schemaUploadUrl = await ctx.storage.generateUploadUrl();
-            const schemaUploadResponse = await fetch(schemaUploadUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: schemaBlob,
-            });
-
-            const { storageId: schemaStorageId } = await schemaUploadResponse.json();
+            const schemaStorageId = await r2.store(ctx, schemaBlob);
 
             await ctx.runMutation(internal.internalLang.languageUpdateSchema, {
                 namespaceVersionId,
@@ -324,7 +309,7 @@ export const languageCreateContent = internalAction({
         languageId: v.id('languages'),
         languageCode: v.string(),
         isPrimaryLanguage: v.boolean(),
-        primaryLanguageFileId: v.optional(v.id('_storage')),
+        primaryLanguageFileId: v.optional(v.string()),
         namespaceVersionId: v.id('namespaceVersions'),
         primaryJSON: v.optional(v.string()),
     },
@@ -336,7 +321,7 @@ export const languageCreateContent = internalAction({
             let targetContent = primaryJSON ? JSON.parse(primaryJSON) : undefined;
 
             if (primaryLanguageFileId) {
-                const fileUrl = await ctx.storage.getUrl(primaryLanguageFileId);
+                const fileUrl = await r2.getUrl(primaryLanguageFileId);
 
                 if (!fileUrl) {
                     throw new Error('No file URL found');
@@ -365,14 +350,7 @@ export const languageCreateContent = internalAction({
             const syncedContentBlob = new Blob([JSON.stringify(translatedContent, null, 2)], {
                 type: 'application/json',
             });
-            const syncUploadUrl = await ctx.storage.generateUploadUrl();
-            const syncUploadResponse = await fetch(syncUploadUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: syncedContentBlob,
-            });
-
-            const { storageId: syncStorageId } = await syncUploadResponse.json();
+            const syncStorageId = await r2.store(ctx, syncedContentBlob);
 
             await ctx.runMutation(internal.internalLang.internalLanguageUpdate, {
                 languageId,

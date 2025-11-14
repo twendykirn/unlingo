@@ -9,6 +9,7 @@ function getCurrentMonth(): string {
 export const checkAndUpdateRequestUsage = internalMutation({
     args: {
         workspaceId: v.id('workspaces'),
+        projectId: v.id('projects'),
     },
     handler: async (ctx, args) => {
         const workspace = await ctx.db.get(args.workspaceId);
@@ -19,6 +20,11 @@ export const checkAndUpdateRequestUsage = internalMutation({
         const usage = await ctx.db.get(workspace.workspaceUsageId);
         if (!usage) {
             throw new Error('Usage record not found');
+        }
+
+        const project = await ctx.db.get(args.projectId);
+        if (!project) {
+            throw new Error('Project not found');
         }
 
         const limit = workspace.limits.requests;
@@ -56,6 +62,7 @@ export const checkAndUpdateRequestUsage = internalMutation({
             nearLimit: currentRequests === Math.round(limit * 0.8), // Warning at 80%
             exceedsLimit: currentRequests === limit, // At 100% of plan limit
             workspace,
+            project,
         };
     },
 });

@@ -6,6 +6,7 @@ import { internal } from './_generated/api';
 import { customersDelete } from '@polar-sh/sdk/funcs/customersDelete.js';
 import { customersUpdate } from '@polar-sh/sdk/funcs/customersUpdate.js';
 import { getCurrentMonth } from './utils';
+import { r2 } from './files';
 
 export const verifyWorkspaceContactEmail = mutation({
     args: {
@@ -133,16 +134,10 @@ async function deleteWorkspaceAndRelatedData(
         .collect();
 
     for (const project of projects) {
-        const apiKeys = await ctx.db
-            .query('apiKeys')
-            .withIndex('by_workspace_project', q =>
-                q.eq('workspaceId', project.workspaceId).eq('projectId', project._id)
-            )
-            .collect();
-
-        for (const apiKey of apiKeys) {
-            await ctx.db.delete(apiKey._id);
-        }
+        await ctx.scheduler.runAfter(0, internal.keys.deleteUnkeyIdentity, {
+            projectId: project._id,
+            workspaceId,
+        });
 
         const releases = await ctx.db
             .query('releases')
@@ -178,7 +173,7 @@ async function deleteWorkspaceAndRelatedData(
             }
 
             if (screenshot.imageFileId) {
-                await ctx.storage.delete(screenshot.imageFileId);
+                await r2.deleteObject(ctx, screenshot.imageFileId);
             }
 
             await ctx.db.delete(screenshot._id);
@@ -203,13 +198,13 @@ async function deleteWorkspaceAndRelatedData(
 
                 for (const language of languages) {
                     if (language.fileId) {
-                        await ctx.storage.delete(language.fileId);
+                        await r2.deleteObject(ctx, language.fileId);
                     }
                     await ctx.db.delete(language._id);
                 }
 
                 if (version.jsonSchemaFileId) {
-                    await ctx.storage.delete(version.jsonSchemaFileId);
+                    await r2.deleteObject(ctx, version.jsonSchemaFileId);
                 }
 
                 await ctx.db.delete(version._id);

@@ -7,6 +7,7 @@ import { Authenticated, Unauthenticated } from 'convex/react';
 import { Toast } from '@/components/ui/toast';
 import { Providers } from '@/components/providers';
 import { SubscriptionRequiredModal } from './components/subscription-required-modal';
+import { UserjotProvider } from '@/components/userjot-provider';
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -15,9 +16,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
             <Authenticated>
                 <Providers>
-                    <Toast />
-                    <SubscriptionRequiredModal />
-                    {children}
+                    <UserjotProvider>
+                        <Toast />
+                        {children}
+                        <SubscriptionRequiredModal />
+                    </UserjotProvider>
                 </Providers>
             </Authenticated>
             <Unauthenticated>

@@ -28,7 +28,7 @@ The developer platform for modern internationalization. Host, manage, and delive
 - **Backend**: Convex (Database & API)
 - **Authentication**: Clerk
 - **Payments**: Polar
-- **Analytics**: PostHog (API Analytics), Databuddy (Web Analytics)
+- **Analytics**: OpenPanel
 - **Email**: Resend
 - **Hosting**: Vercel
 - **Development**: Turborepo, ESLint, Prettier

@@ -47,7 +47,6 @@ export default function Dashboard() {
                                     <CardDescription>View, edit and delete your projects.</CardDescription>
                                 </div>
                                 <Button
-                                    intent='plain'
                                     isDisabled={!canCreateProject}
                                     onClick={() => setIsCreateProjectSheetOpen(true)}>
                                     <PlusIcon />

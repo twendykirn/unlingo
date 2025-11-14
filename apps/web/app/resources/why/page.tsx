@@ -32,12 +32,18 @@ export default function WhyPage() {
                                 href='https://docs.unlingo.com'
                                 target='_blank'
                                 className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
-                                Documentation
+                                Docs
                             </Link>
                             <Link
                                 href='/#pricing'
                                 className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
                                 Pricing
+                            </Link>
+                            <Link
+                                href='https://unlingo.userjot.com/roadmap'
+                                target='_blank'
+                                className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
+                                Roadmap
                             </Link>
                             <Link
                                 href='/resources/about'
@@ -256,6 +262,12 @@ export default function WhyPage() {
                                     target='_blank'
                                     className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Status
+                                </Link>
+                                <Link
+                                    href='https://unlingo.userjot.com/roadmap'
+                                    target='_blank'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                    Roadmap
                                 </Link>
                             </div>
                         </div>

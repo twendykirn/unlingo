@@ -19,7 +19,7 @@ import {
 import { useState } from 'react';
 import type React from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, SignOutButton, useSignUp } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Gradient } from '@/components/ui/gradient';
 import SpotlightCard from '@/components/ui/spotlight-card';
@@ -30,10 +30,6 @@ import Link from 'next/link';
 import { CodeEditor } from '@/components/code-editor';
 import GithubSpaceLogo from '@/components/github-space-logo';
 import HeroVideoDialog from '@/components/magicui/hero-video-dialog';
-import { Input } from '@/components/ui/input';
-import GithubStarButton from '@/components/github-star-button';
-import { ModalBody, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@/components/ui/modal';
-import { Form } from '@/components/ui/form';
 import type { Key } from 'react-aria-components';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Label } from '@/components/ui/field';
@@ -244,82 +240,14 @@ export default function Page() {
     const [selectedPricing, setSelectedPricing] = useState<Key>('12');
     const [activeLibrary, setActiveLibrary] = useState('i18next');
     const [isCopied, setIsCopied] = useState(false);
-    const [email, setEmail] = useState('');
-    const [emailError, setEmailError] = useState<string | null>(null);
-    const [generalError, setGeneralError] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isVerifyOpen, setIsVerifyOpen] = useState(false);
-    const [code, setCode] = useState('');
-    const [verifyError, setVerifyError] = useState<Record<string, string> | undefined>(undefined);
-    const [isVerifying, setIsVerifying] = useState(false);
 
     const router = useRouter();
     const { isSignedIn } = useUser();
-    const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
 
     const scrollToSection = (sectionId: string) => {
         const element = document.getElementById(sectionId);
         if (element) {
             element.scrollIntoView({ behavior: 'smooth' });
-        }
-    };
-
-    const handleQuickSignup = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setEmailError(null);
-        setGeneralError(null);
-
-        const trimmed = email.trim();
-        const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-
-        if (!isValid) {
-            setEmailError('Please enter a valid email');
-            return;
-        }
-        if (!signUpLoaded) return;
-
-        try {
-            setIsSubmitting(true);
-            await signUp.create({ emailAddress: trimmed, legalAccepted: true });
-            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-            setIsVerifyOpen(true);
-        } catch (err: any) {
-            const message = err?.errors?.[0]?.message || 'Could not start sign up. Please try again.';
-            setGeneralError(message);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleVerify = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!signUpLoaded) return;
-        setVerifyError(undefined);
-
-        try {
-            setIsVerifying(true);
-            const res = await signUp.attemptEmailAddressVerification({ code });
-            if (res.status === 'complete') {
-                await setActive({ session: res.createdSessionId });
-                router.push('/dashboard/new');
-            } else {
-                setVerifyError({ code: 'Verification incomplete. Please try again.' });
-            }
-        } catch (err: any) {
-            const message = err?.errors?.[0]?.message || 'Invalid code. Please try again.';
-            setVerifyError({ code: message });
-        } finally {
-            setIsVerifying(false);
-        }
-    };
-
-    const handleResend = async () => {
-        if (!signUpLoaded) return;
-        setVerifyError(undefined);
-        try {
-            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-        } catch (_) {
-            // Clerk will throttle appropriately
         }
     };
 
@@ -361,10 +289,16 @@ export default function Page() {
                                 Pricing
                             </button>
                             <Link
+                                href='https://unlingo.userjot.com/roadmap'
+                                target='_blank'
+                                className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
+                                Roadmap
+                            </Link>
+                            <Link
                                 href='https://docs.unlingo.com'
                                 target='_blank'
                                 className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
-                                Documentation
+                                Docs
                             </Link>
                         </div>
 
@@ -715,8 +649,6 @@ export default function Page() {
                         transition={{ duration: 0.6, delay: 0.2 }}
                         viewport={{ once: true }}
                         className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-center justify-items-center max-w-5xl mx-auto'>
-                        {/* First Row */}
-                        {/* Convex */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://convex.dev' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-orange-500/30 transition-all duration-300'
@@ -730,7 +662,6 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* Clerk */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://clerk.com' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-indigo-500/30 transition-all duration-300'
@@ -744,7 +675,6 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* Vercel */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://vercel.com' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-white/30 transition-all duration-300'
@@ -758,8 +688,6 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* Second Row */}
-                        {/* Polar */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://polar.sh' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-blue-500/30 transition-all duration-300'
@@ -773,21 +701,19 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* Databuddy */}
-                        <Link className='w-full h-24 cursor-pointer group' href='https://databuddy.cc' target='_blank'>
+                        <Link className='w-full h-24 cursor-pointer group' href='https://openpanel.dev' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-[#3C83F6]/30 transition-all duration-300'
                                 spotlightColor='rgba(60, 131, 246, 0.15)'>
                                 <div className='text-center'>
                                     <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-[#3C83F6] transition-colors'>
-                                        Databuddy
+                                        OpenPanel
                                     </div>
-                                    <div className='text-xs text-gray-500'>Web Analytics</div>
+                                    <div className='text-xs text-gray-500'>Analytics</div>
                                 </div>
                             </SpotlightCard>
                         </Link>
 
-                        {/* Resend */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://resend.com' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-violet-500/30 transition-all duration-300'
@@ -797,23 +723,6 @@ export default function Page() {
                                         Resend
                                     </div>
                                     <div className='text-xs text-gray-500'>Email API</div>
-                                </div>
-                            </SpotlightCard>
-                        </Link>
-
-                        {/* PostHog */}
-                        <Link
-                            className='w-full h-24 cursor-pointer group sm:col-start-1 lg:col-start-2'
-                            href='https://posthog.com'
-                            target='_blank'>
-                            <SpotlightCard
-                                className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-yellow-500/30 transition-all duration-300'
-                                spotlightColor='rgba(234, 179, 8, 0.15)'>
-                                <div className='text-center'>
-                                    <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-yellow-500 transition-colors'>
-                                        PostHog
-                                    </div>
-                                    <div className='text-xs text-gray-500'>API Analytics</div>
                                 </div>
                             </SpotlightCard>
                         </Link>
@@ -1097,6 +1006,12 @@ export default function Page() {
                                     target='_blank'
                                     className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Status
+                                </Link>
+                                <Link
+                                    href='https://unlingo.userjot.com/roadmap'
+                                    target='_blank'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                    Roadmap
                                 </Link>
                             </div>
                         </div>
