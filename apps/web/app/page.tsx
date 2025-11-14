@@ -778,6 +778,18 @@ export default function Page() {
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
+                                    <span>7-day logs retention</span>
+                                </li>
+                                <li className='flex items-center'>
+                                    <Check className='h-5 w-5 text-green-400 mr-3' />
+                                    <span>AI translations</span>
+                                </li>
+                                <li className='flex items-center'>
+                                    <Check className='h-5 w-5 text-green-400 mr-3' />
+                                    <span>Screenshots</span>
+                                </li>
+                                <li className='flex items-center'>
+                                    <Check className='h-5 w-5 text-green-400 mr-3' />
                                     <span>Community support</span>
                                 </li>
                             </ul>
@@ -869,7 +881,15 @@ export default function Page() {
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>30-day logs retention</span>
+                                        </li>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
                                             <span>AI translations</span>
+                                        </li>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>Screenshots</span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />

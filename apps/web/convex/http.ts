@@ -42,13 +42,13 @@ function getRequestLimitFromProduct(productId?: string): number | undefined {
 }
 
 function getTierFromProduct(productId?: string) {
-    if (!productId) return 'free';
+    if (!productId) return 'starter';
 
     switch (productId) {
         case process.env.POLAR_PRO_10K_PRODUCT_ID!:
             return 'starter';
         case process.env.POLAR_PRO_50K_PRODUCT_ID!:
-            return 'starter';
+            return 'hobby';
         case process.env.POLAR_PRO_250K_PRODUCT_ID!:
         case process.env.POLAR_PRO_500K_PRODUCT_ID!:
         case process.env.POLAR_PRO_1M_PRODUCT_ID!:
@@ -58,7 +58,7 @@ function getTierFromProduct(productId?: string) {
         case process.env.POLAR_PRO_100M_PRODUCT_ID!:
             return 'premium';
         default:
-            return 'free';
+            return 'starter';
     }
 }
 

@@ -367,7 +367,7 @@ export const updateWorkspaceContactEmail = mutation({
 export const updateWorkspaceLimits = internalMutation({
     args: {
         workspaceId: v.id('workspaces'),
-        tier: v.union(v.literal('free'), v.literal('starter'), v.literal('premium')),
+        tier: v.union(v.literal('starter'), v.literal('hobby'), v.literal('premium')),
         requestLimit: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
@@ -379,7 +379,7 @@ export const updateWorkspaceLimits = internalMutation({
 
         let limits;
         switch (args.tier) {
-            case 'free':
+            case 'starter':
                 limits = {
                     requests: 10000,
                     projects: 1,
@@ -388,7 +388,7 @@ export const updateWorkspaceLimits = internalMutation({
                     languagesPerVersion: 90,
                 };
                 break;
-            case 'starter':
+            case 'hobby':
                 limits = {
                     requests: 50000,
                     projects: 3,
