@@ -62,9 +62,32 @@ Project: E-commerce Website
 
 <Info>By default new namespaces are created with `main` version.</Info>
 
-## Namespace Versioning
+## Namespace Branches
 
-Each namespace can have different versions, allowing for independent updates.
+Each namespace has **production** and **development** branches by default. These branches allow you to work on translations independently:
+
+- **Production branch**: Contains stable, production-ready translations
+- **Development branch**: Used for testing and developing new translations before they go live
+
+### Branch Merging
+
+You can merge branches into each other to synchronize translations. When merging branches:
+
+<Warning>
+Branch merging is a **full merge** operation that:
+- **Removes languages** that don't exist in the source branch
+- **Creates new languages** if the target branch doesn't have them
+- **Fully updates content** in matching languages
+
+This is a destructive operation that completely synchronizes the target branch with the source branch.
+</Warning>
+
+<Steps>
+    <Step title='Select Source Branch'>Choose the branch you want to merge from</Step>
+    <Step title='Select Target Branch'>Choose the branch you want to merge into</Step>
+    <Step title='Review Changes'>Understand that the target will be fully synchronized with the source</Step>
+    <Step title='Confirm Merge'>Execute the merge operation</Step>
+</Steps>
 
 ## Best Practices
 
@@ -103,8 +126,8 @@ translations/      # Doesn't provide organization
 ## Next Steps
 
 <CardGroup cols={2}>
-    <Card title='Versions' icon='code-branch' href='/concepts/versions'>
-        Understand how to version your namespace translations
+    <Card title='Translations' icon='text' href='/concepts/translations'>
+        Understand how to manage translations within namespaces
     </Card>
     <Card title='Releases' icon='rocket' href='/concepts/releases'>
         Package namespaces into deployable releases
