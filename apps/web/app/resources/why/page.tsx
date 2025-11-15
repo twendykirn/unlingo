@@ -50,6 +50,11 @@ export default function WhyPage() {
                                 className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
                                 About
                             </Link>
+                            <Link
+                                href='/resources/team'
+                                className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
+                                Team
+                            </Link>
                         </div>
                         <div className='flex items-center space-x-4'>
                             {isSignedIn ? (
@@ -293,6 +298,11 @@ export default function WhyPage() {
                                     href='mailto:support@unlingo.com'
                                     className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Contact Us
+                                </Link>
+                                <Link
+                                    href='/resources/team'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                    Team
                                 </Link>
                             </div>
                         </div>

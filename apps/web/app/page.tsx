@@ -300,6 +300,11 @@ export default function Page() {
                                 className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
                                 Docs
                             </Link>
+                            <Link
+                                href='/resources/team'
+                                className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
+                                Team
+                            </Link>
                         </div>
 
                         {/* Auth Buttons */}
@@ -1059,6 +1064,11 @@ export default function Page() {
                                     href='mailto:support@unlingo.com'
                                     className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Contact Us
+                                </Link>
+                                <Link
+                                    href='/resources/team'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                    Team
                                 </Link>
                             </div>
                         </div>
