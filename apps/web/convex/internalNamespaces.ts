@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { internalAction, internalMutation } from './_generated/server';
 import { Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
+import { r2 } from './files';
 
 export const createNamespaceVersionContext = internalMutation({
     args: {
@@ -111,24 +112,14 @@ export const createNamespaceVersion = internalAction({
 
                     if (sourceLang.fileId) {
                         try {
-                            const sourceFileUrl = await ctx.storage.getUrl(sourceLang.fileId);
-                            if (!sourceFileUrl) {
-                                throw new Error('Failed to get source file URL');
-                            }
+                            const sourceFileUrl = await r2.getUrl(sourceLang.fileId);
                             const sourceResponse = await fetch(sourceFileUrl);
-                            const sourceContent = await sourceResponse.text();
+                            const sourceBlob = await sourceResponse.blob();
 
-                            const newBlob = new Blob([sourceContent], { type: 'application/json' });
-                            const uploadUrl = await ctx.storage.generateUploadUrl();
-                            const uploadResponse = await fetch(uploadUrl, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: newBlob,
-                            });
+                            const storageId = await r2.store(ctx, sourceBlob);
 
-                            const { storageId } = await uploadResponse.json();
                             newFileId = storageId;
-                            newFileSize = newBlob.size;
+                            newFileSize = sourceBlob.size;
                         } catch (error) {
                             throw new Error(`Failed to copy file for language: ${sourceLang.languageCode}. ${error}`);
                         }
@@ -137,7 +128,7 @@ export const createNamespaceVersion = internalAction({
                     await ctx.runMutation(internal.internalNamespaces.internalInsertLanguage, {
                         namespaceVersionId: versionId,
                         languageCode: sourceLang.languageCode,
-                        fileId: newFileId ? (newFileId as Id<'_storage'>) : undefined,
+                        fileId: newFileId ? newFileId : undefined,
                         fileSize: newFileSize,
                     });
                 }
@@ -161,7 +152,7 @@ export const internalInsertLanguage = internalMutation({
     args: {
         namespaceVersionId: v.id('namespaceVersions'),
         languageCode: v.string(),
-        fileId: v.optional(v.id('_storage')),
+        fileId: v.optional(v.string()),
         fileSize: v.optional(v.number()),
     },
     handler: async (ctx, args) => {

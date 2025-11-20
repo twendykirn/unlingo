@@ -27,6 +27,7 @@ function getRequestLimitFromProduct(productId?: string): number | undefined {
     if (!productId) return undefined;
 
     const requestLimits: Record<string, number> = {
+        [process.env.POLAR_PRO_10K_PRODUCT_ID!]: 10000,
         [process.env.POLAR_PRO_50K_PRODUCT_ID!]: 50000,
         [process.env.POLAR_PRO_250K_PRODUCT_ID!]: 250000,
         [process.env.POLAR_PRO_500K_PRODUCT_ID!]: 500000,
@@ -41,11 +42,13 @@ function getRequestLimitFromProduct(productId?: string): number | undefined {
 }
 
 function getTierFromProduct(productId?: string) {
-    if (!productId) return 'free';
+    if (!productId) return 'starter';
 
     switch (productId) {
-        case process.env.POLAR_PRO_50K_PRODUCT_ID!:
+        case process.env.POLAR_PRO_10K_PRODUCT_ID!:
             return 'starter';
+        case process.env.POLAR_PRO_50K_PRODUCT_ID!:
+            return 'hobby';
         case process.env.POLAR_PRO_250K_PRODUCT_ID!:
         case process.env.POLAR_PRO_500K_PRODUCT_ID!:
         case process.env.POLAR_PRO_1M_PRODUCT_ID!:
@@ -55,7 +58,7 @@ function getTierFromProduct(productId?: string) {
         case process.env.POLAR_PRO_100M_PRODUCT_ID!:
             return 'premium';
         default:
-            return 'free';
+            return 'starter';
     }
 }
 
@@ -158,28 +161,31 @@ http.route({
         }
 
         try {
-            const apiKeyInfo = await ctx.runQuery(internal.apiKeys.verifyApiKey, { key: apiKey });
-            if (!apiKeyInfo) {
+            const verifyResponse = await ctx.runAction(internal.keys.verifyUnkeyKey, {
+                key: apiKey,
+            });
+
+            if (!verifyResponse.valid || !verifyResponse.permissions.includes('translations.read')) {
                 return new Response(JSON.stringify({ error: 'Invalid API key' }), {
                     status: 401,
                     headers: { 'Content-Type': 'application/json' },
                 });
             }
 
-            const ingestBase = {
-                workspaceId: apiKeyInfo.workspaceId as string,
-                projectId: apiKeyInfo.projectId as string,
-                projectName: apiKeyInfo.project?.name,
-                elementId: `ns:${namespace}`,
-                type: 'translations',
-                time: Date.now(),
-                apiCallName: 'api/v1/translations',
-                languageCode: lang,
-                namespaceName: namespace,
-            };
+            const { externalId } = verifyResponse.identity;
+            const workspaceId = externalId.split('_')[0];
+            const projectId = externalId.split('_')[1];
+
+            if (!workspaceId || !projectId) {
+                return new Response(JSON.stringify({ error: 'Invalid API key metadata' }), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            }
 
             const limitCheck = await ctx.runMutation(internal.internalWorkspaces.checkAndUpdateRequestUsage, {
-                workspaceId: apiKeyInfo.workspaceId,
+                workspaceId,
+                projectId,
             });
 
             if (limitCheck.nearLimit) {
@@ -203,6 +209,15 @@ http.route({
                 });
             }
 
+            const ingestBase = {
+                workspaceId,
+                projectId,
+                projectName: limitCheck.project.name,
+                event: 'api/v1/translations',
+                languageCode: lang,
+                namespaceName: namespace,
+            };
+
             if (!limitCheck.isRequestAllowed) {
                 await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
                     ...ingestBase,
@@ -223,8 +238,8 @@ http.route({
             }
 
             const release = await ctx.runQuery(internal.releases.getReleaseByTag, {
-                projectId: apiKeyInfo.projectId,
-                workspaceId: apiKeyInfo.workspaceId,
+                projectId,
+                workspaceId,
                 tag: releaseTag,
             });
 
@@ -248,8 +263,8 @@ http.route({
             for (const nv of release.namespaceVersions) {
                 const namespaceDoc = await ctx.runQuery(internal.namespaces.getNamespaceInternal, {
                     namespaceId: nv.namespaceId,
-                    projectId: apiKeyInfo.projectId,
-                    workspaceId: apiKeyInfo.workspaceId,
+                    projectId,
+                    workspaceId,
                 });
 
                 if (namespaceDoc && namespaceDoc.name === namespace) {
@@ -277,7 +292,7 @@ http.route({
             const language = await ctx.runQuery(internal.languages.getLanguageByCode, {
                 namespaceVersionId: targetNamespaceVersion.versionId,
                 languageCode: lang,
-                workspaceId: apiKeyInfo.workspaceId,
+                workspaceId,
             });
 
             if (!language || !language.fileId) {
@@ -296,8 +311,11 @@ http.route({
                 );
             }
 
-            const blob = await ctx.storage.get(language.fileId);
-            if (!blob) {
+            const fileContent = await ctx.runAction(internal.files.getFileContent, {
+                fileId: language.fileId,
+            });
+
+            if (!fileContent) {
                 await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
                     ...ingestBase,
                     deniedReason: 'storage_blob_missing',
@@ -312,8 +330,6 @@ http.route({
                     }
                 );
             }
-
-            const fileContent = await blob.text();
 
             let parsedContent;
             try {

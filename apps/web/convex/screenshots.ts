@@ -1,6 +1,7 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { paginationOptsValidator } from 'convex/server';
+import { r2 } from './files';
 
 export const getScreenshotsForProject = query({
     args: {
@@ -31,7 +32,9 @@ export const getScreenshotsForProject = query({
 
         const screenshotsWithUrls = await Promise.all(
             result.page.map(async screenshot => {
-                const imageUrl = await ctx.storage.getUrl(screenshot.imageFileId);
+                const imageUrl = await r2.getUrl(screenshot.imageFileId, {
+                    expiresIn: 60 * 60 * 24,
+                });
                 return {
                     ...screenshot,
                     imageUrl,
@@ -52,7 +55,7 @@ export const createScreenshot = mutation({
         workspaceId: v.id('workspaces'),
         name: v.string(),
         description: v.optional(v.string()),
-        imageFileId: v.id('_storage'),
+        imageFileId: v.string(),
         imageSize: v.number(),
         imageMimeType: v.string(),
         dimensions: v.object({
@@ -63,19 +66,19 @@ export const createScreenshot = mutation({
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
         if (!identity) {
-            await ctx.storage.delete(args.imageFileId);
+            await r2.deleteObject(ctx, args.imageFileId);
             throw new Error('Not authenticated');
         }
 
         const workspace = await ctx.db.get(args.workspaceId);
         if (!workspace || workspace.clerkId !== identity.org) {
-            await ctx.storage.delete(args.imageFileId);
+            await r2.deleteObject(ctx, args.imageFileId);
             throw new Error('Workspace not found or access denied');
         }
 
         const project = await ctx.db.get(args.projectId);
         if (!project || project.workspaceId !== args.workspaceId) {
-            await ctx.storage.delete(args.imageFileId);
+            await r2.deleteObject(ctx, args.imageFileId);
             throw new Error('Project not found or access denied');
         }
 
@@ -85,14 +88,14 @@ export const createScreenshot = mutation({
             .first();
 
         if (existingScreenshot) {
-            await ctx.storage.delete(args.imageFileId);
+            await r2.deleteObject(ctx, args.imageFileId);
             throw new Error('A screenshot with this name already exists in this project');
         }
 
         // Check file size limit (10MB)
         const MAX_FILE_SIZE = 10 * 1024 * 1024;
         if (args.imageSize > MAX_FILE_SIZE) {
-            await ctx.storage.delete(args.imageFileId);
+            await r2.deleteObject(ctx, args.imageFileId);
             throw new Error('Image file size cannot exceed 10MB. Please compress your image and try again.');
         }
 
@@ -154,7 +157,7 @@ export const deleteScreenshot = mutation({
             await ctx.db.delete(container._id);
         }
 
-        await ctx.storage.delete(screenshot.imageFileId);
+        await r2.deleteObject(ctx, screenshot.imageFileId);
 
         await ctx.db.delete(args.screenshotId);
 
@@ -205,18 +208,6 @@ export const getContainerMappings = query({
                     .eq('languageId', args.languageId)
             )
             .paginate(args.paginationOpts);
-    },
-});
-
-export const generateUploadUrl = mutation({
-    args: {},
-    handler: async ctx => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            throw new Error('Not authenticated');
-        }
-
-        return await ctx.storage.generateUploadUrl();
     },
 });
 
@@ -590,7 +581,9 @@ export const getScreenshot = query({
             throw new Error('Project not found or access denied');
         }
 
-        const imageUrl = await ctx.storage.getUrl(screenshot.imageFileId);
+        const imageUrl = await r2.getUrl(screenshot.imageFileId, {
+            expiresIn: 60 * 60 * 24,
+        });
 
         return {
             ...screenshot,

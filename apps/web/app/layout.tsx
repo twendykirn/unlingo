@@ -1,8 +1,8 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
-import { dark } from '@clerk/themes';
 import { ClerkProvider } from '@clerk/nextjs';
+import { HeroUIProvider } from '@heroui/react';
 import { OpenPanelComponent } from '@openpanel/nextjs';
 
 const geist = Geist({ subsets: ['latin'] });
@@ -80,11 +80,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return (
         <html lang='en' className='dark'>
             <body className={geist.className}>
-                <ClerkProvider
-                    appearance={{
-                        baseTheme: dark,
-                    }}>
-                    {children}
+                <ClerkProvider>
+                    <HeroUIProvider>{children}</HeroUIProvider>
                 </ClerkProvider>
                 <OpenPanelComponent
                     clientId={process.env.NEXT_PUBLIC_OPEN_PANEL_CLIENT_ID!}

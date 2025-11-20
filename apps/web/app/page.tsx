@@ -7,7 +7,6 @@ import {
     Database,
     Palette,
     Check,
-    ChevronDown,
     GitBranch,
     Calendar,
     Copy,
@@ -20,7 +19,7 @@ import {
 import { useState } from 'react';
 import type React from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, SignOutButton, useSignUp } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Gradient } from '@/components/ui/gradient';
 import SpotlightCard from '@/components/ui/spotlight-card';
@@ -31,9 +30,9 @@ import Link from 'next/link';
 import { CodeEditor } from '@/components/code-editor';
 import GithubSpaceLogo from '@/components/github-space-logo';
 import HeroVideoDialog from '@/components/magicui/hero-video-dialog';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import GithubStarButton from '@/components/github-star-button';
+import type { Key } from 'react-aria-components';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { Label } from '@/components/ui/field';
 
 const features = [
     {
@@ -84,22 +83,22 @@ const features = [
 ];
 
 const pricingOptions = [
-    { requests: '50k', price: 12 },
-    { requests: '250k', price: 25 },
-    { requests: '500k', price: 50 },
-    { requests: '1M', price: 75 },
-    { requests: '2M', price: 100 },
-    { requests: '10M', price: 250 },
-    { requests: '50M', price: 500 },
-    { requests: '100M', price: 1000 },
+    { name: '50k', id: '12' },
+    { name: '250k', id: '25' },
+    { name: '500k', id: '50' },
+    { name: '1M', id: '75' },
+    { name: '2M', id: '100' },
+    { name: '10M', id: '250' },
+    { name: '50M', id: '500' },
+    { name: '100M', id: '1000' },
 ];
 
 const getPlanLimits = (requests: string) => {
-    if (requests === '50k') {
+    if (requests === '12') {
         return {
             projects: 3,
             namespacesPerProject: 12,
-            languagesPerVersion: 25,
+            languagesPerVersion: 90,
         };
     } else {
         return {
@@ -107,6 +106,29 @@ const getPlanLimits = (requests: string) => {
             namespacesPerProject: 40,
             languagesPerVersion: 90,
         };
+    }
+};
+
+const getRequestLimits = (requests: string) => {
+    switch (requests) {
+        case '12':
+            return '50k';
+        case '25':
+            return '250k';
+        case '50':
+            return '500k';
+        case '75':
+            return '1M';
+        case '100':
+            return '2M';
+        case '250':
+            return '10M';
+        case '500':
+            return '50M';
+        case '1000':
+            return '100M';
+        default:
+            return '50k';
     }
 };
 
@@ -157,7 +179,7 @@ class UnlingoBackend {
 export default UnlingoBackend;
 
 i18next
-  .use(UnlingoBackend) 
+  .use(UnlingoBackend)
   .use(initReactI18next)
   .init({
     ...
@@ -169,7 +191,7 @@ export default i18next;`;
             return `import { getRequestConfig } from 'next-intl/server';
 import { hasLocale } from 'next-intl';
 import { routing } from './routing';
- 
+
 export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale;
   const locale = hasLocale(routing.locales, requested)
@@ -189,7 +211,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
         },
     });
     const data = await response.json();
- 
+
   return {
     locale,
     messages: data,
@@ -215,85 +237,17 @@ console.log(translations.welcome);`;
 };
 
 export default function Page() {
-    const [selectedPricing, setSelectedPricing] = useState(pricingOptions[0]);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [selectedPricing, setSelectedPricing] = useState<Key>('12');
     const [activeLibrary, setActiveLibrary] = useState('i18next');
     const [isCopied, setIsCopied] = useState(false);
-    const [email, setEmail] = useState('');
-    const [emailError, setEmailError] = useState<string | null>(null);
-    const [generalError, setGeneralError] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isVerifyOpen, setIsVerifyOpen] = useState(false);
-    const [code, setCode] = useState('');
-    const [verifyError, setVerifyError] = useState<string | null>(null);
-    const [isVerifying, setIsVerifying] = useState(false);
 
     const router = useRouter();
     const { isSignedIn } = useUser();
-    const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
 
     const scrollToSection = (sectionId: string) => {
         const element = document.getElementById(sectionId);
         if (element) {
             element.scrollIntoView({ behavior: 'smooth' });
-        }
-    };
-
-    const handleQuickSignup = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setEmailError(null);
-        setGeneralError(null);
-
-        const trimmed = email.trim();
-        const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-
-        if (!isValid) {
-            setEmailError('Please enter a valid email');
-            return;
-        }
-        if (!signUpLoaded) return;
-
-        try {
-            setIsSubmitting(true);
-            await signUp.create({ emailAddress: trimmed, legalAccepted: true });
-            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-            setIsVerifyOpen(true);
-        } catch (err: any) {
-            const message = err?.errors?.[0]?.message || 'Could not start sign up. Please try again.';
-            setGeneralError(message);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleVerify = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!signUpLoaded) return;
-        setVerifyError(null);
-
-        try {
-            setIsVerifying(true);
-            const res = await signUp.attemptEmailAddressVerification({ code });
-            if (res.status === 'complete') {
-                await setActive({ session: res.createdSessionId });
-                router.push('/dashboard/new');
-            } else {
-                setVerifyError('Verification incomplete. Please try again.');
-            }
-        } catch (err: any) {
-            const message = err?.errors?.[0]?.message || 'Invalid code. Please try again.';
-            setVerifyError(message);
-        } finally {
-            setIsVerifying(false);
-        }
-    };
-
-    const handleResend = async () => {
-        if (!signUpLoaded) return;
-        try {
-            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-        } catch (_) {
-            // Clerk will throttle appropriately
         }
     };
 
@@ -335,45 +289,25 @@ export default function Page() {
                                 Pricing
                             </button>
                             <Link
+                                href='https://unlingo.userjot.com/roadmap'
+                                target='_blank'
+                                className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
+                                Roadmap
+                            </Link>
+                            <Link
                                 href='https://docs.unlingo.com'
                                 target='_blank'
                                 className='text-gray-300 hover:text-white transition-colors cursor-pointer'>
-                                Documentation
+                                Docs
                             </Link>
                         </div>
 
                         {/* Auth Buttons */}
                         <div className='flex items-center space-x-4'>
-                            <GithubStarButton />
                             {isSignedIn ? (
-                                <>
-                                    <SignOutButton>
-                                        <Button variant='ghost' className='text-gray-300 hover:text-white'>
-                                            Sign Out
-                                        </Button>
-                                    </SignOutButton>
-                                    <Button
-                                        size='sm'
-                                        className='bg-white text-black hover:bg-gray-200'
-                                        onClick={() => router.push('/dashboard')}>
-                                        Dashboard
-                                    </Button>
-                                </>
+                                <Button onClick={() => router.push('/dashboard')}>Dashboard</Button>
                             ) : (
-                                <>
-                                    <Button
-                                        variant='ghost'
-                                        className='text-gray-300 hover:text-white'
-                                        onClick={() => router.push('/sign-in')}>
-                                        Sign in
-                                    </Button>
-                                    <Button
-                                        size='sm'
-                                        className='bg-white text-black hover:bg-gray-200'
-                                        onClick={() => router.push('/sign-up')}>
-                                        Get Started
-                                    </Button>
-                                </>
+                                <Button onClick={() => router.push('/sign-in')}>Log in</Button>
                             )}
                         </div>
                     </div>
@@ -387,7 +321,7 @@ export default function Page() {
             </div>
 
             {/* Hero Section */}
-            <section id='hero' className='relative min-h-screen flex items-center justify-center px-6 pt-28 sm:pt-48'>
+            <section id='hero' className='relative min-h-screen flex justify-center px-6 pt-28 sm:pt-48'>
                 {/* Elegant subtle background (radial glow + faint grid) */}
                 <div
                     className='absolute inset-0 pointer-events-none'
@@ -421,80 +355,16 @@ export default function Page() {
                         </p>
                     </motion.div>
 
-                    {isSignedIn ? (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 0.2 }}
-                            className='flex flex-col sm:flex-row gap-2 items-center justify-center'>
-                            <Button
-                                size='sm'
-                                className='h-8 bg-white text-black hover:bg-gray-200'
-                                onClick={() => router.push('/dashboard')}>
-                                Go to Dashboard
-                            </Button>
-                            <Link href='https://docs.unlingo.com' target='_blank'>
-                                <Button
-                                    size='sm'
-                                    variant='outline'
-                                    className='h-8 border-white/20 hover:border-white/40 bg-black/30 hover:bg-white/10'>
-                                    Docs
-                                </Button>
-                            </Link>
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 0.2 }}
-                            className='flex flex-col gap-3 items-center w-full max-w-2xs mx-auto'>
-                            <form onSubmit={handleQuickSignup} className='w-full space-y-3'>
-                                <Input
-                                    type='email'
-                                    inputMode='email'
-                                    autoComplete='email'
-                                    required
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    placeholder='you@company.com'
-                                    className='h-8 md:h-9 bg-black/40 border-gray-800 placeholder:text-gray-500 text-sm'
-                                />
-
-                                <div id='clerk-captcha' data-cl-theme='dark' data-cl-size='flexible' />
-
-                                <Button
-                                    type='submit'
-                                    disabled={isSubmitting}
-                                    size='sm'
-                                    className='h-8 w-full bg-white text-black hover:bg-gray-200 font-medium text-sm px-4'>
-                                    {isSubmitting ? 'Sending code…' : 'Start free'}
-                                    {!isSubmitting && <ArrowRight className='ml-2 h-3.5 w-3.5' />}
-                                </Button>
-                            </form>
-                            {emailError || generalError ? (
-                                <div className='text-sm text-red-400'>{emailError || generalError}</div>
-                            ) : null}
-                            <div className='text-xs text-gray-500'>No credit card required</div>
-                            <div className='flex gap-2 pt-1'>
-                                <Link href='/sign-in'>
-                                    <Button
-                                        size='sm'
-                                        variant='outline'
-                                        className='h-8 text-xs border-white/20 hover:border-white/40 bg-black/30 hover:bg-white/10'>
-                                        Already have an account
-                                    </Button>
-                                </Link>
-                                <Link href='https://docs.unlingo.com' target='_blank'>
-                                    <Button
-                                        size='sm'
-                                        variant='outline'
-                                        className='h-8 text-xs border-white/20 hover:border-white/40 bg-black/30 hover:bg-white/10'>
-                                        Docs
-                                    </Button>
-                                </Link>
-                            </div>
-                        </motion.div>
-                    )}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, delay: 0.2 }}
+                        className='flex flex-col sm:flex-row gap-2 items-center justify-center'>
+                        <Button onClick={() => router.push('/dashboard')}>Get Started</Button>
+                        <Link href='/resources/why'>
+                            <Button intent='outline'>Why Unlingo</Button>
+                        </Link>
+                    </motion.div>
 
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -514,43 +384,6 @@ export default function Page() {
                     </motion.div>
                 </div>
             </section>
-
-            {/* Verify Email Dialog */}
-            <Dialog open={isVerifyOpen} onOpenChange={setIsVerifyOpen}>
-                <DialogContent className='bg-gray-950/95 border border-gray-800/50 text-white max-w-sm backdrop-blur-md'>
-                    <DialogHeader>
-                        <DialogTitle>Verify your email</DialogTitle>
-                        <DialogDescription className='text-gray-400'>
-                            We sent a 6-digit code to {email}.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleVerify} className='space-y-4'>
-                        <Input
-                            value={code}
-                            onChange={e => setCode(e.target.value)}
-                            placeholder='Enter verification code'
-                            inputMode='numeric'
-                            autoFocus
-                            className='h-9 bg-black/40 border-gray-800 placeholder:text-gray-500'
-                        />
-                        {verifyError && <div className='text-sm text-red-400'>{verifyError}</div>}
-                        <div className='flex items-center justify-between'>
-                            <button
-                                type='button'
-                                onClick={handleResend}
-                                className='text-sm text-gray-400 hover:text-white underline underline-offset-4'>
-                                Resend code
-                            </button>
-                            <Button
-                                type='submit'
-                                disabled={isVerifying}
-                                className='bg-white text-black hover:bg-gray-200'>
-                                {isVerifying ? 'Verifying…' : 'Verify'}
-                            </Button>
-                        </div>
-                    </form>
-                </DialogContent>
-            </Dialog>
 
             {/* Code Examples Section */}
             <section id='examples' className='relative py-32 px-6'>
@@ -749,9 +582,7 @@ export default function Page() {
                                 viewport={{ once: true }}
                                 className='flex gap-3 justify-center lg:justify-start'>
                                 <Link href='https://github.com/twendykirn/unlingo' target='_blank'>
-                                    <Button
-                                        size='lg'
-                                        className='bg-white text-black hover:bg-gray-200 font-semibold px-6 sm:px-7 py-3 sm:py-3.5 text-base group'>
+                                    <Button>
                                         <div className='flex items-center justify-center'>
                                             <svg className='mr-2 h-4 w-4' fill='currentColor' viewBox='0 0 24 24'>
                                                 <path
@@ -818,8 +649,6 @@ export default function Page() {
                         transition={{ duration: 0.6, delay: 0.2 }}
                         viewport={{ once: true }}
                         className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-center justify-items-center max-w-5xl mx-auto'>
-                        {/* First Row */}
-                        {/* Convex */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://convex.dev' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-orange-500/30 transition-all duration-300'
@@ -833,7 +662,6 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* Clerk */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://clerk.com' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-indigo-500/30 transition-all duration-300'
@@ -847,7 +675,6 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* Vercel */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://vercel.com' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-white/30 transition-all duration-300'
@@ -861,8 +688,6 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* Second Row */}
-                        {/* Polar */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://polar.sh' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-blue-500/30 transition-all duration-300'
@@ -876,21 +701,19 @@ export default function Page() {
                             </SpotlightCard>
                         </Link>
 
-                        {/* Databuddy */}
-                        <Link className='w-full h-24 cursor-pointer group' href='https://databuddy.cc' target='_blank'>
+                        <Link className='w-full h-24 cursor-pointer group' href='https://openpanel.dev' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-[#3C83F6]/30 transition-all duration-300'
                                 spotlightColor='rgba(60, 131, 246, 0.15)'>
                                 <div className='text-center'>
                                     <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-[#3C83F6] transition-colors'>
-                                        Databuddy
+                                        OpenPanel
                                     </div>
-                                    <div className='text-xs text-gray-500'>Web Analytics</div>
+                                    <div className='text-xs text-gray-500'>Analytics</div>
                                 </div>
                             </SpotlightCard>
                         </Link>
 
-                        {/* Resend */}
                         <Link className='w-full h-24 cursor-pointer group' href='https://resend.com' target='_blank'>
                             <SpotlightCard
                                 className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-violet-500/30 transition-all duration-300'
@@ -900,23 +723,6 @@ export default function Page() {
                                         Resend
                                     </div>
                                     <div className='text-xs text-gray-500'>Email API</div>
-                                </div>
-                            </SpotlightCard>
-                        </Link>
-
-                        {/* PostHog */}
-                        <Link
-                            className='w-full h-24 cursor-pointer group sm:col-start-1 lg:col-start-2'
-                            href='https://posthog.com'
-                            target='_blank'>
-                            <SpotlightCard
-                                className='flex items-center justify-center h-full rounded-lg bg-gray-900/50 border border-gray-800/50 group-hover:border-yellow-500/30 transition-all duration-300'
-                                spotlightColor='rgba(234, 179, 8, 0.15)'>
-                                <div className='text-center'>
-                                    <div className='text-lg font-bold text-gray-300 mb-1 group-hover:text-yellow-500 transition-colors'>
-                                        PostHog
-                                    </div>
-                                    <div className='text-xs text-gray-500'>API Analytics</div>
                                 </div>
                             </SpotlightCard>
                         </Link>
@@ -940,18 +746,19 @@ export default function Page() {
                     </motion.div>
 
                     <div className='grid md:grid-cols-3 gap-6 md:gap-8 max-w-5xl mx-auto'>
-                        {/* Free Tier */}
+                        {/* Starter Tier */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5 }}
                             viewport={{ once: true }}
                             className='bg-gray-950/60 border border-gray-800 rounded-xl p-7 relative h-full'>
-                            <h3 className='text-2xl font-bold mb-2'>Free</h3>
-                            <div className='mb-6'>
-                                <span className='text-4xl font-bold'>$0</span>
+                            <h3 className='text-2xl font-bold mb-2'>Starter</h3>
+                            <div className='mb-2'>
+                                <span className='text-4xl font-bold'>$5</span>
                                 <span className='text-gray-400'>/month</span>
                             </div>
+                            <p className='text-sm text-green-400 mb-6'>7 days free trial</p>
                             <ul className='space-y-3 mb-8'>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
@@ -963,7 +770,7 @@ export default function Page() {
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
-                                    <span>6 languages per version</span>
+                                    <span>90 languages per version</span>
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
@@ -971,13 +778,23 @@ export default function Page() {
                                 </li>
                                 <li className='flex items-center'>
                                     <Check className='h-5 w-5 text-green-400 mr-3' />
+                                    <span>7-day logs retention</span>
+                                </li>
+                                <li className='flex items-center'>
+                                    <Check className='h-5 w-5 text-green-400 mr-3' />
+                                    <span>AI translations</span>
+                                </li>
+                                <li className='flex items-center'>
+                                    <Check className='h-5 w-5 text-green-400 mr-3' />
+                                    <span>Screenshots</span>
+                                </li>
+                                <li className='flex items-center'>
+                                    <Check className='h-5 w-5 text-green-400 mr-3' />
                                     <span>Community support</span>
                                 </li>
                             </ul>
-                            <Button
-                                className='w-full bg-transparent border border-gray-700 text-white hover:bg-white/5'
-                                onClick={() => router.push('/sign-up')}>
-                                Get Started Free
+                            <Button intent='outline' className='w-full' onClick={() => router.push('/sign-up')}>
+                                Get Started
                             </Button>
                         </motion.div>
 
@@ -1006,66 +823,65 @@ export default function Page() {
                                 <div className='relative z-10'>
                                     <h3 className='text-2xl font-bold mb-2'>Pro</h3>
                                     <div className='mb-6'>
-                                        <span className='text-4xl font-bold'>${selectedPricing?.price}</span>
+                                        <span className='text-4xl font-bold'>${selectedPricing}</span>
                                         <span className='text-gray-400'>/month</span>
                                     </div>
 
                                     {/* Dropdown for request amounts */}
-                                    <div className='mb-6'>
-                                        <label className='block text-sm font-medium text-gray-300 mb-2'>
-                                            Monthly requests
-                                        </label>
-                                        <div className='relative'>
-                                            <button
-                                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                                className='w-full bg-gray-900/60 border border-gray-700 rounded-md px-4 py-2 flex items-center justify-between hover:bg-gray-800 transition-colors cursor-pointer'>
-                                                <span>{selectedPricing?.requests}</span>
-                                                <ChevronDown
-                                                    className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
-                                                />
-                                            </button>
-                                            {isDropdownOpen && (
-                                                <div className='absolute top-full mt-1 w-full bg-gray-900 border border-gray-700 rounded-md shadow-lg z-10'>
-                                                    {pricingOptions.map(option => (
-                                                        <button
-                                                            key={option.requests}
-                                                            onClick={() => {
-                                                                setSelectedPricing(option);
-                                                                setIsDropdownOpen(false);
-                                                            }}
-                                                            className='w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors first:rounded-t-md last:rounded-b-md cursor-pointer'>
-                                                            {option.requests}
-                                                        </button>
-                                                    ))}
-                                                </div>
+                                    <Select
+                                        value={selectedPricing}
+                                        onChange={value => {
+                                            if (value) {
+                                                setSelectedPricing(value);
+                                            }
+                                        }}
+                                        aria-label='Monthly requests'
+                                        defaultValue={pricingOptions[0]?.id}
+                                        className='mb-6'>
+                                        <Label>Monthly requests</Label>
+                                        <SelectTrigger />
+                                        <SelectContent items={pricingOptions}>
+                                            {item => (
+                                                <SelectItem id={item.id} textValue={item.name}>
+                                                    {item.name}
+                                                </SelectItem>
                                             )}
-                                        </div>
-                                    </div>
+                                        </SelectContent>
+                                    </Select>
 
                                     <ul className='space-y-3 mb-8'>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
                                             <span>
-                                                {getPlanLimits(selectedPricing?.requests || '50k').projects} projects
+                                                {getPlanLimits(selectedPricing.toString() || '50k').projects} projects
                                             </span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
                                             <span>
-                                                {getPlanLimits(selectedPricing?.requests || '50k').namespacesPerProject}{' '}
+                                                {
+                                                    getPlanLimits(selectedPricing.toString() || '50k')
+                                                        .namespacesPerProject
+                                                }{' '}
                                                 namespaces per project
                                             </span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
                                             <span>
-                                                {getPlanLimits(selectedPricing?.requests || '50k').languagesPerVersion}{' '}
+                                                {getPlanLimits(selectedPricing.toString() || '50k').languagesPerVersion}{' '}
                                                 languages per version
                                             </span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
-                                            <span>{selectedPricing?.requests} requests/month</span>
+                                            <span>
+                                                {getRequestLimits(selectedPricing.toString() || '50k')} requests/month
+                                            </span>
+                                        </li>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>30-day logs retention</span>
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
@@ -1073,12 +889,14 @@ export default function Page() {
                                         </li>
                                         <li className='flex items-center'>
                                             <Check className='h-5 w-5 text-green-400 mr-3' />
+                                            <span>Screenshots</span>
+                                        </li>
+                                        <li className='flex items-center'>
+                                            <Check className='h-5 w-5 text-green-400 mr-3' />
                                             <span>Priority support</span>
                                         </li>
                                     </ul>
-                                    <Button
-                                        className='w-full bg-white text-black hover:bg-gray-200'
-                                        onClick={() => router.push('/sign-up')}>
+                                    <Button className='w-full' onClick={() => router.push('/sign-up')}>
                                         Upgrade to Pro
                                     </Button>
                                 </div>
@@ -1108,7 +926,7 @@ export default function Page() {
                                 </li>
                             </ul>
                             <Link href='mailto:support@unlingo.com?subject=Enterprise%20Support'>
-                                <Button className='w-full bg-white text-black hover:bg-gray-200'>Contact Us</Button>
+                                <Button className='w-full'>Contact Us</Button>
                             </Link>
                         </motion.div>
                     </div>
@@ -1139,18 +957,10 @@ export default function Page() {
                                 </p>
                                 <div className='flex flex-col sm:flex-row gap-3 justify-center items-center'>
                                     <Link href='/sign-up'>
-                                        <Button
-                                            size='lg'
-                                            className='bg-white text-black hover:bg-gray-200 font-semibold group'>
-                                            Start Now
-                                            <ArrowRight className='ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform' />
-                                        </Button>
+                                        <Button>Start Now</Button>
                                     </Link>
                                     <Link href='mailto:support@unlingo.com'>
-                                        <Button
-                                            variant='outline'
-                                            size='lg'
-                                            className='border border-white/20 text-white hover:border-white/40 hover:bg-white/5'>
+                                        <Button intent='outline'>
                                             <Calendar className='mr-2 h-5 w-5' />
                                             Contact Us
                                         </Button>
@@ -1217,6 +1027,12 @@ export default function Page() {
                                     className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
                                     Status
                                 </Link>
+                                <Link
+                                    href='https://unlingo.userjot.com/roadmap'
+                                    target='_blank'
+                                    className='block text-gray-400 hover:text-white transition-colors text-sm cursor-pointer'>
+                                    Roadmap
+                                </Link>
                             </div>
                         </div>
 
@@ -1262,29 +1078,6 @@ export default function Page() {
                                     Privacy Policy
                                 </Link>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Sliding Unlingo Text Animation */}
-                <div className='bg-black overflow-hidden'>
-                    <div className='flex justify-center'>
-                        <div className='text-[4rem] xs:text-[6rem] sm:text-[8rem] md:text-[12rem] lg:text-[16rem] xl:text-[20rem] font-bold tracking-wider'>
-                            {['U', 'n', 'l', 'i', 'n', 'g', 'o'].map((letter, index) => (
-                                <motion.span
-                                    key={index}
-                                    initial={{ y: 100, opacity: 0 }}
-                                    whileInView={{ y: 0, opacity: 0.3 }}
-                                    transition={{
-                                        duration: 0.8,
-                                        ease: 'easeOut',
-                                        delay: index * 0.15,
-                                    }}
-                                    viewport={{ once: true }}
-                                    className='inline-block bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent select-none'>
-                                    {letter}
-                                </motion.span>
-                            ))}
                         </div>
                     </div>
                 </div>

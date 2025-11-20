@@ -1,10 +1,25 @@
 import { paginationOptsValidator } from 'convex/server';
-import { action, ActionCtx, mutation, query, internalQuery } from './_generated/server';
+import { action, mutation, query, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
 import { generateSchemas } from '../lib/zodSchemaGenerator';
-import { internal } from './_generated/api';
-import { applyJsonDiffToContent, applyStructuralOperations } from './utils';
-import { Doc, Id } from './_generated/dataModel';
+import { components, internal } from './_generated/api';
+import { Doc } from './_generated/dataModel';
+import { flattenJson, unflattenJson } from './utils/jsonFlatten';
+import { applyLanguageChanges } from './utils/applyLanguageChanges';
+import { Workpool } from '@convex-dev/workpool';
+import { r2 } from './files';
+
+const languagePool = new Workpool(components.languageWorkpool, {
+    maxParallelism: 25,
+    retryActionsByDefault: true,
+    defaultRetryBehavior: { maxAttempts: 3, initialBackoffMs: 1000, base: 2 },
+});
+
+const createLanguagePool = new Workpool(components.createLanguageWorkpool, {
+    maxParallelism: 25,
+    retryActionsByDefault: true,
+    defaultRetryBehavior: { maxAttempts: 3, initialBackoffMs: 1000, base: 2 },
+});
 
 export const getLanguages = query({
     args: {
@@ -95,67 +110,122 @@ export const getLanguageWithContext = query({
     },
 });
 
-export const createLanguage = action({
+export const createLanguages = mutation({
     args: {
         namespaceVersionId: v.id('namespaceVersions'),
         workspaceId: v.id('workspaces'),
-        languageCode: v.string(),
+        languageCodes: v.array(v.string()),
+        primaryLanguageCode: v.optional(v.string()),
+        primaryJSON: v.optional(v.string()),
     },
-    handler: async (ctx, args): Promise<Id<'languages'>> => {
+    handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
         if (!identity) {
             throw new Error('Not authenticated');
         }
 
-        const { primaryFileId, namespaceVersion, namespace, isFirstLanguage, currentLanguageCount } =
-            await ctx.runQuery(internal.internalLang.createLanguageContext, {
-                namespaceVersionId: args.namespaceVersionId,
-                workspaceId: args.workspaceId,
-                languageCode: args.languageCode,
+        const workspace = await ctx.db.get(args.workspaceId);
+        if (!workspace || identity.org !== workspace.clerkId) {
+            throw new Error('Workspace not found or access denied');
+        }
+
+        const namespaceVersion = await ctx.db.get(args.namespaceVersionId);
+        if (!namespaceVersion) {
+            throw new Error('Namespace version not found');
+        }
+
+        const namespace = await ctx.db.get(namespaceVersion.namespaceId);
+        if (!namespace) {
+            throw new Error('Namespace not found');
+        }
+
+        const project = await ctx.db.get(namespace.projectId);
+        if (!project || project.workspaceId !== args.workspaceId) {
+            throw new Error('Project not found or access denied');
+        }
+
+        const currentLanguageCount = namespaceVersion.usage?.languages ?? 0;
+        if (currentLanguageCount + args.languageCodes.length > workspace.limits.languagesPerVersion) {
+            throw new Error(
+                `Language limit reached. Maximum ${workspace.limits.languagesPerVersion} languages per version. Please upgrade your plan.`
+            );
+        }
+
+        const isFirstLanguage = currentLanguageCount === 0;
+        const primaryLanguageId = namespaceVersion.primaryLanguageId;
+        const now = Date.now();
+        const languages = [];
+        const isRequireWorkpool =
+            (isFirstLanguage && !primaryLanguageId && args.primaryJSON) || (!isFirstLanguage && primaryLanguageId);
+
+        if (isFirstLanguage && !args.primaryLanguageCode) {
+            throw new Error('Primary language code is required.');
+        }
+
+        await ctx.db.patch(args.namespaceVersionId, {
+            usage: {
+                languages: currentLanguageCount + args.languageCodes.length,
+            },
+            updatedAt: now,
+            status: isRequireWorkpool ? 'syncing' : undefined,
+        });
+
+        for (const languageCode of args.languageCodes) {
+            const languageId = await ctx.db.insert('languages', {
+                namespaceVersionId: namespaceVersion._id,
+                languageCode,
+                status: isRequireWorkpool ? 'syncing' : undefined,
+                updatedAt: now,
             });
 
-        let fileId: Id<'_storage'> | undefined = undefined;
-        let fileSize: number | undefined = undefined;
+            languages.push({ _id: languageId, languageCode });
 
-        if (!isFirstLanguage && namespaceVersion.primaryLanguageId) {
-            if (primaryFileId) {
-                try {
-                    const sourceFileUrl = await ctx.storage.getUrl(primaryFileId);
-                    if (!sourceFileUrl) {
-                        throw new Error('Failed to get primary language file URL');
-                    }
-                    const sourceResponse = await fetch(sourceFileUrl);
-                    const sourceContent = await sourceResponse.text();
-
-                    const newBlob = new Blob([sourceContent], { type: 'application/json' });
-                    const uploadUrl = await ctx.storage.generateUploadUrl();
-                    const uploadResponse = await fetch(uploadUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: newBlob,
-                    });
-
-                    const { storageId } = await uploadResponse.json();
-                    fileId = storageId;
-                    fileSize = newBlob.size;
-                } catch (error) {
-                    console.error('Failed to copy from primary language:', error);
-                }
+            if (!primaryLanguageId && languageCode === args.primaryLanguageCode) {
+                await ctx.db.patch(args.namespaceVersionId, {
+                    primaryLanguageId: languageId,
+                });
             }
         }
 
-        const languageId = await ctx.runMutation(internal.internalLang.internalCreateLanguageUpdate, {
-            fileId,
-            fileSize,
-            isFirstLanguage: isFirstLanguage,
-            languageCode: args.languageCode,
-            namespaceVersionId: args.namespaceVersionId,
-            nameSpaceId: namespaceVersion.namespaceId,
-            currentLanguageCount: currentLanguageCount,
-            versionUsage: namespace.usage?.versions ?? 0,
-        });
+        let primaryFileId: string | undefined = undefined;
 
-        return languageId;
+        if (!isFirstLanguage && primaryLanguageId) {
+            const primaryLanguage = await ctx.db.get(primaryLanguageId);
+
+            if (primaryLanguage?.fileId) {
+                primaryFileId = primaryLanguage.fileId;
+            }
+        }
+
+        if (isFirstLanguage && !primaryLanguageId && args.primaryJSON) {
+            await ctx.scheduler.runAfter(0, internal.internalLang.languageCreateSchema, {
+                namespaceVersionId: namespaceVersion._id,
+                newJson: args.primaryJSON,
+            });
+        }
+
+        if (isRequireWorkpool) {
+            await createLanguagePool.enqueueActionBatch(
+                ctx,
+                internal.internalLang.languageCreateContent,
+                languages.map(lang => ({
+                    languageId: lang._id,
+                    languageCode: lang.languageCode,
+                    isPrimaryLanguage: primaryLanguageId
+                        ? lang._id === primaryLanguageId
+                        : lang.languageCode === args.primaryLanguageCode,
+                    primaryLanguageFileId: primaryFileId,
+                    namespaceVersionId: namespaceVersion._id,
+                    primaryJSON: args.primaryJSON,
+                })),
+                {
+                    onComplete: internal.internalLang.namespaceVersionUpdateStatus,
+                    context: {
+                        namespaceVersionId: namespaceVersion._id,
+                    },
+                }
+            );
+        }
     },
 });
 
@@ -207,17 +277,26 @@ export const deleteLanguage = mutation({
         }
 
         if (language.fileId) {
-            await ctx.storage.delete(language.fileId);
+            await r2.deleteObject(ctx, language.fileId);
         }
 
         await ctx.db.delete(args.languageId);
 
         const currentLanguageCount = namespaceVersion.usage?.languages ?? 1;
+        const isLastFile = currentLanguageCount === 1;
+
+        if (isLastFile && namespaceVersion.jsonSchemaFileId) {
+            await r2.deleteObject(ctx, namespaceVersion.jsonSchemaFileId);
+        }
+
         await ctx.db.patch(namespaceVersion._id, {
             usage: {
                 languages: Math.max(0, currentLanguageCount - 1),
             },
             updatedAt: Date.now(),
+            jsonSchemaFileId: isLastFile ? undefined : namespaceVersion.jsonSchemaFileId,
+            jsonSchemaSize: isLastFile ? undefined : namespaceVersion.jsonSchemaSize,
+            primaryLanguageId: isLastFile ? undefined : namespaceVersion.primaryLanguageId,
         });
 
         return args.languageId;
@@ -250,7 +329,7 @@ export const getLanguageContent = action({
         }
 
         try {
-            const fileUrl = await ctx.storage.getUrl(result.language.fileId);
+            const fileUrl = await r2.getUrl(result.language.fileId);
             if (!fileUrl) {
                 console.warn('File URL is null for language:', args.languageId);
                 return {};
@@ -266,12 +345,9 @@ export const getLanguageContent = action({
                 projectName: result.project.name,
                 namespaceId: result.namespace._id as string,
                 namespaceName: result.namespace.name,
-                elementId: `lang:${result.language.languageCode}`,
-                type: 'language_content',
-                apiCallName: 'getLanguageContent',
+                event: 'getLanguageContent',
                 languageCode: result.language.languageCode,
                 responseSize: new TextEncoder().encode(content).length,
-                time: Date.now(),
             });
 
             return parsedContent;
@@ -285,12 +361,9 @@ export const getLanguageContent = action({
                 projectName: result.project.name,
                 namespaceId: result.namespace._id as string,
                 namespaceName: result.namespace.name,
-                elementId: `lang:${result.language.languageCode}`,
-                type: 'language_content',
-                apiCallName: 'getLanguageContent',
+                event: 'getLanguageContent',
                 languageCode: result.language.languageCode,
                 deniedReason: 'fetch_error',
-                time: Date.now(),
             });
 
             return {};
@@ -319,7 +392,7 @@ export const getJsonSchema = action({
         }
 
         try {
-            const fileUrl = await ctx.storage.getUrl(jsonSchemaFileId);
+            const fileUrl = await r2.getUrl(jsonSchemaFileId);
             if (!fileUrl) {
                 console.warn('Schema file URL is null for namespace version:', args.namespaceVersionId);
                 return null;
@@ -335,11 +408,8 @@ export const getJsonSchema = action({
                 projectName: project.name,
                 namespaceId: namespace._id as string,
                 namespaceName: namespace.name,
-                elementId: `schema:${args.namespaceVersionId}`,
-                type: 'schema_content',
-                apiCallName: 'getJsonSchema',
+                event: 'getJsonSchema',
                 responseSize: new TextEncoder().encode(schemaContent).length,
-                time: Date.now(),
             });
 
             return schemaContent;
@@ -353,11 +423,8 @@ export const getJsonSchema = action({
                 projectName: project.name,
                 namespaceId: namespace._id as string,
                 namespaceName: namespace.name,
-                elementId: `schema:${args.namespaceVersionId}`,
-                type: 'schema_content',
-                apiCallName: 'getJsonSchema',
+                event: 'getJsonSchema',
                 deniedReason: 'fetch_error',
-                time: Date.now(),
             });
 
             return null;
@@ -365,77 +432,45 @@ export const getJsonSchema = action({
     },
 });
 
-// Helper function to synchronize other languages with change operations
-const synchronizeLanguagesWithOperations = async (
-    ctx: ActionCtx,
-    namespaceVersionId: Id<'namespaceVersions'>,
-    primaryLanguageId: Id<'languages'>,
-    operations: any[],
-    primaryContent: any
-) => {
-    const { otherLanguages } = await ctx.runQuery(internal.internalLang.internalVersionLanguages, {
-        namespaceVersionId,
-        primaryLanguageId,
-    });
-
-    for (const otherLanguage of otherLanguages) {
-        try {
-            let targetContent: any;
-
-            if (!otherLanguage.fileId) {
-                targetContent = primaryContent;
-                console.log(`📄 Creating new file for ${otherLanguage.languageCode} with primary language structure`);
-            } else {
-                const fileUrl = await ctx.storage.getUrl(otherLanguage.fileId);
-                if (!fileUrl) {
-                    targetContent = primaryContent;
-                } else {
-                    const response = await fetch(fileUrl);
-                    const existingContent = await response.text();
-                    const existingJson = JSON.parse(existingContent);
-
-                    targetContent = applyStructuralOperations(existingJson, operations);
-                    console.log(`🔧 Applied structural operations for ${otherLanguage.languageCode}`);
-                }
-            }
-
-            const syncedContentBlob = new Blob([JSON.stringify(targetContent, null, 2)], { type: 'application/json' });
-            const syncUploadUrl = await ctx.storage.generateUploadUrl();
-            const syncUploadResponse = await fetch(syncUploadUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: syncedContentBlob,
-            });
-
-            const { storageId: syncStorageId } = await syncUploadResponse.json();
-
-            if (otherLanguage.fileId) {
-                await ctx.storage.delete(otherLanguage.fileId);
-            }
-
-            await ctx.runMutation(internal.internalLang.internalLanguageUpdate, {
-                languageId: otherLanguage._id,
-                fileId: syncStorageId,
-                fileSize: syncedContentBlob.size,
-            });
-        } catch (error) {
-            throw new Error(`Failed to sync ${otherLanguage.languageCode}: ${error}`);
-        }
-    }
-};
-
 export const applyChangeOperations = action({
     args: {
         languageId: v.id('languages'),
         workspaceId: v.id('workspaces'),
-        languageChanges: v.optional(
-            v.object({
-                changes: v.any(),
-                timestamp: v.number(),
-                languageId: v.string(),
-                isPrimaryLanguage: v.boolean(),
-            })
-        ),
+        languageChanges: v.object({
+            add: v.array(
+                v.object({
+                    key: v.string(),
+                    item: v.object({
+                        key: v.string(),
+                        value: v.any(),
+                        primaryValue: v.any(),
+                    }),
+                    newValue: v.optional(v.any()),
+                })
+            ),
+            modify: v.array(
+                v.object({
+                    key: v.string(),
+                    item: v.object({
+                        key: v.string(),
+                        value: v.any(),
+                        primaryValue: v.any(),
+                    }),
+                    newValue: v.optional(v.any()),
+                })
+            ),
+            delete: v.array(
+                v.object({
+                    key: v.string(),
+                    item: v.object({
+                        key: v.string(),
+                        value: v.any(),
+                        primaryValue: v.any(),
+                    }),
+                    newValue: v.optional(v.any()),
+                })
+            ),
+        }),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -448,13 +483,20 @@ export const applyChangeOperations = action({
             workspaceId: args.workspaceId,
         });
 
+        await ctx.runMutation(internal.internalLang.languageUpdateStatus, {
+            namespaceVersionId: namespaceVersion._id,
+            languageId: language._id,
+            status: 'syncing',
+            isBranchUpdate: true,
+        });
+
         const isPrimaryLanguage = namespaceVersion.primaryLanguageId === args.languageId;
 
         try {
             let currentContent: any = {};
 
             if (language.fileId) {
-                const fileUrl = await ctx.storage.getUrl(language.fileId);
+                const fileUrl = await r2.getUrl(language.fileId);
                 if (fileUrl) {
                     const response = await fetch(fileUrl);
                     const contentText = await response.text();
@@ -462,30 +504,36 @@ export const applyChangeOperations = action({
                 }
             }
 
-            let updatedContent: any;
-            if (args.languageChanges && args.languageChanges.changes) {
-                // Use json-diff format (for primary language saves)
-                updatedContent = applyJsonDiffToContent(currentContent, args.languageChanges.changes);
+            const flatJson = flattenJson(currentContent);
+            const updatedContentFlat = applyLanguageChanges(flatJson, args.languageChanges);
+            const newJson = unflattenJson(updatedContentFlat);
+
+            const updatedContentString = JSON.stringify(newJson, null, 2);
+            const contentBlob = new Blob([updatedContentString], { type: 'application/json' });
+
+            const storageId = await r2.store(ctx, contentBlob);
+
+            if (language.fileId) {
+                await r2.deleteObject(ctx, language.fileId);
             }
+
+            await ctx.runMutation(internal.internalLang.internalLanguageUpdate, {
+                languageId: args.languageId,
+                fileId: storageId,
+                fileSize: contentBlob.size,
+            });
 
             // For primary language: Always generate and update schema
             if (isPrimaryLanguage) {
-                const schema = generateSchemas(updatedContent);
+                const schema = generateSchemas(newJson);
 
                 const schemaContent = JSON.stringify(schema.jsonSchema, null, 2);
                 const schemaBlob = new Blob([schemaContent], { type: 'application/json' });
 
-                const schemaUploadUrl = await ctx.storage.generateUploadUrl();
-                const schemaUploadResponse = await fetch(schemaUploadUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: schemaBlob,
-                });
-
-                const { storageId: schemaStorageId } = await schemaUploadResponse.json();
+                const schemaStorageId = await r2.store(ctx, schemaBlob);
 
                 if (namespaceVersion.jsonSchemaFileId) {
-                    await ctx.storage.delete(namespaceVersion.jsonSchemaFileId);
+                    await r2.deleteObject(ctx, namespaceVersion.jsonSchemaFileId);
                 }
 
                 await ctx.runMutation(internal.internalLang.languageUpdateSchema, {
@@ -494,43 +542,41 @@ export const applyChangeOperations = action({
                     jsonSchemaSize: schemaBlob.size,
                 });
 
-                console.log('📋 JSON Schema always updated for primary language save');
-
-                const hasStructuralChanges = !!args.languageChanges?.changes.hasStructuralChanges;
-
-                if (hasStructuralChanges) {
-                    const changesForSync = args.languageChanges?.changes.structuredChanges ?? [];
-
-                    await synchronizeLanguagesWithOperations(
-                        ctx,
-                        language.namespaceVersionId,
-                        args.languageId,
-                        changesForSync,
-                        updatedContent
-                    );
-                }
+                console.log('JSON Schema always updated for primary language save');
             }
 
-            const updatedContentString = JSON.stringify(updatedContent, null, 2);
-            const contentBlob = new Blob([updatedContentString], { type: 'application/json' });
-            const uploadUrl = await ctx.storage.generateUploadUrl();
-            const uploadResponse = await fetch(uploadUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: contentBlob,
+            await ctx.runMutation(internal.internalLang.languageUpdateStatus, {
+                namespaceVersionId: namespaceVersion._id,
+                languageId: language._id,
+                isBranchUpdate: !isPrimaryLanguage,
             });
 
-            const { storageId } = await uploadResponse.json();
+            const primaryLanguageFileId = language.fileId;
+            if (isPrimaryLanguage && primaryLanguageFileId) {
+                const { otherLanguages } = await ctx.runQuery(internal.internalLang.internalVersionLanguages, {
+                    namespaceVersionId: language.namespaceVersionId,
+                    primaryLanguageId: language._id,
+                });
 
-            if (language.fileId) {
-                await ctx.storage.delete(language.fileId);
+                await languagePool.enqueueActionBatch(
+                    ctx,
+                    internal.internalLang.languageUpdateContent,
+                    otherLanguages.map(lang => ({
+                        languageId: lang._id,
+                        languageCode: lang.languageCode,
+                        languageFileId: lang.fileId,
+                        primaryLanguageFileId,
+                        namespaceVersionId: language.namespaceVersionId,
+                        languageChanges: args.languageChanges,
+                    })),
+                    {
+                        onComplete: internal.internalLang.namespaceVersionUpdateStatus,
+                        context: {
+                            namespaceVersionId: language.namespaceVersionId,
+                        },
+                    }
+                );
             }
-
-            await ctx.runMutation(internal.internalLang.internalLanguageUpdate, {
-                languageId: args.languageId,
-                fileId: storageId,
-                fileSize: contentBlob.size,
-            });
 
             return {
                 success: true,

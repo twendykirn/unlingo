@@ -1,6 +1,7 @@
 import { paginationOptsValidator } from 'convex/server';
 import { mutation, query, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
+import { r2 } from './files';
 
 export const getNamespaces = query({
     args: {
@@ -269,7 +270,7 @@ export const deleteNamespace = mutation({
                 }
 
                 if (language.fileId) {
-                    await ctx.storage.delete(language.fileId);
+                    await r2.deleteObject(ctx, language.fileId);
                 }
                 await ctx.db.delete(language._id);
             }

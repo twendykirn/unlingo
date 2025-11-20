@@ -141,7 +141,7 @@ export function OrgRedirect() {
                     </motion.div>
                     <Button
                         onClick={() => handleOrgSelection(selectedOrgId)}
-                        disabled={!selectedOrgId}
+                        isDisabled={!selectedOrgId}
                         className='w-full bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed py-3'>
                         <div className='flex items-center justify-center space-x-2'>
                             <span>Continue</span>
