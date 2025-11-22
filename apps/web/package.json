@@ -8,6 +8,7 @@
         "dev": "vite dev --port=3001"
     },
     "dependencies": {
+        "@base-ui-components/react": "^0.0.37",
         "radix-ui": "^1.4.2",
         "@tanstack/react-form": "^1.23.5",
         "@tailwindcss/vite": "catalog:",
