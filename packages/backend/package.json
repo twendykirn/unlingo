@@ -13,7 +13,7 @@
         "typescript": "catalog:"
     },
     "dependencies": {
-        "@clerk/backend": "^2.23.0",
+        "@workos-inc/node": "^7.75.1",
         "@convex-dev/polar": "^0.7.1",
         "@convex-dev/r2": "^0.8.0",
         "@convex-dev/resend": "^0.1.13",

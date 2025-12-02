@@ -1,37 +1,14 @@
-import { SignInButton, UserButton, useUser } from "@clerk/tanstack-react-start";
-import { api } from "@my-better-t-app/backend/convex/_generated/api";
-import { createFileRoute } from "@tanstack/react-router";
-import {
-	Authenticated,
-	AuthLoading,
-	Unauthenticated,
-	useQuery,
-} from "convex/react";
+import { createFileRoute, Outlet, useRouteContext } from "@tanstack/react-router";
+import { requireAuth, type Session } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard")({
-	component: RouteComponent,
+    beforeLoad: async () => {
+        const session = await requireAuth("/auth/sign-in");
+        return { session };
+    },
+    component: DashboardLayout,
 });
 
-function RouteComponent() {
-	const privateData = useQuery(api.privateData.get);
-	const user = useUser();
-
-	return (
-		<>
-			<Authenticated>
-				<div>
-					<h1>Dashboard</h1>
-					<p>Welcome {user.user?.fullName}</p>
-					<p>privateData: {privateData?.message}</p>
-					<UserButton />
-				</div>
-			</Authenticated>
-			<Unauthenticated>
-				<SignInButton />
-			</Unauthenticated>
-			<AuthLoading>
-				<div>Loading...</div>
-			</AuthLoading>
-		</>
-	);
+function DashboardLayout() {
+    return <Outlet />;
 }

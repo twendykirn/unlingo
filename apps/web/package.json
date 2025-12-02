@@ -9,8 +9,10 @@
     },
     "dependencies": {
         "@base-ui-components/react": "^1.0.0-beta.7",
-        "@clerk/tanstack-react-start": "^0.26.3",
         "@convex-dev/react-query": "^0.0.0-alpha.8",
+        "@workos-inc/node": "^7.75.1",
+        "iron-session": "^8.0.4",
+        "jose": "^6.0.11",
         "@tailwindcss/vite": "catalog:",
         "@tanstack/react-form": "^1.23.5",
         "@tanstack/react-query": "^5.80.6",
