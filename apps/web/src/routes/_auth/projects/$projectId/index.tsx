@@ -1,6 +1,10 @@
+import NamespaceCreateDialog from '@/components/namespace-create-dialog';
+import NamespaceDeleteDialog from '@/components/namespace-delete-dialog';
+import NamespaceEditDialog from '@/components/namespace-edit-dialog';
 import { ProjectSidebar } from '@/components/project-sidebar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Menu, MenuGroup, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -12,7 +16,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Doc, Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { usePaginatedQuery, useQuery } from 'convex/react';
-import { Edit, EllipsisVerticalIcon, Eye, LayoutGridIcon, SearchIcon, TableIcon, TrashIcon } from 'lucide-react';
+import { BookIcon, Edit, EllipsisVerticalIcon, Eye, LayoutGridIcon, NewspaperIcon, SearchIcon, TableIcon, TrashIcon } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 
 export const Route = createFileRoute('/_auth/projects/$projectId/')({
@@ -28,7 +32,7 @@ function RouteComponent() {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [selectedProject, setSelectedProject] = useState<Doc<'namespaces'> | null>(null);
+    const [selectedNamespace, setSelectedNamespace] = useState<Doc<'namespaces'> | null>(null);
 
     const clerkId = organization?.id;
 
@@ -73,7 +77,7 @@ function RouteComponent() {
 
     return (
         <SidebarProvider>
-            <ProjectSidebar activeItem='namespaces' />
+            <ProjectSidebar activeItem='namespaces' projectId={projectId} />
             <SidebarInset>
                 <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
                     <div className="flex items-center gap-2 px-4">
@@ -113,7 +117,8 @@ function RouteComponent() {
                             </InputGroup>
                             <Button
                                 onClick={() => setIsCreateDialogOpen(true)}
-                                disabled={!canCreateNamespace}>
+                                disabled={!canCreateNamespace}
+                            >
                                 Create namespace
                             </Button>
                         </div>
@@ -122,6 +127,31 @@ function RouteComponent() {
                         <div className="flex items-center justify-center w-full mt-4">
                             <Spinner />
                         </div>
+                    ) : filteredNamespaces.length === 0 ? (
+                        <Empty>
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <NewspaperIcon />
+                                </EmptyMedia>
+                                <EmptyTitle>No namespaces</EmptyTitle>
+                                <EmptyDescription>Create a namespace to get started.</EmptyDescription>
+                            </EmptyHeader>
+                            <EmptyContent>
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        onClick={() => setIsCreateDialogOpen(true)}
+                                        disabled={!canCreateNamespace}
+                                    >
+                                        Create namespace
+                                    </Button>
+                                    <Button size="sm" variant="outline" render={<a href="https://docs.unlingo.com" target="_blank" />}>
+                                        <BookIcon className="opacity-72" />
+                                        View docs
+                                    </Button>
+                                </div>
+                            </EmptyContent>
+                        </Empty>
                     ) : null}
                     {layout === 'grid' ? (
                         <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -161,7 +191,7 @@ function RouteComponent() {
                                                     <MenuItem
                                                         onClick={() => {
                                                             setIsEditDialogOpen(true);
-                                                            setSelectedProject(namespace);
+                                                            setSelectedNamespace(namespace);
                                                         }}
                                                     >
                                                         <Edit className="opacity-72" />
@@ -173,7 +203,7 @@ function RouteComponent() {
                                                     variant="destructive"
                                                     onClick={() => {
                                                         setIsDeleteDialogOpen(true);
-                                                        setSelectedProject(namespace);
+                                                        setSelectedNamespace(namespace);
                                                     }}
                                                 >
                                                     <TrashIcon />
@@ -231,7 +261,7 @@ function RouteComponent() {
                                                                     <MenuItem
                                                                         onClick={() => {
                                                                             setIsEditDialogOpen(true);
-                                                                            setSelectedProject(namespace);
+                                                                            setSelectedNamespace(namespace);
                                                                         }}
                                                                     >
                                                                         <Edit className="opacity-72" />
@@ -243,7 +273,7 @@ function RouteComponent() {
                                                                     variant="destructive"
                                                                     onClick={() => {
                                                                         setIsDeleteDialogOpen(true);
-                                                                        setSelectedProject(namespace);
+                                                                        setSelectedNamespace(namespace);
                                                                     }}
                                                                 >
                                                                     <TrashIcon />
@@ -261,6 +291,34 @@ function RouteComponent() {
                         </Card>
                     ) : null}
                 </div>
+                {workspace && project ? (
+                    <>
+                        <NamespaceCreateDialog
+                            isOpen={isCreateDialogOpen}
+                            setIsOpen={setIsCreateDialogOpen}
+                            project={project}
+                            workspace={workspace}
+                        />
+                        {selectedNamespace ? (
+                            <>
+                                <NamespaceEditDialog
+                                    isOpen={isEditDialogOpen}
+                                    setIsOpen={setIsEditDialogOpen}
+                                    project={project}
+                                    workspace={workspace}
+                                    namespace={selectedNamespace}
+                                />
+                                <NamespaceDeleteDialog
+                                    isOpen={isDeleteDialogOpen}
+                                    setIsOpen={setIsDeleteDialogOpen}
+                                    project={project}
+                                    workspace={workspace}
+                                    namespace={selectedNamespace}
+                                />
+                            </>
+                        ) : null}
+                    </>
+                ) : null}
             </SidebarInset>
         </SidebarProvider>
     )

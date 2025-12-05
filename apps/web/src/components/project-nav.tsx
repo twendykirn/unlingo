@@ -4,7 +4,7 @@ import {
     Images,
     Boxes,
     KeyRound,
-    Logs,
+    RocketIcon,
 } from "lucide-react"
 import {
     SidebarGroup,
@@ -16,24 +16,37 @@ import { useClerk } from "@clerk/tanstack-react-start"
 import { useNavigate } from "@tanstack/react-router"
 
 interface Props {
-    activeItem: 'namespaces' | 'api-keys' | 'releases' | 'screenshots' | 'logs';
+    activeItem: 'namespaces' | 'api-keys' | 'releases' | 'screenshots' | 'builds';
+    projectId: string;
 }
 
-export function ProjectNav({ activeItem }: Props) {
+export function ProjectNav({ activeItem, projectId }: Props) {
     const { openOrganizationProfile } = useClerk();
 
     const navigate = useNavigate();
 
-    const handleNavigateToHome = () => {
+    const handleNavigateToDashboard = () => {
         navigate({
             to: '/dashboard',
         })
     }
 
-    const handleNavigateToBilling = () => {
+    const handleNavigateToNamespaces = () => {
         navigate({
-            to: '/dashboard/billing',
-        })
+            to: '/projects/$projectId',
+            params: {
+                projectId: projectId,
+            },
+        });
+    }
+
+    const handleNavigateToApiKeys = () => {
+        navigate({
+            to: '/projects/$projectId/api-keys',
+            params: {
+                projectId: projectId,
+            },
+        });
     }
 
     return (
@@ -41,7 +54,7 @@ export function ProjectNav({ activeItem }: Props) {
             <SidebarGroup>
                 <SidebarMenu>
                     <SidebarMenuItem key='dashboard'>
-                        <SidebarMenuButton className="text-sidebar-foreground/70" onClick={() => handleNavigateToHome()}>
+                        <SidebarMenuButton className="text-sidebar-foreground/70" onClick={() => handleNavigateToDashboard()}>
                             <ArrowLeft />
                             <span>Back to dashboard</span>
                         </SidebarMenuButton>
@@ -51,33 +64,53 @@ export function ProjectNav({ activeItem }: Props) {
             <SidebarGroup>
                 <SidebarMenu>
                     <SidebarMenuItem key='namespaces'>
-                        <SidebarMenuButton isActive={activeItem === 'namespaces'} className="text-sidebar-foreground/70" onClick={() => handleNavigateToHome()}>
+                        <SidebarMenuButton
+                            isActive={activeItem === 'namespaces'}
+                            className="text-sidebar-foreground/70"
+                            onClick={() => handleNavigateToNamespaces()}
+                        >
                             <Newspaper />
                             <span>Namespaces</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem key='screenshots'>
-                        <SidebarMenuButton isActive={activeItem === 'screenshots'} className="text-sidebar-foreground/70" onClick={() => openOrganizationProfile()}>
+                        <SidebarMenuButton
+                            isActive={activeItem === 'screenshots'}
+                            className="text-sidebar-foreground/70"
+                            onClick={() => openOrganizationProfile()}
+                        >
                             <Images />
                             <span>Screenshots</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
-                    <SidebarMenuItem key='releases'>
-                        <SidebarMenuButton isActive={activeItem === 'releases'} className="text-sidebar-foreground/70" onClick={() => openOrganizationProfile()}>
+                    <SidebarMenuItem key='builds'>
+                        <SidebarMenuButton
+                            isActive={activeItem === 'builds'}
+                            className="text-sidebar-foreground/70"
+                            onClick={() => openOrganizationProfile()}
+                        >
                             <Boxes />
+                            <span>Builds</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem key='releases'>
+                        <SidebarMenuButton
+                            isActive={activeItem === 'releases'}
+                            className="text-sidebar-foreground/70"
+                            onClick={() => openOrganizationProfile()}
+                        >
+                            <RocketIcon />
                             <span>Releases</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem key='api-keys'>
-                        <SidebarMenuButton isActive={activeItem === 'api-keys'} className="text-sidebar-foreground/70" onClick={() => handleNavigateToBilling()}>
+                        <SidebarMenuButton
+                            isActive={activeItem === 'api-keys'}
+                            className="text-sidebar-foreground/70"
+                            onClick={() => handleNavigateToApiKeys()}
+                        >
                             <KeyRound />
                             <span>Api Keys</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem key='logs'>
-                        <SidebarMenuButton isActive={activeItem === 'api-keys'} className="text-sidebar-foreground/70" onClick={() => handleNavigateToBilling()}>
-                            <Logs />
-                            <span>Logs</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>

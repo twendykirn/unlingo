@@ -1,6 +1,4 @@
-import { api } from "@unlingo/backend/convex/_generated/api";
 import type { Doc } from "@unlingo/backend/convex/_generated/dataModel";
-import { useMutation } from "convex/react";
 import { useState } from "react";
 import { toastManager } from "./ui/toast";
 import { Button } from "./ui/button";
@@ -19,17 +17,25 @@ import { Field, FieldError, FieldLabel } from "./ui/field";
 import { Input } from "./ui/input";
 import { Form } from "./ui/form";
 
+interface ApiKey {
+    id: string;
+    name: string;
+    prefix: string;
+    createdAt: number;
+    permissions: string[];
+}
+
 interface Props {
     isOpen: boolean;
     setIsOpen: (value: boolean) => void;
-    project: Doc<'projects'>;
     workspace: Doc<'workspaces'>;
+    project: Doc<'projects'>;
+    apiKey: ApiKey;
+    onDeleted?: () => void;
 }
 
-const ProjectDeleteDialog = ({ isOpen, setIsOpen, project, workspace }: Props) => {
+const ApiKeyDeleteDialog = ({ isOpen, setIsOpen, project, workspace, apiKey, onDeleted }: Props) => {
     const [isLoading, setIsLoading] = useState(false);
-
-    const deleteProject = useMutation(api.projects.deleteProject);
 
     const handleDelete = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -39,18 +45,26 @@ const ProjectDeleteDialog = ({ isOpen, setIsOpen, project, workspace }: Props) =
         setIsLoading(true);
 
         try {
-            await deleteProject({
-                projectId: project._id,
-                workspaceId: workspace._id,
-            });
+            const response = await fetch(
+                `/api/api-keys/${workspace._id}/${project._id}/${apiKey.id}`,
+                {
+                    method: 'DELETE',
+                }
+            );
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete API key');
+            }
 
             toastManager.add({
-                description: 'Project deleted successfully',
+                description: 'API key deleted successfully',
                 type: 'success',
             });
+            onDeleted?.();
         } catch (error) {
             toastManager.add({
-                description: `Failed to delete project: ${error}`,
+                description: `Failed to delete API key: ${error instanceof Error ? error.message : 'Unknown error'}`,
                 type: 'error',
             });
         } finally {
@@ -64,23 +78,25 @@ const ProjectDeleteDialog = ({ isOpen, setIsOpen, project, workspace }: Props) =
             <AlertDialogPopup className="sm:max-w-sm">
                 <Form className="contents" onSubmit={handleDelete}>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                        <AlertDialogTitle>Delete API Key</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action is permanent and cannot be undone. To confirm, please type the project name below: <strong>{project.name}</strong>
+                            This action is permanent and cannot be undone. Any applications or services using this key will no
+                            longer be able to access the API. To confirm, please type the API key name below:
+                            <strong>{apiKey.name}</strong>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogPanel>
                         <Field
                             validate={(value) => {
-                                if (value === project.name) {
+                                if (value === apiKey.name) {
                                     return null;
                                 } else {
-                                    return 'Input value does not match project name';
+                                    return 'Input value does not match key name';
                                 }
                             }}
                         >
                             <FieldLabel>Name</FieldLabel>
-                            <Input name="name" required />
+                            <Input name="name" required autoComplete="off" />
                             <FieldError />
                         </Field>
                     </AlertDialogPanel>
@@ -98,4 +114,4 @@ const ProjectDeleteDialog = ({ isOpen, setIsOpen, project, workspace }: Props) =
     );
 };
 
-export default ProjectDeleteDialog;
+export default ApiKeyDeleteDialog;

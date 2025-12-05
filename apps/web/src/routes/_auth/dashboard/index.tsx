@@ -14,15 +14,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupSeparator } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
-import ProjectEditDialog from "@/components/project-update-dialog";
+import ProjectEditDialog from "@/components/project-edit-dialog";
 import { useOrganization } from "@clerk/tanstack-react-start";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "@unlingo/backend/convex/_generated/api";
 import type { Doc } from "@unlingo/backend/convex/_generated/dataModel";
 import { usePaginatedQuery, useQuery } from "convex/react";
-import { SearchIcon, LayoutGridIcon, TableIcon, TrashIcon, Edit, Eye, EllipsisVerticalIcon } from "lucide-react";
+import { SearchIcon, LayoutGridIcon, TableIcon, TrashIcon, Edit, Eye, EllipsisVerticalIcon, BookIcon, FolderKanbanIcon } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 import ProjectDeleteDialog from "@/components/project-delete-dialog";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { formatDate, formatTimeAgo } from "@/utils/time";
 
 export const Route = createFileRoute('/_auth/dashboard/')({
     component: RouteComponent,
@@ -112,38 +114,6 @@ export default function RouteComponent() {
         });
     }, [projects, search]);
 
-    const formatTimeAgo = (date: number) => {
-        const now = Date.now();
-        const diffMs = Math.abs(now - date);
-
-        const seconds = Math.floor(diffMs / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const hours = Math.floor(minutes / 60);
-        const days = Math.floor(hours / 24);
-
-        if (days > 0) {
-            return days === 1 ? "1 day ago" : `${days} days ago`;
-        }
-
-        if (hours > 0) {
-            return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
-        }
-
-        if (minutes > 0) {
-            return minutes === 1 ? "1 minute ago" : `${minutes} minutes ago`;
-        }
-
-        return "just now";
-    }
-
-    const formatDate = (date: number) => {
-        return new Date(date).toLocaleDateString(undefined, {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        });
-    }
-
     const canCreateProject = workspace ? workspace.currentUsage.projects < workspace.limits.projects : false;
 
     return (
@@ -188,7 +158,8 @@ export default function RouteComponent() {
                             </InputGroup>
                             <Button
                                 onClick={() => setIsCreateDialogOpen(true)}
-                                disabled={!canCreateProject}>
+                                disabled={!canCreateProject}
+                            >
                                 Create project
                             </Button>
                         </div>
@@ -197,6 +168,31 @@ export default function RouteComponent() {
                         <div className="flex items-center justify-center w-full mt-4">
                             <Spinner />
                         </div>
+                    ) : filteredProjects.length === 0 ? (
+                        <Empty>
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <FolderKanbanIcon />
+                                </EmptyMedia>
+                                <EmptyTitle>No projects</EmptyTitle>
+                                <EmptyDescription>Create a project to get started.</EmptyDescription>
+                            </EmptyHeader>
+                            <EmptyContent>
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        onClick={() => setIsCreateDialogOpen(true)}
+                                        disabled={!canCreateProject}
+                                    >
+                                        Create project
+                                    </Button>
+                                    <Button size="sm" variant="outline" render={<a href="https://docs.unlingo.com" target="_blank" />}>
+                                        <BookIcon className="opacity-72" />
+                                        View docs
+                                    </Button>
+                                </div>
+                            </EmptyContent>
+                        </Empty>
                     ) : null}
                     {layout === 'grid' ? (
                         <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">

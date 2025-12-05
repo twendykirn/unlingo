@@ -11,7 +11,7 @@ import {
 import { useUser } from "@clerk/tanstack-react-start"
 
 interface Props extends React.ComponentProps<typeof Sidebar> {
-    activeItem: 'home' | 'billing';
+    activeItem: 'home' | 'billing' | 'logs';
 }
 
 export function AppSidebar({ activeItem, ...props }: Props) {
