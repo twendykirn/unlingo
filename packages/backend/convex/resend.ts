@@ -1,67 +1,115 @@
-'use node';
-import { components } from './_generated/api';
-import { Resend } from '@convex-dev/resend';
-import { internalAction } from './_generated/server';
-import { getEmailSubject, renderEmail } from '../emails';
-import { v } from 'convex/values';
+"use node";
+import { components } from "./_generated/api";
+import { internalAction } from "./_generated/server";
+import { v } from "convex/values";
+import { Workpool } from "@convex-dev/workpool";
 
-export const resend: Resend = new Resend(components.resend, {
-    testMode: false,
+export const emailWorkpool = new Workpool(components.emailWorkpool, {
+  maxParallelism: 2,
+  retryActionsByDefault: true,
+  defaultRetryBehavior: { maxAttempts: 3, initialBackoffMs: 1000, base: 2 },
+});
+
+export const addEmailToContacts = internalAction({
+  args: {
+    email: v.string(),
+  },
+  handler: async (_, args) => {
+    try {
+      const result = await fetch(
+        `https://api.resend.com/contacts/${args.email}/segments/${process.env.RESEND_AUDIENCE_ID}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.RESEND_SECRET}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      const data = await result.json();
+
+      if (!data?.id) {
+        throw new Error(data?.name || "Rate limit exceeded");
+      }
+    } catch (error) {
+      throw new Error(
+        `Failed to add a contact with email ${args.email}: ${error}`,
+      );
+    }
+  },
 });
 
 export const sendWelcomeEmail = internalAction({
-    args: {
-        userEmail: v.string(),
-    },
-    handler: async (ctx, args) => {
-        await fetch(`https://api.resend.com/audiences/${process.env.RESEND_AUDIENCE_ID!}/contacts`, {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${process.env.RESEND_API_KEY!}`,
-                'Content-Type': 'application/json',
+  args: {
+    email: v.string(),
+    name: v.string(),
+  },
+  handler: async (_, args) => {
+    try {
+      const result = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_SECRET}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: [args.email],
+          template: {
+            id: process.env.RESEND_TEMPLATE_WELCOME_ID,
+            variables: {
+              NAME: args.name,
             },
-            body: JSON.stringify({
-                email: args.userEmail,
-            }),
-        });
+          },
+        }),
+      });
 
-        const html = await renderEmail('welcome', {});
+      const data = await result.json();
 
-        const subject = getEmailSubject('welcome');
-
-        await resend.sendEmail(ctx, {
-            from: 'Igor from Unlingo <igor@unlingo.com>',
-            to: args.userEmail,
-            subject,
-            html,
-            replyTo: ['welcome@unlingo.com'],
-        });
-    },
+      if (!data?.id) {
+        throw new Error(data?.name || "Rate limit exceeded");
+      }
+    } catch (error) {
+      throw new Error(`Failed to welcome email to ${args.email}: ${error}`);
+    }
+  },
 });
 
 export const sendLimitsEmail = internalAction({
-    args: {
-        userEmail: v.string(),
-        currentUsage: v.number(),
-    },
-    handler: async (ctx, args) => {
-        const template =
-            args.currentUsage === 80
-                ? 'usage-warning-80'
-                : args.currentUsage === 100
-                ? 'usage-limit-reached'
-                : 'usage-over-limit';
+  args: {
+    email: v.string(),
+    currentUsage: v.number(),
+  },
+  handler: async (_, args) => {
+    const templateId =
+      args.currentUsage === 80
+        ? process.env.RESEND_TEMPLATE_USAGE_WARNING_ID
+        : args.currentUsage === 100
+          ? process.env.RESEND_TEMPLATE_USAGE_LIMIT_REACHED_ID
+          : process.env.RESEND_TEMPLATE_USAGE_OVER_LIMIT_ID;
 
-        const html = await renderEmail(template, {});
+    try {
+      const result = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_SECRET}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: [args.email],
+          template: {
+            id: templateId,
+          },
+        }),
+      });
 
-        const subject = getEmailSubject(template);
+      const data = await result.json();
 
-        await resend.sendEmail(ctx, {
-            from: 'Unlingo <support@unlingo.com>',
-            to: args.userEmail,
-            subject,
-            html,
-            replyTo: ['support@unlingo.com'],
-        });
-    },
+      if (!data?.id) {
+        throw new Error(data?.name || "Rate limit exceeded");
+      }
+    } catch (error) {
+      throw new Error(`Failed to limit email to ${args.email}: ${error}`);
+    }
+  },
 });

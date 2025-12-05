@@ -9,7 +9,6 @@
  */
 
 import type * as analytics from "../analytics.js";
-import type * as crons from "../crons.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as internalLang from "../internalLang.js";
@@ -25,12 +24,12 @@ import type * as releases from "../releases.js";
 import type * as resend from "../resend.js";
 import type * as screenshots from "../screenshots.js";
 import type * as translation from "../translation.js";
+import type * as utils from "../utils.js";
 import type * as utils_applyLanguageChanges from "../utils/applyLanguageChanges.js";
 import type * as utils_jsonFlatten from "../utils/jsonFlatten.js";
 import type * as utils_translateContentUtil from "../utils/translateContentUtil.js";
 import type * as utils_translateNewContentUtil from "../utils/translateNewContentUtil.js";
 import type * as utils_types from "../utils/types.js";
-import type * as utils from "../utils.js";
 import type * as workspaces from "../workspaces.js";
 
 import type {
@@ -39,17 +38,8 @@ import type {
   FunctionReference,
 } from "convex/server";
 
-/**
- * A utility for referencing Convex functions in your app's API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = api.myModule.myFunction;
- * ```
- */
 declare const fullApi: ApiFromModules<{
   analytics: typeof analytics;
-  crons: typeof crons;
   files: typeof files;
   http: typeof http;
   internalLang: typeof internalLang;
@@ -65,22 +55,38 @@ declare const fullApi: ApiFromModules<{
   resend: typeof resend;
   screenshots: typeof screenshots;
   translation: typeof translation;
+  utils: typeof utils;
   "utils/applyLanguageChanges": typeof utils_applyLanguageChanges;
   "utils/jsonFlatten": typeof utils_jsonFlatten;
   "utils/translateContentUtil": typeof utils_translateContentUtil;
   "utils/translateNewContentUtil": typeof utils_translateNewContentUtil;
   "utils/types": typeof utils_types;
-  utils: typeof utils;
   workspaces: typeof workspaces;
 }>;
-declare const fullApiWithMounts: typeof fullApi;
 
+/**
+ * A utility for referencing Convex functions in your app's public API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
 export declare const api: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "public">
 >;
+
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
 export declare const internal: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "internal">
 >;
 
@@ -125,14 +131,17 @@ export declare const components: {
               createdAt: string;
               id: string;
               isArchived: boolean;
+              maximumAmount?: number | null;
+              minimumAmount?: number | null;
               modifiedAt: string | null;
+              presetAmount?: number | null;
               priceAmount?: number;
               priceCurrency?: string;
               productId: string;
-              recurringInterval?: "month" | "year" | null;
+              recurringInterval?: "day" | "week" | "month" | "year" | null;
               type?: string;
             }>;
-            recurringInterval?: "month" | "year" | null;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
           };
         },
         any
@@ -158,7 +167,7 @@ export declare const components: {
             modifiedAt: string | null;
             priceId?: string;
             productId: string;
-            recurringInterval: "month" | "year" | null;
+            recurringInterval: "day" | "week" | "month" | "year" | null;
             startedAt: string | null;
             status: string;
           };
@@ -219,17 +228,20 @@ export declare const components: {
               createdAt: string;
               id: string;
               isArchived: boolean;
+              maximumAmount?: number | null;
+              minimumAmount?: number | null;
               modifiedAt: string | null;
+              presetAmount?: number | null;
               priceAmount?: number;
               priceCurrency?: string;
               productId: string;
-              recurringInterval?: "month" | "year" | null;
+              recurringInterval?: "day" | "week" | "month" | "year" | null;
               type?: string;
             }>;
-            recurringInterval?: "month" | "year" | null;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
           };
           productId: string;
-          recurringInterval: "month" | "year" | null;
+          recurringInterval: "day" | "week" | "month" | "year" | null;
           startedAt: string | null;
           status: string;
         } | null
@@ -278,14 +290,17 @@ export declare const components: {
             createdAt: string;
             id: string;
             isArchived: boolean;
+            maximumAmount?: number | null;
+            minimumAmount?: number | null;
             modifiedAt: string | null;
+            presetAmount?: number | null;
             priceAmount?: number;
             priceCurrency?: string;
             productId: string;
-            recurringInterval?: "month" | "year" | null;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
             type?: string;
           }>;
-          recurringInterval?: "month" | "year" | null;
+          recurringInterval?: "day" | "week" | "month" | "year" | null;
         } | null
       >;
       getSubscription: FunctionReference<
@@ -309,7 +324,7 @@ export declare const components: {
           modifiedAt: string | null;
           priceId?: string;
           productId: string;
-          recurringInterval: "month" | "year" | null;
+          recurringInterval: "day" | "week" | "month" | "year" | null;
           startedAt: string | null;
           status: string;
         } | null
@@ -341,7 +356,7 @@ export declare const components: {
           modifiedAt: string | null;
           priceId?: string;
           productId: string;
-          recurringInterval: "month" | "year" | null;
+          recurringInterval: "day" | "week" | "month" | "year" | null;
           startedAt: string | null;
           status: string;
         }>
@@ -385,14 +400,17 @@ export declare const components: {
             createdAt: string;
             id: string;
             isArchived: boolean;
+            maximumAmount?: number | null;
+            minimumAmount?: number | null;
             modifiedAt: string | null;
+            presetAmount?: number | null;
             priceAmount?: number;
             priceCurrency?: string;
             productId: string;
-            recurringInterval?: "month" | "year" | null;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
             type?: string;
           }>;
-          recurringInterval?: "month" | "year" | null;
+          recurringInterval?: "day" | "week" | "month" | "year" | null;
         }>
       >;
       listUserSubscriptions: FunctionReference<
@@ -449,17 +467,20 @@ export declare const components: {
               createdAt: string;
               id: string;
               isArchived: boolean;
+              maximumAmount?: number | null;
+              minimumAmount?: number | null;
               modifiedAt: string | null;
+              presetAmount?: number | null;
               priceAmount?: number;
               priceCurrency?: string;
               productId: string;
-              recurringInterval?: "month" | "year" | null;
+              recurringInterval?: "day" | "week" | "month" | "year" | null;
               type?: string;
             }>;
-            recurringInterval?: "month" | "year" | null;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
           } | null;
           productId: string;
-          recurringInterval: "month" | "year" | null;
+          recurringInterval: "day" | "week" | "month" | "year" | null;
           startedAt: string | null;
           status: string;
         }>
@@ -508,14 +529,17 @@ export declare const components: {
               createdAt: string;
               id: string;
               isArchived: boolean;
+              maximumAmount?: number | null;
+              minimumAmount?: number | null;
               modifiedAt: string | null;
+              presetAmount?: number | null;
               priceAmount?: number;
               priceCurrency?: string;
               productId: string;
-              recurringInterval?: "month" | "year" | null;
+              recurringInterval?: "day" | "week" | "month" | "year" | null;
               type?: string;
             }>;
-            recurringInterval?: "month" | "year" | null;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
           };
         },
         any
@@ -559,14 +583,17 @@ export declare const components: {
               createdAt: string;
               id: string;
               isArchived: boolean;
+              maximumAmount?: number | null;
+              minimumAmount?: number | null;
               modifiedAt: string | null;
+              presetAmount?: number | null;
               priceAmount?: number;
               priceCurrency?: string;
               productId: string;
-              recurringInterval?: "month" | "year" | null;
+              recurringInterval?: "day" | "week" | "month" | "year" | null;
               type?: string;
             }>;
-            recurringInterval?: "month" | "year" | null;
+            recurringInterval?: "day" | "week" | "month" | "year" | null;
           }>;
         },
         any
@@ -592,7 +619,7 @@ export declare const components: {
             modifiedAt: string | null;
             priceId?: string;
             productId: string;
-            recurringInterval: "month" | "year" | null;
+            recurringInterval: "day" | "week" | "month" | "year" | null;
             startedAt: string | null;
             status: string;
           };
@@ -604,135 +631,6 @@ export declare const components: {
         "internal",
         { id: string; metadata?: Record<string, any>; userId: string },
         string
-      >;
-    };
-  };
-  resend: {
-    lib: {
-      cancelEmail: FunctionReference<
-        "mutation",
-        "internal",
-        { emailId: string },
-        null
-      >;
-      cleanupAbandonedEmails: FunctionReference<
-        "mutation",
-        "internal",
-        { olderThan?: number },
-        null
-      >;
-      cleanupOldEmails: FunctionReference<
-        "mutation",
-        "internal",
-        { olderThan?: number },
-        null
-      >;
-      createManualEmail: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          from: string;
-          headers?: Array<{ name: string; value: string }>;
-          replyTo?: Array<string>;
-          subject: string;
-          to: string;
-        },
-        string
-      >;
-      get: FunctionReference<
-        "query",
-        "internal",
-        { emailId: string },
-        {
-          complained: boolean;
-          createdAt: number;
-          errorMessage?: string;
-          finalizedAt: number;
-          from: string;
-          headers?: Array<{ name: string; value: string }>;
-          html?: string;
-          opened: boolean;
-          replyTo: Array<string>;
-          resendId?: string;
-          segment: number;
-          status:
-            | "waiting"
-            | "queued"
-            | "cancelled"
-            | "sent"
-            | "delivered"
-            | "delivery_delayed"
-            | "bounced"
-            | "failed";
-          subject: string;
-          text?: string;
-          to: string;
-        } | null
-      >;
-      getStatus: FunctionReference<
-        "query",
-        "internal",
-        { emailId: string },
-        {
-          complained: boolean;
-          errorMessage: string | null;
-          opened: boolean;
-          status:
-            | "waiting"
-            | "queued"
-            | "cancelled"
-            | "sent"
-            | "delivered"
-            | "delivery_delayed"
-            | "bounced"
-            | "failed";
-        } | null
-      >;
-      handleEmailEvent: FunctionReference<
-        "mutation",
-        "internal",
-        { event: any },
-        null
-      >;
-      sendEmail: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          from: string;
-          headers?: Array<{ name: string; value: string }>;
-          html?: string;
-          options: {
-            apiKey: string;
-            initialBackoffMs: number;
-            onEmailEvent?: { fnHandle: string };
-            retryAttempts: number;
-            testMode: boolean;
-          };
-          replyTo?: Array<string>;
-          subject: string;
-          text?: string;
-          to: string;
-        },
-        string
-      >;
-      updateManualEmail: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          emailId: string;
-          errorMessage?: string;
-          resendId?: string;
-          status:
-            | "waiting"
-            | "queued"
-            | "cancelled"
-            | "sent"
-            | "delivered"
-            | "delivery_delayed"
-            | "bounced"
-            | "failed";
-        },
-        null
       >;
     };
   };
@@ -1035,6 +933,93 @@ export declare const components: {
     };
   };
   mergeWorkpool: {
+    lib: {
+      cancel: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          id: string;
+          logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+        },
+        any
+      >;
+      cancelAll: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          before?: number;
+          limit?: number;
+          logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+        },
+        any
+      >;
+      enqueue: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config: {
+            logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism: number;
+          };
+          fnArgs: any;
+          fnHandle: string;
+          fnName: string;
+          fnType: "action" | "mutation" | "query";
+          onComplete?: { context?: any; fnHandle: string };
+          retryBehavior?: {
+            base: number;
+            initialBackoffMs: number;
+            maxAttempts: number;
+          };
+          runAt: number;
+        },
+        string
+      >;
+      enqueueBatch: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config: {
+            logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism: number;
+          };
+          items: Array<{
+            fnArgs: any;
+            fnHandle: string;
+            fnName: string;
+            fnType: "action" | "mutation" | "query";
+            onComplete?: { context?: any; fnHandle: string };
+            retryBehavior?: {
+              base: number;
+              initialBackoffMs: number;
+              maxAttempts: number;
+            };
+            runAt: number;
+          }>;
+        },
+        Array<string>
+      >;
+      status: FunctionReference<
+        "query",
+        "internal",
+        { id: string },
+        | { previousAttempts: number; state: "pending" }
+        | { previousAttempts: number; state: "running" }
+        | { state: "finished" }
+      >;
+      statusBatch: FunctionReference<
+        "query",
+        "internal",
+        { ids: Array<string> },
+        Array<
+          | { previousAttempts: number; state: "pending" }
+          | { previousAttempts: number; state: "running" }
+          | { state: "finished" }
+        >
+      >;
+    };
+  };
+  emailWorkpool: {
     lib: {
       cancel: FunctionReference<
         "mutation",

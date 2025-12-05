@@ -1,4 +1,4 @@
-import { Toaster } from "@/components/ui/sonner";
+import { AnchoredToastProvider, ToastProvider } from "@/components/ui/toast"
 
 import {
 	HeadContent,
@@ -8,7 +8,6 @@ import {
 	useRouteContext,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import Header from "../components/header";
 import appCss from "../index.css?url";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ConvexQueryClient } from "@convex-dev/react-query";
@@ -52,7 +51,6 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 			},
 		],
 	}),
-
 	component: RootDocument,
 	beforeLoad: async (ctx) => {
 		const { userId, token } = await fetchClerkAuth();
@@ -73,12 +71,14 @@ function RootDocument() {
 						<HeadContent />
 					</head>
 					<body>
-						<div className="grid h-svh grid-rows-[auto_1fr]">
-							<Header />
-							<Outlet />
-						</div>
-						<Toaster richColors />
-						<TanStackRouterDevtools position="bottom-left" />
+						<ToastProvider>
+							<AnchoredToastProvider>
+								<div className="grid h-svh grid-rows-[auto_1fr]">
+									<Outlet />
+								</div>
+							</AnchoredToastProvider>
+						</ToastProvider>
+						<TanStackRouterDevtools position="bottom-right" />
 						<Scripts />
 					</body>
 				</html>
