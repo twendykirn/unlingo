@@ -298,13 +298,12 @@ function EditableCell({
     return (
         <div
             onClick={() => setIsEditing(true)}
-            className={`cursor-pointer truncate text-sm ${
-                isKey
-                    ? 'font-mono font-semibold text-gray-700'
-                    : isPrimary
-                      ? 'font-medium text-gray-900'
-                      : 'text-gray-600'
-            }`}
+            className={`cursor-pointer truncate text-sm ${isKey
+                ? 'font-mono font-semibold text-gray-700'
+                : isPrimary
+                    ? 'font-medium text-gray-900'
+                    : 'text-gray-600'
+                }`}
         >
             {value || <span className="text-gray-300 italic">Empty</span>}
         </div>
@@ -357,9 +356,9 @@ function EditorComponent() {
         api.projects.getProject,
         workspace
             ? {
-                  projectId: projectId as Id<'projects'>,
-                  workspaceId: workspace._id,
-              }
+                projectId: projectId as Id<'projects'>,
+                workspaceId: workspace._id,
+            }
             : 'skip'
     );
 
@@ -367,10 +366,10 @@ function EditorComponent() {
         api.namespaces.getNamespace,
         workspace && project
             ? {
-                  namespaceId: namespaceId as Id<'namespaces'>,
-                  projectId: project._id,
-                  workspaceId: workspace._id,
-              }
+                namespaceId: namespaceId as Id<'namespaces'>,
+                projectId: project._id,
+                workspaceId: workspace._id,
+            }
             : 'skip'
     );
 
@@ -378,9 +377,9 @@ function EditorComponent() {
         api.namespaceVersions.getNamespaceVersion,
         workspace
             ? {
-                  namespaceVersionId: versionId as Id<'namespaceVersions'>,
-                  workspaceId: workspace._id,
-              }
+                namespaceVersionId: versionId as Id<'namespaceVersions'>,
+                workspaceId: workspace._id,
+            }
             : 'skip'
     );
 
@@ -507,7 +506,7 @@ function EditorComponent() {
                     <Checkbox
                         checked={
                             table.getIsAllPageRowsSelected() ||
-                            (table.getIsSomePageRowsSelected() ? 'indeterminate' : false)
+                            table.getIsSomePageRowsSelected()
                         }
                         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
                         aria-label="Select all"
@@ -541,25 +540,25 @@ function EditorComponent() {
             // Primary language column (pinned)
             ...(primaryLang
                 ? [
-                      columnHelper.accessor((row) => row.values[primaryLang.code] || '', {
-                          id: 'primary_lang',
-                          header: `${primaryLang.name} (${primaryLang.code.toUpperCase()})`,
-                          cell: (info) => (
-                              <EditableCell
-                                  value={info.getValue()}
-                                  onSave={(newValue) =>
-                                      handleCellUpdate(
-                                          info.row.original.id,
-                                          primaryLang.code,
-                                          newValue
-                                      )
-                                  }
-                                  isPrimary
-                              />
-                          ),
-                          size: 250,
-                      }),
-                  ]
+                    columnHelper.accessor((row) => row.values[primaryLang.code] || '', {
+                        id: 'primary_lang',
+                        header: `${primaryLang.name} (${primaryLang.code.toUpperCase()})`,
+                        cell: (info) => (
+                            <EditableCell
+                                value={info.getValue()}
+                                onSave={(newValue) =>
+                                    handleCellUpdate(
+                                        info.row.original.id,
+                                        primaryLang.code,
+                                        newValue
+                                    )
+                                }
+                                isPrimary
+                            />
+                        ),
+                        size: 250,
+                    }),
+                ]
                 : []),
             // Other language columns (scrollable)
             ...otherLangs.map((lang) =>
@@ -614,7 +613,7 @@ function EditorComponent() {
     if (!workspace || !project || !namespace) {
         return (
             <SidebarProvider>
-                <ProjectSidebar activeItem="namespaces" />
+                <ProjectSidebar activeItem="namespaces" projectId={projectId} />
                 <SidebarInset>
                     <div className="flex items-center justify-center h-full">
                         <Spinner />
@@ -626,7 +625,7 @@ function EditorComponent() {
 
     return (
         <SidebarProvider>
-            <ProjectSidebar activeItem="namespaces" />
+            <ProjectSidebar activeItem="namespaces" projectId={projectId} />
             <SidebarInset>
                 <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 border-b">
                     <div className="flex items-center gap-2 px-4">
@@ -762,9 +761,9 @@ function EditorComponent() {
                                                     {header.isPlaceholder
                                                         ? null
                                                         : flexRender(
-                                                              header.column.columnDef.header,
-                                                              header.getContext()
-                                                          )}
+                                                            header.column.columnDef.header,
+                                                            header.getContext()
+                                                        )}
                                                 </th>
                                             );
                                         })}
