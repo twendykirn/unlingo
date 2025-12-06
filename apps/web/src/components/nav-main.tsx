@@ -6,6 +6,7 @@ import {
     Map,
     MessagesSquare,
     GitBranch,
+    Logs,
 } from "lucide-react"
 import {
     SidebarGroup,
@@ -19,7 +20,7 @@ import { useClerk, useUser } from "@clerk/tanstack-react-start"
 import { useNavigate } from "@tanstack/react-router"
 
 interface Props {
-    activeItem: 'home' | 'billing';
+    activeItem: 'home' | 'billing' | 'logs';
 }
 
 export function NavMain({ activeItem }: Props) {
@@ -51,34 +52,61 @@ export function NavMain({ activeItem }: Props) {
         navigate({
             to: '/dashboard',
         })
-    }
+    };
 
     const handleNavigateToBilling = () => {
         navigate({
             to: '/dashboard/billing',
         })
-    }
+    };
+
+    const handleNavigateToLogs = () => {
+        navigate({
+            to: '/dashboard/logs',
+        })
+    };
 
     return (
         <>
             <SidebarGroup>
                 <SidebarMenu>
                     <SidebarMenuItem key='home'>
-                        <SidebarMenuButton isActive={activeItem === 'home'} className="text-sidebar-foreground/70" onClick={() => handleNavigateToHome()}>
+                        <SidebarMenuButton
+                            isActive={activeItem === 'home'}
+                            className="text-sidebar-foreground/70"
+                            onClick={() => handleNavigateToHome()}
+                        >
                             <House />
                             <span>Home</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem key='settings'>
-                        <SidebarMenuButton className="text-sidebar-foreground/70" onClick={() => openOrganizationProfile()}>
+                        <SidebarMenuButton
+                            className="text-sidebar-foreground/70"
+                            onClick={() => openOrganizationProfile()}
+                        >
                             <Settings />
                             <span>Settings</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem key='billing'>
-                        <SidebarMenuButton isActive={activeItem === 'billing'} className="text-sidebar-foreground/70" onClick={() => handleNavigateToBilling()}>
+                        <SidebarMenuButton
+                            isActive={activeItem === 'billing'}
+                            className="text-sidebar-foreground/70"
+                            onClick={() => handleNavigateToBilling()}
+                        >
                             <CreditCard />
                             <span>Usage & Billing</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem key='logs'>
+                        <SidebarMenuButton
+                            isActive={activeItem === 'logs'}
+                            className="text-sidebar-foreground/70"
+                            onClick={() => handleNavigateToLogs()}
+                        >
+                            <Logs />
+                            <span>Logs</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
@@ -111,13 +139,19 @@ export function NavMain({ activeItem }: Props) {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem key='email'>
-                        <SidebarMenuButton className="text-sidebar-foreground/70" render={<a href='mailto:support@unlingo.com' target='_blank' />}>
+                        <SidebarMenuButton
+                            className="text-sidebar-foreground/70"
+                            render={<a href='mailto:support@unlingo.com' target='_blank' />}
+                        >
                             <Mail />
                             <span>Email</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem key='discord'>
-                        <SidebarMenuButton className="text-sidebar-foreground/70" render={<a href='https://discord.gg/TdDYte7KjG' target='_blank' />}>
+                        <SidebarMenuButton
+                            className="text-sidebar-foreground/70"
+                            render={<a href='https://discord.gg/TdDYte7KjG' target='_blank' />}
+                        >
                             <svg
                                 xmlns='http://www.w3.org/2000/svg'
                                 width='16'
@@ -135,7 +169,10 @@ export function NavMain({ activeItem }: Props) {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem key='github'>
-                        <SidebarMenuButton className="text-sidebar-foreground/70" render={<a href='https://github.com/twendykirn/unlingo/stargazers' target='_blank' />}>
+                        <SidebarMenuButton
+                            className="text-sidebar-foreground/70"
+                            render={<a href='https://github.com/twendykirn/unlingo/stargazers' target='_blank' />}
+                        >
                             <svg
                                 xmlns='http://www.w3.org/2000/svg'
                                 width='16'

@@ -24,33 +24,35 @@ interface Props {
     setIsOpen: (value: boolean) => void;
     project: Doc<'projects'>;
     workspace: Doc<'workspaces'>;
+    namespace: Doc<'namespaces'>;
 }
 
-const ProjectDeleteDialog = ({ isOpen, setIsOpen, project, workspace }: Props) => {
+const NamespaceDeleteDialog = ({ isOpen, setIsOpen, project, workspace, namespace }: Props) => {
     const [isLoading, setIsLoading] = useState(false);
 
-    const deleteProject = useMutation(api.projects.deleteProject);
+    const deleteNamespace = useMutation(api.namespaces.deleteNamespace);
 
     const handleDelete = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        if (!project || !workspace) return;
+        if (!project || !workspace || !namespace) return;
 
         setIsLoading(true);
 
         try {
-            await deleteProject({
+            await deleteNamespace({
+                namespaceId: namespace._id,
                 projectId: project._id,
                 workspaceId: workspace._id,
             });
 
             toastManager.add({
-                description: 'Project deleted successfully',
+                description: 'Namespace deleted successfully',
                 type: 'success',
             });
         } catch (error) {
             toastManager.add({
-                description: `Failed to delete project: ${error}`,
+                description: `Failed to delete namespace: ${error}`,
                 type: 'error',
             });
         } finally {
@@ -64,18 +66,18 @@ const ProjectDeleteDialog = ({ isOpen, setIsOpen, project, workspace }: Props) =
             <AlertDialogPopup className="sm:max-w-sm">
                 <Form className="contents" onSubmit={handleDelete}>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                        <AlertDialogTitle>Delete Namespace</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action is permanent and cannot be undone. To confirm, please type the project name below: <strong>{project.name}</strong>
+                            This action is permanent and cannot be undone. To confirm, please type the namespace name below: <strong>{namespace.name}</strong>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogPanel>
                         <Field
                             validate={(value) => {
-                                if (value === project.name) {
+                                if (value === namespace.name) {
                                     return null;
                                 } else {
-                                    return 'Input value does not match project name';
+                                    return 'Input value does not match namespace name';
                                 }
                             }}
                         >
@@ -98,4 +100,4 @@ const ProjectDeleteDialog = ({ isOpen, setIsOpen, project, workspace }: Props) =
     );
 };
 
-export default ProjectDeleteDialog;
+export default NamespaceDeleteDialog;

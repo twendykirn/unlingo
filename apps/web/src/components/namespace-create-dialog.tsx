@@ -5,37 +5,35 @@ import { useState } from "react";
 import { toastManager } from "./ui/toast";
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "./ui/dialog";
 import { Form } from "./ui/form";
+import { Button } from "./ui/button";
 import { Field, FieldLabel } from "./ui/field";
 import { Input } from "./ui/input";
-import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
 
 interface Props {
     isOpen: boolean;
     setIsOpen: (value: boolean) => void;
-    project: Doc<'projects'>;
     workspace: Doc<'workspaces'>;
+    project: Doc<'projects'>;
 }
 
-const ProjectEditDialog = ({ isOpen, setIsOpen, project, workspace }: Props) => {
+const NamespaceCreateDialog = ({ isOpen, setIsOpen, workspace, project }: Props) => {
     const [isLoading, setIsLoading] = useState(false);
 
-    const updateProject = useMutation(api.projects.updateProject);
+    const createNamespace = useMutation(api.namespaces.createNamespace);
 
-    const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         const formData = new FormData(e.currentTarget);
         const name = formData.get('name') as string;
 
-        if (!project || !workspace || !name.trim()) return;
+        if (!name.trim()) return;
 
-        const hasChanges = name.trim() !== project.name;
-
-        if (!hasChanges) {
+        if (project.usage.namespaces >= workspace.limits.namespacesPerProject) {
             toastManager.add({
-                description: 'Project updated successfully',
-                type: 'success',
+                description: 'Cannot create namespace. Please check your subscription limits.',
+                type: 'error',
             });
             setIsOpen(false);
             return;
@@ -44,18 +42,21 @@ const ProjectEditDialog = ({ isOpen, setIsOpen, project, workspace }: Props) => 
         setIsLoading(true);
 
         try {
-            await updateProject({
+            const namespaceId = await createNamespace({
                 projectId: project._id,
                 workspaceId: workspace._id,
                 name: name.trim(),
             });
+
+            if (namespaceId) {
+                toastManager.add({
+                    description: 'Namespace created successfully',
+                    type: 'success',
+                });
+            }
+        } catch (err) {
             toastManager.add({
-                description: 'Project updated successfully',
-                type: 'success',
-            });
-        } catch (error) {
-            toastManager.add({
-                description: `Failed to update project: ${error}`,
+                description: `Failed to create namespace: ${err instanceof Error ? err.message : 'Unknown error'}`,
                 type: 'error',
             });
         } finally {
@@ -67,24 +68,25 @@ const ProjectEditDialog = ({ isOpen, setIsOpen, project, workspace }: Props) => 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogPopup className="sm:max-w-sm">
-                <Form className="contents" onSubmit={handleUpdate}>
+                <Form className="contents" onSubmit={handleCreate}>
                     <DialogHeader>
-                        <DialogTitle>Update Project</DialogTitle>
+                        <DialogTitle>Create Namespace</DialogTitle>
                         <DialogDescription>
-                            Adjust project name and description here.
+                            Add namespace name here. Development and production environments will be created
+                            automatically.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogPanel className="grid gap-4">
                         <Field>
                             <FieldLabel>Name</FieldLabel>
-                            <Input type="text" name="name" required defaultValue={project.name} />
+                            <Input type="text" name="name" required />
                         </Field>
                     </DialogPanel>
                     <DialogFooter>
                         <DialogClose render={<Button variant="ghost" />}>
                             Cancel
                         </DialogClose>
-                        <Button type="submit">{isLoading ? <Spinner /> : 'Update'}</Button>
+                        <Button type="submit">{isLoading ? <Spinner /> : 'Create'}</Button>
                     </DialogFooter>
                 </Form>
             </DialogPopup>
@@ -92,4 +94,4 @@ const ProjectEditDialog = ({ isOpen, setIsOpen, project, workspace }: Props) => 
     );
 };
 
-export default ProjectEditDialog;
+export default NamespaceCreateDialog;

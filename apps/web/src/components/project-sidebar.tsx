@@ -11,10 +11,11 @@ import { useUser } from "@clerk/tanstack-react-start"
 import { ProjectNav } from "./project-nav"
 
 interface Props extends React.ComponentProps<typeof Sidebar> {
-    activeItem: 'namespaces' | 'api-keys' | 'releases' | 'screenshots' | 'logs';
+    activeItem: 'namespaces' | 'api-keys' | 'releases' | 'screenshots' | 'builds';
+    projectId: string;
 }
 
-export function ProjectSidebar({ activeItem, ...props }: Props) {
+export function ProjectSidebar({ activeItem, projectId, ...props }: Props) {
     const user = useUser();
 
     return (
@@ -23,7 +24,7 @@ export function ProjectSidebar({ activeItem, ...props }: Props) {
                 <WorkspaceSwitcher />
             </SidebarHeader>
             <SidebarContent>
-                <ProjectNav activeItem={activeItem} />
+                <ProjectNav activeItem={activeItem} projectId={projectId} />
             </SidebarContent>
             <SidebarFooter>
                 <NavUser user={{

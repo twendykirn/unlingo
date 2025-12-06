@@ -15,8 +15,12 @@ import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as AuthNewRouteImport } from './routes/_auth/new'
 import { Route as AuthDashboardIndexRouteImport } from './routes/_auth/dashboard/index'
+import { Route as AuthDashboardLogsRouteImport } from './routes/_auth/dashboard/logs'
 import { Route as AuthDashboardBillingRouteImport } from './routes/_auth/dashboard/billing'
 import { Route as AuthProjectsProjectIdIndexRouteImport } from './routes/_auth/projects/$projectId/index'
+import { Route as AuthProjectsProjectIdApiKeysRouteImport } from './routes/_auth/projects/$projectId/api-keys'
+import { Route as ApiApiKeysWorkspaceIdProjectIdIndexRouteImport } from './routes/api/api-keys/$workspaceId.$projectId/index'
+import { Route as ApiApiKeysWorkspaceIdProjectIdKeyIdRouteImport } from './routes/api/api-keys/$workspaceId.$projectId/$keyId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -47,6 +51,11 @@ const AuthDashboardIndexRoute = AuthDashboardIndexRouteImport.update({
   path: '/dashboard/',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthDashboardLogsRoute = AuthDashboardLogsRouteImport.update({
+  id: '/dashboard/logs',
+  path: '/dashboard/logs',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthDashboardBillingRoute = AuthDashboardBillingRouteImport.update({
   id: '/dashboard/billing',
   path: '/dashboard/billing',
@@ -58,6 +67,24 @@ const AuthProjectsProjectIdIndexRoute =
     path: '/projects/$projectId/',
     getParentRoute: () => AuthRoute,
   } as any)
+const AuthProjectsProjectIdApiKeysRoute =
+  AuthProjectsProjectIdApiKeysRouteImport.update({
+    id: '/projects/$projectId/api-keys',
+    path: '/projects/$projectId/api-keys',
+    getParentRoute: () => AuthRoute,
+  } as any)
+const ApiApiKeysWorkspaceIdProjectIdIndexRoute =
+  ApiApiKeysWorkspaceIdProjectIdIndexRouteImport.update({
+    id: '/api/api-keys/$workspaceId/$projectId/',
+    path: '/api/api-keys/$workspaceId/$projectId/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiApiKeysWorkspaceIdProjectIdKeyIdRoute =
+  ApiApiKeysWorkspaceIdProjectIdKeyIdRouteImport.update({
+    id: '/api/api-keys/$workspaceId/$projectId/$keyId',
+    path: '/api/api-keys/$workspaceId/$projectId/$keyId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -65,8 +92,12 @@ export interface FileRoutesByFullPath {
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/dashboard/billing': typeof AuthDashboardBillingRoute
+  '/dashboard/logs': typeof AuthDashboardLogsRoute
   '/dashboard': typeof AuthDashboardIndexRoute
+  '/projects/$projectId/api-keys': typeof AuthProjectsProjectIdApiKeysRoute
   '/projects/$projectId': typeof AuthProjectsProjectIdIndexRoute
+  '/api/api-keys/$workspaceId/$projectId/$keyId': typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRoute
+  '/api/api-keys/$workspaceId/$projectId': typeof ApiApiKeysWorkspaceIdProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -74,8 +105,12 @@ export interface FileRoutesByTo {
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/dashboard/billing': typeof AuthDashboardBillingRoute
+  '/dashboard/logs': typeof AuthDashboardLogsRoute
   '/dashboard': typeof AuthDashboardIndexRoute
+  '/projects/$projectId/api-keys': typeof AuthProjectsProjectIdApiKeysRoute
   '/projects/$projectId': typeof AuthProjectsProjectIdIndexRoute
+  '/api/api-keys/$workspaceId/$projectId/$keyId': typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRoute
+  '/api/api-keys/$workspaceId/$projectId': typeof ApiApiKeysWorkspaceIdProjectIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -85,8 +120,12 @@ export interface FileRoutesById {
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/_auth/dashboard/billing': typeof AuthDashboardBillingRoute
+  '/_auth/dashboard/logs': typeof AuthDashboardLogsRoute
   '/_auth/dashboard/': typeof AuthDashboardIndexRoute
+  '/_auth/projects/$projectId/api-keys': typeof AuthProjectsProjectIdApiKeysRoute
   '/_auth/projects/$projectId/': typeof AuthProjectsProjectIdIndexRoute
+  '/api/api-keys/$workspaceId/$projectId/$keyId': typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRoute
+  '/api/api-keys/$workspaceId/$projectId/': typeof ApiApiKeysWorkspaceIdProjectIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -96,8 +135,12 @@ export interface FileRouteTypes {
     | '/sign-in/$'
     | '/sign-up/$'
     | '/dashboard/billing'
+    | '/dashboard/logs'
     | '/dashboard'
+    | '/projects/$projectId/api-keys'
     | '/projects/$projectId'
+    | '/api/api-keys/$workspaceId/$projectId/$keyId'
+    | '/api/api-keys/$workspaceId/$projectId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -105,8 +148,12 @@ export interface FileRouteTypes {
     | '/sign-in/$'
     | '/sign-up/$'
     | '/dashboard/billing'
+    | '/dashboard/logs'
     | '/dashboard'
+    | '/projects/$projectId/api-keys'
     | '/projects/$projectId'
+    | '/api/api-keys/$workspaceId/$projectId/$keyId'
+    | '/api/api-keys/$workspaceId/$projectId'
   id:
     | '__root__'
     | '/'
@@ -115,8 +162,12 @@ export interface FileRouteTypes {
     | '/sign-in/$'
     | '/sign-up/$'
     | '/_auth/dashboard/billing'
+    | '/_auth/dashboard/logs'
     | '/_auth/dashboard/'
+    | '/_auth/projects/$projectId/api-keys'
     | '/_auth/projects/$projectId/'
+    | '/api/api-keys/$workspaceId/$projectId/$keyId'
+    | '/api/api-keys/$workspaceId/$projectId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -124,6 +175,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   SignInSplatRoute: typeof SignInSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
+  ApiApiKeysWorkspaceIdProjectIdKeyIdRoute: typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRoute
+  ApiApiKeysWorkspaceIdProjectIdIndexRoute: typeof ApiApiKeysWorkspaceIdProjectIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -170,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthDashboardIndexRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/dashboard/logs': {
+      id: '/_auth/dashboard/logs'
+      path: '/dashboard/logs'
+      fullPath: '/dashboard/logs'
+      preLoaderRoute: typeof AuthDashboardLogsRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/dashboard/billing': {
       id: '/_auth/dashboard/billing'
       path: '/dashboard/billing'
@@ -184,20 +244,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthProjectsProjectIdIndexRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/projects/$projectId/api-keys': {
+      id: '/_auth/projects/$projectId/api-keys'
+      path: '/projects/$projectId/api-keys'
+      fullPath: '/projects/$projectId/api-keys'
+      preLoaderRoute: typeof AuthProjectsProjectIdApiKeysRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/api/api-keys/$workspaceId/$projectId/': {
+      id: '/api/api-keys/$workspaceId/$projectId/'
+      path: '/api/api-keys/$workspaceId/$projectId'
+      fullPath: '/api/api-keys/$workspaceId/$projectId'
+      preLoaderRoute: typeof ApiApiKeysWorkspaceIdProjectIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/api-keys/$workspaceId/$projectId/$keyId': {
+      id: '/api/api-keys/$workspaceId/$projectId/$keyId'
+      path: '/api/api-keys/$workspaceId/$projectId/$keyId'
+      fullPath: '/api/api-keys/$workspaceId/$projectId/$keyId'
+      preLoaderRoute: typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AuthRouteChildren {
   AuthNewRoute: typeof AuthNewRoute
   AuthDashboardBillingRoute: typeof AuthDashboardBillingRoute
+  AuthDashboardLogsRoute: typeof AuthDashboardLogsRoute
   AuthDashboardIndexRoute: typeof AuthDashboardIndexRoute
+  AuthProjectsProjectIdApiKeysRoute: typeof AuthProjectsProjectIdApiKeysRoute
   AuthProjectsProjectIdIndexRoute: typeof AuthProjectsProjectIdIndexRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthNewRoute: AuthNewRoute,
   AuthDashboardBillingRoute: AuthDashboardBillingRoute,
+  AuthDashboardLogsRoute: AuthDashboardLogsRoute,
   AuthDashboardIndexRoute: AuthDashboardIndexRoute,
+  AuthProjectsProjectIdApiKeysRoute: AuthProjectsProjectIdApiKeysRoute,
   AuthProjectsProjectIdIndexRoute: AuthProjectsProjectIdIndexRoute,
 }
 
@@ -208,6 +293,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   SignInSplatRoute: SignInSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
+  ApiApiKeysWorkspaceIdProjectIdKeyIdRoute:
+    ApiApiKeysWorkspaceIdProjectIdKeyIdRoute,
+  ApiApiKeysWorkspaceIdProjectIdIndexRoute:
+    ApiApiKeysWorkspaceIdProjectIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
