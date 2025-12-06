@@ -21,6 +21,7 @@ import { Route as AuthProjectsProjectIdIndexRouteImport } from './routes/_auth/p
 import { Route as AuthProjectsProjectIdApiKeysRouteImport } from './routes/_auth/projects/$projectId/api-keys'
 import { Route as ApiApiKeysWorkspaceIdProjectIdIndexRouteImport } from './routes/api/api-keys/$workspaceId.$projectId/index'
 import { Route as ApiApiKeysWorkspaceIdProjectIdKeyIdRouteImport } from './routes/api/api-keys/$workspaceId.$projectId/$keyId'
+import { Route as AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRouteImport } from './routes/_auth/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -85,6 +86,14 @@ const ApiApiKeysWorkspaceIdProjectIdKeyIdRoute =
     path: '/api/api-keys/$workspaceId/$projectId/$keyId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute =
+  AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRouteImport.update(
+    {
+      id: '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor',
+      path: '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor',
+      getParentRoute: () => AuthRoute,
+    } as any,
+  )
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -98,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/projects/$projectId': typeof AuthProjectsProjectIdIndexRoute
   '/api/api-keys/$workspaceId/$projectId/$keyId': typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRoute
   '/api/api-keys/$workspaceId/$projectId': typeof ApiApiKeysWorkspaceIdProjectIdIndexRoute
+  '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor': typeof AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -111,6 +121,7 @@ export interface FileRoutesByTo {
   '/projects/$projectId': typeof AuthProjectsProjectIdIndexRoute
   '/api/api-keys/$workspaceId/$projectId/$keyId': typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRoute
   '/api/api-keys/$workspaceId/$projectId': typeof ApiApiKeysWorkspaceIdProjectIdIndexRoute
+  '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor': typeof AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -126,6 +137,7 @@ export interface FileRoutesById {
   '/_auth/projects/$projectId/': typeof AuthProjectsProjectIdIndexRoute
   '/api/api-keys/$workspaceId/$projectId/$keyId': typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRoute
   '/api/api-keys/$workspaceId/$projectId/': typeof ApiApiKeysWorkspaceIdProjectIdIndexRoute
+  '/_auth/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor': typeof AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +153,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId'
     | '/api/api-keys/$workspaceId/$projectId/$keyId'
     | '/api/api-keys/$workspaceId/$projectId'
+    | '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -154,6 +167,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId'
     | '/api/api-keys/$workspaceId/$projectId/$keyId'
     | '/api/api-keys/$workspaceId/$projectId'
+    | '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
   id:
     | '__root__'
     | '/'
@@ -168,6 +182,7 @@ export interface FileRouteTypes {
     | '/_auth/projects/$projectId/'
     | '/api/api-keys/$workspaceId/$projectId/$keyId'
     | '/api/api-keys/$workspaceId/$projectId/'
+    | '/_auth/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -265,6 +280,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_auth/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor': {
+      id: '/_auth/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
+      path: '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
+      fullPath: '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
+      preLoaderRoute: typeof AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRouteImport
+      parentRoute: typeof AuthRoute
+    }
   }
 }
 
@@ -275,6 +297,7 @@ interface AuthRouteChildren {
   AuthDashboardIndexRoute: typeof AuthDashboardIndexRoute
   AuthProjectsProjectIdApiKeysRoute: typeof AuthProjectsProjectIdApiKeysRoute
   AuthProjectsProjectIdIndexRoute: typeof AuthProjectsProjectIdIndexRoute
+  AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute: typeof AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
@@ -284,6 +307,8 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthDashboardIndexRoute: AuthDashboardIndexRoute,
   AuthProjectsProjectIdApiKeysRoute: AuthProjectsProjectIdApiKeysRoute,
   AuthProjectsProjectIdIndexRoute: AuthProjectsProjectIdIndexRoute,
+  AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute:
+    AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
