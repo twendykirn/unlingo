@@ -20,7 +20,6 @@
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-router-with-query": "^1.130.17",
     "@tanstack/react-start": "catalog:",
-    "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.12",
     "@tanstack/router-plugin": "1.134.4",
     "@unkey/api": "^2.2.0",
