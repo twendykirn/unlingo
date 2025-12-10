@@ -13,12 +13,83 @@ import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Toggle, ToggleGroup, ToggleGroupSeparator } from '@/components/ui/toggle-group';
 import { useOrganization } from '@clerk/tanstack-react-start';
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Doc, Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { usePaginatedQuery, useQuery } from 'convex/react';
 import { BookIcon, Edit, EllipsisVerticalIcon, Eye, LayoutGridIcon, NewspaperIcon, SearchIcon, TableIcon, TrashIcon } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+
+// Component to fetch and display version buttons for a namespace
+function NamespaceVersionButtons({
+    namespaceId,
+    workspaceId,
+    projectId,
+}: {
+    namespaceId: Id<'namespaces'>;
+    workspaceId: Id<'workspaces'>;
+    projectId: string;
+}) {
+    const navigate = useNavigate();
+
+    const { results: versions } = usePaginatedQuery(
+        api.namespaceVersions.getNamespaceVersions,
+        {
+            namespaceId,
+            workspaceId,
+        },
+        { initialNumItems: 10 }
+    );
+
+    const versionMap = useMemo(() => {
+        return (versions || []).reduce((acc, v) => {
+            acc[v.version] = v._id;
+            return acc;
+        }, {} as Record<string, Id<'namespaceVersions'>>);
+    }, [versions]);
+
+    const handleVersionClick = (version: 'production' | 'development') => {
+        const versionId = versionMap[version];
+        if (versionId) {
+            navigate({
+                to: '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor',
+                params: {
+                    projectId,
+                    namespaceId,
+                    versionId,
+                },
+            });
+        }
+    };
+
+    return (
+        <div className='flex items-center gap-1 text-muted-foreground'>
+            <Button
+                variant="link"
+                className='text-xs p-0'
+                onClick={(e) => {
+                    e.stopPropagation();
+                    handleVersionClick('production');
+                }}
+                disabled={!versionMap['production']}
+            >
+                Production
+            </Button>
+            <span>•</span>
+            <Button
+                variant="link"
+                className='text-xs p-0'
+                onClick={(e) => {
+                    e.stopPropagation();
+                    handleVersionClick('development');
+                }}
+                disabled={!versionMap['development']}
+            >
+                Development
+            </Button>
+        </div>
+    );
+}
 
 export const Route = createFileRoute('/_auth/projects/$projectId/')({
     component: RouteComponent,
@@ -162,11 +233,13 @@ function RouteComponent() {
                                     <CardHeader className="px-4 flex justify-between items-center">
                                         <div className="w-full">
                                             <h6>{namespace.name}</h6>
-                                            <div className='flex items-center gap-1 text-muted-foreground'>
-                                                <Button variant="link" className='text-xs p-0'>Production</Button>
-                                                •
-                                                <Button variant="link" className='text-xs p-0'>Development</Button>
-                                            </div>
+                                            {workspace && (
+                                                <NamespaceVersionButtons
+                                                    namespaceId={namespace._id}
+                                                    workspaceId={workspace._id}
+                                                    projectId={projectId}
+                                                />
+                                            )}
                                         </div>
                                         <Menu>
                                             <MenuTrigger render={<Button variant="ghost" size="icon" />} onClick={(e) => {
@@ -234,10 +307,14 @@ function RouteComponent() {
                                             <Fragment key={namespace._id}>
                                                 <TableRow>
                                                     <TableCell className="font-medium">{namespace.name}</TableCell>
-                                                    <TableCell className='flex items-center gap-1 text-muted-foreground'>
-                                                        <Button variant="link" className='text-xs p-0'>Production</Button>
-                                                        •
-                                                        <Button variant="link" className='text-xs p-0'>Development</Button>
+                                                    <TableCell>
+                                                        {workspace && (
+                                                            <NamespaceVersionButtons
+                                                                namespaceId={namespace._id}
+                                                                workspaceId={workspace._id}
+                                                                projectId={projectId}
+                                                            />
+                                                        )}
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <Menu>
