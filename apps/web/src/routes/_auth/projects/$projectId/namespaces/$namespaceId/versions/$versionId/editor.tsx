@@ -1,26 +1,16 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
-import {
-    Pagination,
-    PaginationContent,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Menu, MenuGroup, MenuItem, MenuPopup, MenuTrigger } from '@/components/ui/menu';
 import { ProjectSidebar } from '@/components/project-sidebar';
 import { Spinner } from '@/components/ui/spinner';
 import { useOrganization } from '@clerk/tanstack-react-start';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { useQuery } from 'convex/react';
 import {
-    ArrowLeftIcon,
     ChevronDownIcon,
     LanguagesIcon,
     PlusIcon,
@@ -39,6 +29,8 @@ import {
     type ColumnDef,
     type RowSelectionState,
 } from '@tanstack/react-table';
+import GlobalSearchDialog from '@/components/global-search-dialog';
+import AutoSizer from "react-virtualized-auto-sizer";
 
 export const Route = createFileRoute(
     '/_auth/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
@@ -230,27 +222,24 @@ const generateDummyData = (count: number): TranslationRow[] => {
     }));
 };
 
-const ITEMS_PER_PAGE = 10;
 const TOTAL_ITEMS = 30;
 
 const columnHelper = createColumnHelper<TranslationRow>();
 
-// --- CSS Helper for Sticky Columns ---
-function getCommonPinningStyles(column: Column<TranslationRow>): CSSProperties & { key?: string } {
-    const isPinned = column.getIsPinned();
-
-    if (!isPinned) return { key: column.id };
+const getCommonPinningStyles = (column: Column<TranslationRow>): CSSProperties => {
+    const isPinned = column.getIsPinned()
+    const isLastLeftPinnedColumn =
+        isPinned === 'left' && column.getIsLastColumn('left');
 
     return {
-        key: column.id,
-        position: 'sticky',
-        left: `${column.getStart('left')}px`,
-        zIndex: 10,
-        backgroundColor: 'inherit',
+        boxShadow: isLastLeftPinnedColumn
+            ? '-4px 0 4px -4px gray inset'
+            : undefined,
+        left: isPinned === 'left' ? `${column.getStart('left')}px` : undefined,
+        position: isPinned ? 'sticky' : 'relative',
         width: column.getSize(),
-        boxShadow:
-            column.id === 'primary_lang' ? '4px 0 4px -2px rgba(0,0,0,0.1)' : undefined,
-    };
+        zIndex: isPinned ? 1 : 0,
+    }
 }
 
 // --- Editable Cell Component ---
@@ -258,19 +247,20 @@ function EditableCell({
     value,
     onSave,
     isKey = false,
-    isPrimary = false,
 }: {
     value: string;
     onSave: (newValue: string) => void;
     isKey?: boolean;
-    isPrimary?: boolean;
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(value);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
-            onSave(editValue);
+            if (value !== editValue) {
+                onSave(editValue);
+            };
+
             setIsEditing(false);
         } else if (e.key === 'Escape') {
             setEditValue(value);
@@ -286,7 +276,7 @@ function EditableCell({
                 onChange={(e) => setEditValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onBlur={() => {
-                    onSave(editValue);
+                    setEditValue(value);
                     setIsEditing(false);
                 }}
                 autoFocus
@@ -298,12 +288,7 @@ function EditableCell({
     return (
         <div
             onClick={() => setIsEditing(true)}
-            className={`cursor-pointer truncate text-sm ${isKey
-                ? 'font-mono font-semibold text-gray-700'
-                : isPrimary
-                    ? 'font-medium text-gray-900'
-                    : 'text-gray-600'
-                }`}
+            className={`cursor-pointer truncate text-sm ${!isKey && 'text-muted-foreground'}`}
         >
             {value || <span className="text-gray-300 italic">Empty</span>}
         </div>
@@ -312,23 +297,21 @@ function EditableCell({
 
 // --- Column Header with Selection ---
 function SelectableColumnHeader({
-    column,
     label,
     isSelectable,
     isSelected,
     onSelect,
 }: {
-    column: Column<TranslationRow>;
     label: string;
-    isSelectable: boolean;
-    isSelected: boolean;
-    onSelect: () => void;
+    isSelectable?: boolean;
+    isSelected?: boolean;
+    onSelect?: () => void;
 }) {
     return (
         <div className="flex items-center gap-2">
-            {isSelectable && (
+            {isSelectable ? (
                 <Checkbox checked={isSelected} onCheckedChange={onSelect} />
-            )}
+            ) : null}
             <span>{label}</span>
         </div>
     );
@@ -339,7 +322,6 @@ function EditorComponent() {
     const { organization } = useOrganization();
 
     const [search, setSearch] = useState('');
-    const [pageIndex, setPageIndex] = useState(0);
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
     const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
     const [data, setData] = useState<TranslationRow[]>(() => generateDummyData(TOTAL_ITEMS));
@@ -394,13 +376,6 @@ function EditorComponent() {
                 )
         );
     }, [data, search]);
-
-    // Paginate data
-    const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
-    const paginatedData = useMemo(() => {
-        const start = pageIndex * ITEMS_PER_PAGE;
-        return filteredData.slice(start, start + ITEMS_PER_PAGE);
-    }, [filteredData, pageIndex]);
 
     // Handle cell update
     const handleCellUpdate = useCallback(
@@ -495,9 +470,6 @@ function EditorComponent() {
 
     // Define columns dynamically
     const columns = useMemo<ColumnDef<TranslationRow, string>[]>(() => {
-        const primaryLang = languages.find((l) => l.isPrimary) || languages[0];
-        const otherLangs = languages.filter((l) => l.code !== primaryLang?.code);
-
         return [
             // Selection column
             {
@@ -525,7 +497,9 @@ function EditorComponent() {
             // Key column (pinned)
             columnHelper.accessor('key', {
                 id: 'key',
-                header: 'Key',
+                header: () => (
+                    <SelectableColumnHeader label='Keys' />
+                ),
                 cell: (info) => (
                     <EditableCell
                         value={info.getValue()}
@@ -537,36 +511,11 @@ function EditorComponent() {
                 ),
                 size: 200,
             }),
-            // Primary language column (pinned)
-            ...(primaryLang
-                ? [
-                    columnHelper.accessor((row) => row.values[primaryLang.code] || '', {
-                        id: 'primary_lang',
-                        header: `${primaryLang.name} (${primaryLang.code.toUpperCase()})`,
-                        cell: (info) => (
-                            <EditableCell
-                                value={info.getValue()}
-                                onSave={(newValue) =>
-                                    handleCellUpdate(
-                                        info.row.original.id,
-                                        primaryLang.code,
-                                        newValue
-                                    )
-                                }
-                                isPrimary
-                            />
-                        ),
-                        size: 250,
-                    }),
-                ]
-                : []),
-            // Other language columns (scrollable)
-            ...otherLangs.map((lang) =>
+            ...languages.map((lang) =>
                 columnHelper.accessor((row) => row.values[lang.code] || '', {
                     id: lang.code,
                     header: () => (
                         <SelectableColumnHeader
-                            column={{} as Column<TranslationRow>}
                             label={`${lang.name} (${lang.code.toUpperCase()})`}
                             isSelectable
                             isSelected={selectedColumns.has(lang.code)}
@@ -589,20 +538,17 @@ function EditorComponent() {
 
     // Initialize table
     const table = useReactTable({
-        data: paginatedData,
+        data: filteredData,
         columns,
         getCoreRowModel: getCoreRowModel(),
         state: {
-            columnPinning: {
-                left: ['select', 'key', 'primary_lang'],
-            },
             rowSelection,
         },
         onRowSelectionChange: setRowSelection,
         enableRowSelection: true,
         getRowId: (row) => row.id,
         defaultColumn: {
-            minSize: 150,
+            minSize: 40,
             maxSize: 500,
         },
     });
@@ -627,53 +573,33 @@ function EditorComponent() {
         <SidebarProvider>
             <ProjectSidebar activeItem="namespaces" projectId={projectId} />
             <SidebarInset>
-                <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 border-b">
+                <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
                     <div className="flex items-center gap-2 px-4">
                         <SidebarTrigger className="-ml-1" />
                     </div>
+                    <GlobalSearchDialog projectId={projectId} />
                 </header>
-                <div className="flex flex-1 flex-col h-[calc(100vh-4rem)]">
-                    {/* Header */}
-                    <div className="flex items-center justify-between p-4 border-b bg-background">
-                        <div className="flex items-center gap-4">
-                            <Link
-                                to="/projects/$projectId"
-                                params={{ projectId }}
-                                className="text-muted-foreground hover:text-foreground"
-                            >
-                                <ArrowLeftIcon className="size-5" />
-                            </Link>
-                            <div>
-                                <h1 className="text-lg font-semibold">
-                                    {namespace.name} - {namespaceVersion?.version || 'Loading...'}
-                                </h1>
-                                <p className="text-sm text-muted-foreground">
-                                    {filteredData.length} keys | {languages.length} languages
-                                </p>
-                            </div>
+                <div className="flex flex-col gap-4 p-4 pt-0 max-w-full flex-1">
+                    <div className="flex items-center">
+                        <div>
+                            <h1>{namespace.name} • {namespaceVersion?.version || ''}</h1>
+                            <span className="text-xs text-muted-foreground">
+                                Click on any cell to edit. Press Enter to save, Escape to cancel.
+                            </span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center ml-auto gap-2">
                             <InputGroup>
                                 <InputGroupInput
                                     aria-label="Search"
-                                    placeholder="Search keys or translations..."
+                                    placeholder="Search namespaces"
                                     type="search"
                                     value={search}
-                                    onChange={(e) => {
-                                        setSearch(e.target.value);
-                                        setPageIndex(0);
-                                    }}
+                                    onChange={e => setSearch(e.target.value)}
                                 />
                                 <InputGroupAddon>
                                     <SearchIcon />
                                 </InputGroupAddon>
                             </InputGroup>
-                        </div>
-                    </div>
-
-                    {/* Action Bar */}
-                    <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
-                        <div className="flex items-center gap-2">
                             <Button variant="outline" size="sm" onClick={addNewKey}>
                                 <PlusIcon className="size-4" />
                                 Add Key
@@ -682,8 +608,6 @@ function EditorComponent() {
                                 <LanguagesIcon className="size-4" />
                                 Add Language
                             </Button>
-                        </div>
-                        <div className="flex items-center gap-2">
                             {(selectedRowCount > 0 || selectedColumnCount > 0) && (
                                 <>
                                     <span className="text-sm text-muted-foreground">
@@ -736,115 +660,72 @@ function EditorComponent() {
                             )}
                         </div>
                     </div>
-
-                    {/* Hint */}
-                    <div className="px-4 py-1 text-xs text-muted-foreground bg-muted/20 border-b">
-                        Click on any cell to edit. Press Enter to save, Escape to cancel.
-                    </div>
-
-                    {/* Table */}
-                    <div className="flex-1 overflow-auto relative">
-                        <table className="w-full border-collapse text-left">
-                            <thead className="bg-muted/50 sticky top-0 z-20">
-                                {table.getHeaderGroups().map((headerGroup) => (
-                                    <tr key={headerGroup.id}>
-                                        {headerGroup.headers.map((header) => {
-                                            const { key, ...style } = getCommonPinningStyles(
-                                                header.column
-                                            );
-                                            return (
-                                                <th
-                                                    key={key}
-                                                    style={style}
-                                                    className="px-4 py-3 border-b border-r text-xs font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap bg-muted/50"
+                    <div className='h-full'>
+                        <AutoSizer>
+                            {({ width, height }) => (
+                                <div className='overflow-x-scroll relative' style={{
+                                    width: width + 'px',
+                                    height: height + 'px',
+                                }}>
+                                    <table style={{
+                                        width: table.getTotalSize() + 'px',
+                                    }}>
+                                        <thead className="sticky top-0 z-20">
+                                            {table.getHeaderGroups().map((headerGroup) => (
+                                                <tr key={headerGroup.id}>
+                                                    {headerGroup.headers.map((header) => {
+                                                        const { ...style } = getCommonPinningStyles(
+                                                            header.column
+                                                        );
+                                                        return (
+                                                            <th
+                                                                key={header.id}
+                                                                style={style}
+                                                                className="px-4 py-2 border-b border-r text-xs font-bold uppercase tracking-wider whitespace-nowrap bg-zinc-900"
+                                                            >
+                                                                {header.isPlaceholder
+                                                                    ? null
+                                                                    : flexRender(
+                                                                        header.column.columnDef.header,
+                                                                        header.getContext()
+                                                                    )}
+                                                            </th>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            ))}
+                                        </thead>
+                                        <tbody>
+                                            {table.getRowModel().rows.map((row) => (
+                                                <tr
+                                                    key={row.id}
+                                                    data-selected={row.getIsSelected()}
+                                                    className='border-b'
                                                 >
-                                                    {header.isPlaceholder
-                                                        ? null
-                                                        : flexRender(
-                                                            header.column.columnDef.header,
-                                                            header.getContext()
-                                                        )}
-                                                </th>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {table.getRowModel().rows.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className="hover:bg-muted/30 transition-colors"
-                                        data-selected={row.getIsSelected()}
-                                    >
-                                        {row.getVisibleCells().map((cell) => {
-                                            const { key, ...style } = getCommonPinningStyles(
-                                                cell.column
-                                            );
-                                            return (
-                                                <td
-                                                    key={key}
-                                                    style={style}
-                                                    className="px-4 py-2 border-r whitespace-nowrap bg-background"
-                                                >
-                                                    {flexRender(
-                                                        cell.column.columnDef.cell,
-                                                        cell.getContext()
-                                                    )}
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-
-                        {/* Empty State */}
-                        {paginatedData.length === 0 && (
-                            <div className="p-10 text-center text-muted-foreground">
-                                No keys found matching your search.
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Pagination */}
-                    <div className="flex items-center justify-between px-4 py-3 border-t bg-background">
-                        <span className="text-sm text-muted-foreground">
-                            Showing {pageIndex * ITEMS_PER_PAGE + 1} to{' '}
-                            {Math.min((pageIndex + 1) * ITEMS_PER_PAGE, filteredData.length)} of{' '}
-                            {filteredData.length} keys
-                        </span>
-                        <Pagination>
-                            <PaginationContent>
-                                <PaginationItem>
-                                    <PaginationPrevious
-                                        onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
-                                        aria-disabled={pageIndex === 0}
-                                        className={pageIndex === 0 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                                    />
-                                </PaginationItem>
-                                {Array.from({ length: totalPages }, (_, i) => (
-                                    <PaginationItem key={i}>
-                                        <PaginationLink
-                                            isActive={i === pageIndex}
-                                            onClick={() => setPageIndex(i)}
-                                            className="cursor-pointer"
-                                        >
-                                            {i + 1}
-                                        </PaginationLink>
-                                    </PaginationItem>
-                                ))}
-                                <PaginationItem>
-                                    <PaginationNext
-                                        onClick={() =>
-                                            setPageIndex((p) => Math.min(totalPages - 1, p + 1))
-                                        }
-                                        aria-disabled={pageIndex >= totalPages - 1}
-                                        className={pageIndex >= totalPages - 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                                    />
-                                </PaginationItem>
-                            </PaginationContent>
-                        </Pagination>
+                                                    {row.getVisibleCells().map((cell) => {
+                                                        const { ...style } = getCommonPinningStyles(
+                                                            cell.column
+                                                        );
+                                                        return (
+                                                            <td
+                                                                key={cell.id}
+                                                                style={style}
+                                                                className="px-4 py-2 border-r whitespace-nowrap bg-background hover:bg-muted"
+                                                            >
+                                                                {flexRender(
+                                                                    cell.column.columnDef.cell,
+                                                                    cell.getContext()
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </AutoSizer>
                     </div>
                 </div>
             </SidebarInset>
