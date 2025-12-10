@@ -1,5 +1,6 @@
 import ApiKeyCreateDialog from '@/components/api-key-create-dialog';
 import ApiKeyDeleteDialog from '@/components/api-key-delete-dialog';
+import GlobalSearchDialog from '@/components/global-search-dialog';
 import { ProjectSidebar } from '@/components/project-sidebar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -116,6 +117,7 @@ function RouteComponent() {
                     <div className="flex items-center gap-2 px-4">
                         <SidebarTrigger className="-ml-1" />
                     </div>
+                    <GlobalSearchDialog projectId={projectId} />
                 </header>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
                     <div className="flex items-center">

@@ -1,3 +1,4 @@
+import GlobalSearchDialog from '@/components/global-search-dialog';
 import NamespaceCreateDialog from '@/components/namespace-create-dialog';
 import NamespaceDeleteDialog from '@/components/namespace-delete-dialog';
 import NamespaceEditDialog from '@/components/namespace-edit-dialog';
@@ -154,6 +155,7 @@ function RouteComponent() {
                     <div className="flex items-center gap-2 px-4">
                         <SidebarTrigger className="-ml-1" />
                     </div>
+                    <GlobalSearchDialog projectId={projectId} />
                 </header>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
                     <div className="flex items-center">
