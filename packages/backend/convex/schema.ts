@@ -6,14 +6,11 @@ export default defineSchema({
     clerkId: v.string(),
     contactEmail: v.string(),
     currentUsage: v.object({
-      projects: v.number(),
+      translationKeys: v.number(),
     }),
     limits: v.object({
       requests: v.number(),
-      projects: v.number(),
-      namespacesPerProject: v.number(),
-      versionsPerNamespace: v.number(),
-      languagesPerVersion: v.number(),
+      translationKeys: v.number(),
     }),
     workspaceUsageId: v.id("workspaceUsage"),
   })
@@ -26,55 +23,109 @@ export default defineSchema({
   projects: defineTable({
     workspaceId: v.id("workspaces"),
     name: v.string(),
-    usage: v.object({
-      namespaces: v.number(),
-    }),
-  }).index("by_workspace_name", ["workspaceId", "name"]),
-  releases: defineTable({
-    projectId: v.id("projects"),
-    name: v.string(),
-    tag: v.string(),
-    namespaceVersions: v.array(
-      v.object({
-        namespaceId: v.id("namespaces"),
-        versionId: v.id("namespaceVersions"),
-      }),
+    primaryLanguageId: v.optional(v.id("languages")),
+    status: v.union(
+      v.literal(1), // Active
+      v.literal(-1), // Deleting
+      v.literal(2), // Processing
     ),
-  }).index("by_project_tag", ["projectId", "tag"]),
+  })
+    .index("by_workspace_name", ["workspaceId", "name"])
+    .index("by_workspace_status", ["workspaceId", "status"]),
+  languages: defineTable({
+    projectId: v.id("projects"),
+    languageCode: v.string(),
+    status: v.union(
+      v.literal(1), // Active
+      v.literal(-1), // Deleting
+      v.literal(2), // Processing
+    ),
+  })
+    .index("by_project_language", ["projectId", "languageCode"])
+    .index("by_project_status", ["projectId", "status"]),
   namespaces: defineTable({
     projectId: v.id("projects"),
     name: v.string(),
-    usage: v.object({
-      versions: v.number(),
-    }),
-  }).index("by_project", ["projectId"]),
-  namespaceVersions: defineTable({
+    status: v.union(
+      v.literal(1), // Active
+      v.literal(-1), // Deleting
+      v.literal(2), // Processing
+    ),
+  })
+    .index("by_project_name", ["projectId", "name"])
+    .index("by_project_status", ["projectId", "status"]),
+  translationKeys: defineTable({
+    projectId: v.id("projects"),
     namespaceId: v.id("namespaces"),
-    version: v.string(),
-    jsonSchemaFileId: v.optional(v.string()),
-    jsonSchemaSize: v.optional(v.number()),
-    primaryLanguageId: v.optional(v.id("languages")),
-    usage: v.object({
-      languages: v.number(),
+    key: v.string(),
+    values: v.record(v.id("languages"), v.string()),
+    statuses: v.optional(
+      v.record(
+        v.id("languages"),
+        v.union(
+          v.literal(1), // Active
+          v.literal(-1), // Deleting
+          v.literal(2), // Processing
+        ),
+      ),
+    ),
+    status: v.union(
+      v.literal(1), // Active
+      v.literal(-1), // Deleting
+      v.literal(2), // Processing
+    ),
+  })
+    .index("by_project_namespace_key", ["projectId", "namespaceId", "key"])
+    .searchIndex("search", {
+      searchField: "key",
+      filterFields: ["projectId", "namespaceId"],
     }),
-    updatedAt: v.number(),
-    status: v.optional(v.union(v.literal("merging"), v.literal("syncing"))),
-  }).index("by_namespace_version", ["namespaceId", "version"]),
-  languages: defineTable({
-    namespaceVersionId: v.id("namespaceVersions"),
-    languageCode: v.string(),
-    fileId: v.optional(v.string()),
-    fileSize: v.optional(v.number()),
-    updatedAt: v.number(),
-    status: v.optional(v.union(v.literal("merging"), v.literal("syncing"))),
-  }).index("by_namespace_version_language", [
-    "namespaceVersionId",
-    "languageCode",
-  ]),
+  translationValues: defineTable({
+    projectId: v.id("projects"),
+    namespaceId: v.id("namespaces"),
+    languageId: v.id("languages"),
+    translationKeyId: v.id("translationKeys"),
+    key: v.string(),
+    values: v.string(),
+  })
+    .index("by_project_language", ["projectId", "languageId"])
+    .index("by_project_namespace_language_key", ["projectId", "namespaceId", "languageId", "translationKeyId"]),
+  builds: defineTable({
+    projectId: v.id("projects"),
+    namespace: v.string(),
+    tag: v.string(),
+    languageFiles: v.record(
+      v.string(),
+      v.object({
+        fileId: v.string(),
+        fileSize: v.number(),
+      }),
+    ),
+    status: v.union(
+      v.literal(1), // Active
+      v.literal(-1), // Deleting
+      v.literal(2), // Building
+    ),
+    statusDescription: v.optional(v.string()),
+  })
+    .searchIndex("search", {
+      searchField: "tag",
+      filterFields: ["projectId"],
+    })
+    .index("by_project_tag", ["projectId", "tag"]),
+  releases: defineTable({
+    projectId: v.id("projects"),
+    tag: v.string(),
+    builds: v.array(
+      v.object({
+        buildId: v.id("builds"),
+        selectionChance: v.number(), // 0-100%, for A/B testing
+      }),
+    ),
+  }).index("by_project_tag", ["projectId", "tag"]),
   screenshots: defineTable({
     projectId: v.id("projects"),
     name: v.string(),
-    description: v.optional(v.string()),
     imageFileId: v.string(),
     imageSize: v.number(), // size of image file in bytes
     imageMimeType: v.string(), // MIME type (image/png, image/jpeg, etc.)
@@ -92,23 +143,27 @@ export default defineSchema({
       height: v.number(), // height of container (percentage of image height)
     }),
     backgroundColor: v.optional(v.string()), // hex color for background (default: blue)
-    description: v.optional(v.string()),
   }).index("by_screenshot", ["screenshotId"]),
   screenshotKeyMappings: defineTable({
     containerId: v.id("screenshotContainers"),
-    namespaceVersionId: v.id("namespaceVersions"),
-    languageId: v.id("languages"),
-    translationKey: v.string(), // full dot-notation key path (e.g., "welcome.title")
+    namespaceId: v.id("namespaces"),
+    translationKeyId: v.id("translationKeys"),
   })
-    .index("by_container_version_language_key", [
-      "containerId",
-      "namespaceVersionId",
-      "languageId",
-      "translationKey",
-    ])
-    .index("by_version_language_key", [
-      "namespaceVersionId",
-      "languageId",
-      "translationKey",
-    ]),
+    .index("by_container_namespace_translation_key", ["containerId", "namespaceId", "translationKeyId"])
+    .index("by_container_translation_key", ["containerId", "translationKeyId"])
+    .index("by_namespace_translation_key", ["namespaceId", "translationKeyId"]),
+  glossaryTerms: defineTable({
+    projectId: v.id("projects"),
+    term: v.string(),
+    description: v.optional(v.string()),
+    isNonTranslatable: v.boolean(),
+    isCaseSensitive: v.boolean(),
+    isForbidden: v.boolean(),
+    translations: v.record(v.id("languages"), v.string()),
+  })
+    .index("by_project_term", ["projectId", "term"])
+    .searchIndex("search_term", {
+      searchField: "term",
+      filterFields: ["projectId"],
+    }),
 });

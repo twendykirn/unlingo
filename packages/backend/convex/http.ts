@@ -72,46 +72,28 @@ http.route({
     const svixId = request.headers.get("svix-id");
 
     if (!evt || !evt.type || !evt.data || !evt.data.id || !svixId) {
-      console.error(
-        "HTTP Action: Webhook payload missing required fields (type, data.id).",
-        event,
-      );
+      console.error("HTTP Action: Webhook payload missing required fields (type, data.id).", event);
       return new Response("Invalid payload structure", { status: 400 });
     }
 
-    console.log(
-      `HTTP Action: Received Clerk event: ${evt.type} (ID: ${svixId})`,
-    );
+    console.log(`HTTP Action: Received Clerk event: ${evt.type} (ID: ${svixId})`);
 
     try {
       let primaryEmail;
       switch (evt.type) {
         case "user.created":
-          primaryEmail = evt.data.email_addresses.find(
-            (e) => e.id === evt.data.primary_email_address_id,
-          );
+          primaryEmail = evt.data.email_addresses.find((e) => e.id === evt.data.primary_email_address_id);
 
           if (primaryEmail) {
-            await emailWorkpool.enqueueAction(
-              ctx,
-              internal.resend.addEmailToContacts,
-              {
-                email: primaryEmail.email_address,
-              },
-            );
-            await emailWorkpool.enqueueAction(
-              ctx,
-              internal.resend.sendWelcomeEmail,
-              {
-                name: evt.data.username || evt.data.first_name || "there",
-                email: primaryEmail.email_address,
-              },
-            );
+            await emailWorkpool.enqueueAction(ctx, internal.resend.addEmailToContacts, {
+              email: primaryEmail.email_address,
+            });
+            await emailWorkpool.enqueueAction(ctx, internal.resend.sendWelcomeEmail, {
+              name: evt.data.username || evt.data.first_name || "there",
+              email: primaryEmail.email_address,
+            });
           } else {
-            console.log(
-              "Not found primary email address for user: ",
-              evt.data.id,
-            );
+            console.log("Not found primary email address for user: ", evt.data.id);
           }
           break;
         case "organizationMembership.deleted":
@@ -119,18 +101,13 @@ http.route({
             const clerk = createClerkClient({
               secretKey: process.env.CLERK_SECRET_KEY!,
             });
-            await clerk.organizations.deleteOrganization(
-              evt.data.organization.id,
-            );
+            await clerk.organizations.deleteOrganization(evt.data.organization.id);
           }
           break;
         case "organization.deleted":
-          await ctx.runMutation(
-            internal.workspaces.deleteOrganizationWorkspace,
-            {
-              clerkOrgId: evt.data.id,
-            },
-          );
+          await ctx.runMutation(internal.workspaces.deleteOrganizationWorkspace, {
+            clerkOrgId: evt.data.id,
+          });
           break;
         default:
           console.log("Ignored Clerk webhook event", evt.type);
@@ -138,15 +115,9 @@ http.route({
 
       return new Response(null, { status: 200 });
     } catch (error: any) {
-      console.error(
-        `Error processing Clerk event ${svixId} (${evt.type}):`,
-        error,
-      );
+      console.error(`Error processing Clerk event ${svixId} (${evt.type}):`, error);
       // Avoid recording event ID on failure here to allow potential retries from Clerk
-      return new Response(
-        `Webhook handler error: ${error.message || "Unknown error"}`,
-        { status: 500 },
-      );
+      return new Response(`Webhook handler error: ${error.message || "Unknown error"}`, { status: 500 });
     }
   }),
 });
@@ -169,9 +140,7 @@ http.route({
   path: "/v1/translations",
   method: "GET",
   handler: httpAction(async (ctx, request) => {
-    const apiKey =
-      request.headers.get("x-api-key") ||
-      request.headers.get("authorization")?.replace("Bearer ", "");
+    const apiKey = request.headers.get("x-api-key") || request.headers.get("authorization")?.replace("Bearer ", "");
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "API key required" }), {
         status: 401,
@@ -187,8 +156,7 @@ http.route({
     if (!releaseTag || !namespace || !lang) {
       return new Response(
         JSON.stringify({
-          error:
-            "Missing required parameters: release, namespace, and lang are required",
+          error: "Missing required parameters: release, namespace, and lang are required",
           example: "/v1/translations?release=1.0.0&namespace=common&lang=en",
         }),
         {
@@ -203,10 +171,7 @@ http.route({
         key: apiKey,
       });
 
-      if (
-        !verifyResponse.valid ||
-        !verifyResponse.permissions.includes("translations.read")
-      ) {
+      if (!verifyResponse.valid || !verifyResponse.permissions.includes("translations.read")) {
         return new Response(JSON.stringify({ error: "Invalid API key" }), {
           status: 401,
           headers: { "Content-Type": "application/json" },
@@ -218,54 +183,36 @@ http.route({
       const projectId = externalId.split("_")[1];
 
       if (!workspaceId || !projectId) {
-        return new Response(
-          JSON.stringify({ error: "Invalid API key metadata" }),
-          {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
+        return new Response(JSON.stringify({ error: "Invalid API key metadata" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
       }
 
-      const limitCheck = await ctx.runMutation(
-        internal.internalWorkspaces.checkAndUpdateRequestUsage,
-        {
-          workspaceId,
-          projectId,
-        },
-      );
+      const limitCheck = await ctx.runMutation(internal.internalWorkspaces.checkAndUpdateRequestUsage, {
+        workspaceId,
+        projectId,
+      });
 
       if (limitCheck.nearLimit) {
-        await emailWorkpool.enqueueAction(
-          ctx,
-          internal.resend.sendLimitsEmail,
-          {
-            email: limitCheck.workspace.contactEmail,
-            currentUsage: 80,
-          },
-        );
+        await emailWorkpool.enqueueAction(ctx, internal.resend.sendLimitsEmail, {
+          email: limitCheck.workspace.contactEmail,
+          currentUsage: 80,
+        });
       }
 
       if (limitCheck.exceedsHardLimit && limitCheck.shouldSendHardLimitEmail) {
-        await emailWorkpool.enqueueAction(
-          ctx,
-          internal.resend.sendLimitsEmail,
-          {
-            email: limitCheck.workspace.contactEmail,
-            currentUsage: 130,
-          },
-        );
+        await emailWorkpool.enqueueAction(ctx, internal.resend.sendLimitsEmail, {
+          email: limitCheck.workspace.contactEmail,
+          currentUsage: 130,
+        });
       }
 
       if (limitCheck.exceedsLimit) {
-        await emailWorkpool.enqueueAction(
-          ctx,
-          internal.resend.sendLimitsEmail,
-          {
-            email: limitCheck.workspace.contactEmail,
-            currentUsage: 100,
-          },
-        );
+        await emailWorkpool.enqueueAction(ctx, internal.resend.sendLimitsEmail, {
+          email: limitCheck.workspace.contactEmail,
+          currentUsage: 100,
+        });
       }
 
       const ingestBase = {
@@ -284,8 +231,7 @@ http.route({
         });
         return new Response(
           JSON.stringify({
-            error:
-              "Request limit exceeded. Please upgrade your plan or wait for the monthly reset.",
+            error: "Request limit exceeded. Please upgrade your plan or wait for the monthly reset.",
             currentUsage: limitCheck.currentRequests,
             limit: limitCheck.limit,
             resetPeriod: "monthly",
@@ -297,88 +243,33 @@ http.route({
         );
       }
 
-      const release = await ctx.runQuery(internal.releases.getReleaseByTag, {
+      const resolution = await ctx.runQuery(internal.serving.resolveTranslationFile, {
         projectId,
-        workspaceId,
-        tag: releaseTag,
+        releaseTag,
+        namespaceName: namespace,
+        languageCode: lang,
       });
 
-      if (!release) {
+      if (resolution.error) {
+        const errorMap: Record<string, string> = {
+          release_not_found: `Release tag '${releaseTag}' not found`,
+          namespace_not_found: `Namespace '${namespace}' not found in release '${releaseTag}'`,
+          language_not_found: `Language '${lang}' not found for namespace '${namespace}'`,
+        };
+
         await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
           ...ingestBase,
-          deniedReason: "release_not_found",
+          deniedReason: resolution.error,
         });
-        return new Response(
-          JSON.stringify({
-            error: `Release tag '${releaseTag}' not found`,
-          }),
-          {
-            status: 404,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
 
-      let targetNamespaceVersion = null;
-      for (const nv of release.namespaceVersions) {
-        const namespaceDoc = await ctx.runQuery(
-          internal.namespaces.getNamespaceInternal,
-          {
-            namespaceId: nv.namespaceId,
-            projectId,
-            workspaceId,
-          },
-        );
-
-        if (namespaceDoc && namespaceDoc.name === namespace) {
-          targetNamespaceVersion = nv;
-          break;
-        }
-      }
-
-      if (!targetNamespaceVersion) {
-        await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
-          ...ingestBase,
-          deniedReason: "namespace_not_in_release",
+        return new Response(JSON.stringify({ error: errorMap[resolution.error] || "Not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
         });
-        return new Response(
-          JSON.stringify({
-            error: `Namespace '${namespace}' not found in release '${releaseTag}'`,
-          }),
-          {
-            status: 404,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      const language = await ctx.runQuery(
-        internal.languages.getLanguageByCode,
-        {
-          namespaceVersionId: targetNamespaceVersion.versionId,
-          languageCode: lang,
-          workspaceId,
-        },
-      );
-
-      if (!language || !language.fileId) {
-        await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
-          ...ingestBase,
-          deniedReason: "language_not_found",
-        });
-        return new Response(
-          JSON.stringify({
-            error: `Language '${lang}' not found for namespace '${namespace}' in version '${releaseTag}'`,
-          }),
-          {
-            status: 404,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
       }
 
       const fileContent = await ctx.runAction(internal.files.getFileContent, {
-        fileId: language.fileId,
+        fileId: resolution.fileId!,
       });
 
       if (!fileContent) {
@@ -386,15 +277,10 @@ http.route({
           ...ingestBase,
           deniedReason: "storage_blob_missing",
         });
-        return new Response(
-          JSON.stringify({
-            error: "Failed to retrieve language file",
-          }),
-          {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
+        return new Response(JSON.stringify({ error: "Failed to retrieve language file" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
       }
 
       let parsedContent;
@@ -446,15 +332,11 @@ polar.registerRoutes(http, {
   onSubscriptionUpdated: async (ctx, event) => {
     const workspaceId = event.data.customer.metadata.userId;
     if (workspaceId) {
-      const isActive =
-        event.data.status === "active" &&
-        !event.data.customerCancellationReason;
+      const isActive = event.data.status === "active" && !event.data.customerCancellationReason;
       await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {
         workspaceId: workspaceId as Id<"workspaces">,
         tier: getTierFromProduct(event.data.product?.id),
-        requestLimit: isActive
-          ? getRequestLimitFromProduct(event.data.product?.id)
-          : undefined,
+        requestLimit: isActive ? getRequestLimitFromProduct(event.data.product?.id) : undefined,
       });
     }
   },

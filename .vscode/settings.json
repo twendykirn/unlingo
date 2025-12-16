@@ -3,5 +3,7 @@
     {
       "mode": "auto"
     }
-  ]
+  ],
+  "prettier.tabWidth": 2,
+  "prettier.printWidth": 120
 }

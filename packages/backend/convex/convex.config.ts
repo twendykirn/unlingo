@@ -9,7 +9,6 @@ app.use(polar);
 app.use(r2);
 app.use(workpool, { name: "languageWorkpool" });
 app.use(workpool, { name: "createLanguageWorkpool" });
-app.use(workpool, { name: "mergeWorkpool" });
 app.use(workpool, { name: "emailWorkpool" });
 
 export default app;
