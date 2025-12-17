@@ -7,8 +7,6 @@ import r2 from "@convex-dev/r2/convex.config";
 const app = defineApp();
 app.use(polar);
 app.use(r2);
-app.use(workpool, { name: "languageWorkpool" });
-app.use(workpool, { name: "createLanguageWorkpool" });
 app.use(workpool, { name: "emailWorkpool" });
 
 export default app;

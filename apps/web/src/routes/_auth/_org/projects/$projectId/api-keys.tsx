@@ -38,7 +38,7 @@ interface ApiKey {
     permissions: string[];
 }
 
-export const Route = createFileRoute('/_auth/projects/$projectId/api-keys')({
+export const Route = createFileRoute('/_auth/_org/projects/$projectId/api-keys')({
     component: RouteComponent,
 })
 

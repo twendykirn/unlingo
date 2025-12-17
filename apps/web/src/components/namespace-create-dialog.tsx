@@ -30,15 +30,6 @@ const NamespaceCreateDialog = ({ isOpen, setIsOpen, workspace, project }: Props)
 
         if (!name.trim()) return;
 
-        if (project.usage.namespaces >= workspace.limits.namespacesPerProject) {
-            toastManager.add({
-                description: 'Cannot create namespace. Please check your subscription limits.',
-                type: 'error',
-            });
-            setIsOpen(false);
-            return;
-        }
-
         setIsLoading(true);
 
         try {
@@ -72,8 +63,7 @@ const NamespaceCreateDialog = ({ isOpen, setIsOpen, workspace, project }: Props)
                     <DialogHeader>
                         <DialogTitle>Create Namespace</DialogTitle>
                         <DialogDescription>
-                            Add namespace name here. Development and production environments will be created
-                            automatically.
+                            Add namespace name here.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogPanel className="grid gap-4">

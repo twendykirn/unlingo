@@ -83,6 +83,9 @@ export const createProject = mutation({
       workspaceId: args.workspaceId,
       name: args.name,
       status: 1,
+      currentUsage: {
+        translationKeys: 0,
+      },
     });
 
     await ctx.scheduler.runAfter(0, internal.keys.createUnkeyIdentity, {
@@ -194,6 +197,12 @@ export const deleteProject = mutation({
     }
 
     await ctx.db.patch(project._id, { status: -1 });
+    await ctx.db.patch(workspace._id, {
+      currentUsage: {
+        ...workspace.currentUsage,
+        translationKeys: workspace.currentUsage.translationKeys - project.currentUsage.translationKeys,
+      },
+    });
 
     await ctx.scheduler.runAfter(0, internal.keys.deleteUnkeyIdentity, {
       projectId: project._id,

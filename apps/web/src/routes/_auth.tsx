@@ -27,13 +27,6 @@ const authStateFn = createServerFn({ method: 'GET' }).handler(async () => {
 export const Route = createFileRoute('/_auth')({
     component: RouteComponent,
     beforeLoad: async () => await authStateFn(),
-    head: () => ({
-        scripts: [
-            {
-                children: `window.$ujq=window.$ujq||[];window.uj=window.uj||new Proxy({},{get:(_,p)=>(...a)=>window.$ujq.push([p,...a])});document.head.appendChild(Object.assign(document.createElement('script'),{src:'https://cdn.userjot.com/sdk/v2/uj.js',type:'module',async:!0}));`,
-            },
-        ]
-    })
 });
 
 function RouteComponent() {

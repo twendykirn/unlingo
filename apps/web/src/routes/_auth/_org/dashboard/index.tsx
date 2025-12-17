@@ -1,102 +1,87 @@
-import GlobalSearchDialog from '@/components/global-search-dialog';
-import NamespaceCreateDialog from '@/components/namespace-create-dialog';
-import NamespaceDeleteDialog from '@/components/namespace-delete-dialog';
-import NamespaceEditDialog from '@/components/namespace-edit-dialog';
-import { ProjectSidebar } from '@/components/project-sidebar';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
-import { Menu, MenuGroup, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { Spinner } from '@/components/ui/spinner';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Toggle, ToggleGroup, ToggleGroupSeparator } from '@/components/ui/toggle-group';
-import { useOrganization } from '@clerk/tanstack-react-start';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { api } from '@unlingo/backend/convex/_generated/api';
-import type { Doc, Id } from '@unlingo/backend/convex/_generated/dataModel';
-import { usePaginatedQuery, useQuery } from 'convex/react';
-import { BookIcon, Edit, EllipsisVerticalIcon, Eye, LayoutGridIcon, NewspaperIcon, SearchIcon, TableIcon, TrashIcon } from 'lucide-react';
-import { Fragment, useMemo, useState } from 'react';
+import { AppSidebar } from "@/components/app-sidebar"
+import ProjectCreateDialog from "@/components/project-create-dialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Menu, MenuGroup, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import {
+    SidebarInset,
+    SidebarProvider,
+    SidebarTrigger,
+} from "@/components/ui/sidebar"
+import { Spinner } from "@/components/ui/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Toggle } from "@/components/ui/toggle";
+import { ToggleGroup, ToggleGroupSeparator } from "@/components/ui/toggle-group";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
+import ProjectEditDialog from "@/components/project-edit-dialog";
+import { useOrganization } from "@clerk/tanstack-react-start";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { api } from "@unlingo/backend/convex/_generated/api";
+import type { Doc } from "@unlingo/backend/convex/_generated/dataModel";
+import { usePaginatedQuery, useQuery } from "convex/react";
+import { SearchIcon, LayoutGridIcon, TableIcon, TrashIcon, Edit, Eye, EllipsisVerticalIcon, BookIcon, FolderKanbanIcon } from "lucide-react";
+import { Fragment, useMemo, useState } from "react";
+import ProjectDeleteDialog from "@/components/project-delete-dialog";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { formatDate, formatTimeAgo } from "@/utils/time";
 
-// Component to fetch and display version buttons for a namespace
-function NamespaceVersionButtons({
-    namespaceId,
-    workspaceId,
-    projectId,
-}: {
-    namespaceId: Id<'namespaces'>;
-    workspaceId: Id<'workspaces'>;
-    projectId: string;
-}) {
-    const navigate = useNavigate();
-
-    const { results: versions } = usePaginatedQuery(
-        api.namespaceVersions.getNamespaceVersions,
-        {
-            namespaceId,
-            workspaceId,
-        },
-        { initialNumItems: 10 }
-    );
-
-    const versionMap = useMemo(() => {
-        return (versions || []).reduce((acc, v) => {
-            acc[v.version] = v._id;
-            return acc;
-        }, {} as Record<string, Id<'namespaceVersions'>>);
-    }, [versions]);
-
-    const handleVersionClick = (version: 'production' | 'development') => {
-        const versionId = versionMap[version];
-        if (versionId) {
-            navigate({
-                to: '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor',
-                params: {
-                    projectId,
-                    namespaceId,
-                    versionId,
-                },
-            });
-        }
-    };
-
-    return (
-        <div className='flex items-center gap-1 text-muted-foreground'>
-            <Button
-                variant="link"
-                className='text-xs p-0'
-                onClick={(e) => {
-                    e.stopPropagation();
-                    handleVersionClick('production');
-                }}
-                disabled={!versionMap['production']}
-            >
-                Production
-            </Button>
-            <span>•</span>
-            <Button
-                variant="link"
-                className='text-xs p-0'
-                onClick={(e) => {
-                    e.stopPropagation();
-                    handleVersionClick('development');
-                }}
-                disabled={!versionMap['development']}
-            >
-                Development
-            </Button>
-        </div>
-    );
-}
-
-export const Route = createFileRoute('/_auth/projects/$projectId/')({
+export const Route = createFileRoute('/_auth/_org/dashboard/')({
     component: RouteComponent,
-})
+    head: () => ({
+        meta: [
+            {
+                title: 'Dashboard - Unlingo',
+            },
+            {
+                name: 'description',
+                content: 'Manage your influencer discovery campaigns, view crawl results, and track your credits on the ReachFinder dashboard.',
+            },
+            {
+                property: 'og:type',
+                content: 'website',
+            },
+            {
+                property: 'og:title',
+                content: 'Dashboard - Unlingo',
+            },
+            {
+                property: 'og:description',
+                content: 'Manage your influencer discovery campaigns, view crawl results, and track your credits on the ReachFinder dashboard.',
+            },
+            {
+                property: 'og:url',
+                content: 'https://reachfinder.dev/dashboard',
+            },
+            {
+                property: 'og:image',
+                content: 'https://reachfinder.dev/og-image.png',
+            },
+            {
+                name: 'twitter:card',
+                content: 'summary_large_image',
+            },
+            {
+                name: 'twitter:title',
+                content: 'Dashboard - ReachFinder',
+            },
+            {
+                name: 'twitter:description',
+                content: 'Manage your influencer discovery campaigns, view crawl results, and track your credits on the ReachFinder dashboard.',
+            },
+            {
+                name: 'twitter:image',
+                content: 'https://reachfinder.dev/og-image.png',
+            },
+            {
+                name: 'robots',
+                content: 'noindex, nofollow',
+            },
+        ],
+    }),
+});
 
-function RouteComponent() {
-    const { projectId } = Route.useParams();
+export default function RouteComponent() {
     const { organization } = useOrganization();
 
     const [layout, setLayout] = useState<'grid' | 'table'>('grid');
@@ -104,7 +89,7 @@ function RouteComponent() {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [selectedNamespace, setSelectedNamespace] = useState<Doc<'namespaces'> | null>(null);
+    const [selectedProject, setSelectedProject] = useState<Doc<'projects'> | null>(null);
 
     const clerkId = organization?.id;
 
@@ -113,53 +98,34 @@ function RouteComponent() {
         clerkId ? { clerkId } : 'skip'
     );
 
-    const project = useQuery(
-        api.projects.getProject,
-        workspace
-            ? {
-                projectId: projectId as Id<'projects'>,
-                workspaceId: workspace._id,
-            }
-            : 'skip'
+    const { results: projects } = usePaginatedQuery(
+        api.projects.getProjects,
+        workspace ? { workspaceId: workspace._id } : 'skip',
+        {
+            initialNumItems: 30,
+        }
     );
 
-    const {
-        results: namespaces
-    } = usePaginatedQuery(
-        api.namespaces.getNamespaces,
-        workspace && project
-            ? {
-                projectId: project._id,
-                workspaceId: workspace._id,
-            }
-            : 'skip',
-        { initialNumItems: 40 }
-    );
+    const filteredProjects = useMemo(() => {
+        if (!projects) return [];
 
-    const filteredNamespaces = useMemo(() => {
-        if (!namespaces) return [];
-
-        return namespaces.filter(item => {
-            return item.name.toLowerCase().includes(search.toLowerCase());
+        return projects.filter(project => {
+            return project.name.toLowerCase().includes(search.toLowerCase());
         });
-    }, [namespaces, search]);
-
-    const canCreateNamespace =
-        workspace && project ? project.usage.namespaces < workspace.limits.namespacesPerProject : false;
+    }, [projects, search]);
 
     return (
         <SidebarProvider>
-            <ProjectSidebar activeItem='namespaces' projectId={projectId} />
+            <AppSidebar activeItem='home' />
             <SidebarInset>
                 <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
                     <div className="flex items-center gap-2 px-4">
                         <SidebarTrigger className="-ml-1" />
                     </div>
-                    <GlobalSearchDialog projectId={projectId} />
                 </header>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
                     <div className="flex items-center">
-                        <h1>Namespaces</h1>
+                        <h1>Projects</h1>
                         <div className="flex items-center ml-auto gap-2">
                             <ToggleGroup
                                 variant="outline"
@@ -179,7 +145,7 @@ function RouteComponent() {
                             <InputGroup>
                                 <InputGroupInput
                                     aria-label="Search"
-                                    placeholder="Search namespaces"
+                                    placeholder="Search projects"
                                     type="search"
                                     value={search}
                                     onChange={e => setSearch(e.target.value)}
@@ -190,33 +156,31 @@ function RouteComponent() {
                             </InputGroup>
                             <Button
                                 onClick={() => setIsCreateDialogOpen(true)}
-                                disabled={!canCreateNamespace}
                             >
-                                Create namespace
+                                Create project
                             </Button>
                         </div>
                     </div>
-                    {namespaces === undefined || workspace === undefined ? (
+                    {projects === undefined || workspace === undefined ? (
                         <div className="flex items-center justify-center w-full mt-4">
                             <Spinner />
                         </div>
-                    ) : filteredNamespaces.length === 0 ? (
+                    ) : filteredProjects.length === 0 ? (
                         <Empty>
                             <EmptyHeader>
                                 <EmptyMedia variant="icon">
-                                    <NewspaperIcon />
+                                    <FolderKanbanIcon />
                                 </EmptyMedia>
-                                <EmptyTitle>No namespaces</EmptyTitle>
-                                <EmptyDescription>Create a namespace to get started.</EmptyDescription>
+                                <EmptyTitle>No projects</EmptyTitle>
+                                <EmptyDescription>Create a project to get started.</EmptyDescription>
                             </EmptyHeader>
                             <EmptyContent>
                                 <div className="flex gap-2">
                                     <Button
                                         size="sm"
                                         onClick={() => setIsCreateDialogOpen(true)}
-                                        disabled={!canCreateNamespace}
                                     >
-                                        Create namespace
+                                        Create project
                                     </Button>
                                     <Button size="sm" variant="outline" render={<a href="https://docs.unlingo.com" target="_blank" />}>
                                         <BookIcon className="opacity-72" />
@@ -228,19 +192,25 @@ function RouteComponent() {
                     ) : null}
                     {layout === 'grid' ? (
                         <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {filteredNamespaces.map(namespace => (
-                                <Card key={namespace._id} className="py-4 hover:border-primary/30">
+                            {filteredProjects.map(project => (
+                                <Card key={project._id} className="py-4 hover:border-primary/30">
                                     <CardHeader className="px-4 flex justify-between items-center">
-                                        <div className="w-full">
-                                            <h6>{namespace.name}</h6>
-                                            {workspace && (
-                                                <NamespaceVersionButtons
-                                                    namespaceId={namespace._id}
-                                                    workspaceId={workspace._id}
-                                                    projectId={projectId}
-                                                />
-                                            )}
-                                        </div>
+                                        <Link
+                                            key={project._id}
+                                            to="/projects/$projectId"
+                                            params={{
+                                                projectId: project._id,
+                                            }}
+                                            className="w-full"
+                                        >
+                                            <h6>{project.name}</h6>
+                                            <Tooltip>
+                                                <TooltipTrigger render={<span className="text-xs text-gray-500 mt-2" />}>
+                                                    {formatTimeAgo(project._creationTime)}
+                                                </TooltipTrigger>
+                                                <TooltipPopup>{formatDate(project._creationTime)}</TooltipPopup>
+                                            </Tooltip>
+                                        </Link>
                                         <Menu>
                                             <MenuTrigger render={<Button variant="ghost" size="icon" />} onClick={(e) => {
                                                 e.stopPropagation();
@@ -252,10 +222,10 @@ function RouteComponent() {
                                                     <MenuItem
                                                         render={
                                                             <Link
-                                                                key={namespace._id}
+                                                                key={project._id}
                                                                 to="/projects/$projectId"
                                                                 params={{
-                                                                    projectId: namespace._id,
+                                                                    projectId: project._id,
                                                                 }}
                                                             />
                                                         }
@@ -266,7 +236,7 @@ function RouteComponent() {
                                                     <MenuItem
                                                         onClick={() => {
                                                             setIsEditDialogOpen(true);
-                                                            setSelectedNamespace(namespace);
+                                                            setSelectedProject(project);
                                                         }}
                                                     >
                                                         <Edit className="opacity-72" />
@@ -278,7 +248,7 @@ function RouteComponent() {
                                                     variant="destructive"
                                                     onClick={() => {
                                                         setIsDeleteDialogOpen(true);
-                                                        setSelectedNamespace(namespace);
+                                                        setSelectedProject(project);
                                                     }}
                                                 >
                                                     <TrashIcon />
@@ -298,23 +268,22 @@ function RouteComponent() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Name</TableHead>
-                                            <TableHead>Environments</TableHead>
+                                            <TableHead>Created At</TableHead>
                                             <TableHead className="text-right" />
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {filteredNamespaces.map(namespace => (
-                                            <Fragment key={namespace._id}>
+                                        {filteredProjects.map((project) => (
+                                            <Fragment key={project._id}>
                                                 <TableRow>
-                                                    <TableCell className="font-medium">{namespace.name}</TableCell>
+                                                    <TableCell className="font-medium">{project.name}</TableCell>
                                                     <TableCell>
-                                                        {workspace && (
-                                                            <NamespaceVersionButtons
-                                                                namespaceId={namespace._id}
-                                                                workspaceId={workspace._id}
-                                                                projectId={projectId}
-                                                            />
-                                                        )}
+                                                        <Tooltip>
+                                                            <TooltipTrigger render={<span className="text-sm text-gray-500 mt-2" />}>
+                                                                {formatTimeAgo(project._creationTime)}
+                                                            </TooltipTrigger>
+                                                            <TooltipPopup>{formatDate(project._creationTime)}</TooltipPopup>
+                                                        </Tooltip>
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <Menu>
@@ -326,10 +295,10 @@ function RouteComponent() {
                                                                     <MenuItem
                                                                         render={
                                                                             <Link
-                                                                                key={namespace._id}
+                                                                                key={project._id}
                                                                                 to="/projects/$projectId"
                                                                                 params={{
-                                                                                    projectId: namespace._id,
+                                                                                    projectId: project._id,
                                                                                 }}
                                                                             />
                                                                         }
@@ -340,7 +309,7 @@ function RouteComponent() {
                                                                     <MenuItem
                                                                         onClick={() => {
                                                                             setIsEditDialogOpen(true);
-                                                                            setSelectedNamespace(namespace);
+                                                                            setSelectedProject(project);
                                                                         }}
                                                                     >
                                                                         <Edit className="opacity-72" />
@@ -352,7 +321,7 @@ function RouteComponent() {
                                                                     variant="destructive"
                                                                     onClick={() => {
                                                                         setIsDeleteDialogOpen(true);
-                                                                        setSelectedNamespace(namespace);
+                                                                        setSelectedProject(project);
                                                                     }}
                                                                 >
                                                                     <TrashIcon />
@@ -370,29 +339,26 @@ function RouteComponent() {
                         </Card>
                     ) : null}
                 </div>
-                {workspace && project ? (
+                {workspace ? (
                     <>
-                        <NamespaceCreateDialog
+                        <ProjectCreateDialog
                             isOpen={isCreateDialogOpen}
                             setIsOpen={setIsCreateDialogOpen}
-                            project={project}
                             workspace={workspace}
                         />
-                        {selectedNamespace ? (
+                        {selectedProject ? (
                             <>
-                                <NamespaceEditDialog
+                                <ProjectEditDialog
                                     isOpen={isEditDialogOpen}
                                     setIsOpen={setIsEditDialogOpen}
-                                    project={project}
+                                    project={selectedProject}
                                     workspace={workspace}
-                                    namespace={selectedNamespace}
                                 />
-                                <NamespaceDeleteDialog
+                                <ProjectDeleteDialog
                                     isOpen={isDeleteDialogOpen}
                                     setIsOpen={setIsDeleteDialogOpen}
-                                    project={project}
+                                    project={selectedProject}
                                     workspace={workspace}
-                                    namespace={selectedNamespace}
                                 />
                             </>
                         ) : null}

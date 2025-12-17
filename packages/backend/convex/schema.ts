@@ -24,6 +24,9 @@ export default defineSchema({
     workspaceId: v.id("workspaces"),
     name: v.string(),
     primaryLanguageId: v.optional(v.id("languages")),
+    currentUsage: v.object({
+      translationKeys: v.number(),
+    }),
     status: v.union(
       v.literal(1), // Active
       v.literal(-1), // Deleting
@@ -47,6 +50,9 @@ export default defineSchema({
   namespaces: defineTable({
     projectId: v.id("projects"),
     name: v.string(),
+    currentUsage: v.object({
+      translationKeys: v.number(),
+    }),
     status: v.union(
       v.literal(1), // Active
       v.literal(-1), // Deleting

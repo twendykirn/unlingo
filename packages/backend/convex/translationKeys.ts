@@ -185,6 +185,10 @@ export const createTranslationKey = mutation({
       throw new Error("Language not found or access denied");
     }
 
+    if (workspace.currentUsage.translationKeys >= workspace.limits.translationKeys) {
+      throw new Error("You have reached the maximum number of translation keys");
+    }
+
     const existing = await ctx.db
       .query("translationKeys")
       .withIndex("by_project_namespace_key", (q) =>
@@ -208,6 +212,27 @@ export const createTranslationKey = mutation({
         [project.primaryLanguageId]: 1,
       },
     });
+
+    if (keyId) {
+      await ctx.db.patch(namespace._id, {
+        currentUsage: {
+          ...namespace.currentUsage,
+          translationKeys: namespace.currentUsage.translationKeys + 1,
+        },
+      });
+      await ctx.db.patch(project._id, {
+        currentUsage: {
+          ...project.currentUsage,
+          translationKeys: project.currentUsage.translationKeys + 1,
+        },
+      });
+      await ctx.db.patch(workspace._id, {
+        currentUsage: {
+          ...workspace.currentUsage,
+          translationKeys: workspace.currentUsage.translationKeys + 1,
+        },
+      });
+    }
 
     await upsertTranslationValue(ctx, {
       projectId: args.projectId,
@@ -305,11 +330,33 @@ export const updateTranslationKey = mutation({
 
 export const triggerBatchTranslation = mutation({
   args: {
+    workspaceId: v.id("workspaces"),
     projectId: v.id("projects"),
+    namespaceId: v.id("namespaces"),
     keyIds: v.array(v.id("translationKeys")),
     targetLanguageIds: v.union(v.array(v.id("languages")), v.null()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace || identity.org !== workspace.clerkId) {
+      throw new Error("Workspace not found or access denied");
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.workspaceId !== workspace._id || !project.primaryLanguageId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const namespace = await ctx.db.get(args.namespaceId);
+    if (!namespace || namespace.projectId !== project._id || namespace.status !== 1) {
+      throw new Error("Namespace not found or access denied");
+    }
+
     for (const keyId of args.keyIds) {
       const key = await ctx.db.get(keyId);
 
@@ -468,5 +515,101 @@ export const saveTranslationBatch = internalMutation({
         status: 1,
       });
     }
+  },
+});
+
+export const deleteTranslationKeys = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    projectId: v.id("projects"),
+    namespaceId: v.id("namespaces"),
+    keyIds: v.array(v.id("translationKeys")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace || identity.org !== workspace.clerkId) {
+      throw new Error("Workspace not found or access denied");
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.workspaceId !== workspace._id || !project.primaryLanguageId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const namespace = await ctx.db.get(args.namespaceId);
+    if (!namespace || namespace.projectId !== project._id || namespace.status !== 1) {
+      throw new Error("Namespace not found or access denied");
+    }
+
+    let count = 0;
+
+    for (const keyId of args.keyIds) {
+      const key = await ctx.db.get(keyId);
+      if (!key) {
+        continue;
+      }
+
+      count++;
+
+      await ctx.db.patch(key._id, { status: -1 });
+
+      const languageIds = Object.keys(key.values);
+
+      for (const langId of languageIds) {
+        const valueRow = await ctx.db
+          .query("translationValues")
+          .withIndex("by_project_namespace_language_key", (q) =>
+            q
+              .eq("projectId", key.projectId)
+              .eq("namespaceId", key.namespaceId)
+              .eq("languageId", langId as Id<"languages">)
+              .eq("translationKeyId", key._id),
+          )
+          .first();
+
+        if (valueRow) {
+          await ctx.db.delete(valueRow._id);
+        }
+      }
+
+      const mappings = await ctx.db
+        .query("screenshotKeyMappings")
+        .withIndex("by_namespace_translation_key", (q) =>
+          q.eq("namespaceId", key.namespaceId).eq("translationKeyId", key._id),
+        )
+        .collect();
+
+      for (const mapping of mappings) {
+        await ctx.db.delete(mapping._id);
+      }
+
+      await ctx.db.delete(key._id);
+    }
+
+    await ctx.db.patch(namespace._id, {
+      currentUsage: {
+        ...namespace.currentUsage,
+        translationKeys: namespace.currentUsage.translationKeys - count,
+      },
+    });
+
+    await ctx.db.patch(project._id, {
+      currentUsage: {
+        ...project.currentUsage,
+        translationKeys: project.currentUsage.translationKeys - count,
+      },
+    });
+
+    await ctx.db.patch(workspace._id, {
+      currentUsage: {
+        ...workspace.currentUsage,
+        translationKeys: workspace.currentUsage.translationKeys - count,
+      },
+    });
   },
 });

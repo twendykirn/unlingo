@@ -38,15 +38,6 @@ const ProjectCreateDialog = ({ isOpen, setIsOpen, workspace }: Props) => {
 
         if (!name.trim()) return;
 
-        if (workspace.currentUsage.projects >= workspace.limits.projects) {
-            toastManager.add({
-                description: 'Cannot create project. Please check your subscription limits.',
-                type: 'error',
-            });
-            setIsOpen(false);
-            return;
-        }
-
         setIsLoading(true);
 
         try {

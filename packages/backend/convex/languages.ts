@@ -26,7 +26,8 @@ export const getLanguages = query({
     return await ctx.db
       .query("languages")
       .withIndex("by_project_status", (q) => q.eq("projectId", args.projectId).gt("status", -1))
-      .order("desc");
+      .order("desc")
+      .collect();
   },
 });
 

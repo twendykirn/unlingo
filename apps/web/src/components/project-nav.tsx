@@ -5,6 +5,8 @@ import {
     Boxes,
     KeyRound,
     RocketIcon,
+    LanguagesIcon,
+    PencilRulerIcon,
 } from "lucide-react"
 import {
     SidebarGroup,
@@ -12,17 +14,14 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { useClerk } from "@clerk/tanstack-react-start"
 import { useNavigate } from "@tanstack/react-router"
 
 interface Props {
-    activeItem: 'namespaces' | 'api-keys' | 'releases' | 'screenshots' | 'builds';
+    activeItem: 'namespaces' | 'api-keys' | 'releases' | 'screenshots' | 'builds' | 'glossary' | 'languages';
     projectId: string;
 }
 
 export function ProjectNav({ activeItem, projectId }: Props) {
-    const { openOrganizationProfile } = useClerk();
-
     const navigate = useNavigate();
 
     const handleNavigateToDashboard = () => {
@@ -49,6 +48,51 @@ export function ProjectNav({ activeItem, projectId }: Props) {
         });
     }
 
+    const handleNavigateToLanguages = () => {
+        navigate({
+            to: '/projects/$projectId/languages',
+            params: {
+                projectId: projectId,
+            },
+        });
+    }
+
+    const handleNavigateToGlossary = () => {
+        navigate({
+            to: '/projects/$projectId/glossary',
+            params: {
+                projectId: projectId,
+            },
+        });
+    }
+
+    const handleNavigateToReleases = () => {
+        navigate({
+            to: '/projects/$projectId/releases',
+            params: {
+                projectId: projectId,
+            },
+        });
+    }
+
+    const handleNavigateToBuilds = () => {
+        navigate({
+            to: '/projects/$projectId/builds',
+            params: {
+                projectId: projectId,
+            },
+        });
+    }
+
+    const handleNavigateToScreenshots = () => {
+        navigate({
+            to: '/projects/$projectId/screenshots',
+            params: {
+                projectId: projectId,
+            },
+        });
+    }
+
     return (
         <>
             <SidebarGroup>
@@ -63,6 +107,16 @@ export function ProjectNav({ activeItem, projectId }: Props) {
             </SidebarGroup>
             <SidebarGroup>
                 <SidebarMenu>
+                    <SidebarMenuItem key='languages'>
+                        <SidebarMenuButton
+                            isActive={activeItem === 'languages'}
+                            className="text-sidebar-foreground/70"
+                            onClick={() => handleNavigateToLanguages()}
+                        >
+                            <LanguagesIcon />
+                            <span>Languages</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                     <SidebarMenuItem key='namespaces'>
                         <SidebarMenuButton
                             isActive={activeItem === 'namespaces'}
@@ -73,11 +127,21 @@ export function ProjectNav({ activeItem, projectId }: Props) {
                             <span>Namespaces</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
+                    <SidebarMenuItem key='glossary'>
+                        <SidebarMenuButton
+                            isActive={activeItem === 'glossary'}
+                            className="text-sidebar-foreground/70"
+                            onClick={() => handleNavigateToGlossary()}
+                        >
+                            <PencilRulerIcon />
+                            <span>Glossary</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                     <SidebarMenuItem key='screenshots'>
                         <SidebarMenuButton
                             isActive={activeItem === 'screenshots'}
                             className="text-sidebar-foreground/70"
-                            onClick={() => openOrganizationProfile()}
+                            onClick={() => handleNavigateToScreenshots()}
                         >
                             <Images />
                             <span>Screenshots</span>
@@ -87,7 +151,7 @@ export function ProjectNav({ activeItem, projectId }: Props) {
                         <SidebarMenuButton
                             isActive={activeItem === 'builds'}
                             className="text-sidebar-foreground/70"
-                            onClick={() => openOrganizationProfile()}
+                            onClick={() => handleNavigateToBuilds()}
                         >
                             <Boxes />
                             <span>Builds</span>
@@ -97,7 +161,7 @@ export function ProjectNav({ activeItem, projectId }: Props) {
                         <SidebarMenuButton
                             isActive={activeItem === 'releases'}
                             className="text-sidebar-foreground/70"
-                            onClick={() => openOrganizationProfile()}
+                            onClick={() => handleNavigateToReleases()}
                         >
                             <RocketIcon />
                             <span>Releases</span>

@@ -21,7 +21,7 @@ import { CreditCard } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckoutLink, CustomerPortalLink } from '@convex-dev/polar/react';
 
-export const Route = createFileRoute('/_auth/dashboard/billing')({
+export const Route = createFileRoute('/_auth/_org/dashboard/billing')({
     component: RouteComponent,
 })
 
@@ -307,13 +307,13 @@ function RouteComponent() {
                                     <Table>
                                         <TableBody>
                                             <TableRow>
-                                                <TableCell>Projects</TableCell>
+                                                <TableCell>Translation Keys</TableCell>
                                                 <TableCell>
                                                     <Progress value={Math.min(
-                                                        (workspace.currentUsage.projects / workspace.limits.projects) * 100
+                                                        (workspace.currentUsage.translationKeys / workspace.limits.translationKeys) * 100
                                                     )}>
                                                         <div className="flex items-center justify-between gap-2">
-                                                            <ProgressLabel>{`${workspace.currentUsage.projects}/${workspace.limits.projects}`}</ProgressLabel>
+                                                            <ProgressLabel>{`${workspace.currentUsage.translationKeys}/${workspace.limits.translationKeys}`}</ProgressLabel>
                                                             <ProgressValue />
                                                         </div>
                                                         <ProgressTrack>
@@ -340,14 +340,6 @@ function RouteComponent() {
                                                     </TableCell>
                                                 </TableRow>
                                             ) : null}
-                                            <TableRow>
-                                                <TableCell>Namespaces per Project</TableCell>
-                                                <TableCell>{workspace.limits.namespacesPerProject}</TableCell>
-                                            </TableRow>
-                                            <TableRow>
-                                                <TableCell>Languages per Version</TableCell>
-                                                <TableCell>{workspace.limits.languagesPerVersion}</TableCell>
-                                            </TableRow>
                                         </TableBody>
                                     </Table>
                                 </CardContent>

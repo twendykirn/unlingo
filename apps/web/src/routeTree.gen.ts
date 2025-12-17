@@ -13,15 +13,23 @@ import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
+import { Route as AuthSelectOrgRouteImport } from './routes/_auth/select-org'
 import { Route as AuthNewRouteImport } from './routes/_auth/new'
-import { Route as AuthDashboardIndexRouteImport } from './routes/_auth/dashboard/index'
-import { Route as AuthDashboardLogsRouteImport } from './routes/_auth/dashboard/logs'
-import { Route as AuthDashboardBillingRouteImport } from './routes/_auth/dashboard/billing'
-import { Route as AuthProjectsProjectIdIndexRouteImport } from './routes/_auth/projects/$projectId/index'
-import { Route as AuthProjectsProjectIdApiKeysRouteImport } from './routes/_auth/projects/$projectId/api-keys'
+import { Route as AuthOrgRouteImport } from './routes/_auth/_org'
+import { Route as AuthOrgDashboardIndexRouteImport } from './routes/_auth/_org/dashboard/index'
+import { Route as AuthOrgDashboardLogsRouteImport } from './routes/_auth/_org/dashboard/logs'
+import { Route as AuthOrgDashboardBillingRouteImport } from './routes/_auth/_org/dashboard/billing'
 import { Route as ApiApiKeysWorkspaceIdProjectIdIndexRouteImport } from './routes/api/api-keys/$workspaceId.$projectId/index'
+import { Route as AuthOrgProjectsProjectIdIndexRouteImport } from './routes/_auth/_org/projects/$projectId/index'
 import { Route as ApiApiKeysWorkspaceIdProjectIdKeyIdRouteImport } from './routes/api/api-keys/$workspaceId.$projectId/$keyId'
-import { Route as AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRouteImport } from './routes/_auth/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
+import { Route as AuthOrgProjectsProjectIdReleasesRouteImport } from './routes/_auth/_org/projects/$projectId/releases'
+import { Route as AuthOrgProjectsProjectIdLanguagesRouteImport } from './routes/_auth/_org/projects/$projectId/languages'
+import { Route as AuthOrgProjectsProjectIdGlossaryRouteImport } from './routes/_auth/_org/projects/$projectId/glossary'
+import { Route as AuthOrgProjectsProjectIdBuildsRouteImport } from './routes/_auth/_org/projects/$projectId/builds'
+import { Route as AuthOrgProjectsProjectIdApiKeysRouteImport } from './routes/_auth/_org/projects/$projectId/api-keys'
+import { Route as AuthOrgProjectsProjectIdScreenshotsIndexRouteImport } from './routes/_auth/_org/projects/$projectId/screenshots/index'
+import { Route as AuthOrgProjectsProjectIdScreenshotsScreenshotIdIndexRouteImport } from './routes/_auth/_org/projects/$projectId/screenshots/$screenshotId/index'
+import { Route as AuthOrgProjectsProjectIdNamespacesNamespaceIdEditorRouteImport } from './routes/_auth/_org/projects/$projectId/namespaces/$namespaceId/editor'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -42,43 +50,46 @@ const SignInSplatRoute = SignInSplatRouteImport.update({
   path: '/sign-in/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthSelectOrgRoute = AuthSelectOrgRouteImport.update({
+  id: '/select-org',
+  path: '/select-org',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthNewRoute = AuthNewRouteImport.update({
   id: '/new',
   path: '/new',
   getParentRoute: () => AuthRoute,
 } as any)
-const AuthDashboardIndexRoute = AuthDashboardIndexRouteImport.update({
+const AuthOrgRoute = AuthOrgRouteImport.update({
+  id: '/_org',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthOrgDashboardIndexRoute = AuthOrgDashboardIndexRouteImport.update({
   id: '/dashboard/',
   path: '/dashboard/',
-  getParentRoute: () => AuthRoute,
+  getParentRoute: () => AuthOrgRoute,
 } as any)
-const AuthDashboardLogsRoute = AuthDashboardLogsRouteImport.update({
+const AuthOrgDashboardLogsRoute = AuthOrgDashboardLogsRouteImport.update({
   id: '/dashboard/logs',
   path: '/dashboard/logs',
-  getParentRoute: () => AuthRoute,
+  getParentRoute: () => AuthOrgRoute,
 } as any)
-const AuthDashboardBillingRoute = AuthDashboardBillingRouteImport.update({
+const AuthOrgDashboardBillingRoute = AuthOrgDashboardBillingRouteImport.update({
   id: '/dashboard/billing',
   path: '/dashboard/billing',
-  getParentRoute: () => AuthRoute,
+  getParentRoute: () => AuthOrgRoute,
 } as any)
-const AuthProjectsProjectIdIndexRoute =
-  AuthProjectsProjectIdIndexRouteImport.update({
-    id: '/projects/$projectId/',
-    path: '/projects/$projectId/',
-    getParentRoute: () => AuthRoute,
-  } as any)
-const AuthProjectsProjectIdApiKeysRoute =
-  AuthProjectsProjectIdApiKeysRouteImport.update({
-    id: '/projects/$projectId/api-keys',
-    path: '/projects/$projectId/api-keys',
-    getParentRoute: () => AuthRoute,
-  } as any)
 const ApiApiKeysWorkspaceIdProjectIdIndexRoute =
   ApiApiKeysWorkspaceIdProjectIdIndexRouteImport.update({
     id: '/api/api-keys/$workspaceId/$projectId/',
     path: '/api/api-keys/$workspaceId/$projectId/',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthOrgProjectsProjectIdIndexRoute =
+  AuthOrgProjectsProjectIdIndexRouteImport.update({
+    id: '/projects/$projectId/',
+    path: '/projects/$projectId/',
+    getParentRoute: () => AuthOrgRoute,
   } as any)
 const ApiApiKeysWorkspaceIdProjectIdKeyIdRoute =
   ApiApiKeysWorkspaceIdProjectIdKeyIdRouteImport.update({
@@ -86,103 +97,187 @@ const ApiApiKeysWorkspaceIdProjectIdKeyIdRoute =
     path: '/api/api-keys/$workspaceId/$projectId/$keyId',
     getParentRoute: () => rootRouteImport,
   } as any)
-const AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute =
-  AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRouteImport.update(
-    {
-      id: '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor',
-      path: '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor',
-      getParentRoute: () => AuthRoute,
-    } as any,
-  )
+const AuthOrgProjectsProjectIdReleasesRoute =
+  AuthOrgProjectsProjectIdReleasesRouteImport.update({
+    id: '/projects/$projectId/releases',
+    path: '/projects/$projectId/releases',
+    getParentRoute: () => AuthOrgRoute,
+  } as any)
+const AuthOrgProjectsProjectIdLanguagesRoute =
+  AuthOrgProjectsProjectIdLanguagesRouteImport.update({
+    id: '/projects/$projectId/languages',
+    path: '/projects/$projectId/languages',
+    getParentRoute: () => AuthOrgRoute,
+  } as any)
+const AuthOrgProjectsProjectIdGlossaryRoute =
+  AuthOrgProjectsProjectIdGlossaryRouteImport.update({
+    id: '/projects/$projectId/glossary',
+    path: '/projects/$projectId/glossary',
+    getParentRoute: () => AuthOrgRoute,
+  } as any)
+const AuthOrgProjectsProjectIdBuildsRoute =
+  AuthOrgProjectsProjectIdBuildsRouteImport.update({
+    id: '/projects/$projectId/builds',
+    path: '/projects/$projectId/builds',
+    getParentRoute: () => AuthOrgRoute,
+  } as any)
+const AuthOrgProjectsProjectIdApiKeysRoute =
+  AuthOrgProjectsProjectIdApiKeysRouteImport.update({
+    id: '/projects/$projectId/api-keys',
+    path: '/projects/$projectId/api-keys',
+    getParentRoute: () => AuthOrgRoute,
+  } as any)
+const AuthOrgProjectsProjectIdScreenshotsIndexRoute =
+  AuthOrgProjectsProjectIdScreenshotsIndexRouteImport.update({
+    id: '/projects/$projectId/screenshots/',
+    path: '/projects/$projectId/screenshots/',
+    getParentRoute: () => AuthOrgRoute,
+  } as any)
+const AuthOrgProjectsProjectIdScreenshotsScreenshotIdIndexRoute =
+  AuthOrgProjectsProjectIdScreenshotsScreenshotIdIndexRouteImport.update({
+    id: '/projects/$projectId/screenshots/$screenshotId/',
+    path: '/projects/$projectId/screenshots/$screenshotId/',
+    getParentRoute: () => AuthOrgRoute,
+  } as any)
+const AuthOrgProjectsProjectIdNamespacesNamespaceIdEditorRoute =
+  AuthOrgProjectsProjectIdNamespacesNamespaceIdEditorRouteImport.update({
+    id: '/projects/$projectId/namespaces/$namespaceId/editor',
+    path: '/projects/$projectId/namespaces/$namespaceId/editor',
+    getParentRoute: () => AuthOrgRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/new': typeof AuthNewRoute
+  '/select-org': typeof AuthSelectOrgRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
-  '/dashboard/billing': typeof AuthDashboardBillingRoute
-  '/dashboard/logs': typeof AuthDashboardLogsRoute
-  '/dashboard': typeof AuthDashboardIndexRoute
-  '/projects/$projectId/api-keys': typeof AuthProjectsProjectIdApiKeysRoute
-  '/projects/$projectId': typeof AuthProjectsProjectIdIndexRoute
+  '/dashboard/billing': typeof AuthOrgDashboardBillingRoute
+  '/dashboard/logs': typeof AuthOrgDashboardLogsRoute
+  '/dashboard': typeof AuthOrgDashboardIndexRoute
+  '/projects/$projectId/api-keys': typeof AuthOrgProjectsProjectIdApiKeysRoute
+  '/projects/$projectId/builds': typeof AuthOrgProjectsProjectIdBuildsRoute
+  '/projects/$projectId/glossary': typeof AuthOrgProjectsProjectIdGlossaryRoute
+  '/projects/$projectId/languages': typeof AuthOrgProjectsProjectIdLanguagesRoute
+  '/projects/$projectId/releases': typeof AuthOrgProjectsProjectIdReleasesRoute
   '/api/api-keys/$workspaceId/$projectId/$keyId': typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRoute
+  '/projects/$projectId': typeof AuthOrgProjectsProjectIdIndexRoute
   '/api/api-keys/$workspaceId/$projectId': typeof ApiApiKeysWorkspaceIdProjectIdIndexRoute
-  '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor': typeof AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute
+  '/projects/$projectId/screenshots': typeof AuthOrgProjectsProjectIdScreenshotsIndexRoute
+  '/projects/$projectId/namespaces/$namespaceId/editor': typeof AuthOrgProjectsProjectIdNamespacesNamespaceIdEditorRoute
+  '/projects/$projectId/screenshots/$screenshotId': typeof AuthOrgProjectsProjectIdScreenshotsScreenshotIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/new': typeof AuthNewRoute
+  '/select-org': typeof AuthSelectOrgRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
-  '/dashboard/billing': typeof AuthDashboardBillingRoute
-  '/dashboard/logs': typeof AuthDashboardLogsRoute
-  '/dashboard': typeof AuthDashboardIndexRoute
-  '/projects/$projectId/api-keys': typeof AuthProjectsProjectIdApiKeysRoute
-  '/projects/$projectId': typeof AuthProjectsProjectIdIndexRoute
+  '/dashboard/billing': typeof AuthOrgDashboardBillingRoute
+  '/dashboard/logs': typeof AuthOrgDashboardLogsRoute
+  '/dashboard': typeof AuthOrgDashboardIndexRoute
+  '/projects/$projectId/api-keys': typeof AuthOrgProjectsProjectIdApiKeysRoute
+  '/projects/$projectId/builds': typeof AuthOrgProjectsProjectIdBuildsRoute
+  '/projects/$projectId/glossary': typeof AuthOrgProjectsProjectIdGlossaryRoute
+  '/projects/$projectId/languages': typeof AuthOrgProjectsProjectIdLanguagesRoute
+  '/projects/$projectId/releases': typeof AuthOrgProjectsProjectIdReleasesRoute
   '/api/api-keys/$workspaceId/$projectId/$keyId': typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRoute
+  '/projects/$projectId': typeof AuthOrgProjectsProjectIdIndexRoute
   '/api/api-keys/$workspaceId/$projectId': typeof ApiApiKeysWorkspaceIdProjectIdIndexRoute
-  '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor': typeof AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute
+  '/projects/$projectId/screenshots': typeof AuthOrgProjectsProjectIdScreenshotsIndexRoute
+  '/projects/$projectId/namespaces/$namespaceId/editor': typeof AuthOrgProjectsProjectIdNamespacesNamespaceIdEditorRoute
+  '/projects/$projectId/screenshots/$screenshotId': typeof AuthOrgProjectsProjectIdScreenshotsScreenshotIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
+  '/_auth/_org': typeof AuthOrgRouteWithChildren
   '/_auth/new': typeof AuthNewRoute
+  '/_auth/select-org': typeof AuthSelectOrgRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
-  '/_auth/dashboard/billing': typeof AuthDashboardBillingRoute
-  '/_auth/dashboard/logs': typeof AuthDashboardLogsRoute
-  '/_auth/dashboard/': typeof AuthDashboardIndexRoute
-  '/_auth/projects/$projectId/api-keys': typeof AuthProjectsProjectIdApiKeysRoute
-  '/_auth/projects/$projectId/': typeof AuthProjectsProjectIdIndexRoute
+  '/_auth/_org/dashboard/billing': typeof AuthOrgDashboardBillingRoute
+  '/_auth/_org/dashboard/logs': typeof AuthOrgDashboardLogsRoute
+  '/_auth/_org/dashboard/': typeof AuthOrgDashboardIndexRoute
+  '/_auth/_org/projects/$projectId/api-keys': typeof AuthOrgProjectsProjectIdApiKeysRoute
+  '/_auth/_org/projects/$projectId/builds': typeof AuthOrgProjectsProjectIdBuildsRoute
+  '/_auth/_org/projects/$projectId/glossary': typeof AuthOrgProjectsProjectIdGlossaryRoute
+  '/_auth/_org/projects/$projectId/languages': typeof AuthOrgProjectsProjectIdLanguagesRoute
+  '/_auth/_org/projects/$projectId/releases': typeof AuthOrgProjectsProjectIdReleasesRoute
   '/api/api-keys/$workspaceId/$projectId/$keyId': typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRoute
+  '/_auth/_org/projects/$projectId/': typeof AuthOrgProjectsProjectIdIndexRoute
   '/api/api-keys/$workspaceId/$projectId/': typeof ApiApiKeysWorkspaceIdProjectIdIndexRoute
-  '/_auth/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor': typeof AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute
+  '/_auth/_org/projects/$projectId/screenshots/': typeof AuthOrgProjectsProjectIdScreenshotsIndexRoute
+  '/_auth/_org/projects/$projectId/namespaces/$namespaceId/editor': typeof AuthOrgProjectsProjectIdNamespacesNamespaceIdEditorRoute
+  '/_auth/_org/projects/$projectId/screenshots/$screenshotId/': typeof AuthOrgProjectsProjectIdScreenshotsScreenshotIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/new'
+    | '/select-org'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/dashboard/billing'
     | '/dashboard/logs'
     | '/dashboard'
     | '/projects/$projectId/api-keys'
-    | '/projects/$projectId'
+    | '/projects/$projectId/builds'
+    | '/projects/$projectId/glossary'
+    | '/projects/$projectId/languages'
+    | '/projects/$projectId/releases'
     | '/api/api-keys/$workspaceId/$projectId/$keyId'
+    | '/projects/$projectId'
     | '/api/api-keys/$workspaceId/$projectId'
-    | '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
+    | '/projects/$projectId/screenshots'
+    | '/projects/$projectId/namespaces/$namespaceId/editor'
+    | '/projects/$projectId/screenshots/$screenshotId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/new'
+    | '/select-org'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/dashboard/billing'
     | '/dashboard/logs'
     | '/dashboard'
     | '/projects/$projectId/api-keys'
-    | '/projects/$projectId'
+    | '/projects/$projectId/builds'
+    | '/projects/$projectId/glossary'
+    | '/projects/$projectId/languages'
+    | '/projects/$projectId/releases'
     | '/api/api-keys/$workspaceId/$projectId/$keyId'
+    | '/projects/$projectId'
     | '/api/api-keys/$workspaceId/$projectId'
-    | '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
+    | '/projects/$projectId/screenshots'
+    | '/projects/$projectId/namespaces/$namespaceId/editor'
+    | '/projects/$projectId/screenshots/$screenshotId'
   id:
     | '__root__'
     | '/'
     | '/_auth'
+    | '/_auth/_org'
     | '/_auth/new'
+    | '/_auth/select-org'
     | '/sign-in/$'
     | '/sign-up/$'
-    | '/_auth/dashboard/billing'
-    | '/_auth/dashboard/logs'
-    | '/_auth/dashboard/'
-    | '/_auth/projects/$projectId/api-keys'
-    | '/_auth/projects/$projectId/'
+    | '/_auth/_org/dashboard/billing'
+    | '/_auth/_org/dashboard/logs'
+    | '/_auth/_org/dashboard/'
+    | '/_auth/_org/projects/$projectId/api-keys'
+    | '/_auth/_org/projects/$projectId/builds'
+    | '/_auth/_org/projects/$projectId/glossary'
+    | '/_auth/_org/projects/$projectId/languages'
+    | '/_auth/_org/projects/$projectId/releases'
     | '/api/api-keys/$workspaceId/$projectId/$keyId'
+    | '/_auth/_org/projects/$projectId/'
     | '/api/api-keys/$workspaceId/$projectId/'
-    | '/_auth/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
+    | '/_auth/_org/projects/$projectId/screenshots/'
+    | '/_auth/_org/projects/$projectId/namespaces/$namespaceId/editor'
+    | '/_auth/_org/projects/$projectId/screenshots/$screenshotId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -224,6 +319,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_auth/select-org': {
+      id: '/_auth/select-org'
+      path: '/select-org'
+      fullPath: '/select-org'
+      preLoaderRoute: typeof AuthSelectOrgRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/new': {
       id: '/_auth/new'
       path: '/new'
@@ -231,40 +333,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthNewRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/dashboard/': {
-      id: '/_auth/dashboard/'
+    '/_auth/_org': {
+      id: '/_auth/_org'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AuthOrgRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/_org/dashboard/': {
+      id: '/_auth/_org/dashboard/'
       path: '/dashboard'
       fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthDashboardIndexRouteImport
-      parentRoute: typeof AuthRoute
+      preLoaderRoute: typeof AuthOrgDashboardIndexRouteImport
+      parentRoute: typeof AuthOrgRoute
     }
-    '/_auth/dashboard/logs': {
-      id: '/_auth/dashboard/logs'
+    '/_auth/_org/dashboard/logs': {
+      id: '/_auth/_org/dashboard/logs'
       path: '/dashboard/logs'
       fullPath: '/dashboard/logs'
-      preLoaderRoute: typeof AuthDashboardLogsRouteImport
-      parentRoute: typeof AuthRoute
+      preLoaderRoute: typeof AuthOrgDashboardLogsRouteImport
+      parentRoute: typeof AuthOrgRoute
     }
-    '/_auth/dashboard/billing': {
-      id: '/_auth/dashboard/billing'
+    '/_auth/_org/dashboard/billing': {
+      id: '/_auth/_org/dashboard/billing'
       path: '/dashboard/billing'
       fullPath: '/dashboard/billing'
-      preLoaderRoute: typeof AuthDashboardBillingRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/projects/$projectId/': {
-      id: '/_auth/projects/$projectId/'
-      path: '/projects/$projectId'
-      fullPath: '/projects/$projectId'
-      preLoaderRoute: typeof AuthProjectsProjectIdIndexRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/projects/$projectId/api-keys': {
-      id: '/_auth/projects/$projectId/api-keys'
-      path: '/projects/$projectId/api-keys'
-      fullPath: '/projects/$projectId/api-keys'
-      preLoaderRoute: typeof AuthProjectsProjectIdApiKeysRouteImport
-      parentRoute: typeof AuthRoute
+      preLoaderRoute: typeof AuthOrgDashboardBillingRouteImport
+      parentRoute: typeof AuthOrgRoute
     }
     '/api/api-keys/$workspaceId/$projectId/': {
       id: '/api/api-keys/$workspaceId/$projectId/'
@@ -273,6 +368,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiApiKeysWorkspaceIdProjectIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_auth/_org/projects/$projectId/': {
+      id: '/_auth/_org/projects/$projectId/'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof AuthOrgProjectsProjectIdIndexRouteImport
+      parentRoute: typeof AuthOrgRoute
+    }
     '/api/api-keys/$workspaceId/$projectId/$keyId': {
       id: '/api/api-keys/$workspaceId/$projectId/$keyId'
       path: '/api/api-keys/$workspaceId/$projectId/$keyId'
@@ -280,35 +382,112 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_auth/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor': {
-      id: '/_auth/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
-      path: '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
-      fullPath: '/projects/$projectId/namespaces/$namespaceId/versions/$versionId/editor'
-      preLoaderRoute: typeof AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRouteImport
-      parentRoute: typeof AuthRoute
+    '/_auth/_org/projects/$projectId/releases': {
+      id: '/_auth/_org/projects/$projectId/releases'
+      path: '/projects/$projectId/releases'
+      fullPath: '/projects/$projectId/releases'
+      preLoaderRoute: typeof AuthOrgProjectsProjectIdReleasesRouteImport
+      parentRoute: typeof AuthOrgRoute
+    }
+    '/_auth/_org/projects/$projectId/languages': {
+      id: '/_auth/_org/projects/$projectId/languages'
+      path: '/projects/$projectId/languages'
+      fullPath: '/projects/$projectId/languages'
+      preLoaderRoute: typeof AuthOrgProjectsProjectIdLanguagesRouteImport
+      parentRoute: typeof AuthOrgRoute
+    }
+    '/_auth/_org/projects/$projectId/glossary': {
+      id: '/_auth/_org/projects/$projectId/glossary'
+      path: '/projects/$projectId/glossary'
+      fullPath: '/projects/$projectId/glossary'
+      preLoaderRoute: typeof AuthOrgProjectsProjectIdGlossaryRouteImport
+      parentRoute: typeof AuthOrgRoute
+    }
+    '/_auth/_org/projects/$projectId/builds': {
+      id: '/_auth/_org/projects/$projectId/builds'
+      path: '/projects/$projectId/builds'
+      fullPath: '/projects/$projectId/builds'
+      preLoaderRoute: typeof AuthOrgProjectsProjectIdBuildsRouteImport
+      parentRoute: typeof AuthOrgRoute
+    }
+    '/_auth/_org/projects/$projectId/api-keys': {
+      id: '/_auth/_org/projects/$projectId/api-keys'
+      path: '/projects/$projectId/api-keys'
+      fullPath: '/projects/$projectId/api-keys'
+      preLoaderRoute: typeof AuthOrgProjectsProjectIdApiKeysRouteImport
+      parentRoute: typeof AuthOrgRoute
+    }
+    '/_auth/_org/projects/$projectId/screenshots/': {
+      id: '/_auth/_org/projects/$projectId/screenshots/'
+      path: '/projects/$projectId/screenshots'
+      fullPath: '/projects/$projectId/screenshots'
+      preLoaderRoute: typeof AuthOrgProjectsProjectIdScreenshotsIndexRouteImport
+      parentRoute: typeof AuthOrgRoute
+    }
+    '/_auth/_org/projects/$projectId/screenshots/$screenshotId/': {
+      id: '/_auth/_org/projects/$projectId/screenshots/$screenshotId/'
+      path: '/projects/$projectId/screenshots/$screenshotId'
+      fullPath: '/projects/$projectId/screenshots/$screenshotId'
+      preLoaderRoute: typeof AuthOrgProjectsProjectIdScreenshotsScreenshotIdIndexRouteImport
+      parentRoute: typeof AuthOrgRoute
+    }
+    '/_auth/_org/projects/$projectId/namespaces/$namespaceId/editor': {
+      id: '/_auth/_org/projects/$projectId/namespaces/$namespaceId/editor'
+      path: '/projects/$projectId/namespaces/$namespaceId/editor'
+      fullPath: '/projects/$projectId/namespaces/$namespaceId/editor'
+      preLoaderRoute: typeof AuthOrgProjectsProjectIdNamespacesNamespaceIdEditorRouteImport
+      parentRoute: typeof AuthOrgRoute
     }
   }
 }
 
+interface AuthOrgRouteChildren {
+  AuthOrgDashboardBillingRoute: typeof AuthOrgDashboardBillingRoute
+  AuthOrgDashboardLogsRoute: typeof AuthOrgDashboardLogsRoute
+  AuthOrgDashboardIndexRoute: typeof AuthOrgDashboardIndexRoute
+  AuthOrgProjectsProjectIdApiKeysRoute: typeof AuthOrgProjectsProjectIdApiKeysRoute
+  AuthOrgProjectsProjectIdBuildsRoute: typeof AuthOrgProjectsProjectIdBuildsRoute
+  AuthOrgProjectsProjectIdGlossaryRoute: typeof AuthOrgProjectsProjectIdGlossaryRoute
+  AuthOrgProjectsProjectIdLanguagesRoute: typeof AuthOrgProjectsProjectIdLanguagesRoute
+  AuthOrgProjectsProjectIdReleasesRoute: typeof AuthOrgProjectsProjectIdReleasesRoute
+  AuthOrgProjectsProjectIdIndexRoute: typeof AuthOrgProjectsProjectIdIndexRoute
+  AuthOrgProjectsProjectIdScreenshotsIndexRoute: typeof AuthOrgProjectsProjectIdScreenshotsIndexRoute
+  AuthOrgProjectsProjectIdNamespacesNamespaceIdEditorRoute: typeof AuthOrgProjectsProjectIdNamespacesNamespaceIdEditorRoute
+  AuthOrgProjectsProjectIdScreenshotsScreenshotIdIndexRoute: typeof AuthOrgProjectsProjectIdScreenshotsScreenshotIdIndexRoute
+}
+
+const AuthOrgRouteChildren: AuthOrgRouteChildren = {
+  AuthOrgDashboardBillingRoute: AuthOrgDashboardBillingRoute,
+  AuthOrgDashboardLogsRoute: AuthOrgDashboardLogsRoute,
+  AuthOrgDashboardIndexRoute: AuthOrgDashboardIndexRoute,
+  AuthOrgProjectsProjectIdApiKeysRoute: AuthOrgProjectsProjectIdApiKeysRoute,
+  AuthOrgProjectsProjectIdBuildsRoute: AuthOrgProjectsProjectIdBuildsRoute,
+  AuthOrgProjectsProjectIdGlossaryRoute: AuthOrgProjectsProjectIdGlossaryRoute,
+  AuthOrgProjectsProjectIdLanguagesRoute:
+    AuthOrgProjectsProjectIdLanguagesRoute,
+  AuthOrgProjectsProjectIdReleasesRoute: AuthOrgProjectsProjectIdReleasesRoute,
+  AuthOrgProjectsProjectIdIndexRoute: AuthOrgProjectsProjectIdIndexRoute,
+  AuthOrgProjectsProjectIdScreenshotsIndexRoute:
+    AuthOrgProjectsProjectIdScreenshotsIndexRoute,
+  AuthOrgProjectsProjectIdNamespacesNamespaceIdEditorRoute:
+    AuthOrgProjectsProjectIdNamespacesNamespaceIdEditorRoute,
+  AuthOrgProjectsProjectIdScreenshotsScreenshotIdIndexRoute:
+    AuthOrgProjectsProjectIdScreenshotsScreenshotIdIndexRoute,
+}
+
+const AuthOrgRouteWithChildren =
+  AuthOrgRoute._addFileChildren(AuthOrgRouteChildren)
+
 interface AuthRouteChildren {
+  AuthOrgRoute: typeof AuthOrgRouteWithChildren
   AuthNewRoute: typeof AuthNewRoute
-  AuthDashboardBillingRoute: typeof AuthDashboardBillingRoute
-  AuthDashboardLogsRoute: typeof AuthDashboardLogsRoute
-  AuthDashboardIndexRoute: typeof AuthDashboardIndexRoute
-  AuthProjectsProjectIdApiKeysRoute: typeof AuthProjectsProjectIdApiKeysRoute
-  AuthProjectsProjectIdIndexRoute: typeof AuthProjectsProjectIdIndexRoute
-  AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute: typeof AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute
+  AuthSelectOrgRoute: typeof AuthSelectOrgRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
+  AuthOrgRoute: AuthOrgRouteWithChildren,
   AuthNewRoute: AuthNewRoute,
-  AuthDashboardBillingRoute: AuthDashboardBillingRoute,
-  AuthDashboardLogsRoute: AuthDashboardLogsRoute,
-  AuthDashboardIndexRoute: AuthDashboardIndexRoute,
-  AuthProjectsProjectIdApiKeysRoute: AuthProjectsProjectIdApiKeysRoute,
-  AuthProjectsProjectIdIndexRoute: AuthProjectsProjectIdIndexRoute,
-  AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute:
-    AuthProjectsProjectIdNamespacesNamespaceIdVersionsVersionIdEditorRoute,
+  AuthSelectOrgRoute: AuthSelectOrgRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)

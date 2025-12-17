@@ -11,7 +11,7 @@ import { useUser } from "@clerk/tanstack-react-start"
 import { ProjectNav } from "./project-nav"
 
 interface Props extends React.ComponentProps<typeof Sidebar> {
-    activeItem: 'namespaces' | 'api-keys' | 'releases' | 'screenshots' | 'builds';
+    activeItem: 'namespaces' | 'api-keys' | 'releases' | 'screenshots' | 'builds' | 'glossary' | 'languages';
     projectId: string;
 }
 

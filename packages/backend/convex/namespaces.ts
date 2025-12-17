@@ -114,6 +114,9 @@ export const createNamespace = mutation({
       projectId: args.projectId,
       name: args.name.trim(),
       status: 1,
+      currentUsage: {
+        translationKeys: 0,
+      },
     });
 
     return namespaceId;
@@ -211,6 +214,18 @@ export const deleteNamespace = mutation({
     }
 
     await ctx.db.patch(args.namespaceId, { status: -1 });
+    await ctx.db.patch(project._id, {
+      currentUsage: {
+        ...project.currentUsage,
+        translationKeys: project.currentUsage.translationKeys - namespace.currentUsage.translationKeys,
+      },
+    });
+    await ctx.db.patch(workspace._id, {
+      currentUsage: {
+        ...workspace.currentUsage,
+        translationKeys: workspace.currentUsage.translationKeys - namespace.currentUsage.translationKeys,
+      },
+    });
 
     await ctx.scheduler.runAfter(0, internal.namespaces.deleteNamespaceContents, {
       namespaceId: args.namespaceId,
