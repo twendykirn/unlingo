@@ -36,6 +36,7 @@ export const createLanguage = mutation({
     projectId: v.id("projects"),
     languageCode: v.string(),
     isPrimary: v.optional(v.boolean()),
+    rules: v.optional(v.record(v.string(), v.string())),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -57,11 +58,55 @@ export const createLanguage = mutation({
       projectId: project._id,
       languageCode: args.languageCode,
       status: 1,
+      rules: args.rules,
     });
 
     if (args.isPrimary) {
       await ctx.db.patch(project._id, {
         primaryLanguageId: languageId,
+      });
+    }
+  },
+});
+
+export const updateLanguage = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    projectId: v.id("projects"),
+    languageId: v.id("languages"),
+    isPrimary: v.optional(v.boolean()),
+    rules: v.optional(v.record(v.string(), v.string())),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace || identity.org !== workspace.clerkId) {
+      throw new Error("Workspace not found or access denied");
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const language = await ctx.db.get(args.languageId);
+    if (!language || language.projectId !== project._id) {
+      throw new Error("Language not found or access denied");
+    }
+
+    if (args.isPrimary && language._id !== project.primaryLanguageId) {
+      await ctx.db.patch(project._id, {
+        primaryLanguageId: language._id,
+      });
+    }
+
+    if (args.rules !== undefined) {
+      await ctx.db.patch(language._id, {
+        rules: args.rules,
       });
     }
   },
@@ -94,13 +139,22 @@ export const deleteLanguage = mutation({
       throw new Error("Language not found or access denied");
     }
 
-    await ctx.db.patch(args.languageId, { status: -1 });
-
     if (project.primaryLanguageId === language._id) {
+      const languages = await ctx.db
+        .query("languages")
+        .withIndex("by_project_status", (q) => q.eq("projectId", project._id).gt("status", -1))
+        .paginate({ cursor: null, numItems: 2 });
+
+      if (languages.page.length > 1) {
+        throw new Error("Cannot delete primary language - there are other languages in the project");
+      }
+
       await ctx.db.patch(project._id, {
         primaryLanguageId: undefined,
       });
     }
+
+    await ctx.db.patch(args.languageId, { status: -1 });
 
     await ctx.scheduler.runAfter(0, internal.languages.deleteLanguageContents, {
       languageId: args.languageId,

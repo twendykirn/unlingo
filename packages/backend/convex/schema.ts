@@ -40,6 +40,7 @@ export default defineSchema({
       v.literal(-1), // Deleting
       v.literal(2), // Processing
     ),
+    rules: v.optional(v.record(v.string(), v.string())),
   })
     .index("by_project_language", ["projectId", "languageCode"])
     .index("by_project_status", ["projectId", "status"]),

@@ -9,7 +9,12 @@ export interface GlossaryRule {
   forcedTranslation?: string;
 }
 
-export async function generateTranslation(content: any, targetLanguage: string, glossaryRules: GlossaryRule[]) {
+export async function generateTranslation(
+  content: any,
+  targetLanguage: string,
+  glossaryRules: GlossaryRule[],
+  rules?: Record<string, string>,
+) {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
   let glossarySection = "";
@@ -46,8 +51,19 @@ ${rulesList.join("\n")}
     }
   }
 
+  let customRulesSection = "";
+  if (rules && Object.keys(rules).length > 0) {
+    const ruleValues = Object.values(rules);
+
+    customRulesSection = `
+ADDITIONAL STYLE & GRAMMAR INSTRUCTIONS:
+The following rules must be applied to the translation style:
+${ruleValues.map((rule) => `- ${rule}`).join("\n")}
+`;
+  }
+
   const prompt = `You are a professional translator. Translate the following content to ${targetLanguage}.
-IMPORTANT RULES:
+IMPORTANT TECHNICAL RULES:
 1. Maintain the exact same JSON structure and data types.
 2. Only translate string values that contain actual text content.
 3. Do not translate:
@@ -59,6 +75,7 @@ IMPORTANT RULES:
 5. For objects, translate only the string values, not the keys.
 6. Return valid JSON only, no explanation, no markdown formatting.
 7. Make sure the translated content is natural and fluent in the target language.
+${customRulesSection}
 ${glossarySection}
 
 Content to translate:

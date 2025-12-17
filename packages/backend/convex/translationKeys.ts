@@ -373,7 +373,7 @@ export const getBatchTranslationData = internalQuery({
 
     return {
       sourceData,
-      targetLanguages: validTargetLanguages.map((l) => ({ _id: l._id, code: l.languageCode })),
+      targetLanguages: validTargetLanguages.map((l) => ({ _id: l._id, code: l.languageCode, rules: l.rules })),
     };
   },
 });
@@ -403,7 +403,7 @@ export const translateBatchAction = internalAction({
       });
 
       try {
-        const translatedMap = await generateTranslation(sourceData, lang.code, glossaryRules);
+        const translatedMap = await generateTranslation(sourceData, lang.code, glossaryRules, lang.rules);
         resultsByLanguage[lang._id] = translatedMap;
       } catch (err) {
         console.error(`Translation failed for ${lang.code}`, err);
