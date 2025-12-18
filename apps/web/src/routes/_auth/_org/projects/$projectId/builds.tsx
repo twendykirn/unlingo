@@ -53,19 +53,6 @@ function RouteComponent() {
     );
 
     const {
-        results: namespaces
-    } = usePaginatedQuery(
-        api.namespaces.getNamespaces,
-        workspace && project
-            ? {
-                projectId: project._id,
-                workspaceId: workspace._id,
-            }
-            : 'skip',
-        { initialNumItems: 100 }
-    );
-
-    const {
         results: builds,
         loadMore,
         status: buildsStatus
@@ -243,14 +230,13 @@ function RouteComponent() {
                         </Card>
                     )}
                 </div>
-                {workspace && project && namespaces ? (
+                {workspace && project ? (
                     <>
                         <BuildCreateDialog
                             isOpen={isCreateDialogOpen}
                             setIsOpen={setIsCreateDialogOpen}
                             project={project}
                             workspace={workspace}
-                            namespaces={namespaces}
                         />
                         {selectedBuild ? (
                             <>

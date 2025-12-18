@@ -54,6 +54,8 @@ function RouteComponent() {
             : 'skip'
     );
 
+    // Fetch builds for table display only (showing build info in release rows)
+    // Each release typically has only a few builds, so we fetch enough for display
     const {
         results: builds
     } = usePaginatedQuery(
@@ -64,7 +66,7 @@ function RouteComponent() {
                 workspaceId: workspace._id,
             }
             : 'skip',
-        { initialNumItems: 100 }
+        { initialNumItems: 40 }
     );
 
     const {
@@ -272,14 +274,13 @@ function RouteComponent() {
                         </Card>
                     )}
                 </div>
-                {workspace && project && builds ? (
+                {workspace && project ? (
                     <>
                         <ReleaseCreateDialog
                             isOpen={isCreateDialogOpen}
                             setIsOpen={setIsCreateDialogOpen}
                             project={project}
                             workspace={workspace}
-                            builds={builds}
                         />
                         {selectedRelease ? (
                             <>
@@ -289,7 +290,6 @@ function RouteComponent() {
                                     workspace={workspace}
                                     project={project}
                                     release={selectedRelease}
-                                    builds={builds}
                                 />
                                 <ReleaseDeleteDialog
                                     isOpen={isDeleteDialogOpen}
