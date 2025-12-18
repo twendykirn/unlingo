@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
     Dialog,
     DialogHeader,
@@ -14,28 +14,39 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { Link } from "@tanstack/react-router";
 import { Spinner } from "./ui/spinner";
 import { Button } from "./ui/button";
+import { debounce } from "@tanstack/pacer";
+import { useQuery } from "convex/react";
+import { api } from "@unlingo/backend/convex/_generated/api";
+import type { Id } from "@unlingo/backend/convex/_generated/dataModel";
 
 interface Props {
-    projectId: string;
+    workspaceId?: Id<'workspaces'>;
+    projectId?: Id<'projects'>;
 }
 
-// TODO: Get keys from the backend
-const KEYS = [
-    { id: '1', name: 'common.settings.greetings.hello.hi.today.application', namespace: 'common', environment: 'production' },
-    { id: '2', name: 'Test Key 2', namespace: 'common', environment: 'development' },
-    { id: '3', name: 'Test Key 3', namespace: 'common', environment: 'production' },
-    { id: '4', name: 'Test Key 4', namespace: 'common', environment: 'development' },
-    { id: '5', name: 'Test Key 5', namespace: 'common', environment: 'production' },
-    { id: '6', name: 'Test Key 6', namespace: 'common', environment: 'development' },
-    { id: '7', name: 'Test Key 7', namespace: 'common', environment: 'production' },
-    { id: '8', name: 'Test Key 8', namespace: 'common', environment: 'development' },
-    { id: '9', name: 'Test Key 9', namespace: 'common', environment: 'production' },
-    { id: '10', name: 'Test Key 10', namespace: 'common', environment: 'development' },
-];
-
-const GlobalSearchDialog = ({ projectId }: Props) => {
-    const [isLoading, setIsLoading] = useState(false);
+const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
     const [search, setSearch] = useState('');
+
+    const translationKeys = useQuery(
+        api.translationKeys.getTranslationKeysGlobalSearch,
+        workspaceId && projectId
+            ? {
+                projectId,
+                workspaceId,
+                search,
+            }
+            : 'skip'
+    );
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const debouncedSetSearch = useCallback(
+        debounce((value: string) => setSearch(value), { wait: 500 }),
+        []
+    );
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        debouncedSetSearch(e.target.value);
+    };
 
     return (
         <Dialog
@@ -56,8 +67,7 @@ const GlobalSearchDialog = ({ projectId }: Props) => {
                             aria-label="Search"
                             placeholder="Search keys"
                             type="search"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
+                            onChange={handleSearchChange}
                         />
                         <InputGroupAddon>
                             <SearchIcon />
@@ -65,9 +75,9 @@ const GlobalSearchDialog = ({ projectId }: Props) => {
                     </InputGroup>
                 </DialogHeader>
                 <DialogPanel className="grid gap-2">
-                    {isLoading ? (
+                    {!workspaceId || !projectId || translationKeys === undefined ? (
                         <Spinner className="mx-auto mt-2" />
-                    ) : search === '' || KEYS.length === 0 ? (
+                    ) : translationKeys?.length === 0 ? (
                         <Empty>
                             <EmptyHeader>
                                 <EmptyMedia variant="icon">
@@ -78,35 +88,36 @@ const GlobalSearchDialog = ({ projectId }: Props) => {
                             </EmptyHeader>
                         </Empty>
                     ) : (
-                        KEYS.map(item => (
+                        translationKeys.map(item => (
                             <Link
-                                key={item.id}
-                                to="/projects/$projectId"
+                                key={item._id}
+                                to="/projects/$projectId/namespaces/$namespaceId/editor"
                                 params={{
                                     projectId,
+                                    namespaceId: item.namespaceId,
                                 }}
                             >
                                 <Card className="py-4 hover:border-primary/30">
                                     <CardHeader className="px-4 flex justify-between items-center gap-8">
                                         <Tooltip>
                                             <TooltipTrigger render={<span className="truncate" />}>
-                                                {item.name}
+                                                {item.key}
                                             </TooltipTrigger>
-                                            <TooltipPopup>{item.name}</TooltipPopup>
+                                            <TooltipPopup>{item.key}</TooltipPopup>
                                         </Tooltip>
                                         <div className='flex items-center gap-1 text-muted-foreground'>
                                             <Tooltip>
                                                 <TooltipTrigger render={<span className="text-xs p-0" />}>
-                                                    {item.namespace}
+                                                    {item.namespaceName}
                                                 </TooltipTrigger>
                                                 <TooltipPopup>Namespace</TooltipPopup>
                                             </Tooltip>
                                             •
                                             <Tooltip>
                                                 <TooltipTrigger render={<span className="text-xs p-0" />}>
-                                                    {item.environment}
+                                                    {item.status === 1 ? 'Active' : 'Inactive'}
                                                 </TooltipTrigger>
-                                                <TooltipPopup>Environment</TooltipPopup>
+                                                <TooltipPopup>Status</TooltipPopup>
                                             </Tooltip>
                                         </div>
                                     </CardHeader>

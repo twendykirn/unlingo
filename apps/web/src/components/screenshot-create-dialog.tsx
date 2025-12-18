@@ -55,10 +55,8 @@ const ScreenshotCreateDialog = ({ isOpen, setIsOpen, workspace, project, onUploa
         setIsLoading(true);
 
         try {
-            // Get image dimensions
             const dimensions = await getImageDimensions(selectedFile);
 
-            // Upload file and get file ID
             const imageFileId = await onUploadFile(selectedFile);
 
             const screenshotId = await createScreenshot({

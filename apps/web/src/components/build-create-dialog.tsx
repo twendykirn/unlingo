@@ -18,17 +18,16 @@ import { Button } from "./ui/button";
 import { Field, FieldLabel } from "./ui/field";
 import { Input } from "./ui/input";
 import { Spinner } from "./ui/spinner";
-import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "./ui/select";
+import NamespaceSelect from "./namespace-select";
 
 interface Props {
     isOpen: boolean;
     setIsOpen: (value: boolean) => void;
     workspace: Doc<'workspaces'>;
     project: Doc<'projects'>;
-    namespaces: Doc<'namespaces'>[];
 }
 
-const BuildCreateDialog = ({ isOpen, setIsOpen, workspace, project, namespaces }: Props) => {
+const BuildCreateDialog = ({ isOpen, setIsOpen, workspace, project }: Props) => {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedNamespaceId, setSelectedNamespaceId] = useState<string | null>(null);
 
@@ -87,21 +86,12 @@ const BuildCreateDialog = ({ isOpen, setIsOpen, workspace, project, namespaces }
                         </Field>
                         <Field>
                             <FieldLabel>Namespace</FieldLabel>
-                            <Select
+                            <NamespaceSelect
+                                projectId={project._id}
+                                workspaceId={workspace._id}
                                 value={selectedNamespaceId}
                                 onValueChange={setSelectedNamespaceId}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectPopup>
-                                    {namespaces.map((namespace) => (
-                                        <SelectItem key={namespace._id} value={namespace._id}>
-                                            {namespace.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectPopup>
-                            </Select>
+                            />
                         </Field>
                     </DialogPanel>
                     <DialogFooter>

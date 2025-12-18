@@ -1,10 +1,50 @@
 import { v } from "convex/values";
-import { mutation, internalMutation, internalQuery, internalAction } from "./_generated/server";
+import { mutation, internalMutation, internalQuery, internalAction, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { unflattenJson } from "./utils/jsonFlatten";
 import { r2 } from "./files";
-import { PaginationResult } from "convex/server";
+import { paginationOptsValidator, PaginationResult } from "convex/server";
 import { Id } from "./_generated/dataModel";
+
+export const getBuilds = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+    projectId: v.id("projects"),
+    search: v.optional(v.string()),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace || identity.org !== workspace.clerkId) {
+      throw new Error("Workspace not found or access denied");
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    if (args.search) {
+      return await ctx.db
+        .query("builds")
+        .withSearchIndex("search", (q) => q.search("tag", args.search!).eq("projectId", args.projectId))
+        .filter((q) => q.gt(q.field("status"), -1))
+        .paginate(args.paginationOpts);
+    }
+
+    return await ctx.db
+      .query("builds")
+      .withIndex("by_project_tag", (q) => q.eq("projectId", args.projectId))
+      .filter((q) => q.gt(q.field("status"), -1))
+      .order("desc")
+      .paginate(args.paginationOpts);
+  },
+});
 
 export const createBuild = mutation({
   args: {

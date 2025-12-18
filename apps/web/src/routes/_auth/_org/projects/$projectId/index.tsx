@@ -13,12 +13,13 @@ import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Toggle, ToggleGroup, ToggleGroupSeparator } from '@/components/ui/toggle-group';
 import { useOrganization } from '@clerk/tanstack-react-start';
+import { debounce } from '@tanstack/pacer';
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Doc, Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { usePaginatedQuery, useQuery } from 'convex/react';
 import { BookIcon, Edit, EllipsisVerticalIcon, Eye, LayoutGridIcon, NewspaperIcon, SearchIcon, TableIcon, TrashIcon } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 export const Route = createFileRoute('/_auth/_org/projects/$projectId/')({
     component: RouteComponent,
@@ -53,25 +54,30 @@ function RouteComponent() {
     );
 
     const {
-        results: namespaces
+        results: namespaces,
+        loadMore,
+        status: namespacesStatus
     } = usePaginatedQuery(
         api.namespaces.getNamespaces,
         workspace && project
             ? {
                 projectId: project._id,
                 workspaceId: workspace._id,
+                search: search || undefined,
             }
             : 'skip',
         { initialNumItems: 40 }
     );
 
-    const filteredNamespaces = useMemo(() => {
-        if (!namespaces) return [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const debouncedSetSearch = useCallback(
+        debounce((value: string) => setSearch(value), { wait: 500 }),
+        []
+    );
 
-        return namespaces.filter(item => {
-            return item.name.toLowerCase().includes(search.toLowerCase());
-        });
-    }, [namespaces, search]);
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        debouncedSetSearch(e.target.value);
+    };
 
     return (
         <SidebarProvider>
@@ -81,7 +87,7 @@ function RouteComponent() {
                     <div className="flex items-center gap-2 px-4">
                         <SidebarTrigger className="-ml-1" />
                     </div>
-                    <GlobalSearchDialog projectId={projectId} />
+                    <GlobalSearchDialog workspaceId={workspace?._id} projectId={project?._id} />
                 </header>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
                     <div className="flex items-center">
@@ -107,8 +113,7 @@ function RouteComponent() {
                                     aria-label="Search"
                                     placeholder="Search namespaces"
                                     type="search"
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
+                                    onChange={handleSearchChange}
                                 />
                                 <InputGroupAddon>
                                     <SearchIcon />
@@ -125,7 +130,7 @@ function RouteComponent() {
                         <div className="flex items-center justify-center w-full mt-4">
                             <Spinner />
                         </div>
-                    ) : filteredNamespaces.length === 0 ? (
+                    ) : namespaces.length === 0 ? (
                         <Empty>
                             <EmptyHeader>
                                 <EmptyMedia variant="icon">
@@ -153,74 +158,83 @@ function RouteComponent() {
                     {workspace && project ? (
                         <>
                             {layout === 'grid' ? (
-                                <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                    {filteredNamespaces.map(namespace => (
-                                        <Card key={namespace._id} className="py-4 hover:border-primary/30 min-w-[200px]">
-                                            <CardHeader className="px-4 flex justify-between items-center">
-                                                <Link
-                                                    to="/projects/$projectId/namespaces/$namespaceId/editor"
-                                                    params={{
-                                                        projectId: project._id,
-                                                        namespaceId: namespace._id,
-                                                    }}
-                                                    className="w-full flex items-center gap-2"
-                                                >
-                                                    <h6>{namespace.name}</h6>
-                                                    •
-                                                    <span className="text-xs text-muted-foreground mt-px">
-                                                        {namespace.currentUsage.translationKeys} keys
-                                                    </span>
-                                                </Link>
-                                                <Menu>
-                                                    <MenuTrigger render={<Button variant="ghost" size="icon" />} onClick={(e) => {
-                                                        e.stopPropagation();
-                                                    }}>
-                                                        <EllipsisVerticalIcon />
-                                                    </MenuTrigger>
-                                                    <MenuPopup>
-                                                        <MenuGroup>
+                                <>
+                                    <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                        {namespaces.map(namespace => (
+                                            <Card key={namespace._id} className="py-4 hover:border-primary/30 min-w-[200px]">
+                                                <CardHeader className="px-4 flex justify-between items-center">
+                                                    <Link
+                                                        to="/projects/$projectId/namespaces/$namespaceId/editor"
+                                                        params={{
+                                                            projectId: project._id,
+                                                            namespaceId: namespace._id,
+                                                        }}
+                                                        className="w-full flex items-center gap-2"
+                                                    >
+                                                        <h6>{namespace.name}</h6>
+                                                        •
+                                                        <span className="text-xs text-muted-foreground mt-px">
+                                                            {namespace.currentUsage.translationKeys} keys
+                                                        </span>
+                                                    </Link>
+                                                    <Menu>
+                                                        <MenuTrigger render={<Button variant="ghost" size="icon" />} onClick={(e) => {
+                                                            e.stopPropagation();
+                                                        }}>
+                                                            <EllipsisVerticalIcon />
+                                                        </MenuTrigger>
+                                                        <MenuPopup>
+                                                            <MenuGroup>
+                                                                <MenuItem
+                                                                    render={
+                                                                        <Link
+                                                                            key={namespace._id}
+                                                                            to="/projects/$projectId/namespaces/$namespaceId/editor"
+                                                                            params={{
+                                                                                projectId: project._id,
+                                                                                namespaceId: namespace._id,
+                                                                            }}
+                                                                        />
+                                                                    }
+                                                                >
+                                                                    <Eye className="opacity-72" />
+                                                                    View
+                                                                </MenuItem>
+                                                                <MenuItem
+                                                                    onClick={() => {
+                                                                        setIsEditDialogOpen(true);
+                                                                        setSelectedNamespace(namespace);
+                                                                    }}
+                                                                >
+                                                                    <Edit className="opacity-72" />
+                                                                    Edit
+                                                                </MenuItem>
+                                                            </MenuGroup>
+                                                            <MenuSeparator />
                                                             <MenuItem
-                                                                render={
-                                                                    <Link
-                                                                        key={namespace._id}
-                                                                        to="/projects/$projectId/namespaces/$namespaceId/editor"
-                                                                        params={{
-                                                                            projectId: project._id,
-                                                                            namespaceId: namespace._id,
-                                                                        }}
-                                                                    />
-                                                                }
-                                                            >
-                                                                <Eye className="opacity-72" />
-                                                                View
-                                                            </MenuItem>
-                                                            <MenuItem
+                                                                variant="destructive"
                                                                 onClick={() => {
-                                                                    setIsEditDialogOpen(true);
+                                                                    setIsDeleteDialogOpen(true);
                                                                     setSelectedNamespace(namespace);
                                                                 }}
                                                             >
-                                                                <Edit className="opacity-72" />
-                                                                Edit
+                                                                <TrashIcon />
+                                                                Delete
                                                             </MenuItem>
-                                                        </MenuGroup>
-                                                        <MenuSeparator />
-                                                        <MenuItem
-                                                            variant="destructive"
-                                                            onClick={() => {
-                                                                setIsDeleteDialogOpen(true);
-                                                                setSelectedNamespace(namespace);
-                                                            }}
-                                                        >
-                                                            <TrashIcon />
-                                                            Delete
-                                                        </MenuItem>
-                                                    </MenuPopup>
-                                                </Menu>
-                                            </CardHeader>
-                                        </Card>
-                                    ))}
-                                </div>
+                                                        </MenuPopup>
+                                                    </Menu>
+                                                </CardHeader>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                    {namespacesStatus === 'CanLoadMore' && (
+                                        <div className="flex justify-center mt-4">
+                                            <Button variant="outline" onClick={() => loadMore(40)}>
+                                                Load more
+                                            </Button>
+                                        </div>
+                                    )}
+                                </>
                             ) : null}
                             {layout === 'table' ? (
                                 <Card>
@@ -234,7 +248,7 @@ function RouteComponent() {
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {filteredNamespaces.map(namespace => (
+                                                {namespaces.map(namespace => (
                                                     <TableRow key={namespace._id}>
                                                         <TableCell className="font-medium">{namespace.name}</TableCell>
                                                         <TableCell>{namespace.currentUsage.translationKeys}</TableCell>
@@ -288,6 +302,13 @@ function RouteComponent() {
                                                 ))}
                                             </TableBody>
                                         </Table>
+                                        {namespacesStatus === 'CanLoadMore' && (
+                                            <div className="flex justify-center mt-4">
+                                                <Button variant="outline" onClick={() => loadMore(40)}>
+                                                    Load more
+                                                </Button>
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
                             ) : null}

@@ -18,7 +18,7 @@ import { Button } from "./ui/button";
 import { Field, FieldLabel } from "./ui/field";
 import { Input } from "./ui/input";
 import { Spinner } from "./ui/spinner";
-import { Checkbox } from "./ui/checkbox";
+import BuildSelect from "./build-select";
 
 interface Props {
     isOpen: boolean;
@@ -26,26 +26,14 @@ interface Props {
     workspace: Doc<'workspaces'>;
     project: Doc<'projects'>;
     release: Doc<'releases'>;
-    builds: Doc<'builds'>[];
 }
 
-const ReleaseEditDialog = ({ isOpen, setIsOpen, workspace, project, release, builds }: Props) => {
+const ReleaseEditDialog = ({ isOpen, setIsOpen, workspace, project, release }: Props) => {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedBuilds, setSelectedBuilds] = useState<Map<Id<'builds'>, number>>(new Map());
 
     const updateRelease = useMutation(api.releases.updateRelease);
 
-    // Group builds by namespace
-    const buildsByNamespace = builds.reduce((acc, build) => {
-        if (build.status !== 1) return acc; // Only include active builds
-        if (!acc[build.namespace]) {
-            acc[build.namespace] = [];
-        }
-        acc[build.namespace].push(build);
-        return acc;
-    }, {} as Record<string, Doc<'builds'>[]>);
-
-    // Initialize selected builds from release
     useEffect(() => {
         const initialBuilds = new Map<Id<'builds'>, number>();
         release.builds.forEach(b => {
@@ -53,50 +41,6 @@ const ReleaseEditDialog = ({ isOpen, setIsOpen, workspace, project, release, bui
         });
         setSelectedBuilds(initialBuilds);
     }, [release]);
-
-    const handleBuildToggle = (buildId: Id<'builds'>, namespace: string) => {
-        setSelectedBuilds(prev => {
-            const newMap = new Map(prev);
-            if (newMap.has(buildId)) {
-                newMap.delete(buildId);
-            } else {
-                // Calculate even distribution for this namespace
-                const namespaceBuilds = buildsByNamespace[namespace];
-                const currentlySelectedInNamespace = namespaceBuilds.filter(b =>
-                    newMap.has(b._id) || b._id === buildId
-                ).length;
-                const newChance = 100 / currentlySelectedInNamespace;
-
-                // Update all builds in this namespace
-                namespaceBuilds.forEach(b => {
-                    if (newMap.has(b._id) || b._id === buildId) {
-                        newMap.set(b._id === buildId ? buildId : b._id, newChance);
-                    }
-                });
-            }
-
-            // Recalculate percentages for the namespace
-            const selectedInNamespace = Array.from(newMap.entries())
-                .filter(([id]) => buildsByNamespace[namespace]?.some(b => b._id === id));
-
-            if (selectedInNamespace.length > 0) {
-                const evenChance = 100 / selectedInNamespace.length;
-                selectedInNamespace.forEach(([id]) => {
-                    newMap.set(id, evenChance);
-                });
-            }
-
-            return newMap;
-        });
-    };
-
-    const handleChanceChange = (buildId: Id<'builds'>, chance: number) => {
-        setSelectedBuilds(prev => {
-            const newMap = new Map(prev);
-            newMap.set(buildId, chance);
-            return newMap;
-        });
-    };
 
     const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -152,43 +96,15 @@ const ReleaseEditDialog = ({ isOpen, setIsOpen, workspace, project, release, bui
                             <FieldLabel>Tag</FieldLabel>
                             <Input type="text" name="tag" defaultValue={release.tag} required />
                         </Field>
-                        <div className="border-t pt-4">
+                        <Field className="border-t pt-4">
                             <FieldLabel className="mb-3">Select Builds</FieldLabel>
-                            {Object.entries(buildsByNamespace).map(([namespace, namespaceBuilds]) => (
-                                <div key={namespace} className="mb-4">
-                                    <div className="text-sm font-medium text-muted-foreground mb-2">
-                                        {namespace}
-                                    </div>
-                                    <div className="grid gap-2">
-                                        {namespaceBuilds.map((build) => (
-                                            <div key={build._id} className="flex items-center gap-3">
-                                                <Checkbox
-                                                    checked={selectedBuilds.has(build._id)}
-                                                    onCheckedChange={() => handleBuildToggle(build._id, namespace)}
-                                                />
-                                                <span className="text-sm flex-1">{build.tag}</span>
-                                                {selectedBuilds.has(build._id) && (
-                                                    <div className="flex items-center gap-1">
-                                                        <Input
-                                                            type="number"
-                                                            min="0"
-                                                            max="100"
-                                                            value={selectedBuilds.get(build._id) || 0}
-                                                            onChange={(e) => handleChanceChange(build._id, Number(e.target.value))}
-                                                            className="w-16 text-sm"
-                                                        />
-                                                        <span className="text-sm text-muted-foreground">%</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                            {Object.keys(buildsByNamespace).length === 0 && (
-                                <p className="text-sm text-muted-foreground">No active builds available.</p>
-                            )}
-                        </div>
+                            <BuildSelect
+                                projectId={project._id}
+                                workspaceId={workspace._id}
+                                selectedBuilds={selectedBuilds}
+                                setSelectedBuilds={setSelectedBuilds}
+                            />
+                        </Field>
                     </DialogPanel>
                     <DialogFooter>
                         <DialogClose render={<Button variant="ghost" />}>
