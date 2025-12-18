@@ -76,7 +76,7 @@ function Page() {
         if (!isLoaded && !signUp || !code) return null;
 
         try {
-            const signUpAttempt = await signUp.attemptPhoneNumberVerification({
+            const signUpAttempt = await signUp.attemptEmailAddressVerification({
                 code,
             })
 

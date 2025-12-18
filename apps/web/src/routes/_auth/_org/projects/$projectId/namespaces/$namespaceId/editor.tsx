@@ -36,6 +36,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import TranslationKeyCreateDialog from '@/components/translation-key-create-dialog';
 import TranslationKeyDeleteDialog from '@/components/translation-key-delete-dialog';
 import { debounce } from '@tanstack/pacer';
+import { Textarea } from '@/components/ui/textarea';
 
 export const Route = createFileRoute(
     '/_auth/_org/projects/$projectId/namespaces/$namespaceId/editor'
@@ -94,8 +95,7 @@ function EditableCell({
 
     if (isEditing) {
         return (
-            <input
-                type="text"
+            <Textarea
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -122,7 +122,7 @@ function EditableCell({
                     });
                 }
             }}
-            className={`cursor-pointer truncate text-sm ${!isKey && 'text-muted-foreground'}`}
+            className={`cursor-pointer truncate text-sm max-w-[250px] ${!isKey && 'text-muted-foreground'}`}
         >
             {value || <span className="text-gray-300 italic">Empty</span>}
         </div>

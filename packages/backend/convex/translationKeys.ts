@@ -222,6 +222,121 @@ export const createTranslationKey = mutation({
   },
 });
 
+export const createTranslationKeysBulk = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    projectId: v.id("projects"),
+    namespaceId: v.id("namespaces"),
+    keys: v.array(v.object({
+      key: v.string(),
+      primaryValue: v.string(),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const workspace = await authMiddleware(ctx, args.workspaceId);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.workspaceId !== workspace._id || !project.primaryLanguageId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const namespace = await ctx.db.get(args.namespaceId);
+    if (!namespace || namespace.projectId !== project._id || namespace.status !== 1) {
+      throw new Error("Namespace not found or access denied");
+    }
+
+    const language = await ctx.db.get(project.primaryLanguageId);
+    if (!language) {
+      throw new Error("Language not found or access denied");
+    }
+
+    const remainingCapacity = workspace.limits.translationKeys - workspace.currentUsage.translationKeys;
+    if (args.keys.length > remainingCapacity) {
+      throw new Error(`You can only create ${remainingCapacity} more translation keys`);
+    }
+
+    const createdKeyIds: Id<"translationKeys">[] = [];
+    const skippedKeys: string[] = [];
+
+    for (const keyData of args.keys) {
+      const existing = await ctx.db
+        .query("translationKeys")
+        .withIndex("by_project_namespace_key", (q) =>
+          q.eq("projectId", args.projectId).eq("namespaceId", args.namespaceId).eq("key", keyData.key),
+        )
+        .first();
+
+      if (existing && existing.status !== -1) {
+        skippedKeys.push(keyData.key);
+        continue;
+      }
+
+      const keyId = await ctx.db.insert("translationKeys", {
+        projectId: args.projectId,
+        namespaceId: args.namespaceId,
+        key: keyData.key,
+        status: 2,
+        values: {
+          [project.primaryLanguageId]: keyData.primaryValue,
+        },
+        statuses: {
+          [project.primaryLanguageId]: 1,
+        },
+      });
+
+      createdKeyIds.push(keyId);
+
+      await upsertTranslationValue(ctx, {
+        projectId: args.projectId,
+        namespaceId: args.namespaceId,
+        languageId: project.primaryLanguageId,
+        translationKeyId: keyId,
+        key: keyData.key,
+        value: keyData.primaryValue,
+      });
+    }
+
+    const createdCount = createdKeyIds.length;
+
+    if (createdCount > 0) {
+      await ctx.db.patch(namespace._id, {
+        currentUsage: {
+          ...namespace.currentUsage,
+          translationKeys: namespace.currentUsage.translationKeys + createdCount,
+        },
+      });
+      await ctx.db.patch(project._id, {
+        currentUsage: {
+          ...project.currentUsage,
+          translationKeys: project.currentUsage.translationKeys + createdCount,
+        },
+      });
+      await ctx.db.patch(workspace._id, {
+        currentUsage: {
+          ...workspace.currentUsage,
+          translationKeys: workspace.currentUsage.translationKeys + createdCount,
+        },
+      });
+
+      const CHUNK_SIZE = 20;
+      for (let i = 0; i < createdKeyIds.length; i += CHUNK_SIZE) {
+        const chunk = createdKeyIds.slice(i, i + CHUNK_SIZE);
+        await ctx.scheduler.runAfter(0, internal.translationKeys.translateBatchAction, {
+          projectId: args.projectId,
+          keyIds: chunk,
+          targetLanguageIds: null,
+        });
+      }
+    }
+
+    return {
+      createdCount,
+      skippedKeys,
+      keyIds: createdKeyIds,
+    };
+  },
+});
+
 export const updateTranslationKey = mutation({
   args: {
     workspaceId: v.id("workspaces"),
