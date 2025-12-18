@@ -78,7 +78,12 @@ export const startBackfill = internalMutation({
       .withIndex("by_project_namespace_key", (q) => q.eq("projectId", args.projectId))
       .paginate({ cursor: args.cursor ?? null, numItems: 30 });
 
-    if (keysPage.page.length === 0) return;
+    if (keysPage.page.length === 0) {
+      await ctx.db.patch(args.targetLanguageId, {
+        status: 1,
+      });
+      return;
+    }
 
     const keyIds = keysPage.page.filter((k) => k.status !== -1).map((k) => k._id);
 
