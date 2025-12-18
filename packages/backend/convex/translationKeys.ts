@@ -383,11 +383,17 @@ export const getBatchTranslationData = internalQuery({
     projectId: v.id("projects"),
     keyIds: v.array(v.id("translationKeys")),
     targetLanguageIds: v.union(v.array(v.id("languages")), v.null()),
+    overrideSourceLanguageId: v.optional(v.id("languages")),
   },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
     if (!project?.primaryLanguageId) {
       throw new Error("Primary language missing");
+    }
+
+    const sourceLanguageId = args.overrideSourceLanguageId ?? project.primaryLanguageId;
+    if (!sourceLanguageId) {
+      return { sourceData: {}, targetLanguages: [] };
     }
 
     let targetLanguages;
@@ -400,7 +406,7 @@ export const getBatchTranslationData = internalQuery({
         .withIndex("by_project_status", (q) => q.eq("projectId", args.projectId).gt("status", -1))
         .collect();
 
-      targetLanguages = allLangs.filter((l) => l._id !== project.primaryLanguageId);
+      targetLanguages = allLangs.filter((l) => l._id !== sourceLanguageId);
     }
 
     const validTargetLanguages = targetLanguages.filter((l): l is NonNullable<typeof l> => !!l);
@@ -410,10 +416,10 @@ export const getBatchTranslationData = internalQuery({
       const keyDoc = await ctx.db.get(keyId);
 
       if (keyDoc && keyDoc.status !== -1) {
-        const primaryVal = keyDoc.values[project.primaryLanguageId];
+        const sourceVal = keyDoc.values[sourceLanguageId];
 
-        if (primaryVal) {
-          sourceData[keyDoc._id] = primaryVal;
+        if (sourceVal) {
+          sourceData[keyDoc._id] = sourceVal;
         }
       }
     }
@@ -430,6 +436,7 @@ export const translateBatchAction = internalAction({
     projectId: v.id("projects"),
     keyIds: v.array(v.id("translationKeys")),
     targetLanguageIds: v.nullable(v.array(v.id("languages"))),
+    overrideSourceLanguageId: v.optional(v.id("languages")),
   },
   handler: async (ctx, args) => {
     const { sourceData, targetLanguages } = await ctx.runQuery(internal.translationKeys.getBatchTranslationData, args);
