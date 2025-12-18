@@ -1,6 +1,11 @@
 import { auth, clerkClient } from '@clerk/tanstack-react-start/server';
+import { useOrganization } from '@clerk/tanstack-react-start';
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
+import { useQuery } from 'convex/react';
+import { api } from '@unlingo/backend/convex/_generated/api';
+import PremiumLockDialog from '@/components/premium-lock-dialog';
+import { Spinner } from '@/components/ui/spinner';
 
 const orgStateFn = createServerFn({ method: 'GET' }).handler(async () => {
     const { isAuthenticated, userId, orgId } = await auth();
@@ -44,5 +49,26 @@ export const Route = createFileRoute('/_auth/_org')({
 });
 
 function RouteComponent() {
-    return <Outlet />;
+    const { organization } = useOrganization();
+    const clerkId = organization?.id;
+
+    const workspace = useQuery(
+        api.workspaces.getWorkspaceWithSubscription,
+        clerkId ? { clerkId } : 'skip'
+    );
+
+    // Show lock dialog if workspace exists and user is not premium
+    const showPremiumLock = workspace !== undefined && workspace !== null && !workspace.isPremium;
+
+    return (
+        <>
+            {!workspace || showPremiumLock ?
+                <div className='w-screen h-screen flex items-center justify-center'>
+                    <Spinner />
+                </div> :
+                <Outlet />
+            }
+            <PremiumLockDialog isOpen={showPremiumLock} />
+        </>
+    );
 }

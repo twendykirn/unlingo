@@ -23,6 +23,24 @@ async function validateRequest(req: Request): Promise<WebhookEvent | null> {
   }
 }
 
+function getTranslationKeysLimitFromProduct(productId?: string): number | undefined {
+  if (!productId) return undefined;
+
+  const translationKeysLimits: Record<string, number> = {
+    [process.env.POLAR_PRO_10K_PRODUCT_ID!]: 1000,
+    [process.env.POLAR_PRO_50K_PRODUCT_ID!]: 5000,
+    [process.env.POLAR_PRO_250K_PRODUCT_ID!]: 25000,
+    [process.env.POLAR_PRO_500K_PRODUCT_ID!]: 50000,
+    [process.env.POLAR_PRO_1M_PRODUCT_ID!]: 100000,
+    [process.env.POLAR_PRO_2M_PRODUCT_ID!]: 200000,
+    [process.env.POLAR_PRO_10M_PRODUCT_ID!]: 200000,
+    [process.env.POLAR_PRO_50M_PRODUCT_ID!]: 200000,
+    [process.env.POLAR_PRO_100M_PRODUCT_ID!]: 200000,
+  };
+
+  return translationKeysLimits[productId] || 50000;
+}
+
 function getRequestLimitFromProduct(productId?: string): number | undefined {
   if (!productId) return undefined;
 
@@ -326,6 +344,7 @@ polar.registerRoutes(http, {
         workspaceId: workspaceId as Id<"workspaces">,
         tier: getTierFromProduct(event.data.product?.id),
         requestLimit: getRequestLimitFromProduct(event.data.product?.id),
+        translationKeysLimit: getTranslationKeysLimitFromProduct(event.data.product?.id),
       });
     }
   },
@@ -337,6 +356,7 @@ polar.registerRoutes(http, {
         workspaceId: workspaceId as Id<"workspaces">,
         tier: getTierFromProduct(event.data.product?.id),
         requestLimit: isActive ? getRequestLimitFromProduct(event.data.product?.id) : undefined,
+        translationKeysLimit: isActive ? getTranslationKeysLimitFromProduct(event.data.product?.id) : undefined,
       });
     }
   },
