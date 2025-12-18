@@ -12,6 +12,7 @@ export const getReleases = query({
   args: {
     workspaceId: v.id("workspaces"),
     projectId: v.id("projects"),
+    search: v.optional(v.string()),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
@@ -28,6 +29,13 @@ export const getReleases = query({
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
       throw new Error("Project not found or access denied");
+    }
+
+    if (args.search) {
+      return await ctx.db
+        .query("releases")
+        .withSearchIndex("search", (q) => q.search("tag", args.search!).eq("projectId", args.projectId))
+        .paginate(args.paginationOpts);
     }
 
     return await ctx.db

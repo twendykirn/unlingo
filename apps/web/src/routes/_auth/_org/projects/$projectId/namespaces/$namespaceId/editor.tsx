@@ -35,6 +35,7 @@ import { toastManager } from '@/components/ui/toast';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import TranslationKeyCreateDialog from '@/components/translation-key-create-dialog';
 import TranslationKeyDeleteDialog from '@/components/translation-key-delete-dialog';
+import { debounce } from '@tanstack/pacer';
 
 export const Route = createFileRoute(
     '/_auth/_org/projects/$projectId/namespaces/$namespaceId/editor'
@@ -389,6 +390,16 @@ function EditorComponent() {
     const selectedRowCount = Object.values(rowSelection).filter(Boolean).length;
     const selectedKeys = Object.keys(rowSelection).filter((id) => rowSelection[id]);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const debouncedSetSearch = useCallback(
+        debounce((value: string) => setSearch(value), { wait: 500 }),
+        []
+    );
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        debouncedSetSearch(e.target.value);
+    };
+
     if (!workspace || !project || !namespace || !languages) {
         return (
             <SidebarProvider>
@@ -398,7 +409,7 @@ function EditorComponent() {
                         <div className="flex items-center gap-2 px-4">
                             <SidebarTrigger className="-ml-1" />
                         </div>
-                        <GlobalSearchDialog projectId={projectId} />
+                        <GlobalSearchDialog workspaceId={workspace?._id} projectId={project?._id} />
                     </header>
                     <div className="flex items-center justify-center h-full">
                         <Spinner />
@@ -417,7 +428,7 @@ function EditorComponent() {
                         <div className="flex items-center gap-2 px-4">
                             <SidebarTrigger className="-ml-1" />
                         </div>
-                        <GlobalSearchDialog projectId={projectId} />
+                        <GlobalSearchDialog workspaceId={workspace._id} projectId={project._id} />
                     </header>
                     <div className="flex items-center justify-center h-full">
                         <Empty>
@@ -476,7 +487,7 @@ function EditorComponent() {
                     <div className="flex items-center gap-2 px-4">
                         <SidebarTrigger className="-ml-1" />
                     </div>
-                    <GlobalSearchDialog projectId={projectId} />
+                    <GlobalSearchDialog workspaceId={workspace._id} projectId={project._id} />
                 </header>
                 <div className="flex flex-col gap-4 p-4 pt-0 max-w-full flex-1">
                     <div className="flex items-center">
@@ -492,8 +503,7 @@ function EditorComponent() {
                                     aria-label="Search"
                                     placeholder="Search namespaces"
                                     type="search"
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
+                                    onChange={handleSearchChange}
                                 />
                                 <InputGroupAddon>
                                     <SearchIcon />

@@ -34,7 +34,6 @@ function RouteComponent() {
 
     const [layout, setLayout] = useState<'grid' | 'table'>('table');
     const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -57,17 +56,14 @@ function RouteComponent() {
             : 'skip'
     );
 
-    const {
-        results: languages
-    } = usePaginatedQuery(
+    const languages = useQuery(
         api.languages.getLanguages,
         workspace && project
             ? {
                 projectId: project._id,
                 workspaceId: workspace._id,
             }
-            : 'skip',
-        { initialNumItems: 100 }
+            : 'skip'
     );
 
     const {
@@ -80,7 +76,7 @@ function RouteComponent() {
             ? {
                 projectId: project._id,
                 workspaceId: workspace._id,
-                search: debouncedSearch || undefined,
+                search: search || undefined,
             }
             : 'skip',
         { initialNumItems: 40 }
@@ -88,12 +84,11 @@ function RouteComponent() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const debouncedSetSearch = useCallback(
-        debounce((value: string) => setDebouncedSearch(value), { wait: 500 }),
+        debounce((value: string) => setSearch(value), { wait: 500 }),
         []
     );
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearch(e.target.value);
         debouncedSetSearch(e.target.value);
     };
 
@@ -134,7 +129,7 @@ function RouteComponent() {
                     <div className="flex items-center gap-2 px-4">
                         <SidebarTrigger className="-ml-1" />
                     </div>
-                    <GlobalSearchDialog projectId={projectId} />
+                    <GlobalSearchDialog workspaceId={workspace?._id} projectId={project?._id} />
                 </header>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
                     <div className="flex items-center">
@@ -160,7 +155,6 @@ function RouteComponent() {
                                     aria-label="Search"
                                     placeholder="Search terms"
                                     type="search"
-                                    value={search}
                                     onChange={handleSearchChange}
                                 />
                                 <InputGroupAddon>
@@ -206,56 +200,65 @@ function RouteComponent() {
                     {workspace && project && glossaryTerms && glossaryTerms.length > 0 ? (
                         <>
                             {layout === 'grid' ? (
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                    {glossaryTerms.map(term => (
-                                        <Card key={term._id} className="py-4 hover:border-primary/30">
-                                            <CardHeader className="px-4 flex justify-between items-start">
-                                                <div className="flex-1">
-                                                    <h6 className="font-medium">{term.term}</h6>
-                                                    {term.description && (
-                                                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                                            {term.description}
-                                                        </p>
-                                                    )}
-                                                    <div className="flex flex-wrap gap-1 mt-2">
-                                                        {getTermFlags(term)}
+                                <>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        {glossaryTerms.map(term => (
+                                            <Card key={term._id} className="py-4 hover:border-primary/30">
+                                                <CardHeader className="px-4 flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        <h6 className="font-medium">{term.term}</h6>
+                                                        {term.description && (
+                                                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                                                {term.description}
+                                                            </p>
+                                                        )}
+                                                        <div className="flex flex-wrap gap-1 mt-2">
+                                                            {getTermFlags(term)}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <Menu>
-                                                    <MenuTrigger render={<Button variant="ghost" size="icon" />} onClick={(e) => {
-                                                        e.stopPropagation();
-                                                    }}>
-                                                        <EllipsisVerticalIcon />
-                                                    </MenuTrigger>
-                                                    <MenuPopup>
-                                                        <MenuGroup>
+                                                    <Menu>
+                                                        <MenuTrigger render={<Button variant="ghost" size="icon" />} onClick={(e) => {
+                                                            e.stopPropagation();
+                                                        }}>
+                                                            <EllipsisVerticalIcon />
+                                                        </MenuTrigger>
+                                                        <MenuPopup>
+                                                            <MenuGroup>
+                                                                <MenuItem
+                                                                    onClick={() => {
+                                                                        setIsEditDialogOpen(true);
+                                                                        setSelectedTerm(term);
+                                                                    }}
+                                                                >
+                                                                    <Edit className="opacity-72" />
+                                                                    Edit
+                                                                </MenuItem>
+                                                            </MenuGroup>
+                                                            <MenuSeparator />
                                                             <MenuItem
+                                                                variant="destructive"
                                                                 onClick={() => {
-                                                                    setIsEditDialogOpen(true);
+                                                                    setIsDeleteDialogOpen(true);
                                                                     setSelectedTerm(term);
                                                                 }}
                                                             >
-                                                                <Edit className="opacity-72" />
-                                                                Edit
+                                                                <TrashIcon />
+                                                                Delete
                                                             </MenuItem>
-                                                        </MenuGroup>
-                                                        <MenuSeparator />
-                                                        <MenuItem
-                                                            variant="destructive"
-                                                            onClick={() => {
-                                                                setIsDeleteDialogOpen(true);
-                                                                setSelectedTerm(term);
-                                                            }}
-                                                        >
-                                                            <TrashIcon />
-                                                            Delete
-                                                        </MenuItem>
-                                                    </MenuPopup>
-                                                </Menu>
-                                            </CardHeader>
-                                        </Card>
-                                    ))}
-                                </div>
+                                                        </MenuPopup>
+                                                    </Menu>
+                                                </CardHeader>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                    {glossaryStatus === 'CanLoadMore' && (
+                                        <div className="flex justify-center mt-4">
+                                            <Button variant="outline" onClick={() => loadMore(40)}>
+                                                Load more
+                                            </Button>
+                                        </div>
+                                    )}
+                                </>
                             ) : null}
                             {layout === 'table' ? (
                                 <Card>

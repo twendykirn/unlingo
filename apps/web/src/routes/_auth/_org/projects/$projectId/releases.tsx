@@ -19,7 +19,7 @@ import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Doc, Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { usePaginatedQuery, useQuery } from 'convex/react';
 import { BookIcon, Edit, EllipsisVerticalIcon, RocketIcon, SearchIcon, TrashIcon } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 export const Route = createFileRoute(
     '/_auth/_org/projects/$projectId/releases',
@@ -32,7 +32,6 @@ function RouteComponent() {
     const { organization } = useOrganization();
 
     const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -78,6 +77,7 @@ function RouteComponent() {
             ? {
                 projectId: project._id,
                 workspaceId: workspace._id,
+                search: search || undefined,
             }
             : 'skip',
         { initialNumItems: 40 }
@@ -85,24 +85,13 @@ function RouteComponent() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const debouncedSetSearch = useCallback(
-        debounce((value: string) => setDebouncedSearch(value), { wait: 500 }),
+        debounce((value: string) => setSearch(value), { wait: 500 }),
         []
     );
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearch(e.target.value);
         debouncedSetSearch(e.target.value);
     };
-
-    const filteredReleases = useMemo(() => {
-        if (!releases) return [];
-
-        if (!debouncedSearch) return releases;
-
-        return releases.filter(release =>
-            release.tag.toLowerCase().includes(debouncedSearch.toLowerCase())
-        );
-    }, [releases, debouncedSearch]);
 
     const getBuildInfo = (release: Doc<'releases'>) => {
         if (!builds) return [];
@@ -139,7 +128,7 @@ function RouteComponent() {
                     <div className="flex items-center gap-2 px-4">
                         <SidebarTrigger className="-ml-1" />
                     </div>
-                    <GlobalSearchDialog projectId={projectId} />
+                    <GlobalSearchDialog workspaceId={workspace?._id} projectId={project?._id} />
                 </header>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
                     <div className="flex items-center">
@@ -150,7 +139,6 @@ function RouteComponent() {
                                     aria-label="Search"
                                     placeholder="Search releases"
                                     type="search"
-                                    value={search}
                                     onChange={handleSearchChange}
                                 />
                                 <InputGroupAddon>
@@ -168,7 +156,7 @@ function RouteComponent() {
                         <div className="flex items-center justify-center w-full mt-4">
                             <Spinner />
                         </div>
-                    ) : filteredReleases.length === 0 ? (
+                    ) : releases.length === 0 ? (
                         <Empty>
                             <EmptyHeader>
                                 <EmptyMedia variant="icon">
@@ -205,7 +193,7 @@ function RouteComponent() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {filteredReleases.map(release => {
+                                        {releases.map(release => {
                                             const namespaceGroups = getNamespaceGroups(release);
 
                                             return (

@@ -135,9 +135,9 @@ const GlossaryEditDialog = ({ isOpen, setIsOpen, workspace, project, term, langu
                             </label>
                         </div>
                         {!isNonTranslatable && languages.length > 0 && (
-                            <div className="border-t pt-4">
+                            <Field className="border-t pt-4">
                                 <FieldLabel className="mb-3">Translations</FieldLabel>
-                                <div className="grid gap-3">
+                                <div className="grid gap-3 w-full">
                                     {languages.map((language) => (
                                         <Field key={language._id}>
                                             <FieldLabel className="text-xs text-muted-foreground">
@@ -151,7 +151,7 @@ const GlossaryEditDialog = ({ isOpen, setIsOpen, workspace, project, term, langu
                                         </Field>
                                     ))}
                                 </div>
-                            </div>
+                            </Field>
                         )}
                     </DialogPanel>
                     <DialogFooter>

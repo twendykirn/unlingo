@@ -60,7 +60,11 @@ export default defineSchema({
     ),
   })
     .index("by_project_name", ["projectId", "name"])
-    .index("by_project_status", ["projectId", "status"]),
+    .index("by_project_status", ["projectId", "status"])
+    .searchIndex("search", {
+      searchField: "name",
+      filterFields: ["projectId"],
+    }),
   translationKeys: defineTable({
     projectId: v.id("projects"),
     namespaceId: v.id("namespaces"),
@@ -129,7 +133,12 @@ export default defineSchema({
         selectionChance: v.number(), // 0-100%, for A/B testing
       }),
     ),
-  }).index("by_project_tag", ["projectId", "tag"]),
+  })
+    .index("by_project_tag", ["projectId", "tag"])
+    .searchIndex("search", {
+      searchField: "tag",
+      filterFields: ["projectId"],
+    }),
   screenshots: defineTable({
     projectId: v.id("projects"),
     name: v.string(),

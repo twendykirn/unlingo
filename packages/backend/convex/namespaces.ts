@@ -8,6 +8,7 @@ export const getNamespaces = query({
   args: {
     projectId: v.id("projects"),
     workspaceId: v.id("workspaces"),
+    search: v.optional(v.string()),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
@@ -24,6 +25,14 @@ export const getNamespaces = query({
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
       throw new Error("Project not found or access denied");
+    }
+
+    if (args.search) {
+      return await ctx.db
+        .query("namespaces")
+        .withSearchIndex("search", (q) => q.search("name", args.search!).eq("projectId", args.projectId))
+        .filter((q) => q.gt(q.field("status"), -1))
+        .paginate(args.paginationOpts);
     }
 
     return await ctx.db

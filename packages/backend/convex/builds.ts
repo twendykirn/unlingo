@@ -33,12 +33,14 @@ export const getBuilds = query({
       return await ctx.db
         .query("builds")
         .withSearchIndex("search", (q) => q.search("tag", args.search!).eq("projectId", args.projectId))
+        .filter((q) => q.gt(q.field("status"), -1))
         .paginate(args.paginationOpts);
     }
 
     return await ctx.db
       .query("builds")
       .withIndex("by_project_tag", (q) => q.eq("projectId", args.projectId))
+      .filter((q) => q.gt(q.field("status"), -1))
       .order("desc")
       .paginate(args.paginationOpts);
   },

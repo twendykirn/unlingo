@@ -35,9 +35,7 @@ const ReleaseEditDialog = ({ isOpen, setIsOpen, workspace, project, release, bui
 
     const updateRelease = useMutation(api.releases.updateRelease);
 
-    // Group builds by namespace
     const buildsByNamespace = builds.reduce((acc, build) => {
-        if (build.status !== 1) return acc; // Only include active builds
         if (!acc[build.namespace]) {
             acc[build.namespace] = [];
         }
@@ -45,7 +43,6 @@ const ReleaseEditDialog = ({ isOpen, setIsOpen, workspace, project, release, bui
         return acc;
     }, {} as Record<string, Doc<'builds'>[]>);
 
-    // Initialize selected builds from release
     useEffect(() => {
         const initialBuilds = new Map<Id<'builds'>, number>();
         release.builds.forEach(b => {
@@ -60,14 +57,12 @@ const ReleaseEditDialog = ({ isOpen, setIsOpen, workspace, project, release, bui
             if (newMap.has(buildId)) {
                 newMap.delete(buildId);
             } else {
-                // Calculate even distribution for this namespace
                 const namespaceBuilds = buildsByNamespace[namespace];
                 const currentlySelectedInNamespace = namespaceBuilds.filter(b =>
                     newMap.has(b._id) || b._id === buildId
                 ).length;
                 const newChance = 100 / currentlySelectedInNamespace;
 
-                // Update all builds in this namespace
                 namespaceBuilds.forEach(b => {
                     if (newMap.has(b._id) || b._id === buildId) {
                         newMap.set(b._id === buildId ? buildId : b._id, newChance);
@@ -75,7 +70,6 @@ const ReleaseEditDialog = ({ isOpen, setIsOpen, workspace, project, release, bui
                 });
             }
 
-            // Recalculate percentages for the namespace
             const selectedInNamespace = Array.from(newMap.entries())
                 .filter(([id]) => buildsByNamespace[namespace]?.some(b => b._id === id));
 
