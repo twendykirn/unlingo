@@ -62,7 +62,12 @@ function RouteComponent() {
 
     return (
         <>
-            {!showPremiumLock ? <Outlet /> : <Spinner />}
+            {!workspace || showPremiumLock ?
+                <div className='w-screen h-screen flex items-center justify-center'>
+                    <Spinner />
+                </div> :
+                <Outlet />
+            }
             <PremiumLockDialog isOpen={showPremiumLock} />
         </>
     );

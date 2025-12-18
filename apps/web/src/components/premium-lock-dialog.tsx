@@ -13,13 +13,12 @@ import {
     DialogTitle
 } from "./ui/dialog";
 import { CheckoutLink } from '@convex-dev/polar/react';
-import { cn } from "~/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface Props {
     isOpen: boolean;
 }
 
-// Plan configuration with request limits and keys
 const PLAN_CONFIG: Record<string, { requests: string; keys: number }> = {
     pro10kRequests: { requests: "10K", keys: 1 },
     pro50kRequests: { requests: "50K", keys: 2 },
@@ -58,22 +57,20 @@ const PremiumLockDialog = ({ isOpen }: Props) => {
                 return {
                     id: product!.id,
                     name: product!.name,
-                    price: product!.prices?.[0]?.amount
-                        ? `$${(product!.prices[0].amount / 100).toFixed(0)}`
+                    price: product!.prices?.[0]?.priceAmount
+                        ? `$${(product!.prices[0].priceAmount / 100).toFixed(0)}`
                         : "N/A",
-                    interval: product!.prices?.[0]?.interval || "month",
+                    interval: "month",
                     requests: config.requests,
                     keys: config.keys,
                     key,
                 };
             })
             .sort((a, b) => {
-                // Sort by keys (ascending) to order plans from smallest to largest
                 return a.keys - b.keys;
             });
     }, [products]);
 
-    // Set default selected package when products are loaded
     useEffect(() => {
         if (planList.length > 0 && !selectedPackage) {
             setSelectedPackage(planList[0].id);
@@ -97,13 +94,19 @@ const PremiumLockDialog = ({ isOpen }: Props) => {
                     </div>
                 </DialogHeader>
                 <DialogPanel className="grid gap-6">
-                    {/* Plan description */}
-                    <p className="text-sm text-muted-foreground">
-                        Our plans are simple: choose based on your API keys per workspace and requests per month.
-                        All other features are included in every plan.
-                    </p>
-
-                    {/* Plans grid */}
+                    <div className="space-y-3">
+                        <h5 className="text-sm font-medium text-foreground">
+                            Included in all plans:
+                        </h5>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {INCLUDED_FEATURES.map((feature) => (
+                                <div key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Check className="size-4 text-primary flex-shrink-0" />
+                                    <span>{feature}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                     {planList.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             {planList.map((plan) => (
@@ -144,21 +147,6 @@ const PremiumLockDialog = ({ isOpen }: Props) => {
                             Loading plans...
                         </div>
                     )}
-
-                    {/* Included features */}
-                    <div className="space-y-3">
-                        <h5 className="text-sm font-medium text-foreground">
-                            Included in all plans:
-                        </h5>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            {INCLUDED_FEATURES.map((feature) => (
-                                <div key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Check className="size-4 text-primary flex-shrink-0" />
-                                    <span>{feature}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                 </DialogPanel>
                 <DialogFooter>
                     <div className="flex justify-end w-full">
