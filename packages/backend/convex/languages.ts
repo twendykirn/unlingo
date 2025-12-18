@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { authMiddleware } from "../middlewares/auth";
 
 export const getLanguages = query({
   args: {
@@ -8,15 +9,7 @@ export const getLanguages = query({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || identity.org !== workspace.clerkId) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
@@ -40,15 +33,7 @@ export const createLanguage = mutation({
     rules: v.optional(v.record(v.string(), v.string())),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || identity.org !== workspace.clerkId) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
@@ -134,15 +119,7 @@ export const updateLanguage = mutation({
     rules: v.optional(v.record(v.string(), v.string())),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || identity.org !== workspace.clerkId) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
@@ -175,15 +152,7 @@ export const deleteLanguage = mutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || identity.org !== workspace.clerkId) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {

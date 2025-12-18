@@ -2,6 +2,7 @@ import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { authMiddleware } from "../middlewares/auth";
 
 const buildInput = v.object({
   buildId: v.id("builds"),
@@ -16,15 +17,7 @@ export const getReleases = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || identity.org !== workspace.clerkId) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
@@ -54,15 +47,7 @@ export const createRelease = mutation({
     builds: v.array(buildInput),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || identity.org !== workspace.clerkId) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
@@ -107,15 +92,7 @@ export const updateRelease = mutation({
     builds: v.optional(v.array(buildInput)),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || identity.org !== workspace.clerkId) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
@@ -162,15 +139,7 @@ export const deleteRelease = mutation({
     releaseId: v.id("releases"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || identity.org !== workspace.clerkId) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
@@ -193,15 +162,7 @@ export const getConfiguration = query({
     releaseId: v.id("releases"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || identity.org !== workspace.clerkId) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
@@ -294,15 +255,7 @@ export const repairConfiguration = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || identity.org !== workspace.clerkId) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {

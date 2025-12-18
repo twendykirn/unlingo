@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { ActionRetrier } from "@convex-dev/action-retrier";
 import { components, internal } from "./_generated/api";
 import * as s3 from "../lib/s3";
+import { authMiddleware } from "../middlewares/auth";
 
 const retrier = new ActionRetrier(components.actionRetrier);
 
@@ -49,15 +50,7 @@ export const generateUploadUrl = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || identity.org !== workspace.clerkId) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {

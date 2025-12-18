@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { deleteFile, getFileUrl } from "./files";
+import { authMiddleware } from "../middlewares/auth";
 
 export const getScreenshotsForProject = query({
   args: {
@@ -10,15 +11,7 @@ export const getScreenshotsForProject = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || workspace.clerkId !== identity.org) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
@@ -61,17 +54,9 @@ export const createScreenshot = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    await authMiddleware(ctx, args.workspaceId, async () => {
       await deleteFile(ctx, args.imageFileId);
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || workspace.clerkId !== identity.org) {
-      await deleteFile(ctx, args.imageFileId);
-      throw new Error("Workspace not found or access denied");
-    }
+    });
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
@@ -115,15 +100,7 @@ export const deleteScreenshot = mutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || workspace.clerkId !== identity.org) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const screenshot = await ctx.db.get(args.screenshotId);
     if (!screenshot) {
@@ -168,15 +145,7 @@ export const getContainerMappings = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || workspace.clerkId !== identity.org) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const container = await ctx.db.get(args.containerId);
     if (!container) {
@@ -207,15 +176,7 @@ export const assignKeyToContainer = mutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || workspace.clerkId !== identity.org) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const container = await ctx.db.get(args.containerId);
     if (!container) {
@@ -267,15 +228,7 @@ export const removeKeyFromContainer = mutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || workspace.clerkId !== identity.org) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const container = await ctx.db.get(args.containerId);
     if (!container) {
@@ -321,15 +274,7 @@ export const deleteKeyMapping = mutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || workspace.clerkId !== identity.org) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const mapping = await ctx.db.get(args.mappingId);
     if (!mapping) {
@@ -369,15 +314,7 @@ export const createContainer = mutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || workspace.clerkId !== identity.org) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const screenshot = await ctx.db.get(args.screenshotId);
     if (!screenshot) {
@@ -414,15 +351,7 @@ export const updateContainer = mutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || workspace.clerkId !== identity.org) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const container = await ctx.db.get(args.containerId);
     if (!container) {
@@ -454,15 +383,7 @@ export const deleteContainer = mutation({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || workspace.clerkId !== identity.org) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const container = await ctx.db.get(args.containerId);
     if (!container) {
@@ -499,15 +420,7 @@ export const getContainersForScreenshot = query({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || workspace.clerkId !== identity.org) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const screenshot = await ctx.db.get(args.screenshotId);
     if (!screenshot) {
@@ -534,15 +447,7 @@ export const getScreenshot = query({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace || workspace.clerkId !== identity.org) {
-      throw new Error("Workspace not found or access denied");
-    }
+    await authMiddleware(ctx, args.workspaceId);
 
     const screenshot = await ctx.db.get(args.screenshotId);
     if (!screenshot) {

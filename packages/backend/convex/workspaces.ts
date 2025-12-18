@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import { customersDelete } from "@polar-sh/sdk/funcs/customersDelete.js";
 import { customersUpdate } from "@polar-sh/sdk/funcs/customersUpdate.js";
 import { getCurrentMonth } from "./utils";
+import { authMiddleware } from "../middlewares/auth";
 
 export const verifyWorkspaceContactEmail = mutation({
   args: {
@@ -219,6 +220,20 @@ export const getWorkspaceWithSubscription = query({
         ...workspace,
         isPremium: false,
       };
+    }
+  },
+});
+
+export const getWorkspaceForAuthMiddlewareAction = internalQuery({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const workspace = await authMiddleware(ctx, args.workspaceId);
+      return workspace;
+    } catch (error) {
+      throw new Error("Workspace not found or access denied");
     }
   },
 });
