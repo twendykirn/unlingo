@@ -1,11 +1,4 @@
-import {
-  internalMutation,
-  internalQuery,
-  MutationCtx,
-  query,
-  mutation,
-  internalAction,
-} from "./_generated/server";
+import { internalMutation, internalQuery, MutationCtx, query, mutation, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { polar } from "./polar";
@@ -13,7 +6,6 @@ import { internal } from "./_generated/api";
 import { customersDelete } from "@polar-sh/sdk/funcs/customersDelete.js";
 import { customersUpdate } from "@polar-sh/sdk/funcs/customersUpdate.js";
 import { getCurrentMonth } from "./utils";
-import { r2 } from "./files";
 
 export const verifyWorkspaceContactEmail = mutation({
   args: {
@@ -27,9 +19,7 @@ export const verifyWorkspaceContactEmail = mutation({
 
     const existingWorkspace = await ctx.db
       .query("workspaces")
-      .withIndex("by_contactEmail", (q) =>
-        q.eq("contactEmail", args.contactEmail),
-      )
+      .withIndex("by_contactEmail", (q) => q.eq("contactEmail", args.contactEmail))
       .first();
 
     return { success: existingWorkspace === null };
@@ -49,15 +39,11 @@ export const createOrganizationWorkspace = mutation({
 
     const existingWorkspace = await ctx.db
       .query("workspaces")
-      .withIndex("by_contactEmail", (q) =>
-        q.eq("contactEmail", args.contactEmail),
-      )
+      .withIndex("by_contactEmail", (q) => q.eq("contactEmail", args.contactEmail))
       .first();
 
     if (existingWorkspace) {
-      throw new Error(
-        "A workspace with this contact email already exists. Please use a different email address.",
-      );
+      throw new Error("A workspace with this contact email already exists. Please use a different email address.");
     }
 
     const currentMonth = getCurrentMonth();
@@ -80,9 +66,7 @@ export const createOrganizationWorkspace = mutation({
       workspaceUsageId,
     });
 
-    console.log(
-      `Created team workspace for organization ${args.clerkOrgId} by user ${identity.issuer}`,
-    );
+    console.log(`Created team workspace for organization ${args.clerkOrgId} by user ${identity.issuer}`);
     return workspaceId;
   },
 });
@@ -117,11 +101,7 @@ export const deleteOrganizationWorkspace = internalMutation({
       return;
     }
 
-    await deleteWorkspaceAndRelatedData(
-      ctx,
-      workspace._id,
-      workspace.workspaceUsageId,
-    );
+    await deleteWorkspaceAndRelatedData(ctx, workspace._id, workspace.workspaceUsageId);
     console.log(`Deleted workspace for organization ${args.clerkOrgId}`);
   },
 });
@@ -137,10 +117,7 @@ async function deleteWorkspaceAndRelatedData(
     });
     console.log(`Delete Polar customer for workspace ${workspaceId}`);
   } catch (error) {
-    console.warn(
-      `Failed to delete Polar customer for workspace ${workspaceId}:`,
-      error,
-    );
+    console.warn(`Failed to delete Polar customer for workspace ${workspaceId}:`, error);
   }
 
   await ctx.db.delete(workspaceUsageId);
@@ -237,10 +214,7 @@ export const getWorkspaceWithSubscription = query({
       };
     } catch (error) {
       // If Polar query fails, fall back to free tier
-      console.warn(
-        `Failed to get subscription for workspace ${workspace._id}:`,
-        error,
-      );
+      console.warn(`Failed to get subscription for workspace ${workspace._id}:`, error);
       return {
         ...workspace,
         isPremium: false,
@@ -283,22 +257,16 @@ export const updateWorkspaceContactEmail = mutation({
     const hasOrgAccess = identity.org === args.clerkId;
 
     if (!hasOrgAccess) {
-      throw new Error(
-        "Unauthorized: Can only update organization workspaces - please try again in a moment",
-      );
+      throw new Error("Unauthorized: Can only update organization workspaces - please try again in a moment");
     }
 
     const existingWorkspace = await ctx.db
       .query("workspaces")
-      .withIndex("by_contactEmail", (q) =>
-        q.eq("contactEmail", args.contactEmail),
-      )
+      .withIndex("by_contactEmail", (q) => q.eq("contactEmail", args.contactEmail))
       .first();
 
     if (existingWorkspace) {
-      throw new Error(
-        "A workspace with this contact email already exists. Please use a different email address.",
-      );
+      throw new Error("A workspace with this contact email already exists. Please use a different email address.");
     }
 
     const workspace = await ctx.db
@@ -325,11 +293,7 @@ export const updateWorkspaceContactEmail = mutation({
 export const updateWorkspaceLimits = internalMutation({
   args: {
     workspaceId: v.id("workspaces"),
-    tier: v.union(
-      v.literal("starter"),
-      v.literal("hobby"),
-      v.literal("premium"),
-    ),
+    tier: v.union(v.literal("starter"), v.literal("hobby"), v.literal("premium")),
     requestLimit: v.optional(v.number()),
     translationKeysLimit: v.optional(v.number()),
   },
@@ -366,9 +330,7 @@ export const updateWorkspaceLimits = internalMutation({
 
     await ctx.db.patch(workspace._id, { limits });
 
-    console.log(
-      `Updated limits for workspace ${workspace._id}, tier: ${args.tier}`,
-    );
+    console.log(`Updated limits for workspace ${workspace._id}, tier: ${args.tier}`);
     return { success: true };
   },
 });

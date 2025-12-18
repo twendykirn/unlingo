@@ -18,22 +18,23 @@ import { Button } from "./ui/button";
 import { Field, FieldLabel } from "./ui/field";
 import { Input } from "./ui/input";
 import { Spinner } from "./ui/spinner";
+import { useUploadFile } from "@/hooks/use-file-upload";
 
 interface Props {
     isOpen: boolean;
     setIsOpen: (value: boolean) => void;
     workspace: Doc<'workspaces'>;
     project: Doc<'projects'>;
-    onUploadFile: (file: File) => Promise<string>;
 }
 
-const ScreenshotCreateDialog = ({ isOpen, setIsOpen, workspace, project, onUploadFile }: Props) => {
+const ScreenshotCreateDialog = ({ isOpen, setIsOpen, workspace, project }: Props) => {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const createScreenshot = useMutation(api.screenshots.createScreenshot);
+    const uploadFile = useUploadFile(workspace._id, project._id);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -57,7 +58,7 @@ const ScreenshotCreateDialog = ({ isOpen, setIsOpen, workspace, project, onUploa
         try {
             const dimensions = await getImageDimensions(selectedFile);
 
-            const imageFileId = await onUploadFile(selectedFile);
+            const imageFileId = await uploadFile(selectedFile);
 
             const screenshotId = await createScreenshot({
                 workspaceId: workspace._id,

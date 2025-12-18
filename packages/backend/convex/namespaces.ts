@@ -1,7 +1,6 @@
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { r2 } from "./files";
 import { internal } from "./_generated/api";
 
 export const getNamespaces = query({

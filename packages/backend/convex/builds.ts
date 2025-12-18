@@ -2,9 +2,9 @@ import { v } from "convex/values";
 import { mutation, internalMutation, internalQuery, internalAction, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { unflattenJson } from "./utils/jsonFlatten";
-import { r2 } from "./files";
 import { paginationOptsValidator, PaginationResult } from "convex/server";
 import { Id } from "./_generated/dataModel";
+import { deleteFile, storeFile } from "./files";
 
 export const getBuilds = query({
   args: {
@@ -187,7 +187,7 @@ export const deleteBuild = mutation({
 
     if (Object.keys(build.languageFiles).length > 0) {
       for (const file of Object.values(build.languageFiles)) {
-        await r2.deleteObject(ctx, file.fileId);
+        await deleteFile(ctx, file.fileId);
       }
     }
   },
@@ -253,7 +253,7 @@ export const generateLanguageAction = internalAction({
 
       const nestedJson = unflattenJson(flatMap);
       const blob = new Blob([JSON.stringify(nestedJson, null, 2)], { type: "application/json" });
-      const fileId = await r2.store(ctx, blob);
+      const fileId = await storeFile(blob);
 
       await ctx.runMutation(internal.builds.saveLanguageResult, {
         buildId: args.buildId,
@@ -283,7 +283,7 @@ export const saveLanguageResult = internalMutation({
     const build = await ctx.db.get(args.buildId);
 
     if (!build) {
-      await r2.deleteObject(ctx, args.fileId);
+      await deleteFile(ctx, args.fileId);
       return;
     }
 
@@ -327,7 +327,7 @@ export const handleBuildFailure = internalMutation({
 
     if (Object.keys(build.languageFiles).length > 0) {
       for (const file of Object.values(build.languageFiles)) {
-        await r2.deleteObject(ctx, file.fileId);
+        await deleteFile(ctx, file.fileId);
       }
     }
   },

@@ -2,7 +2,7 @@ import { paginationOptsValidator } from "convex/server";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { r2 } from "./files";
+import { deleteFile } from "./files";
 
 export const getProjects = query({
   args: {
@@ -279,7 +279,7 @@ export const deleteProjectContents = internalMutation({
 
       for (const d of res.page) {
         for (const file of Object.values(d.languageFiles)) {
-          await r2.deleteObject(ctx, file.fileId);
+          await deleteFile(ctx, file.fileId);
         }
         await ctx.db.delete(d._id);
       }
@@ -353,7 +353,7 @@ export const deleteProjectContents = internalMutation({
       for (const screenshot of results.page) {
         if (screenshot.imageFileId) {
           try {
-            await r2.deleteObject(ctx, screenshot.imageFileId);
+            await deleteFile(ctx, screenshot.imageFileId);
           } catch (error) {
             console.error(`Failed to delete storage file ${screenshot.imageFileId}:`, error);
           }

@@ -1,5 +1,5 @@
 import { paginationOptsValidator } from "convex/server";
-import { internalQuery, mutation, query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
