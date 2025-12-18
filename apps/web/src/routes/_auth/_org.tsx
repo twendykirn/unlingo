@@ -5,6 +5,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { useQuery } from 'convex/react';
 import { api } from '@unlingo/backend/convex/_generated/api';
 import PremiumLockDialog from '@/components/premium-lock-dialog';
+import { Spinner } from '@/components/ui/spinner';
 
 const orgStateFn = createServerFn({ method: 'GET' }).handler(async () => {
     const { isAuthenticated, userId, orgId } = await auth();
@@ -61,7 +62,7 @@ function RouteComponent() {
 
     return (
         <>
-            <Outlet />
+            {!showPremiumLock ? <Outlet /> : <Spinner />}
             <PremiumLockDialog isOpen={showPremiumLock} />
         </>
     );
