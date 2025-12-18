@@ -100,7 +100,7 @@ function RouteComponent() {
               <InputGroup>
                 <InputGroupInput
                   aria-label="Search"
-                  placeholder="Search projects"
+                  placeholder="Search languages"
                   type="search"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
