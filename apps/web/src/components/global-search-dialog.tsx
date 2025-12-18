@@ -48,8 +48,6 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
         debouncedSetSearch(e.target.value);
     };
 
-    console.log(translationKeys);
-
     return (
         <Dialog
             onOpenChange={value => {
