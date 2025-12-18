@@ -60,7 +60,7 @@ function flattenObject(obj: Record<string, unknown>, prefix = ''): Record<string
     }
 
     return result;
-}
+};
 
 const TranslationKeyCreateDialog = ({ isOpen, setIsOpen, workspace, project, namespace }: Props) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -326,11 +326,11 @@ const TranslationKeyCreateDialog = ({ isOpen, setIsOpen, workspace, project, nam
                                                 <TableCell>
                                                     <Button
                                                         type="button"
-                                                        variant="ghost"
-                                                        size="icon"
+                                                        variant="destructive"
+                                                        size="icon-sm"
                                                         onClick={() => handleRemoveKey(item.id)}
                                                     >
-                                                        <TrashIcon className="size-4" />
+                                                        <TrashIcon />
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
