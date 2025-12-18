@@ -1,6 +1,6 @@
 import { api } from "@unlingo/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
-import { CreditCard, LockIcon, Sparkles } from "lucide-react";
+import { Check, CreditCard, LockIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "./ui/button";
 import {
@@ -12,36 +12,77 @@ import {
     DialogPopup,
     DialogTitle
 } from "./ui/dialog";
-import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "./ui/select";
 import { CheckoutLink } from '@convex-dev/polar/react';
+import { cn } from "~/lib/utils";
 
 interface Props {
     isOpen: boolean;
 }
 
+// Plan configuration with request limits and keys
+const PLAN_CONFIG: Record<string, { requests: string; keys: number }> = {
+    pro10kRequests: { requests: "10K", keys: 1 },
+    pro50kRequests: { requests: "50K", keys: 2 },
+    pro250kRequests: { requests: "250K", keys: 3 },
+    pro500kRequests: { requests: "500K", keys: 5 },
+    pro1mRequests: { requests: "1M", keys: 10 },
+    pro2mRequests: { requests: "2M", keys: 15 },
+    pro10mRequests: { requests: "10M", keys: 25 },
+    pro50mRequests: { requests: "50M", keys: 50 },
+    pro100mRequests: { requests: "100M", keys: 100 },
+};
+
+const INCLUDED_FEATURES = [
+    "Unlimited projects",
+    "Unlimited namespaces",
+    "90+ languages",
+    "Glossary & terminology",
+    "Language rules",
+    "Screenshots",
+    "Releases with A/B tests",
+    "AI translations",
+];
+
 const PremiumLockDialog = ({ isOpen }: Props) => {
-    const [selectedPackage, setSelectedPackage] = useState<string | null>('');
+    const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
 
     const products = useQuery(api.polar.getConfiguredProducts, undefined);
 
-    const filteredProducts = useMemo(() => {
+    const planList = useMemo(() => {
         if (!products) return [];
 
-        return Object.values(products)
-            .filter(p => p !== undefined)
-            .map(p => ({ value: p.id, label: p.name }));
+        return Object.entries(products)
+            .filter(([_, product]) => product !== undefined)
+            .map(([key, product]) => {
+                const config = PLAN_CONFIG[key] || { requests: "N/A", keys: 1 };
+                return {
+                    id: product!.id,
+                    name: product!.name,
+                    price: product!.prices?.[0]?.amount
+                        ? `$${(product!.prices[0].amount / 100).toFixed(0)}`
+                        : "N/A",
+                    interval: product!.prices?.[0]?.interval || "month",
+                    requests: config.requests,
+                    keys: config.keys,
+                    key,
+                };
+            })
+            .sort((a, b) => {
+                // Sort by keys (ascending) to order plans from smallest to largest
+                return a.keys - b.keys;
+            });
     }, [products]);
 
     // Set default selected package when products are loaded
     useEffect(() => {
-        if (products && products.pro10kRequests && !selectedPackage) {
-            setSelectedPackage(products.pro10kRequests.id);
+        if (planList.length > 0 && !selectedPackage) {
+            setSelectedPackage(planList[0].id);
         }
-    }, [products, selectedPackage]);
+    }, [planList, selectedPackage]);
 
     return (
         <Dialog open={isOpen}>
-            <DialogPopup className="sm:max-w-md" showCloseButton={false}>
+            <DialogPopup className="sm:max-w-4xl max-h-[90vh] overflow-y-auto" showCloseButton={false}>
                 <DialogHeader>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center size-12 rounded-full bg-primary/10 text-primary">
@@ -50,90 +91,91 @@ const PremiumLockDialog = ({ isOpen }: Props) => {
                         <div>
                             <DialogTitle>Premium Required</DialogTitle>
                             <DialogDescription>
-                                Upgrade to access the dashboard
+                                Choose a plan to unlock the dashboard
                             </DialogDescription>
                         </div>
                     </div>
                 </DialogHeader>
-                <DialogPanel className="grid gap-4">
-                    <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20">
-                        <div className="flex items-start gap-3">
-                            <Sparkles className="size-5 text-primary mt-0.5" />
-                            <div>
-                                <h4 className="font-medium text-foreground">
-                                    Unlock Full Access
-                                </h4>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    Get access to all features including the dashboard, translation management, API keys, and more.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                <DialogPanel className="grid gap-6">
+                    {/* Plan description */}
+                    <p className="text-sm text-muted-foreground">
+                        Our plans are simple: choose based on your API keys per workspace and requests per month.
+                        All other features are included in every plan.
+                    </p>
 
+                    {/* Plans grid */}
+                    {planList.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {planList.map((plan) => (
+                                <button
+                                    key={plan.id}
+                                    type="button"
+                                    onClick={() => setSelectedPackage(plan.id)}
+                                    className={cn(
+                                        "relative p-4 rounded-xl border-2 text-left transition-all",
+                                        "hover:border-primary/50 hover:bg-primary/5",
+                                        selectedPackage === plan.id
+                                            ? "border-primary bg-primary/10"
+                                            : "border-border bg-background"
+                                    )}
+                                >
+                                    {selectedPackage === plan.id && (
+                                        <div className="absolute top-2 right-2 size-5 rounded-full bg-primary flex items-center justify-center">
+                                            <Check className="size-3 text-primary-foreground" />
+                                        </div>
+                                    )}
+                                    <div className="space-y-2">
+                                        <div className="font-semibold text-foreground">
+                                            {plan.price}
+                                            <span className="text-xs font-normal text-muted-foreground">
+                                                /{plan.interval}
+                                            </span>
+                                        </div>
+                                        <div className="text-sm text-muted-foreground space-y-1">
+                                            <div>{plan.requests} requests/month</div>
+                                            <div>{plan.keys} API {plan.keys === 1 ? "key" : "keys"}/workspace</div>
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-sm text-muted-foreground text-center py-8">
+                            Loading plans...
+                        </div>
+                    )}
+
+                    {/* Included features */}
                     <div className="space-y-3">
                         <h5 className="text-sm font-medium text-foreground">
-                            What's included:
+                            Included in all plans:
                         </h5>
-                        <ul className="space-y-2 text-sm text-muted-foreground">
-                            <li className="flex items-center gap-2">
-                                <div className="size-1.5 rounded-full bg-primary" />
-                                Full dashboard access
-                            </li>
-                            <li className="flex items-center gap-2">
-                                <div className="size-1.5 rounded-full bg-primary" />
-                                Unlimited projects
-                            </li>
-                            <li className="flex items-center gap-2">
-                                <div className="size-1.5 rounded-full bg-primary" />
-                                Translation API access
-                            </li>
-                            <li className="flex items-center gap-2">
-                                <div className="size-1.5 rounded-full bg-primary" />
-                                Screenshot management
-                            </li>
-                            <li className="flex items-center gap-2">
-                                <div className="size-1.5 rounded-full bg-primary" />
-                                Glossary & terminology
-                            </li>
-                        </ul>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {INCLUDED_FEATURES.map((feature) => (
+                                <div key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Check className="size-4 text-primary flex-shrink-0" />
+                                    <span>{feature}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </DialogPanel>
                 <DialogFooter>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
-                        {filteredProducts.length > 0 ? (
-                            <>
-                                <Select
-                                    aria-label="Select plan"
-                                    items={filteredProducts}
-                                    value={selectedPackage}
-                                    onValueChange={setSelectedPackage}
-                                >
-                                    <SelectTrigger className="flex-1">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectPopup alignItemWithTrigger={false}>
-                                        {filteredProducts.map(({ label, value }) => (
-                                            <SelectItem key={value} value={value}>
-                                                {label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectPopup>
-                                </Select>
-                                {selectedPackage ? (
-                                    <CheckoutLink
-                                        polarApi={api.polar}
-                                        productIds={[selectedPackage as string]}>
-                                        <Button className="gap-2">
-                                            <CreditCard className="size-4" />
-                                            Upgrade Now
-                                        </Button>
-                                    </CheckoutLink>
-                                ) : null}
-                            </>
+                    <div className="flex justify-end w-full">
+                        {selectedPackage ? (
+                            <CheckoutLink
+                                polarApi={api.polar}
+                                productIds={[selectedPackage]}>
+                                <Button className="gap-2" size="lg">
+                                    <CreditCard className="size-4" />
+                                    Continue with selected plan
+                                </Button>
+                            </CheckoutLink>
                         ) : (
-                            <div className="text-sm text-muted-foreground text-center w-full py-2">
-                                Loading plans...
-                            </div>
+                            <Button disabled className="gap-2" size="lg">
+                                <CreditCard className="size-4" />
+                                Select a plan to continue
+                            </Button>
                         )}
                     </div>
                 </DialogFooter>
