@@ -11,16 +11,14 @@ interface BuildSelectProps {
     projectId: Id<'projects'>;
     workspaceId: Id<'workspaces'>;
     selectedBuilds: Map<Id<'builds'>, number>;
-    onBuildToggle: (buildId: Id<'builds'>, namespace: string) => void;
-    onChanceChange: (buildId: Id<'builds'>, chance: number) => void;
+    setSelectedBuilds: (value: Map<Id<'builds'>, number>) => void;
 }
 
 export function BuildSelect({
     projectId,
     workspaceId,
     selectedBuilds,
-    onBuildToggle,
-    onChanceChange,
+    setSelectedBuilds,
 }: BuildSelectProps) {
     const [search, setSearch] = useState('');
     const listRef = useRef<HTMLDivElement>(null);
@@ -68,8 +66,47 @@ export function BuildSelect({
         return acc;
     }, {} as Record<string, Doc<'builds'>[]>);
 
+    const handleBuildToggle = (buildId: Id<'builds'>, namespace: string) => {
+        const newMap = new Map(selectedBuilds);
+
+        if (newMap.has(buildId)) {
+            newMap.delete(buildId);
+        } else {
+            const namespaceBuilds = buildsByNamespace[namespace];
+            const currentlySelectedInNamespace = namespaceBuilds.filter(b =>
+                newMap.has(b._id) || b._id === buildId
+            ).length;
+            const newChance = 100 / currentlySelectedInNamespace;
+
+            namespaceBuilds.forEach(b => {
+                if (newMap.has(b._id) || b._id === buildId) {
+                    newMap.set(b._id === buildId ? buildId : b._id, newChance);
+                }
+            });
+        }
+
+        const selectedInNamespace = Array.from(newMap.entries())
+            .filter(([id]) => buildsByNamespace[namespace]?.some(b => b._id === id));
+
+        if (selectedInNamespace.length > 0) {
+            const evenChance = 100 / selectedInNamespace.length;
+            selectedInNamespace.forEach(([id]) => {
+                newMap.set(id, evenChance);
+            });
+        }
+
+        setSelectedBuilds(newMap);
+    };
+
+    const handleChanceChange = (buildId: Id<'builds'>, chance: number) => {
+        const newMap = new Map(selectedBuilds);
+        newMap.set(buildId, chance);
+
+        setSelectedBuilds(newMap);
+    };
+
     return (
-        <div className="space-y-3">
+        <div className="space-y-3 w-full">
             <Input
                 type="search"
                 placeholder="Search builds..."
@@ -100,7 +137,7 @@ export function BuildSelect({
                                         <div key={build._id} className="flex items-center gap-3">
                                             <Checkbox
                                                 checked={selectedBuilds.has(build._id)}
-                                                onCheckedChange={() => onBuildToggle(build._id, namespace)}
+                                                onCheckedChange={() => handleBuildToggle(build._id, namespace)}
                                             />
                                             <span className="text-sm flex-1">{build.tag}</span>
                                             {selectedBuilds.has(build._id) && (
@@ -110,7 +147,7 @@ export function BuildSelect({
                                                         min="0"
                                                         max="100"
                                                         value={selectedBuilds.get(build._id) || 0}
-                                                        onChange={(e) => onChanceChange(build._id, Number(e.target.value))}
+                                                        onChange={(e) => handleChanceChange(build._id, Number(e.target.value))}
                                                         className="w-16 text-sm"
                                                     />
                                                     <span className="text-sm text-muted-foreground">%</span>

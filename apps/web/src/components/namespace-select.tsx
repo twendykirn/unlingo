@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { usePaginatedQuery } from 'convex/react';
 import { debounce } from '@tanstack/pacer';
 import { api } from '@unlingo/backend/convex/_generated/api';
-import type { Doc, Id } from '@unlingo/backend/convex/_generated/dataModel';
+import type { Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from './ui/select';
 import { Input } from './ui/input';
 import { Spinner } from './ui/spinner';
@@ -12,7 +12,6 @@ interface NamespaceSelectProps {
     workspaceId: Id<'workspaces'>;
     value: string | null;
     onValueChange: (value: string | null) => void;
-    placeholder?: string;
 }
 
 export function NamespaceSelect({
@@ -20,9 +19,9 @@ export function NamespaceSelect({
     workspaceId,
     value,
     onValueChange,
-    placeholder = 'Select namespace',
 }: NamespaceSelectProps) {
     const [search, setSearch] = useState('');
+    const [inputValue, setInputValue] = useState('');
     const listRef = useRef<HTMLDivElement>(null);
 
     const {
@@ -46,6 +45,7 @@ export function NamespaceSelect({
     );
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setInputValue(e.target.value);
         debouncedSetSearch(e.target.value);
     };
 
@@ -62,9 +62,12 @@ export function NamespaceSelect({
     const selectedNamespace = namespaces?.find(ns => ns._id === value);
 
     return (
-        <Select value={value} onValueChange={onValueChange}>
+        <Select value={value} onValueChange={onValueChange} onOpenChange={() => {
+            setInputValue('');
+            setSearch('');
+        }}>
             <SelectTrigger>
-                <SelectValue placeholder={placeholder}>
+                <SelectValue>
                     {selectedNamespace?.name}
                 </SelectValue>
             </SelectTrigger>
@@ -73,6 +76,7 @@ export function NamespaceSelect({
                     <Input
                         type="search"
                         placeholder="Search namespaces..."
+                        value={inputValue}
                         onChange={handleSearchChange}
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}

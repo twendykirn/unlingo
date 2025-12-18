@@ -11,7 +11,6 @@ import { Menu, MenuGroup, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { useOrganization } from '@clerk/tanstack-react-start';
 import { createFileRoute } from '@tanstack/react-router'
 import { debounce } from '@tanstack/pacer';
@@ -54,21 +53,6 @@ function RouteComponent() {
             : 'skip'
     );
 
-    // Fetch builds for table display only (showing build info in release rows)
-    // Each release typically has only a few builds, so we fetch enough for display
-    const {
-        results: builds
-    } = usePaginatedQuery(
-        api.builds.getBuilds,
-        workspace && project
-            ? {
-                projectId: project._id,
-                workspaceId: workspace._id,
-            }
-            : 'skip',
-        { initialNumItems: 40 }
-    );
-
     const {
         results: releases,
         loadMore,
@@ -93,33 +77,6 @@ function RouteComponent() {
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         debouncedSetSearch(e.target.value);
-    };
-
-    const getBuildInfo = (release: Doc<'releases'>) => {
-        if (!builds) return [];
-
-        return release.builds.map(rb => {
-            const build = builds.find(b => b._id === rb.buildId);
-            return {
-                ...rb,
-                tag: build?.tag || 'Unknown',
-                namespace: build?.namespace || 'Unknown',
-            };
-        });
-    };
-
-    const getNamespaceGroups = (release: Doc<'releases'>) => {
-        const buildInfo = getBuildInfo(release);
-        const groups: Record<string, typeof buildInfo> = {};
-
-        buildInfo.forEach(b => {
-            if (!groups[b.namespace]) {
-                groups[b.namespace] = [];
-            }
-            groups[b.namespace].push(b);
-        });
-
-        return groups;
     };
 
     return (
@@ -195,72 +152,52 @@ function RouteComponent() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {releases.map(release => {
-                                            const namespaceGroups = getNamespaceGroups(release);
-
-                                            return (
-                                                <TableRow key={release._id}>
-                                                    <TableCell className="font-medium font-mono">{release.tag}</TableCell>
-                                                    <TableCell>
-                                                        <div className="flex flex-col gap-2">
-                                                            {Object.entries(namespaceGroups).map(([namespace, nsBuilds]) => (
-                                                                <div key={namespace} className="flex items-center gap-2">
-                                                                    <span className="text-xs text-muted-foreground">{namespace}:</span>
-                                                                    <div className="flex flex-wrap gap-1">
-                                                                        {nsBuilds.map((b, idx) => (
-                                                                            <Badge key={idx} variant="outline" className="text-xs">
-                                                                                {b.tag} ({b.selectionChance}%)
-                                                                            </Badge>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                            {Object.keys(namespaceGroups).length === 0 && (
-                                                                <span className="text-muted-foreground text-sm">No builds</span>
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {new Date(release._creationTime).toLocaleDateString(undefined, {
-                                                            year: 'numeric',
-                                                            month: 'short',
-                                                            day: 'numeric',
-                                                        })}
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Menu>
-                                                            <MenuTrigger render={<Button variant="ghost" size="icon" />}>
-                                                                <EllipsisVerticalIcon />
-                                                            </MenuTrigger>
-                                                            <MenuPopup>
-                                                                <MenuGroup>
-                                                                    <MenuItem
-                                                                        onClick={() => {
-                                                                            setIsEditDialogOpen(true);
-                                                                            setSelectedRelease(release);
-                                                                        }}
-                                                                    >
-                                                                        <Edit className="opacity-72" />
-                                                                        Edit
-                                                                    </MenuItem>
-                                                                </MenuGroup>
-                                                                <MenuSeparator />
+                                        {releases.map(release => (
+                                            <TableRow key={release._id}>
+                                                <TableCell className="font-medium font-mono">{release.tag}</TableCell>
+                                                <TableCell>
+                                                    {release.builds.length} build(s)
+                                                </TableCell>
+                                                <TableCell>
+                                                    {new Date(release._creationTime).toLocaleDateString(undefined, {
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                    })}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Menu>
+                                                        <MenuTrigger render={<Button variant="ghost" size="icon" />}>
+                                                            <EllipsisVerticalIcon />
+                                                        </MenuTrigger>
+                                                        <MenuPopup>
+                                                            <MenuGroup>
                                                                 <MenuItem
-                                                                    variant="destructive"
                                                                     onClick={() => {
-                                                                        setIsDeleteDialogOpen(true);
+                                                                        setIsEditDialogOpen(true);
                                                                         setSelectedRelease(release);
                                                                     }}
                                                                 >
-                                                                    <TrashIcon />
-                                                                    Delete
+                                                                    <Edit className="opacity-72" />
+                                                                    Edit
                                                                 </MenuItem>
-                                                            </MenuPopup>
-                                                        </Menu>
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
+                                                            </MenuGroup>
+                                                            <MenuSeparator />
+                                                            <MenuItem
+                                                                variant="destructive"
+                                                                onClick={() => {
+                                                                    setIsDeleteDialogOpen(true);
+                                                                    setSelectedRelease(release);
+                                                                }}
+                                                            >
+                                                                <TrashIcon />
+                                                                Delete
+                                                            </MenuItem>
+                                                        </MenuPopup>
+                                                    </Menu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
                                     </TableBody>
                                 </Table>
                                 {releasesStatus === 'CanLoadMore' && (
