@@ -19,6 +19,7 @@ import { Field, FieldLabel } from "./ui/field";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { Spinner } from "./ui/spinner";
+import { TrashIcon } from "lucide-react";
 
 interface Props {
     isOpen: boolean;
@@ -26,12 +27,13 @@ interface Props {
     workspace: Doc<'workspaces'>;
     project: Doc<'projects'>;
     language: Doc<'languages'>;
+    isLastLanguage: boolean;
 }
 
-const LanguageEditDialog = ({ isOpen, setIsOpen, workspace, project, language }: Props) => {
+const LanguageEditDialog = ({ isOpen, setIsOpen, workspace, project, language, isLastLanguage }: Props) => {
     const [isLoading, setIsLoading] = useState(false);
-    const [isPrimary, setIsPrimary] = useState(project.primaryLanguageId === language._id);
-    const [rules, setRules] = useState<Record<string, string>>(language.rules || {});
+    const [isPrimary, setIsPrimary] = useState(false);
+    const [rules, setRules] = useState<Record<string, string>>({});
 
     const updateLanguage = useMutation(api.languages.updateLanguage);
 
@@ -47,13 +49,18 @@ const LanguageEditDialog = ({ isOpen, setIsOpen, workspace, project, language }:
 
         setIsLoading(true);
 
+        const filteredRules = Object.entries(rules).reduce((acc, [key, value]) => {
+            if (value.trim()) acc[key] = value;
+            return acc;
+        }, {} as Record<string, string>);
+
         try {
             await updateLanguage({
                 workspaceId: workspace._id,
                 projectId: project._id,
                 languageId: language._id,
-                isPrimary,
-                rules: Object.keys(rules).length > 0 ? rules : undefined,
+                isPrimary: isLastLanguage ? true : isPrimary,
+                rules: Object.keys(filteredRules).length > 0 ? filteredRules : undefined,
             });
 
             toastManager.add({
@@ -68,6 +75,7 @@ const LanguageEditDialog = ({ isOpen, setIsOpen, workspace, project, language }:
         } finally {
             setIsOpen(false);
             setIsLoading(false);
+            setRules(filteredRules);
         }
     };
 
@@ -79,7 +87,8 @@ const LanguageEditDialog = ({ isOpen, setIsOpen, workspace, project, language }:
     };
 
     const handleAddRule = () => {
-        const newKey = `rule_${Object.keys(rules).length + 1}`;
+        const now = new Date().getTime();
+        const newKey = `rule_${now}`;
         setRules(prev => ({
             ...prev,
             [newKey]: '',
@@ -107,61 +116,44 @@ const LanguageEditDialog = ({ isOpen, setIsOpen, workspace, project, language }:
                     <DialogPanel className="grid gap-4 max-h-[60vh] overflow-y-auto">
                         <Field>
                             <FieldLabel>Language Code</FieldLabel>
-                            <Input type="text" value={language.languageCode} disabled />
+                            <Input type="text" value={language.languageCode} disabled readOnly />
                         </Field>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <Checkbox
-                                checked={isPrimary}
-                                onCheckedChange={(checked) => setIsPrimary(checked === true)}
-                            />
-                            <span className="text-sm">Set as primary language</span>
-                        </label>
-                        <div className="border-t pt-4">
-                            <div className="flex items-center justify-between mb-3">
+                        <Field >
+                            <FieldLabel>
+                                <Checkbox
+                                    checked={isPrimary}
+                                    onCheckedChange={(checked) => setIsPrimary(checked === true)}
+                                />
+                                Set as primary language
+                            </FieldLabel>
+                        </Field>
+                        <Field className="border-t pt-4">
+                            <div className="flex items-center justify-between mb-3 w-full">
                                 <FieldLabel>Translation Rules</FieldLabel>
                                 <Button type="button" variant="ghost" size="sm" onClick={handleAddRule}>
                                     Add Rule
                                 </Button>
                             </div>
-                            <div className="grid gap-3">
+                            <div className="flex flex-col gap-2 w-full">
                                 {Object.entries(rules).map(([key, value]) => (
-                                    <div key={key} className="flex gap-2 items-start">
-                                        <div className="flex-1 grid gap-2">
-                                            <Input
-                                                type="text"
-                                                placeholder="Rule name"
-                                                value={key}
-                                                onChange={(e) => {
-                                                    const newKey = e.target.value;
-                                                    if (newKey !== key) {
-                                                        setRules(prev => {
-                                                            const newRules = { ...prev };
-                                                            delete newRules[key];
-                                                            newRules[newKey] = value;
-                                                            return newRules;
-                                                        });
-                                                    }
-                                                }}
-                                            />
-                                            <Input
-                                                type="text"
-                                                placeholder="Rule value"
-                                                value={value}
-                                                onChange={(e) => handleRuleChange(key, e.target.value)}
-                                            />
-                                        </div>
+                                    <div key={key} className="flex gap-2">
+                                        <Input
+                                            type="text"
+                                            placeholder="Rule value"
+                                            value={value}
+                                            onChange={(e) => handleRuleChange(key, e.target.value)}
+                                        />
                                         <Button
                                             type="button"
-                                            variant="ghost"
-                                            size="sm"
+                                            variant="destructive"
                                             onClick={() => handleRemoveRule(key)}
                                         >
-                                            Remove
+                                            <TrashIcon />
                                         </Button>
                                     </div>
                                 ))}
                             </div>
-                        </div>
+                        </Field>
                     </DialogPanel>
                     <DialogFooter>
                         <DialogClose render={<Button variant="ghost" />}>

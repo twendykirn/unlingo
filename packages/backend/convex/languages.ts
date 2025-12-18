@@ -55,16 +55,71 @@ export const createLanguage = mutation({
       throw new Error("Project not found or access denied");
     }
 
+    const currentPrimaryId = project.primaryLanguageId;
+
     const languageId = await ctx.db.insert("languages", {
       projectId: project._id,
       languageCode: args.languageCode,
-      status: 1,
+      status: currentPrimaryId ? 2 : 1,
       rules: args.rules,
     });
+
+    if (currentPrimaryId) {
+      await ctx.scheduler.runAfter(0, internal.languages.startBackfill, {
+        projectId: project._id,
+        sourceLanguageId: currentPrimaryId,
+        targetLanguageId: languageId,
+      });
+    }
 
     if (args.isPrimary) {
       await ctx.db.patch(project._id, {
         primaryLanguageId: languageId,
+      });
+    }
+  },
+});
+
+export const startBackfill = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+    sourceLanguageId: v.id("languages"),
+    targetLanguageId: v.id("languages"),
+    cursor: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const keysPage = await ctx.db
+      .query("translationKeys")
+      .withIndex("by_project_namespace_key", (q) => q.eq("projectId", args.projectId))
+      .paginate({ cursor: args.cursor ?? null, numItems: 30 });
+
+    if (keysPage.page.length === 0) return;
+
+    const keyIds = keysPage.page.filter((k) => k.status !== -1).map((k) => k._id);
+
+    if (keyIds.length > 0) {
+      for (const id of keyIds) {
+        await ctx.db.patch(id, { status: 2 });
+      }
+
+      await ctx.scheduler.runAfter(0, internal.translationKeys.translateBatchAction, {
+        projectId: args.projectId,
+        keyIds: keyIds,
+        targetLanguageIds: [args.targetLanguageId],
+        overrideSourceLanguageId: args.sourceLanguageId,
+      });
+    }
+
+    if (!keysPage.isDone) {
+      await ctx.scheduler.runAfter(0, internal.languages.startBackfill, {
+        projectId: args.projectId,
+        sourceLanguageId: args.sourceLanguageId,
+        targetLanguageId: args.targetLanguageId,
+        cursor: keysPage.continueCursor,
+      });
+    } else {
+      await ctx.db.patch(args.targetLanguageId, {
+        status: 1,
       });
     }
   },
@@ -217,9 +272,13 @@ export const deleteLanguageContents = internalMutation({
         }
 
         if (needsUpdate) {
-          await ctx.db.patch(doc._id, {
-            values: newValues,
-          });
+          if (Object.keys(newValues).length === 0) {
+            await ctx.db.delete(doc._id);
+          } else {
+            await ctx.db.patch(doc._id, {
+              values: newValues,
+            });
+          }
         }
       }
 

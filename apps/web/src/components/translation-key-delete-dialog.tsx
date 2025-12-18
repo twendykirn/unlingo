@@ -1,5 +1,5 @@
 import { api } from "@unlingo/backend/convex/_generated/api";
-import type { Doc } from "@unlingo/backend/convex/_generated/dataModel";
+import type { Doc, Id } from "@unlingo/backend/convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 import { toastManager } from "./ui/toast";
@@ -14,9 +14,6 @@ import {
     AlertDialogPopup,
     AlertDialogTitle
 } from "./ui/alert-dialog";
-import { AlertDialogPanel } from "./ui/alert-dialog-panel";
-import { Field, FieldError, FieldLabel } from "./ui/field";
-import { Input } from "./ui/input";
 import { Form } from "./ui/form";
 
 interface Props {
@@ -25,10 +22,19 @@ interface Props {
     workspace: Doc<'workspaces'>;
     project: Doc<'projects'>;
     namespace: Doc<'namespaces'>;
-    translationKey: Doc<'translationKeys'>;
+    translationKeys: Id<'translationKeys'>[];
+    onDeleted?: () => void;
 }
 
-const TranslationKeyDeleteDialog = ({ isOpen, setIsOpen, workspace, project, namespace, translationKey }: Props) => {
+const TranslationKeyDeleteDialog = ({
+    isOpen,
+    setIsOpen,
+    workspace,
+    project,
+    namespace,
+    translationKeys,
+    onDeleted,
+}: Props) => {
     const [isLoading, setIsLoading] = useState(false);
 
     const deleteTranslationKeys = useMutation(api.translationKeys.deleteTranslationKeys);
@@ -36,7 +42,7 @@ const TranslationKeyDeleteDialog = ({ isOpen, setIsOpen, workspace, project, nam
     const handleDelete = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        if (!translationKey || !workspace || !project || !namespace) return;
+        if (translationKeys.length === 0 || !workspace || !project || !namespace) return;
 
         setIsLoading(true);
 
@@ -45,8 +51,10 @@ const TranslationKeyDeleteDialog = ({ isOpen, setIsOpen, workspace, project, nam
                 workspaceId: workspace._id,
                 projectId: project._id,
                 namespaceId: namespace._id,
-                keyIds: [translationKey._id],
+                keyIds: translationKeys,
             });
+
+            onDeleted?.();
 
             toastManager.add({
                 description: 'Translation key deleted successfully',
@@ -68,26 +76,11 @@ const TranslationKeyDeleteDialog = ({ isOpen, setIsOpen, workspace, project, nam
             <AlertDialogPopup className="sm:max-w-sm">
                 <Form className="contents" onSubmit={handleDelete}>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Translation Key</AlertDialogTitle>
+                        <AlertDialogTitle>Delete Translation Keys</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action is permanent and cannot be undone. All translations for this key will be deleted. To confirm, please type the key below: <strong>{translationKey.key}</strong>
+                            This action is permanent and cannot be undone. Are you sure you want to delete the selected keys?
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogPanel>
-                        <Field
-                            validate={(value) => {
-                                if (value === translationKey.key) {
-                                    return null;
-                                } else {
-                                    return 'Input value does not match the key';
-                                }
-                            }}
-                        >
-                            <FieldLabel>Key</FieldLabel>
-                            <Input name="key" required />
-                            <FieldError />
-                        </Field>
-                    </AlertDialogPanel>
                     <AlertDialogFooter variant="bare">
                         <AlertDialogClose render={<Button variant="ghost" />}>
                             Cancel

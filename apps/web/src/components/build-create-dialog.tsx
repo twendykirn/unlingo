@@ -54,13 +54,13 @@ const BuildCreateDialog = ({ isOpen, setIsOpen, workspace, project, namespaces }
 
             if (buildId) {
                 toastManager.add({
-                    description: 'Build created successfully',
+                    description: 'Build started successfully',
                     type: 'success',
                 });
             }
         } catch (err) {
             toastManager.add({
-                description: `Failed to create build: ${err instanceof Error ? err.message : 'Unknown error'}`,
+                description: `Failed to start build: ${err instanceof Error ? err.message : 'Unknown error'}`,
                 type: 'error',
             });
         } finally {
@@ -92,7 +92,7 @@ const BuildCreateDialog = ({ isOpen, setIsOpen, workspace, project, namespaces }
                                 onValueChange={setSelectedNamespaceId}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select a namespace" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectPopup>
                                     {namespaces.map((namespace) => (

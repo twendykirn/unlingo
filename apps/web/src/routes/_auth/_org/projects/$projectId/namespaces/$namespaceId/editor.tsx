@@ -16,8 +16,7 @@ import {
     LanguagesIcon,
     PlusIcon,
     SearchIcon,
-    SparklesIcon,
-    TrashIcon,
+    StarIcon,
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { useCallback, useMemo, useState } from 'react';
@@ -34,6 +33,8 @@ import GlobalSearchDialog from '@/components/global-search-dialog';
 import AutoSizer from "react-virtualized-auto-sizer";
 import { toastManager } from '@/components/ui/toast';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import TranslationKeyCreateDialog from '@/components/translation-key-create-dialog';
+import TranslationKeyDeleteDialog from '@/components/translation-key-delete-dialog';
 
 export const Route = createFileRoute(
     '/_auth/_org/projects/$projectId/namespaces/$namespaceId/editor'
@@ -112,6 +113,12 @@ function EditableCell({
             onClick={() => {
                 if (!isKey) {
                     setIsEditing(true);
+                } else {
+                    navigator.clipboard.writeText(value);
+                    toastManager.add({
+                        description: 'Key copied to clipboard',
+                        type: 'info',
+                    });
                 }
             }}
             className={`cursor-pointer truncate text-sm ${!isKey && 'text-muted-foreground'}`}
@@ -126,11 +133,13 @@ function SelectableColumnHeader({
     isSelectable,
     isSelected,
     onSelect,
+    isPrimary,
 }: {
     label: string;
     isSelectable?: boolean;
     isSelected?: boolean;
     onSelect?: () => void;
+    isPrimary?: boolean;
 }) {
     return (
         <div className="flex items-center gap-2">
@@ -138,6 +147,7 @@ function SelectableColumnHeader({
                 <Checkbox checked={isSelected} onCheckedChange={onSelect} />
             ) : null}
             <span>{label}</span>
+            {isPrimary ? <StarIcon className="size-3 text-yellow-400" /> : null}
         </div>
     );
 }
@@ -150,6 +160,9 @@ function EditorComponent() {
     const [search, setSearch] = useState('');
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
     const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
+
+    const [isCreateKeyDialogOpen, setIsCreateKeyDialogOpen] = useState(false);
+    const [isDeleteKeyDialogOpen, setIsDeleteKeyDialogOpen] = useState(false);
 
     const clerkId = organization?.id;
 
@@ -206,7 +219,19 @@ function EditorComponent() {
 
     const updateTranslationKey = useMutation(api.translationKeys.updateTranslationKey);
     const triggerBatchTranslation = useMutation(api.translationKeys.triggerBatchTranslation);
-    const deleteTranslationKeys = useMutation(api.translationKeys.deleteTranslationKeys);
+
+    const splittedLanguages = useMemo(() => {
+        if (!languages || !project) return [];
+
+        const primaryLanguage = languages.find((l) => l._id === project.primaryLanguageId);
+        const others = languages.filter((l) => l._id !== project.primaryLanguageId);
+
+        if (!primaryLanguage) {
+            return others;
+        }
+
+        return [primaryLanguage, ...others];
+    }, [languages]);
 
     const handleCellUpdate = useCallback(
         async (keyId: Id<'translationKeys'>, languageId: Id<'languages'>, newValue: string) => {
@@ -245,24 +270,9 @@ function EditorComponent() {
     }, []);
 
     const deleteSelectedRows = useCallback(async () => {
-        const selectedKeysIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
         if (!workspace || !project || !namespace) return;
 
-        try {
-            await deleteTranslationKeys({
-                workspaceId: workspace._id,
-                projectId: project._id,
-                namespaceId: namespace._id,
-                keyIds: selectedKeysIds as Id<'translationKeys'>[],
-            });
-        } catch (error) {
-            toastManager.add({
-                description: `Failed to delete translation keys: ${error}`,
-                type: 'error',
-            })
-        } finally {
-            setRowSelection({});
-        }
+        setIsDeleteKeyDialogOpen(true);
     }, [rowSelection, workspace, project, namespace]);
 
     const syncSelectedRows = useCallback(async () => {
@@ -290,8 +300,8 @@ function EditorComponent() {
         }
     }, [selectedColumns, rowSelection, workspace, project, namespace]);
 
-    const handleCreateKey = async () => {
-        return null;
+    const handleCreateKey = () => {
+        setIsCreateKeyDialogOpen(true);
     };
 
     const columns = useMemo<ColumnDef<Doc<'translationKeys'>, string>[]>(() => {
@@ -331,7 +341,7 @@ function EditorComponent() {
                 ),
                 size: 200,
             }),
-            ...(languages || []).map((lang) =>
+            ...splittedLanguages.map((lang) =>
                 columnHelper.accessor((row) => row.values[lang._id] || '', {
                     id: lang._id,
                     header: () => (
@@ -340,6 +350,7 @@ function EditorComponent() {
                             isSelectable
                             isSelected={selectedColumns.has(lang._id)}
                             onSelect={() => toggleColumnSelection(lang._id)}
+                            isPrimary={lang._id === project?.primaryLanguageId}
                         />
                     ),
                     cell: (info) => (
@@ -357,7 +368,7 @@ function EditorComponent() {
                 })
             ),
         ];
-    }, [languages, handleCellUpdate, selectedColumns, toggleColumnSelection]);
+    }, [splittedLanguages, handleCellUpdate, selectedColumns, toggleColumnSelection]);
 
     const table = useReactTable({
         data: translationKeys,
@@ -376,7 +387,7 @@ function EditorComponent() {
     });
 
     const selectedRowCount = Object.values(rowSelection).filter(Boolean).length;
-    const selectedColumnCount = selectedColumns.size;
+    const selectedKeys = Object.keys(rowSelection).filter((id) => rowSelection[id]);
 
     if (!workspace || !project || !namespace || !languages) {
         return (
@@ -492,55 +503,37 @@ function EditorComponent() {
                                 <PlusIcon />
                                 Add Key
                             </Button>
-                            {(selectedRowCount > 0 || selectedColumnCount > 0) && (
-                                <>
-                                    <span className="text-sm text-muted-foreground">
-                                        {selectedRowCount > 0 && `${selectedRowCount} rows`}
-                                        {selectedRowCount > 0 && selectedColumnCount > 0 && ', '}
-                                        {selectedColumnCount > 0 && `${selectedColumnCount} columns`}
-                                        {' selected'}
-                                    </span>
-                                    <Menu>
-                                        <MenuTrigger
-                                            render={
-                                                <Button variant="outline" size="sm">
-                                                    Actions
-                                                    <ChevronDownIcon className="size-4" />
-                                                </Button>
-                                            }
-                                        />
-                                        <MenuPopup>
-                                            <MenuGroup>
-                                                <MenuItem
-                                                    onClick={() => {
-                                                        alert('AI Translation coming soon!');
-                                                    }}
-                                                >
-                                                    <SparklesIcon className="size-4" />
-                                                    Translate with AI
-                                                </MenuItem>
-                                                {selectedRowCount > 0 && (
-                                                    <>
-                                                        <MenuItem
-                                                            onClick={syncSelectedRows}
-                                                        >
-                                                            <TrashIcon className="size-4" />
-                                                            Sync with Primary
-                                                        </MenuItem>
-                                                        <MenuItem
-                                                            variant="destructive"
-                                                            onClick={deleteSelectedRows}
-                                                        >
-                                                            <TrashIcon className="size-4" />
-                                                            Delete Selected Rows
-                                                        </MenuItem>
-                                                    </>
-                                                )}
-                                            </MenuGroup>
-                                        </MenuPopup>
-                                    </Menu>
-                                </>
-                            )}
+                            {selectedRowCount > 0 ? (
+                                <Menu>
+                                    <MenuTrigger
+                                        render={
+                                            <Button variant="outline">
+                                                Actions
+                                                <ChevronDownIcon className="size-4" />
+                                            </Button>
+                                        }
+                                    />
+                                    <MenuPopup>
+                                        <MenuGroup>
+                                            {selectedRowCount > 0 && (
+                                                <>
+                                                    <MenuItem
+                                                        onClick={syncSelectedRows}
+                                                    >
+                                                        Sync Values
+                                                    </MenuItem>
+                                                    <MenuItem
+                                                        variant="destructive"
+                                                        onClick={deleteSelectedRows}
+                                                    >
+                                                        Delete Values
+                                                    </MenuItem>
+                                                </>
+                                            )}
+                                        </MenuGroup>
+                                    </MenuPopup>
+                                </Menu>
+                            ) : null}
                         </div>
                     </div>
                     <div className='h-full'>
@@ -611,6 +604,28 @@ function EditorComponent() {
                         </AutoSizer>
                     </div>
                 </div>
+                {workspace && project && namespace ? (
+                    <>
+                        <TranslationKeyCreateDialog
+                            isOpen={isCreateKeyDialogOpen}
+                            setIsOpen={setIsCreateKeyDialogOpen}
+                            workspace={workspace}
+                            project={project}
+                            namespace={namespace}
+                        />
+                        <TranslationKeyDeleteDialog
+                            isOpen={isDeleteKeyDialogOpen}
+                            setIsOpen={setIsDeleteKeyDialogOpen}
+                            workspace={workspace}
+                            project={project}
+                            namespace={namespace}
+                            translationKeys={selectedKeys as Id<'translationKeys'>[]}
+                            onDeleted={() => {
+                                setRowSelection({});
+                            }}
+                        />
+                    </>
+                ) : null}
             </SidebarInset>
         </SidebarProvider>
     );

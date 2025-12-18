@@ -68,7 +68,7 @@ const LanguageDeleteDialog = ({ isOpen, setIsOpen, workspace, project, language 
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Language</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action is permanent and cannot be undone. All translations for this language will be deleted. To confirm, please type the language code below: <strong>{language.languageCode}</strong>
+                            This action is permanent and cannot be undone. {language._id === project.primaryLanguageId ? "Please be careful - all translation keys will be deleted as well because this is the last language of the project." : "All translations for this language will be deleted"}. To confirm, please type the language code below: <strong>{language.languageCode}</strong>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogPanel>
