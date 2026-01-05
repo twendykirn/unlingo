@@ -60,7 +60,7 @@ const ScreenshotCreateDialog = ({ isOpen, setIsOpen, workspace, project }: Props
 
             const imageFileId = await uploadFile(selectedFile);
 
-            const screenshotId = await createScreenshot({
+            const { screenshotId, error } = await createScreenshot({
                 workspaceId: workspace._id,
                 projectId: project._id,
                 name: name.trim(),
@@ -74,6 +74,11 @@ const ScreenshotCreateDialog = ({ isOpen, setIsOpen, workspace, project }: Props
                 toastManager.add({
                     description: 'Screenshot created successfully',
                     type: 'success',
+                });
+            } else if (error) {
+                toastManager.add({
+                    description: error,
+                    type: 'error',
                 });
             }
         } catch (err) {

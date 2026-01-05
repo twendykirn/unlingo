@@ -61,7 +61,7 @@ export const createScreenshot = mutation({
     const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
       await deleteFile(ctx, args.imageFileId);
-      throw new Error("Project not found or access denied");
+      return { screenshotId: null, error: "Project not found or access denied" };
     }
 
     const existingScreenshot = await ctx.db
@@ -71,14 +71,18 @@ export const createScreenshot = mutation({
 
     if (existingScreenshot) {
       await deleteFile(ctx, args.imageFileId);
-      throw new Error("A screenshot with this name already exists in this project");
+      return { screenshotId: null, error: "A screenshot with this name already exists in this project" };
     }
 
     // Check file size limit (10MB)
     const MAX_FILE_SIZE = 10 * 1024 * 1024;
     if (args.imageSize > MAX_FILE_SIZE) {
       await deleteFile(ctx, args.imageFileId);
-      throw new Error("Image file size cannot exceed 10MB. Please compress your image and try again.");
+      console.error("Image file size exceeds limit:", args.imageSize);
+      return {
+        screenshotId: null,
+        error: "Image file size cannot exceed 10MB. Please compress your image and try again",
+      };
     }
 
     const screenshotId = await ctx.db.insert("screenshots", {
@@ -90,7 +94,7 @@ export const createScreenshot = mutation({
       dimensions: args.dimensions,
     });
 
-    return screenshotId;
+    return { screenshotId, error: null };
   },
 });
 

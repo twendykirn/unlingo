@@ -1,20 +1,19 @@
 import GlobalSearchDialog from '@/components/global-search-dialog';
 import { ProjectSidebar } from '@/components/project-sidebar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Spinner } from '@/components/ui/spinner';
 import { toastManager } from '@/components/ui/toast';
-import { Badge } from '@/components/ui/badge';
 import { useOrganization } from '@clerk/tanstack-react-start';
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Doc, Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { useMutation, useQuery } from 'convex/react';
-import { ArrowLeftIcon, PlusIcon, TrashIcon, KeyIcon, XIcon } from 'lucide-react';
+import { ArrowLeftIcon, PlusIcon, TrashIcon, KeyIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AutoSizer from 'react-virtualized-auto-sizer';
-import { Sheet, SheetHeader, SheetPanel, SheetPopup, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetHeader, SheetPanel, SheetPopup, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { SearchIcon } from 'lucide-react';
@@ -300,7 +299,7 @@ function RouteComponent() {
                     <div className="flex items-center gap-2 px-4">
                         <SidebarTrigger className="-ml-1" />
                     </div>
-                    <GlobalSearchDialog projectId={projectId} />
+                    <GlobalSearchDialog workspaceId={workspace?._id} projectId={project?._id} />
                 </header>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
                     <div className="flex items-center gap-4">
