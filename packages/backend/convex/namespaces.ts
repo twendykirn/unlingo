@@ -209,14 +209,7 @@ export const deleteNamespaceContents = internalMutation({
   args: {
     namespaceId: v.id("namespaces"),
     projectId: v.id("projects"),
-    stage: v.union(
-      v.literal("values"),
-      v.literal("keys"),
-      v.literal("builds"),
-      v.literal("mappings"),
-      v.literal("releases"),
-      v.literal("final"),
-    ),
+    stage: v.union(v.literal("values"), v.literal("containers"), v.literal("keys"), v.literal("final")),
     cursor: v.union(v.string(), v.null()),
   },
   handler: async (ctx, args) => {
@@ -242,6 +235,40 @@ export const deleteNamespaceContents = internalMutation({
       } else {
         await ctx.scheduler.runAfter(0, internal.namespaces.deleteNamespaceContents, {
           ...args,
+          stage: "containers",
+          cursor: null,
+        });
+      }
+      return;
+    }
+
+    if (args.stage === "containers") {
+      const keys = await ctx.db
+        .query("translationKeys")
+        .withIndex("by_project_namespace_key", (q) =>
+          q.eq("projectId", args.projectId).eq("namespaceId", args.namespaceId),
+        )
+        .paginate({ cursor: args.cursor, numItems: LIMIT });
+
+      for (const key of keys.page) {
+        const containers = await ctx.db
+          .query("screenshotContainers")
+          .withIndex("by_translation_key", (q) => q.eq("translationKeyId", key._id))
+          .collect();
+
+        for (const container of containers) {
+          await ctx.db.delete(container._id);
+        }
+      }
+
+      if (!keys.isDone) {
+        await ctx.scheduler.runAfter(0, internal.namespaces.deleteNamespaceContents, {
+          ...args,
+          cursor: keys.continueCursor,
+        });
+      } else {
+        await ctx.scheduler.runAfter(0, internal.namespaces.deleteNamespaceContents, {
+          ...args,
           stage: "keys",
           cursor: null,
         });
@@ -255,31 +282,6 @@ export const deleteNamespaceContents = internalMutation({
         .withIndex("by_project_namespace_key", (q) =>
           q.eq("projectId", args.projectId).eq("namespaceId", args.namespaceId),
         )
-        .paginate({ cursor: args.cursor, numItems: LIMIT });
-
-      for (const doc of result.page) {
-        await ctx.db.delete(doc._id);
-      }
-
-      if (!result.isDone) {
-        await ctx.scheduler.runAfter(0, internal.namespaces.deleteNamespaceContents, {
-          ...args,
-          cursor: result.continueCursor,
-        });
-      } else {
-        await ctx.scheduler.runAfter(0, internal.namespaces.deleteNamespaceContents, {
-          ...args,
-          stage: "mappings",
-          cursor: null,
-        });
-      }
-      return;
-    }
-
-    if (args.stage === "mappings") {
-      const result = await ctx.db
-        .query("screenshotKeyMappings")
-        .withIndex("by_namespace_translation_key", (q) => q.eq("namespaceId", args.namespaceId))
         .paginate({ cursor: args.cursor, numItems: LIMIT });
 
       for (const doc of result.page) {

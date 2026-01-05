@@ -318,15 +318,6 @@ export const deleteProjectContents = internalMutation({
           .collect();
 
         for (const container of containers) {
-          const mappings = await ctx.db
-            .query("screenshotKeyMappings")
-            .withIndex("by_container_namespace_translation_key", (q) => q.eq("containerId", container._id))
-            .collect();
-
-          for (const map of mappings) {
-            await ctx.db.delete(map._id);
-          }
-
           await ctx.db.delete(container._id);
         }
 

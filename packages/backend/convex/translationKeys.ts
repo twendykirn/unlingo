@@ -43,6 +43,33 @@ export const getTranslationKeys = query({
   },
 });
 
+export const getTranslationKey = query({
+  args: {
+    keyId: v.id("translationKeys"),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const keyDoc = await ctx.db.get(args.keyId);
+    if (!keyDoc || keyDoc.status === -1) {
+      return null;
+    }
+
+    const project = await ctx.db.get(keyDoc.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const namespace = await ctx.db.get(keyDoc.namespaceId);
+
+    return {
+      ...keyDoc,
+      namespaceName: namespace?.name || "Unknown",
+    };
+  },
+});
+
 export const getTranslationKeysGlobalSearch = query({
   args: {
     projectId: v.id("projects"),
@@ -644,15 +671,14 @@ export const deleteTranslationKeys = mutation({
         }
       }
 
-      const mappings = await ctx.db
-        .query("screenshotKeyMappings")
-        .withIndex("by_namespace_translation_key", (q) =>
-          q.eq("namespaceId", key.namespaceId).eq("translationKeyId", key._id),
-        )
+      // Delete any screenshot containers associated with this translation key
+      const containers = await ctx.db
+        .query("screenshotContainers")
+        .withIndex("by_translation_key", (q) => q.eq("translationKeyId", key._id))
         .collect();
 
-      for (const mapping of mappings) {
-        await ctx.db.delete(mapping._id);
+      for (const container of containers) {
+        await ctx.db.delete(container._id);
       }
 
       await ctx.db.delete(key._id);

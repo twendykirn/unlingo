@@ -66,7 +66,7 @@ const ScreenshotDeleteDialog = ({ isOpen, setIsOpen, workspace, screenshot }: Pr
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Screenshot</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action is permanent and cannot be undone. All containers and key mappings associated with this screenshot will also be deleted. To confirm, please type the screenshot name below: <strong>{screenshot.name}</strong>
+                            This action is permanent and cannot be undone. All containers associated with this screenshot will also be deleted. To confirm, please type the screenshot name below: <strong>{screenshot.name}</strong>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogPanel>
