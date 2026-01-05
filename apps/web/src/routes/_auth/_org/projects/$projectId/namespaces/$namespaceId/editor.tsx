@@ -13,6 +13,7 @@ import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import {
     BookIcon,
     ChevronDownIcon,
+    CopyIcon,
     LanguagesIcon,
     PlusIcon,
     SearchIcon,
@@ -37,6 +38,7 @@ import TranslationKeyCreateDialog from '@/components/translation-key-create-dial
 import TranslationKeyDeleteDialog from '@/components/translation-key-delete-dialog';
 import { debounce } from '@tanstack/pacer';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 
 export const Route = createFileRoute(
     '/_auth/_org/projects/$projectId/namespaces/$namespaceId/editor'
@@ -89,6 +91,15 @@ function EditableCell({
         }
     };
 
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(value);
+        toastManager.add({
+            description: isKey ? 'Key copied to clipboard' : 'Value copied to clipboard',
+            type: 'info',
+        });
+    };
+
     if (status === 2) {
         return <Spinner />;
     }
@@ -115,16 +126,31 @@ function EditableCell({
                 if (!isKey) {
                     setIsEditing(true);
                 } else {
-                    navigator.clipboard.writeText(value);
-                    toastManager.add({
-                        description: 'Key copied to clipboard',
-                        type: 'info',
-                    });
+                    handleCopy({ stopPropagation: () => { } } as React.MouseEvent);
                 }
             }}
-            className={`cursor-pointer truncate text-sm max-w-[250px] ${!isKey && 'text-muted-foreground'}`}
+            className='cursor-pointer max-w-[250px] relative group flex items-center'
         >
-            {value || <span className="text-gray-300 italic">Empty</span>}
+            <Tooltip>
+                <TooltipTrigger delay={0} render={<div className={`truncate text-sm pr-6 w-full ${!isKey && 'text-muted-foreground'}`} />}>
+                    {value || <span className="text-gray-300 italic">Empty</span>}
+                </TooltipTrigger>
+                <TooltipPopup>
+                    <div className='max-w-[300px] text-pretty'>
+                        {value}
+                    </div>
+                </TooltipPopup>
+            </Tooltip>
+            {!isKey && value ? (
+                <Button
+                    onClick={handleCopy}
+                    className="absolute right-0 opacity-0 group-hover:opacity-100"
+                    size="icon-xs"
+                    variant="ghost"
+                >
+                    <CopyIcon />
+                </Button>
+            ) : null}
         </div>
     );
 }
@@ -204,7 +230,9 @@ function EditorComponent() {
     );
 
     const {
-        results: translationKeys
+        results: translationKeys,
+        loadMore,
+        status: translationKeysStatus,
     } = usePaginatedQuery(
         api.translationKeys.getTranslationKeys,
         workspace && project && namespace
@@ -216,6 +244,22 @@ function EditorComponent() {
             }
             : 'skip',
         { initialNumItems: 50 }
+    );
+
+    const fetchMoreOnBottomReached = useCallback(
+        (containerRefElement?: HTMLDivElement | null) => {
+            if (containerRefElement) {
+                const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
+                // Once the user has scrolled within 500px of the bottom of the table, fetch more data if we can
+                if (
+                    scrollHeight - scrollTop - clientHeight < 500 &&
+                    translationKeysStatus === 'CanLoadMore'
+                ) {
+                    loadMore(50);
+                }
+            }
+        },
+        [loadMore, translationKeysStatus]
     );
 
     const updateTranslationKey = useMutation(api.translationKeys.updateTranslationKey);
@@ -549,10 +593,14 @@ function EditorComponent() {
                     <div className='h-full'>
                         <AutoSizer>
                             {({ width, height }) => (
-                                <div className='overflow-x-scroll relative' style={{
-                                    width: width + 'px',
-                                    height: height + 'px',
-                                }}>
+                                <div
+                                    className='overflow-auto relative'
+                                    onScroll={e => fetchMoreOnBottomReached(e.currentTarget)}
+                                    style={{
+                                        width: width + 'px',
+                                        height: height + 'px',
+                                    }}
+                                >
                                     <table style={{
                                         width: table.getTotalSize() + 'px',
                                     }}>
@@ -609,6 +657,11 @@ function EditorComponent() {
                                             ))}
                                         </tbody>
                                     </table>
+                                    {translationKeysStatus === 'LoadingMore' && (
+                                        <div className="flex justify-center py-4">
+                                            <Spinner />
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </AutoSizer>
