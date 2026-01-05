@@ -20,7 +20,7 @@ import {
     StarIcon,
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
     createColumnHelper,
     flexRender,
@@ -125,21 +125,24 @@ function EditableCell({
                 if (!isKey) {
                     setIsEditing(true);
                 } else {
-                    handleCopy({ stopPropagation: () => {} } as React.MouseEvent);
+                    handleCopy({ stopPropagation: () => { } } as React.MouseEvent);
                 }
             }}
-            className={`cursor-pointer truncate text-sm max-w-[250px] relative pr-6 group ${!isKey && 'text-muted-foreground'}`}
+            className='cursor-pointer max-w-[250px] relative group flex items-center'
         >
-            {value || <span className="text-gray-300 italic">Empty</span>}
-            {!isKey && value && (
-                <button
+            <div className={`truncate text-sm pr-6 ${!isKey && 'text-muted-foreground'}`}>
+                {value || <span className="text-gray-300 italic">Empty</span>}
+            </div>
+            {!isKey && value ? (
+                <Button
                     onClick={handleCopy}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 p-1 bg-muted border border-border rounded opacity-0 group-hover:opacity-100 hover:bg-accent transition-opacity"
-                    type="button"
+                    className="absolute right-0 opacity-0 group-hover:opacity-100"
+                    size="icon-xs"
+                    variant="ghost"
                 >
-                    <CopyIcon className="size-3" />
-                </button>
-            )}
+                    <CopyIcon />
+                </Button>
+            ) : null}
         </div>
     );
 }
@@ -235,8 +238,6 @@ function EditorComponent() {
         { initialNumItems: 50 }
     );
 
-    const tableContainerRef = useRef<HTMLDivElement>(null);
-
     const fetchMoreOnBottomReached = useCallback(
         (containerRefElement?: HTMLDivElement | null) => {
             if (containerRefElement) {
@@ -252,10 +253,6 @@ function EditorComponent() {
         },
         [loadMore, translationKeysStatus]
     );
-
-    useEffect(() => {
-        fetchMoreOnBottomReached(tableContainerRef.current);
-    }, [fetchMoreOnBottomReached]);
 
     const updateTranslationKey = useMutation(api.translationKeys.updateTranslationKey);
     const triggerBatchTranslation = useMutation(api.translationKeys.triggerBatchTranslation);
@@ -590,7 +587,6 @@ function EditorComponent() {
                             {({ width, height }) => (
                                 <div
                                     className='overflow-auto relative'
-                                    ref={tableContainerRef}
                                     onScroll={e => fetchMoreOnBottomReached(e.currentTarget)}
                                     style={{
                                         width: width + 'px',
