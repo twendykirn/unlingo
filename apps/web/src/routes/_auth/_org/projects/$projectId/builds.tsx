@@ -20,6 +20,7 @@ import type { Doc, Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { usePaginatedQuery, useQuery } from 'convex/react';
 import { BookIcon, Edit, EllipsisVerticalIcon, PackageIcon, SearchIcon, TrashIcon } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 
 export const Route = createFileRoute('/_auth/_org/projects/$projectId/builds')({
     component: RouteComponent,
@@ -181,7 +182,16 @@ function RouteComponent() {
                                             <TableRow key={build._id}>
                                                 <TableCell className="font-medium font-mono">{build.tag}</TableCell>
                                                 <TableCell>{build.namespace}</TableCell>
-                                                <TableCell>{Object.keys(build.languageFiles).length}</TableCell>
+                                                <TableCell>
+                                                    <Tooltip>
+                                                        <TooltipTrigger delay={0}>
+                                                            {Object.keys(build.languageFiles).length}
+                                                        </TooltipTrigger>
+                                                        <TooltipPopup>
+                                                            {Object.keys(build.languageFiles).join(', ')}
+                                                        </TooltipPopup>
+                                                    </Tooltip>
+                                                </TableCell>
                                                 <TableCell>{getTotalFileSize(build)}</TableCell>
                                                 <TableCell>{getBuildStatusBadge(build.status, build.statusDescription)}</TableCell>
                                                 <TableCell className="text-right">
