@@ -131,7 +131,7 @@ function EditableCell({
             className='cursor-pointer max-w-[250px] relative group flex items-center'
         >
             {value && (
-                <div className="absolute top-full left-0 mt-1 px-2 py-1 bg-popover text-popover-foreground text-xs rounded border border-border shadow-md whitespace-normal max-w-[300px] break-all opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50 pointer-events-none">
+                <div className="absolute bottom-full left-0 mb-1 px-2 py-1 bg-popover text-popover-foreground text-xs rounded border border-border shadow-md whitespace-normal max-w-[300px] break-all opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-[100] pointer-events-none">
                     {value}
                 </div>
             )}
@@ -598,7 +598,7 @@ function EditorComponent() {
                                         height: height + 'px',
                                     }}
                                 >
-                                    <table style={{
+                                    <table className="overflow-visible" style={{
                                         width: table.getTotalSize() + 'px',
                                     }}>
                                         <thead className="sticky top-0 z-20">
@@ -626,12 +626,12 @@ function EditorComponent() {
                                                 </tr>
                                             ))}
                                         </thead>
-                                        <tbody>
+                                        <tbody className="overflow-visible">
                                             {table.getRowModel().rows.map((row) => (
                                                 <tr
                                                     key={row.id}
                                                     data-selected={row.getIsSelected()}
-                                                    className='border-b'
+                                                    className='border-b overflow-visible'
                                                 >
                                                     {row.getVisibleCells().map((cell) => {
                                                         const { ...style } = getCommonPinningStyles(
@@ -641,7 +641,7 @@ function EditorComponent() {
                                                             <td
                                                                 key={cell.id}
                                                                 style={style}
-                                                                className="px-4 py-2 border-r whitespace-nowrap bg-background hover:bg-muted"
+                                                                className="px-4 py-2 border-r whitespace-nowrap bg-background hover:bg-muted overflow-visible"
                                                             >
                                                                 {flexRender(
                                                                     cell.column.columnDef.cell,
@@ -654,6 +654,7 @@ function EditorComponent() {
                                             ))}
                                         </tbody>
                                     </table>
+                                    <div className="h-24" aria-hidden="true" />
                                     {translationKeysStatus === 'LoadingMore' && (
                                         <div className="flex justify-center py-4">
                                             <Spinner />
