@@ -135,8 +135,8 @@ function EditableCell({
                 <TooltipTrigger delay={0} render={<div className={`truncate text-sm pr-6 w-full ${!isKey && 'text-muted-foreground'}`} />}>
                     {value || <span className="text-gray-300 italic">Empty</span>}
                 </TooltipTrigger>
-                <TooltipPopup>
-                    <div className='max-w-[300px] text-pretty'>
+                <TooltipPopup className='pointer-events-none'>
+                    <div className='max-w-[300px] text-pretty pointer-events-none'>
                         {value}
                     </div>
                 </TooltipPopup>
@@ -657,11 +657,11 @@ function EditorComponent() {
                                             ))}
                                         </tbody>
                                     </table>
-                                    {translationKeysStatus === 'LoadingMore' && (
+                                    {translationKeysStatus === 'LoadingMore' || translationKeysStatus === 'LoadingFirstPage' ? (
                                         <div className="flex justify-center py-4">
                                             <Spinner />
                                         </div>
-                                    )}
+                                    ) : null}
                                 </div>
                             )}
                         </AutoSizer>

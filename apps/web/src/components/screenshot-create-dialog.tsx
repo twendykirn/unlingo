@@ -126,7 +126,7 @@ const ScreenshotCreateDialog = ({ isOpen, setIsOpen, workspace, project }: Props
                         </Field>
                         <Field>
                             <FieldLabel>Image</FieldLabel>
-                            <div className="space-y-2">
+                            <div className="space-y-2 w-full">
                                 <Input
                                     ref={fileInputRef}
                                     type="file"
