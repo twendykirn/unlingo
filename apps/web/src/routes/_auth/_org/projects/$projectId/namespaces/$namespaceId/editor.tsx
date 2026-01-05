@@ -13,13 +13,14 @@ import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import {
     BookIcon,
     ChevronDownIcon,
+    CopyIcon,
     LanguagesIcon,
     PlusIcon,
     SearchIcon,
     StarIcon,
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     createColumnHelper,
     flexRender,
@@ -75,6 +76,7 @@ function EditableCell({
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(value);
+    const [isHovered, setIsHovered] = useState(false);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
@@ -87,6 +89,15 @@ function EditableCell({
             setEditValue(value);
             setIsEditing(false);
         }
+    };
+
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(value);
+        toastManager.add({
+            description: isKey ? 'Key copied to clipboard' : 'Value copied to clipboard',
+            type: 'info',
+        });
     };
 
     if (status === 2) {
@@ -115,16 +126,23 @@ function EditableCell({
                 if (!isKey) {
                     setIsEditing(true);
                 } else {
-                    navigator.clipboard.writeText(value);
-                    toastManager.add({
-                        description: 'Key copied to clipboard',
-                        type: 'info',
-                    });
+                    handleCopy({ stopPropagation: () => {} } as React.MouseEvent);
                 }
             }}
-            className={`cursor-pointer truncate text-sm max-w-[250px] ${!isKey && 'text-muted-foreground'}`}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className={`cursor-pointer truncate text-sm max-w-[250px] relative ${!isKey && 'text-muted-foreground'}`}
         >
             {value || <span className="text-gray-300 italic">Empty</span>}
+            {!isKey && isHovered && value && (
+                <button
+                    onClick={handleCopy}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 p-1 bg-background border rounded hover:bg-muted"
+                    type="button"
+                >
+                    <CopyIcon className="size-3" />
+                </button>
+            )}
         </div>
     );
 }
@@ -204,7 +222,9 @@ function EditorComponent() {
     );
 
     const {
-        results: translationKeys
+        results: translationKeys,
+        loadMore,
+        status: translationKeysStatus,
     } = usePaginatedQuery(
         api.translationKeys.getTranslationKeys,
         workspace && project && namespace
@@ -217,6 +237,28 @@ function EditorComponent() {
             : 'skip',
         { initialNumItems: 50 }
     );
+
+    const tableContainerRef = useRef<HTMLDivElement>(null);
+
+    const fetchMoreOnBottomReached = useCallback(
+        (containerRefElement?: HTMLDivElement | null) => {
+            if (containerRefElement) {
+                const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
+                // Once the user has scrolled within 500px of the bottom of the table, fetch more data if we can
+                if (
+                    scrollHeight - scrollTop - clientHeight < 500 &&
+                    translationKeysStatus === 'CanLoadMore'
+                ) {
+                    loadMore(50);
+                }
+            }
+        },
+        [loadMore, translationKeysStatus]
+    );
+
+    useEffect(() => {
+        fetchMoreOnBottomReached(tableContainerRef.current);
+    }, [fetchMoreOnBottomReached]);
 
     const updateTranslationKey = useMutation(api.translationKeys.updateTranslationKey);
     const triggerBatchTranslation = useMutation(api.translationKeys.triggerBatchTranslation);
@@ -549,10 +591,15 @@ function EditorComponent() {
                     <div className='h-full'>
                         <AutoSizer>
                             {({ width, height }) => (
-                                <div className='overflow-x-scroll relative' style={{
-                                    width: width + 'px',
-                                    height: height + 'px',
-                                }}>
+                                <div
+                                    className='overflow-auto relative'
+                                    ref={tableContainerRef}
+                                    onScroll={e => fetchMoreOnBottomReached(e.currentTarget)}
+                                    style={{
+                                        width: width + 'px',
+                                        height: height + 'px',
+                                    }}
+                                >
                                     <table style={{
                                         width: table.getTotalSize() + 'px',
                                     }}>
@@ -609,6 +656,11 @@ function EditorComponent() {
                                             ))}
                                         </tbody>
                                     </table>
+                                    {translationKeysStatus === 'LoadingMore' && (
+                                        <div className="flex justify-center py-4">
+                                            <Spinner />
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </AutoSizer>
