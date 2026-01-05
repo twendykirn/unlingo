@@ -9,7 +9,7 @@ import { useOrganization } from '@clerk/tanstack-react-start';
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Id } from '@unlingo/backend/convex/_generated/dataModel';
-import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { ArrowLeftIcon, PlusIcon, TrashIcon, KeyIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AutoSizer from 'react-virtualized-auto-sizer';
@@ -102,13 +102,8 @@ function RouteComponent() {
             : 'skip'
     ) as ContainerWithKey[] | undefined;
 
-    // Search translation keys across all namespaces (only when search term is provided)
-    const {
-        results: searchResults,
-        status: searchStatus,
-        loadMore,
-    } = usePaginatedQuery(
-        api.screenshots.searchTranslationKeysForScreenshot,
+    const searchResults = useQuery(
+        api.translationKeys.getTranslationKeysGlobalSearch,
         workspace && project && debouncedKeySearch.length >= 2
             ? {
                 projectId: project._id,
@@ -116,7 +111,6 @@ function RouteComponent() {
                 search: debouncedKeySearch,
             }
             : 'skip',
-        { initialNumItems: 20 }
     );
 
     const createContainer = useMutation(api.screenshots.createContainer);
@@ -444,7 +438,7 @@ function RouteComponent() {
                                 <p className="text-sm text-muted-foreground text-center py-8">
                                     Type at least 2 characters to search for translation keys
                                 </p>
-                            ) : searchStatus === 'LoadingFirstPage' ? (
+                            ) : searchResults === undefined ? (
                                 <div className="flex items-center justify-center py-8">
                                     <Spinner />
                                 </div>
@@ -478,20 +472,6 @@ function RouteComponent() {
                                             <p className="text-sm text-muted-foreground text-center py-8">
                                                 No translation keys found for "{debouncedKeySearch}"
                                             </p>
-                                        )}
-                                        {searchStatus === 'CanLoadMore' && (
-                                            <Button
-                                                variant="ghost"
-                                                className="w-full"
-                                                onClick={() => loadMore(20)}
-                                            >
-                                                Load more
-                                            </Button>
-                                        )}
-                                        {searchStatus === 'LoadingMore' && (
-                                            <div className="flex items-center justify-center py-4">
-                                                <Spinner />
-                                            </div>
                                         )}
                                     </div>
                                 </ScrollArea>

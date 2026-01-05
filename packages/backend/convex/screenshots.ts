@@ -135,55 +135,6 @@ export const deleteScreenshot = mutation({
   },
 });
 
-export const searchTranslationKeysForScreenshot = query({
-  args: {
-    projectId: v.id("projects"),
-    workspaceId: v.id("workspaces"),
-    search: v.string(),
-    paginationOpts: paginationOptsValidator,
-  },
-  handler: async (ctx, args) => {
-    await authMiddleware(ctx, args.workspaceId);
-
-    const project = await ctx.db.get(args.projectId);
-    if (!project || project.workspaceId !== args.workspaceId) {
-      throw new Error("Project not found or access denied");
-    }
-
-    if (!args.search || args.search.trim().length < 2) {
-      return { page: [], isDone: true, continueCursor: "" };
-    }
-
-    const results = await ctx.db
-      .query("translationKeys")
-      .withSearchIndex("search", (q) => q.search("key", args.search).eq("projectId", args.projectId))
-      .filter((q) => q.gt(q.field("status"), -1))
-      .paginate(args.paginationOpts);
-
-    const namespaceIds = new Set<Id<"namespaces">>();
-    results.page.forEach((k) => namespaceIds.add(k.namespaceId));
-
-    const namespaces = await Promise.all([...namespaceIds].map((id) => ctx.db.get(id)));
-
-    const nsMap = new Map<Id<"namespaces">, string>();
-    namespaces.forEach((ns) => {
-      if (ns) {
-        nsMap.set(ns._id, ns.name);
-      }
-    });
-
-    return {
-      ...results,
-      page: results.page.map((key) => ({
-        _id: key._id,
-        key: key.key,
-        namespaceName: nsMap.get(key.namespaceId) || "Unknown",
-        namespaceId: key.namespaceId,
-      })),
-    };
-  },
-});
-
 export const createContainer = mutation({
   args: {
     screenshotId: v.id("screenshots"),
