@@ -130,6 +130,11 @@ function EditableCell({
             }}
             className='cursor-pointer max-w-[250px] relative group flex items-center'
         >
+            {value && (
+                <div className="absolute bottom-full left-0 mb-1 px-2 py-1 bg-popover text-popover-foreground text-xs rounded border border-border shadow-md whitespace-normal max-w-[300px] break-words opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50 pointer-events-none">
+                    {value}
+                </div>
+            )}
             <div className={`truncate text-sm pr-6 ${!isKey && 'text-muted-foreground'}`}>
                 {value || <span className="text-gray-300 italic">Empty</span>}
             </div>
