@@ -18,19 +18,14 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { SearchIcon } from 'lucide-react';
 import { debounce } from '@tanstack/pacer';
 import { Badge } from '@/components/ui/badge';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger
-} from '@/components/ui/tooltip';
 import { Stage, Layer, Image as KonvaImage, Circle, Group, Text } from 'react-konva';
 import type Konva from 'konva';
 import AutoSizer from 'react-virtualized-auto-sizer';
 
 const CONTAINER_SIZE = 40;
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 3;
-const ZOOM_STEP = 0.25;
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 5;
+const ZOOM_SENSITIVITY = 0.001; // For smooth wheel zooming
 
 interface ContainerWithKey {
     _id: Id<'screenshotContainers'>;
@@ -69,6 +64,8 @@ function RouteComponent() {
     // Canvas zoom and pan state
     const [zoom, setZoom] = useState(1);
     const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
+    const [initialFitDone, setInitialFitDone] = useState(false);
+    const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
     const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
     const stageRef = useRef<Konva.Stage>(null);
@@ -137,6 +134,30 @@ function RouteComponent() {
             };
         }
     }, [screenshot?.imageUrl]);
+
+    // Fit image to viewport on initial load
+    useEffect(() => {
+        if (loadedImage && screenshot && canvasSize.width > 0 && canvasSize.height > 0 && !initialFitDone) {
+            const padding = 40; // padding around the image
+            const availableWidth = canvasSize.width - padding * 2;
+            const availableHeight = canvasSize.height - padding * 2;
+
+            const scaleX = availableWidth / screenshot.dimensions.width;
+            const scaleY = availableHeight / screenshot.dimensions.height;
+            const fitScale = Math.min(scaleX, scaleY, 1); // Don't zoom in past 100%
+
+            const scaledWidth = screenshot.dimensions.width * fitScale;
+            const scaledHeight = screenshot.dimensions.height * fitScale;
+
+            // Center the image
+            const offsetX = (canvasSize.width - scaledWidth) / 2;
+            const offsetY = (canvasSize.height - scaledHeight) / 2;
+
+            setZoom(fitScale);
+            setStagePosition({ x: offsetX, y: offsetY });
+            setInitialFitDone(true);
+        }
+    }, [loadedImage, screenshot, canvasSize, initialFitDone]);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const debouncedSetKeySearch = useCallback(
@@ -221,38 +242,86 @@ function RouteComponent() {
 
     // Zoom controls
     const handleZoomIn = () => {
-        setZoom(prev => Math.min(MAX_ZOOM, prev + ZOOM_STEP));
+        setZoom(prev => Math.min(MAX_ZOOM, prev * 1.25)); // 25% increase
     };
 
     const handleZoomOut = () => {
-        setZoom(prev => Math.max(MIN_ZOOM, prev - ZOOM_STEP));
+        setZoom(prev => Math.max(MIN_ZOOM, prev / 1.25)); // 25% decrease
     };
 
     const handleResetZoom = () => {
-        setZoom(1);
-        setStagePosition({ x: 0, y: 0 });
+        // Reset to fit image in viewport
+        if (screenshot && canvasSize.width > 0 && canvasSize.height > 0) {
+            const padding = 40;
+            const availableWidth = canvasSize.width - padding * 2;
+            const availableHeight = canvasSize.height - padding * 2;
+
+            const scaleX = availableWidth / screenshot.dimensions.width;
+            const scaleY = availableHeight / screenshot.dimensions.height;
+            const fitScale = Math.min(scaleX, scaleY, 1);
+
+            const scaledWidth = screenshot.dimensions.width * fitScale;
+            const scaledHeight = screenshot.dimensions.height * fitScale;
+
+            const offsetX = (canvasSize.width - scaledWidth) / 2;
+            const offsetY = (canvasSize.height - scaledHeight) / 2;
+
+            setZoom(fitScale);
+            setStagePosition({ x: offsetX, y: offsetY });
+        } else {
+            setZoom(1);
+            setStagePosition({ x: 0, y: 0 });
+        }
     };
 
-    // Handle wheel zoom on stage
+    // Handle wheel events - Figma-style navigation
+    // - Wheel alone: zoom (smooth)
+    // - Shift + wheel: horizontal pan
+    // - Ctrl/Cmd + wheel: zoom (pinch-to-zoom on trackpad)
+    // - Two-finger scroll on trackpad: pan (detected via deltaX presence)
     const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
         e.evt.preventDefault();
 
         const stage = stageRef.current;
         if (!stage) return;
 
-        const oldScale = zoom;
         const pointer = stage.getPointerPosition();
         if (!pointer) return;
 
-        const mousePointTo = {
-            x: (pointer.x - stagePosition.x) / oldScale,
-            y: (pointer.y - stagePosition.y) / oldScale,
-        };
+        const evt = e.evt;
 
-        // Check if ctrl/cmd is pressed for zooming, otherwise pan
-        if (e.evt.ctrlKey || e.evt.metaKey) {
-            const direction = e.evt.deltaY > 0 ? -1 : 1;
-            const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldScale + direction * ZOOM_STEP));
+        // Detect trackpad two-finger scroll (has both deltaX and deltaY without modifiers)
+        // or shift+wheel for horizontal pan
+        const isTrackpadPan = Math.abs(evt.deltaX) > 0;
+        const isShiftPan = evt.shiftKey && !evt.ctrlKey && !evt.metaKey;
+
+        if (isTrackpadPan && !evt.ctrlKey && !evt.metaKey) {
+            // Two-finger trackpad scroll: pan in both directions
+            setStagePosition(prev => ({
+                x: prev.x - evt.deltaX,
+                y: prev.y - evt.deltaY,
+            }));
+        } else if (isShiftPan) {
+            // Shift + wheel: horizontal pan
+            setStagePosition(prev => ({
+                x: prev.x - evt.deltaY,
+                y: prev.y,
+            }));
+        } else {
+            // Zoom (ctrl/cmd + wheel for trackpad pinch, or regular wheel)
+            const oldScale = zoom;
+            const mousePointTo = {
+                x: (pointer.x - stagePosition.x) / oldScale,
+                y: (pointer.y - stagePosition.y) / oldScale,
+            };
+
+            // Use smoother zoom calculation
+            // deltaY is positive when scrolling down (zoom out), negative when scrolling up (zoom in)
+            const zoomFactor = evt.ctrlKey || evt.metaKey
+                ? 1 - evt.deltaY * 0.01 // Finer control for pinch-to-zoom
+                : 1 - evt.deltaY * ZOOM_SENSITIVITY * 100; // Smooth wheel zoom
+
+            const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldScale * zoomFactor));
 
             const newPos = {
                 x: pointer.x - mousePointTo.x * newScale,
@@ -407,96 +476,120 @@ function RouteComponent() {
                     ) : (
                         <div className="flex-1 min-h-0 overflow-hidden rounded-lg bg-muted/50 border relative">
                             <AutoSizer>
-                                {({ width, height }) => (
-                                    <Stage
-                                        ref={stageRef}
-                                        width={width}
-                                        height={height}
-                                        scaleX={zoom}
-                                        scaleY={zoom}
-                                        x={stagePosition.x}
-                                        y={stagePosition.y}
-                                        draggable
-                                        onDragEnd={handleStageDragEnd}
-                                        onWheel={handleWheel}
-                                        onClick={(e) => {
-                                            // Deselect when clicking on empty space
-                                            if (e.target === e.target.getStage()) {
-                                                setSelectedContainerId(null);
-                                            }
-                                        }}
-                                    >
-                                        <Layer>
-                                            <KonvaImage
-                                                image={loadedImage}
-                                                width={screenshot.dimensions.width}
-                                                height={screenshot.dimensions.height}
-                                            />
-                                            {containers.map((container, index) => {
-                                                const x = (container.position.x / 100) * screenshot.dimensions.width;
-                                                const y = (container.position.y / 100) * screenshot.dimensions.height;
-                                                const isSelected = selectedContainerId === container._id;
-                                                const isHovered = hoveredContainerId === container._id;
+                                {({ width, height }) => {
+                                    // Update canvas size when AutoSizer provides dimensions
+                                    if (width !== canvasSize.width || height !== canvasSize.height) {
+                                        // Use setTimeout to avoid state update during render
+                                        setTimeout(() => setCanvasSize({ width, height }), 0);
+                                    }
+                                    return (
+                                        <Stage
+                                            ref={stageRef}
+                                            width={width}
+                                            height={height}
+                                            scaleX={zoom}
+                                            scaleY={zoom}
+                                            x={stagePosition.x}
+                                            y={stagePosition.y}
+                                            draggable
+                                            onDragEnd={handleStageDragEnd}
+                                            onWheel={handleWheel}
+                                            onClick={(e) => {
+                                                // Deselect when clicking on empty space
+                                                if (e.target === e.target.getStage()) {
+                                                    setSelectedContainerId(null);
+                                                }
+                                            }}
+                                        >
+                                            <Layer>
+                                                <KonvaImage
+                                                    image={loadedImage}
+                                                    width={screenshot.dimensions.width}
+                                                    height={screenshot.dimensions.height}
+                                                />
+                                                {containers.map((container) => {
+                                                    const x = (container.position.x / 100) * screenshot.dimensions.width;
+                                                    const y = (container.position.y / 100) * screenshot.dimensions.height;
+                                                    const isSelected = selectedContainerId === container._id;
+                                                    const isHovered = hoveredContainerId === container._id;
 
-                                                return (
-                                                    <Group
-                                                        key={container._id}
-                                                        x={x}
-                                                        y={y}
-                                                        draggable
-                                                        onDragEnd={(e) => handleContainerDragEnd(container, e)}
-                                                        onClick={(e) => {
-                                                            e.cancelBubble = true;
-                                                            setSelectedContainerId(container._id);
-                                                        }}
-                                                        onMouseEnter={() => setHoveredContainerId(container._id)}
-                                                        onMouseLeave={() => setHoveredContainerId(null)}
-                                                    >
-                                                        {/* Selection ring */}
-                                                        {isSelected && (
+                                                    return (
+                                                        <Group
+                                                            key={container._id}
+                                                            x={x}
+                                                            y={y}
+                                                            draggable
+                                                            onDragStart={(e) => {
+                                                                // Stop event from bubbling to stage
+                                                                e.cancelBubble = true;
+                                                            }}
+                                                            onDragMove={(e) => {
+                                                                // Keep event from affecting stage position
+                                                                e.cancelBubble = true;
+                                                            }}
+                                                            onDragEnd={(e) => {
+                                                                e.cancelBubble = true;
+                                                                handleContainerDragEnd(container, e);
+                                                            }}
+                                                            onClick={(e) => {
+                                                                e.cancelBubble = true;
+                                                                setSelectedContainerId(container._id);
+                                                            }}
+                                                            onMouseEnter={() => setHoveredContainerId(container._id)}
+                                                            onMouseLeave={() => setHoveredContainerId(null)}
+                                                        >
+                                                            {/* Selection ring */}
+                                                            {isSelected && (
+                                                                <Circle
+                                                                    x={CONTAINER_SIZE / 2}
+                                                                    y={CONTAINER_SIZE / 2}
+                                                                    radius={CONTAINER_SIZE / 2 + 4}
+                                                                    stroke="#ffffff"
+                                                                    strokeWidth={2}
+                                                                />
+                                                            )}
+                                                            {/* Hover ring */}
+                                                            {isHovered && !isSelected && (
+                                                                <Circle
+                                                                    x={CONTAINER_SIZE / 2}
+                                                                    y={CONTAINER_SIZE / 2}
+                                                                    radius={CONTAINER_SIZE / 2 + 2}
+                                                                    stroke="rgba(255,255,255,0.5)"
+                                                                    strokeWidth={2}
+                                                                />
+                                                            )}
+                                                            {/* Main circle with key icon indicator */}
                                                             <Circle
                                                                 x={CONTAINER_SIZE / 2}
                                                                 y={CONTAINER_SIZE / 2}
-                                                                radius={CONTAINER_SIZE / 2 + 4}
+                                                                radius={CONTAINER_SIZE / 2}
+                                                                fill={container.backgroundColor || '#3b82f6'}
+                                                                opacity={0.9}
+                                                            />
+                                                            {/* Key icon (simplified key shape) */}
+                                                            <Circle
+                                                                x={CONTAINER_SIZE / 2}
+                                                                y={CONTAINER_SIZE / 2 - 4}
+                                                                radius={6}
                                                                 stroke="#ffffff"
                                                                 strokeWidth={2}
+                                                                fill="transparent"
                                                             />
-                                                        )}
-                                                        {/* Hover ring */}
-                                                        {isHovered && !isSelected && (
-                                                            <Circle
-                                                                x={CONTAINER_SIZE / 2}
-                                                                y={CONTAINER_SIZE / 2}
-                                                                radius={CONTAINER_SIZE / 2 + 2}
-                                                                stroke="rgba(255,255,255,0.5)"
-                                                                strokeWidth={2}
+                                                            <Text
+                                                                x={CONTAINER_SIZE / 2 - 1}
+                                                                y={CONTAINER_SIZE / 2 + 2}
+                                                                text="|"
+                                                                fontSize={10}
+                                                                fontStyle="bold"
+                                                                fill="#ffffff"
                                                             />
-                                                        )}
-                                                        {/* Main circle */}
-                                                        <Circle
-                                                            x={CONTAINER_SIZE / 2}
-                                                            y={CONTAINER_SIZE / 2}
-                                                            radius={CONTAINER_SIZE / 2}
-                                                            fill={container.backgroundColor || '#3b82f6'}
-                                                            opacity={0.9}
-                                                        />
-                                                        {/* Index number */}
-                                                        <Text
-                                                            x={0}
-                                                            y={CONTAINER_SIZE / 2 - 6}
-                                                            width={CONTAINER_SIZE}
-                                                            text={String(index + 1)}
-                                                            fontSize={12}
-                                                            fontStyle="bold"
-                                                            fill="#ffffff"
-                                                            align="center"
-                                                        />
-                                                    </Group>
-                                                );
-                                            })}
-                                        </Layer>
-                                    </Stage>
-                                )}
+                                                        </Group>
+                                                    );
+                                                })}
+                                            </Layer>
+                                        </Stage>
+                                    );
+                                }}
                             </AutoSizer>
 
                             {/* Tooltip overlay for hovered container */}
