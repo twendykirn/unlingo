@@ -76,7 +76,6 @@ function EditableCell({
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(value);
-    const [isHovered, setIsHovered] = useState(false);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
@@ -129,15 +128,13 @@ function EditableCell({
                     handleCopy({ stopPropagation: () => {} } as React.MouseEvent);
                 }
             }}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            className={`cursor-pointer truncate text-sm max-w-[250px] relative ${!isKey && 'text-muted-foreground'}`}
+            className={`cursor-pointer truncate text-sm max-w-[250px] relative pr-6 group ${!isKey && 'text-muted-foreground'}`}
         >
             {value || <span className="text-gray-300 italic">Empty</span>}
-            {!isKey && isHovered && value && (
+            {!isKey && value && (
                 <button
                     onClick={handleCopy}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 p-1 bg-background border rounded hover:bg-muted"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 p-1 bg-muted border border-border rounded opacity-0 group-hover:opacity-100 hover:bg-accent transition-opacity"
                     type="button"
                 >
                     <CopyIcon className="size-3" />
