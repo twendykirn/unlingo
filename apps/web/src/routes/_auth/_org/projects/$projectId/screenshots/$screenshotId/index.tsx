@@ -22,11 +22,9 @@ import { Badge } from '@/components/ui/badge';
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger
 } from '@/components/ui/tooltip';
 
-// Constants for container size (40x40 pixels on a standard display)
 const CONTAINER_SIZE = 40;
 
 interface ContainerWithKey {
@@ -366,11 +364,10 @@ function RouteComponent() {
                                                 className="max-w-full h-auto block"
                                                 draggable={false}
                                             />
-                                            {/* Render containers */}
-                                            <TooltipProvider>
-                                                {containers.map((container, index) => (
-                                                    <Tooltip key={container._id}>
-                                                        <TooltipTrigger asChild>
+                                            {containers.map((container, index) => (
+                                                <Tooltip key={container._id}>
+                                                    <TooltipTrigger
+                                                        render={
                                                             <div
                                                                 className={`absolute rounded-full cursor-move transition-all ${selectedContainerId === container._id
                                                                     ? 'ring-2 ring-white ring-offset-2'
@@ -395,23 +392,24 @@ function RouteComponent() {
                                                                     e.stopPropagation();
                                                                     setSelectedContainerId(container._id);
                                                                 }}
-                                                            >
-                                                                {index + 1}
+                                                            />
+                                                        }
+                                                        delay={0}
+                                                    >
+                                                        {index + 1}
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="top" className="max-w-[300px]">
+                                                        {container.translationKey ? (
+                                                            <div className="flex flex-col gap-1">
+                                                                <span className="font-mono text-xs">{container.translationKey.key}</span>
+                                                                <span className="text-xs text-muted-foreground">{container.translationKey.namespaceName}</span>
                                                             </div>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent side="top" className="max-w-[300px]">
-                                                            {container.translationKey ? (
-                                                                <div className="flex flex-col gap-1">
-                                                                    <span className="font-mono text-xs">{container.translationKey.key}</span>
-                                                                    <span className="text-xs text-muted-foreground">{container.translationKey.namespaceName}</span>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-xs text-muted-foreground">Key not found</span>
-                                                            )}
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                ))}
-                                            </TooltipProvider>
+                                                        ) : (
+                                                            <span className="text-xs text-muted-foreground">Key not found</span>
+                                                        )}
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
@@ -419,8 +417,6 @@ function RouteComponent() {
                         </div>
                     )}
                 </div>
-
-                {/* Key Search Sheet for Container Creation */}
                 <Sheet open={isKeySearchOpen} onOpenChange={setIsKeySearchOpen}>
                     <SheetPopup className="min-w-[450px]">
                         <SheetHeader>
