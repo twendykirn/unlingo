@@ -38,6 +38,7 @@ import TranslationKeyCreateDialog from '@/components/translation-key-create-dial
 import TranslationKeyDeleteDialog from '@/components/translation-key-delete-dialog';
 import { debounce } from '@tanstack/pacer';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 
 export const Route = createFileRoute(
     '/_auth/_org/projects/$projectId/namespaces/$namespaceId/editor'
@@ -130,14 +131,16 @@ function EditableCell({
             }}
             className='cursor-pointer max-w-[250px] relative group flex items-center'
         >
-            {value && (
-                <div className="absolute bottom-full left-0 mb-1 px-2 py-1 bg-popover text-popover-foreground text-xs rounded border border-border shadow-md whitespace-normal max-w-[300px] break-all opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-[100] pointer-events-none">
-                    {value}
-                </div>
-            )}
-            <div className={`truncate text-sm pr-6 ${!isKey && 'text-muted-foreground'}`}>
-                {value || <span className="text-gray-300 italic">Empty</span>}
-            </div>
+            <Tooltip>
+                <TooltipTrigger delay={0} render={<div className={`truncate text-sm pr-6 w-full ${!isKey && 'text-muted-foreground'}`} />}>
+                    {value || <span className="text-gray-300 italic">Empty</span>}
+                </TooltipTrigger>
+                <TooltipPopup>
+                    <div className='max-w-[300px] text-pretty'>
+                        {value}
+                    </div>
+                </TooltipPopup>
+            </Tooltip>
             {!isKey && value ? (
                 <Button
                     onClick={handleCopy}
@@ -598,7 +601,7 @@ function EditorComponent() {
                                         height: height + 'px',
                                     }}
                                 >
-                                    <table className="overflow-visible" style={{
+                                    <table style={{
                                         width: table.getTotalSize() + 'px',
                                     }}>
                                         <thead className="sticky top-0 z-20">
@@ -626,12 +629,12 @@ function EditorComponent() {
                                                 </tr>
                                             ))}
                                         </thead>
-                                        <tbody className="overflow-visible">
+                                        <tbody>
                                             {table.getRowModel().rows.map((row) => (
                                                 <tr
                                                     key={row.id}
                                                     data-selected={row.getIsSelected()}
-                                                    className='border-b overflow-visible'
+                                                    className='border-b'
                                                 >
                                                     {row.getVisibleCells().map((cell) => {
                                                         const { ...style } = getCommonPinningStyles(
@@ -641,7 +644,7 @@ function EditorComponent() {
                                                             <td
                                                                 key={cell.id}
                                                                 style={style}
-                                                                className="px-4 py-2 border-r whitespace-nowrap bg-background hover:bg-muted overflow-visible"
+                                                                className="px-4 py-2 border-r whitespace-nowrap bg-background hover:bg-muted"
                                                             >
                                                                 {flexRender(
                                                                     cell.column.columnDef.cell,
@@ -654,7 +657,6 @@ function EditorComponent() {
                                             ))}
                                         </tbody>
                                     </table>
-                                    <div className="h-24" aria-hidden="true" />
                                     {translationKeysStatus === 'LoadingMore' && (
                                         <div className="flex justify-center py-4">
                                             <Spinner />
