@@ -16,9 +16,11 @@ import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
 import { useSignUp } from '@clerk/tanstack-react-start';
 import { auth } from '@clerk/tanstack-react-start/server';
+import type { ClerkAPIError } from '@clerk/types';
 import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
+import { isClerkAPIResponseError } from '@clerk/tanstack-react-start/errors';
 
 const authStateFn = createServerFn({ method: 'GET' }).handler(async () => {
     const { isAuthenticated, userId } = await auth();
@@ -42,9 +44,14 @@ function Page() {
     const { isLoaded, signUp, setActive } = useSignUp();
 
     const [open, setOpen] = useState(false);
+    const [errors, setErrors] = useState<ClerkAPIError[]>([]);
+    const [verifyErrors, setVerifyErrors] = useState<ClerkAPIError[]>([]);
+    const [isResending, setIsResending] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(false);
 
     const handleSendCode = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setErrors([]);
 
         const formData = new FormData(e.currentTarget);
         const email = formData.get("email") as string;
@@ -61,19 +68,23 @@ function Page() {
 
             setOpen(true);
         } catch (err) {
-            // See https://clerk.com/docs/guides/development/custom-flows/error-handling
-            // for more info on error handling
+            if (isClerkAPIResponseError(err)) {
+                setErrors(err.errors);
+            }
             console.error("Error:", JSON.stringify(err, null, 2));
         }
     };
 
     const handleVerifyCode = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setVerifyErrors([]);
 
         const formData = new FormData(e.currentTarget);
         const code = formData.get("otp") as string;
 
         if (!isLoaded && !signUp || !code) return null;
+
+        setIsVerifying(true);
 
         try {
             const signUpAttempt = await signUp.attemptEmailAddressVerification({
@@ -102,9 +113,30 @@ function Page() {
                 console.error(signUpAttempt);
             }
         } catch (err) {
-            // See https://clerk.com/docs/guides/development/custom-flows/error-handling
-            // for more info on error handling
+            if (isClerkAPIResponseError(err)) {
+                setVerifyErrors(err.errors);
+            }
             console.error("Error:", JSON.stringify(err, null, 2));
+        } finally {
+            setIsVerifying(false);
+        }
+    };
+
+    const handleResendCode = async () => {
+        if (!isLoaded || !signUp) return;
+
+        setIsResending(true);
+        setVerifyErrors([]);
+
+        try {
+            await signUp.prepareEmailAddressVerification();
+        } catch (err) {
+            if (isClerkAPIResponseError(err)) {
+                setVerifyErrors(err.errors);
+            }
+            console.error("Error:", JSON.stringify(err, null, 2));
+        } finally {
+            setIsResending(false);
         }
     };
 
@@ -140,6 +172,11 @@ function Page() {
                                 </Field>
                                 <Field className="items-center">
                                     <Button type="submit" className="w-full">Send Code</Button>
+                                    {errors.length > 0 && (
+                                        <p className="text-destructive text-xs text-center">
+                                            {errors[0].longMessage || errors[0].message}
+                                        </p>
+                                    )}
                                 </Field>
                             </Form>
                             <div className="flex items-center">
@@ -218,7 +255,23 @@ function Page() {
                                             </FieldDescription>
                                         </Field>
                                         <Field className="items-center w-full">
-                                            <Button type="submit" className="w-8/12">Verify</Button>
+                                            <Button type="submit" className="w-8/12">
+                                                {isVerifying ? "Verifying..." : "Verify"}
+                                            </Button>
+                                            {verifyErrors.length > 0 && (
+                                                <p className="text-destructive text-xs text-center">
+                                                    {verifyErrors[0].longMessage || verifyErrors[0].message}
+                                                </p>
+                                            )}
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                className="w-8/12"
+                                                onClick={handleResendCode}
+                                                disabled={isResending}
+                                            >
+                                                {isResending ? "Resending..." : "Resend Code"}
+                                            </Button>
                                         </Field>
                                     </DialogPanel>
                                 </Form>
