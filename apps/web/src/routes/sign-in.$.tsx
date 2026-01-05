@@ -46,6 +46,7 @@ function RouteComponent() {
     const [open, setOpen] = useState(false);
     const [errors, setErrors] = useState<ClerkAPIError[]>([]);
     const [verifyErrors, setVerifyErrors] = useState<ClerkAPIError[]>([]);
+    const [isResending, setIsResending] = useState(false);
 
     const handleSendCode = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -133,6 +134,29 @@ function RouteComponent() {
                 setVerifyErrors(err.errors);
             }
             console.error("Error:", JSON.stringify(err, null, 2));
+        }
+    };
+
+    const handleResendCode = async () => {
+        if (!isLoaded || !signIn) return;
+
+        setIsResending(true);
+        setVerifyErrors([]);
+
+        try {
+            await signIn.prepareFirstFactor({
+                strategy: "email_code",
+                emailAddressId: signIn.supportedFirstFactors?.find(
+                    (factor): factor is EmailCodeFactor => factor.strategy === "email_code"
+                )?.emailAddressId as string,
+            });
+        } catch (err) {
+            if (isClerkAPIResponseError(err)) {
+                setVerifyErrors(err.errors);
+            }
+            console.error("Error:", JSON.stringify(err, null, 2));
+        } finally {
+            setIsResending(false);
         }
     };
 
@@ -257,6 +281,15 @@ function RouteComponent() {
                                                     {verifyErrors[0].longMessage || verifyErrors[0].message}
                                                 </p>
                                             )}
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                className="w-8/12"
+                                                onClick={handleResendCode}
+                                                disabled={isResending}
+                                            >
+                                                {isResending ? "Resending..." : "Resend Code"}
+                                            </Button>
                                         </Field>
                                     </DialogPanel>
                                 </Form>
