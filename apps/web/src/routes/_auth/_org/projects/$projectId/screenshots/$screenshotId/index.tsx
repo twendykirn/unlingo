@@ -10,9 +10,8 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { useMutation, useQuery } from 'convex/react';
-import { ArrowLeftIcon, PlusIcon, TrashIcon, KeyIcon } from 'lucide-react';
+import { ArrowLeftIcon, PlusIcon, TrashIcon, KeyIcon, ZoomInIcon, ZoomOutIcon, RotateCcwIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import AutoSizer from 'react-virtualized-auto-sizer';
 import { Sheet, SheetHeader, SheetPanel, SheetPopup, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
@@ -26,6 +25,9 @@ import {
 } from '@/components/ui/tooltip';
 
 const CONTAINER_SIZE = 40;
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 3;
+const ZOOM_STEP = 0.25;
 
 interface ContainerWithKey {
     _id: Id<'screenshotContainers'>;
@@ -42,6 +44,7 @@ interface ContainerWithKey {
         _id: Id<'translationKeys'>;
         key: string;
         namespaceName: string;
+        primaryValue: string | null;
     } | null;
 }
 
@@ -62,8 +65,14 @@ function RouteComponent() {
     const [keySearch, setKeySearch] = useState('');
     const [debouncedKeySearch, setDebouncedKeySearch] = useState('');
 
+    // Canvas zoom and pan state
+    const [zoom, setZoom] = useState(1);
+    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const [isPanning, setIsPanning] = useState(false);
+    const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+    const canvasRef = useRef<HTMLDivElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
 
     const clerkId = organization?.id;
 
@@ -138,30 +147,21 @@ function RouteComponent() {
         if (!workspace || !screenshot) return;
 
         try {
-            // Calculate position percentage for center of the visible area
-            const containerElement = containerRef.current;
-            const imageElement = imageRef.current;
-
-            if (!containerElement || !imageElement) return;
-
-            const rect = containerElement.getBoundingClientRect();
-            const imageRect = imageElement.getBoundingClientRect();
-
-            // Position at center of visible area
-            const centerX = (rect.width / 2) / imageRect.width * 100;
-            const centerY = (rect.height / 2) / imageRect.height * 100;
-
             // Container size as percentage
             const widthPercent = (CONTAINER_SIZE / screenshot.dimensions.width) * 100;
             const heightPercent = (CONTAINER_SIZE / screenshot.dimensions.height) * 100;
+
+            // Position at center of the image
+            const centerX = 50 - widthPercent / 2;
+            const centerY = 50 - heightPercent / 2;
 
             const containerId = await createContainer({
                 screenshotId: screenshot._id,
                 workspaceId: workspace._id,
                 translationKeyId,
                 position: {
-                    x: Math.max(0, Math.min(100 - widthPercent, centerX - widthPercent / 2)),
-                    y: Math.max(0, Math.min(100 - heightPercent, centerY - heightPercent / 2)),
+                    x: Math.max(0, Math.min(100 - widthPercent, centerX)),
+                    y: Math.max(0, Math.min(100 - heightPercent, centerY)),
                     width: widthPercent,
                     height: heightPercent,
                 },
@@ -207,6 +207,30 @@ function RouteComponent() {
         }
     };
 
+    // Zoom controls
+    const handleZoomIn = () => {
+        setZoom(prev => Math.min(MAX_ZOOM, prev + ZOOM_STEP));
+    };
+
+    const handleZoomOut = () => {
+        setZoom(prev => Math.max(MIN_ZOOM, prev - ZOOM_STEP));
+    };
+
+    const handleResetZoom = () => {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+    };
+
+    // Handle wheel zoom
+    const handleWheel = useCallback((e: React.WheelEvent) => {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+            setZoom(prev => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev + delta)));
+        }
+    }, []);
+
+    // Container drag handlers
     const handleContainerMouseDown = (
         e: React.MouseEvent,
         container: ContainerWithKey
@@ -221,6 +245,7 @@ function RouteComponent() {
         if (!imageElement) return;
 
         const imageRect = imageElement.getBoundingClientRect();
+        // Calculate container position in screen coordinates
         const containerX = (container.position.x / 100) * imageRect.width + imageRect.left;
         const containerY = (container.position.y / 100) * imageRect.height + imageRect.top;
 
@@ -230,8 +255,26 @@ function RouteComponent() {
         });
     };
 
+    // Canvas panning handlers
+    const handleCanvasMouseDown = (e: React.MouseEvent) => {
+        // Only start panning if middle mouse button or space+click
+        if (e.button === 1) {
+            e.preventDefault();
+            setIsPanning(true);
+            setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+        }
+    };
+
     const handleMouseMove = useCallback(
         (e: MouseEvent) => {
+            if (isPanning) {
+                setPan({
+                    x: e.clientX - panStart.x,
+                    y: e.clientY - panStart.y,
+                });
+                return;
+            }
+
             if (!isDragging || !selectedContainerId || !workspace || !screenshot) return;
 
             const imageElement = imageRef.current;
@@ -241,6 +284,7 @@ function RouteComponent() {
             const selectedContainer = containers?.find(c => c._id === selectedContainerId);
             if (!selectedContainer) return;
 
+            // Calculate new position as percentage of image dimensions
             const newX = ((e.clientX - dragOffset.x - imageRect.left) / imageRect.width) * 100;
             const newY = ((e.clientY - dragOffset.y - imageRect.top) / imageRect.height) * 100;
 
@@ -259,15 +303,16 @@ function RouteComponent() {
                 },
             });
         },
-        [isDragging, selectedContainerId, workspace, screenshot, containers, dragOffset, updateContainer]
+        [isPanning, panStart, isDragging, selectedContainerId, workspace, screenshot, containers, dragOffset, updateContainer]
     );
 
     const handleMouseUp = useCallback(() => {
         setIsDragging(false);
+        setIsPanning(false);
     }, []);
 
     useEffect(() => {
-        if (isDragging) {
+        if (isDragging || isPanning) {
             window.addEventListener('mousemove', handleMouseMove);
             window.addEventListener('mouseup', handleMouseUp);
         }
@@ -276,7 +321,7 @@ function RouteComponent() {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
         };
-    }, [isDragging, handleMouseMove, handleMouseUp]);
+    }, [isDragging, isPanning, handleMouseMove, handleMouseUp]);
 
     const selectedContainer = containers?.find(c => c._id === selectedContainerId);
 
@@ -305,6 +350,37 @@ function RouteComponent() {
                             <ArrowLeftIcon />
                         </Button>
                         <h1>{screenshot?.name || 'Screenshot Editor'}</h1>
+
+                        {/* Zoom controls */}
+                        <div className="flex items-center gap-1 ml-4 bg-muted rounded-lg p-1">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleZoomOut}
+                                disabled={zoom <= MIN_ZOOM}
+                            >
+                                <ZoomOutIcon className="w-4 h-4" />
+                            </Button>
+                            <span className="text-sm font-medium min-w-[4rem] text-center">
+                                {Math.round(zoom * 100)}%
+                            </span>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleZoomIn}
+                                disabled={zoom >= MAX_ZOOM}
+                            >
+                                <ZoomInIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleResetZoom}
+                            >
+                                <RotateCcwIcon className="w-4 h-4" />
+                            </Button>
+                        </div>
+
                         <div className="flex items-center ml-auto gap-2">
                             <Button onClick={handleOpenKeySearch}>
                                 <PlusIcon />
@@ -333,6 +409,11 @@ function RouteComponent() {
                             <span className="text-xs text-muted-foreground">
                                 ({selectedContainer.translationKey.namespaceName})
                             </span>
+                            {selectedContainer.translationKey.primaryValue && (
+                                <span className="text-sm text-muted-foreground ml-2 truncate max-w-[300px]">
+                                    "{selectedContainer.translationKey.primaryValue}"
+                                </span>
+                            )}
                         </div>
                     )}
 
@@ -341,73 +422,95 @@ function RouteComponent() {
                             <Spinner />
                         </div>
                     ) : (
-                        <div className="flex-1 min-h-0">
-                            <AutoSizer>
-                                {({ width, height }) => (
+                        <div className="flex-1 min-h-0 overflow-hidden rounded-lg bg-muted/50 border">
+                            <div
+                                ref={canvasRef}
+                                className="w-full h-full overflow-auto cursor-grab"
+                                style={{
+                                    cursor: isPanning ? 'grabbing' : 'grab',
+                                }}
+                                onWheel={handleWheel}
+                                onMouseDown={handleCanvasMouseDown}
+                                onClick={() => setSelectedContainerId(null)}
+                            >
+                                <div
+                                    className="inline-block min-w-full min-h-full p-8"
+                                    style={{
+                                        transform: `translate(${pan.x}px, ${pan.y}px)`,
+                                    }}
+                                >
                                     <div
-                                        ref={containerRef}
-                                        className="overflow-auto bg-muted/50 rounded-lg"
-                                        style={{ width, height }}
-                                        onClick={() => setSelectedContainerId(null)}
+                                        className="relative inline-block origin-top-left"
+                                        style={{
+                                            transform: `scale(${zoom})`,
+                                        }}
                                     >
-                                        <div className="relative inline-block min-w-full min-h-full p-4">
-                                            <img
-                                                ref={imageRef}
-                                                src={screenshot.imageUrl}
-                                                alt={screenshot.name}
-                                                className="max-w-full h-auto block"
-                                                draggable={false}
-                                            />
-                                            {containers.map((container, index) => (
-                                                <Tooltip key={container._id}>
-                                                    <TooltipTrigger
-                                                        render={
-                                                            <div
-                                                                className={`absolute rounded-full cursor-move transition-all ${selectedContainerId === container._id
-                                                                    ? 'ring-2 ring-white ring-offset-2'
-                                                                    : 'hover:ring-2 hover:ring-white/50'
-                                                                    }`}
-                                                                style={{
-                                                                    left: `${container.position.x}%`,
-                                                                    top: `${container.position.y}%`,
-                                                                    width: `${CONTAINER_SIZE}px`,
-                                                                    height: `${CONTAINER_SIZE}px`,
-                                                                    backgroundColor: container.backgroundColor || '#3b82f6',
-                                                                    opacity: 0.9,
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center',
-                                                                    color: 'white',
-                                                                    fontSize: '12px',
-                                                                    fontWeight: 'bold',
-                                                                }}
-                                                                onMouseDown={(e) => handleContainerMouseDown(e, container)}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setSelectedContainerId(container._id);
-                                                                }}
-                                                            />
-                                                        }
-                                                        delay={0}
-                                                    >
-                                                        {index + 1}
-                                                    </TooltipTrigger>
-                                                    <TooltipContent side="top" className="max-w-[300px]">
-                                                        {container.translationKey ? (
-                                                            <div className="flex flex-col gap-1">
-                                                                <span className="font-mono text-xs">{container.translationKey.key}</span>
-                                                                <span className="text-xs text-muted-foreground">{container.translationKey.namespaceName}</span>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-xs text-muted-foreground">Key not found</span>
-                                                        )}
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            ))}
-                                        </div>
+                                        <img
+                                            ref={imageRef}
+                                            src={screenshot.imageUrl}
+                                            alt={screenshot.name}
+                                            className="block max-w-none"
+                                            draggable={false}
+                                            style={{
+                                                width: screenshot.dimensions.width,
+                                                height: screenshot.dimensions.height,
+                                            }}
+                                        />
+                                        {containers.map((container, index) => (
+                                            <Tooltip key={container._id}>
+                                                <TooltipTrigger
+                                                    render={
+                                                        <div
+                                                            className={`absolute rounded-full transition-all ${selectedContainerId === container._id
+                                                                ? 'ring-2 ring-white ring-offset-2'
+                                                                : 'hover:ring-2 hover:ring-white/50'
+                                                                }`}
+                                                            style={{
+                                                                left: `${container.position.x}%`,
+                                                                top: `${container.position.y}%`,
+                                                                width: `${CONTAINER_SIZE}px`,
+                                                                height: `${CONTAINER_SIZE}px`,
+                                                                backgroundColor: container.backgroundColor || '#3b82f6',
+                                                                opacity: 0.9,
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                color: 'white',
+                                                                fontSize: '12px',
+                                                                fontWeight: 'bold',
+                                                                cursor: 'move',
+                                                            }}
+                                                            onMouseDown={(e) => handleContainerMouseDown(e, container)}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedContainerId(container._id);
+                                                            }}
+                                                        />
+                                                    }
+                                                    delay={0}
+                                                >
+                                                    {index + 1}
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top" className="max-w-[400px]">
+                                                    {container.translationKey ? (
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="font-mono text-xs font-medium">{container.translationKey.key}</span>
+                                                            <span className="text-xs text-muted-foreground">{container.translationKey.namespaceName}</span>
+                                                            {container.translationKey.primaryValue && (
+                                                                <span className="text-xs mt-1 border-t pt-1 border-border">
+                                                                    "{container.translationKey.primaryValue}"
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">Key not found</span>
+                                                    )}
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        ))}
                                     </div>
-                                )}
-                            </AutoSizer>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

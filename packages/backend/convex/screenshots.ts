@@ -278,12 +278,19 @@ export const getContainersForScreenshot = query({
 
         const namespace = await ctx.db.get(translationKey.namespaceId);
 
+        // Get primary value from translation key values
+        let primaryValue: string | null = null;
+        if (project.primaryLanguageId && translationKey.values) {
+          primaryValue = translationKey.values[project.primaryLanguageId] || null;
+        }
+
         return {
           ...container,
           translationKey: {
             _id: translationKey._id,
             key: translationKey.key,
             namespaceName: namespace?.name || "Unknown",
+            primaryValue,
           },
         };
       }),
