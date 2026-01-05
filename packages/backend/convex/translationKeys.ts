@@ -644,15 +644,14 @@ export const deleteTranslationKeys = mutation({
         }
       }
 
-      const mappings = await ctx.db
-        .query("screenshotKeyMappings")
-        .withIndex("by_namespace_translation_key", (q) =>
-          q.eq("namespaceId", key.namespaceId).eq("translationKeyId", key._id),
-        )
+      // Delete any screenshot containers associated with this translation key
+      const containers = await ctx.db
+        .query("screenshotContainers")
+        .withIndex("by_translation_key", (q) => q.eq("translationKeyId", key._id))
         .collect();
 
-      for (const mapping of mappings) {
-        await ctx.db.delete(mapping._id);
+      for (const container of containers) {
+        await ctx.db.delete(container._id);
       }
 
       await ctx.db.delete(key._id);

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { deleteFile, getFileUrl } from "./files";
 import { authMiddleware } from "../middlewares/auth";
+import { Id } from "./_generated/dataModel";
 
 export const getScreenshotsForProject = query({
   args: {
@@ -116,21 +117,13 @@ export const deleteScreenshot = mutation({
       throw new Error("Project not found or access denied");
     }
 
+    // Delete all containers for this screenshot
     const containers = await ctx.db
       .query("screenshotContainers")
       .withIndex("by_screenshot", (q) => q.eq("screenshotId", args.screenshotId))
       .collect();
 
     for (const container of containers) {
-      const keyMappings = await ctx.db
-        .query("screenshotKeyMappings")
-        .withIndex("by_container_namespace_translation_key", (q) => q.eq("containerId", container._id))
-        .collect();
-
-      for (const mapping of keyMappings) {
-        await ctx.db.delete(mapping._id);
-      }
-
       await ctx.db.delete(container._id);
     }
 
@@ -142,172 +135,61 @@ export const deleteScreenshot = mutation({
   },
 });
 
-export const getContainerMappings = query({
+// Search translation keys across all namespaces in a project (for screenshot container assignment)
+export const searchTranslationKeysForScreenshot = query({
   args: {
-    containerId: v.id("screenshotContainers"),
+    projectId: v.id("projects"),
     workspaceId: v.id("workspaces"),
+    search: v.string(),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     await authMiddleware(ctx, args.workspaceId);
 
-    const container = await ctx.db.get(args.containerId);
-    if (!container) {
-      throw new Error("Container not found or access denied");
-    }
-
-    const screenshot = await ctx.db.get(container.screenshotId);
-    if (!screenshot) {
-      throw new Error("Screenshot not found or access denied");
-    }
-
-    const project = await ctx.db.get(screenshot.projectId);
+    const project = await ctx.db.get(args.projectId);
     if (!project || project.workspaceId !== args.workspaceId) {
       throw new Error("Project not found or access denied");
     }
 
-    return await ctx.db
-      .query("screenshotKeyMappings")
-      .withIndex("by_container_namespace_translation_key", (q) => q.eq("containerId", args.containerId))
+    if (!args.search || args.search.trim().length < 2) {
+      return { page: [], isDone: true, continueCursor: "" };
+    }
+
+    const results = await ctx.db
+      .query("translationKeys")
+      .withSearchIndex("search", (q) => q.search("key", args.search).eq("projectId", args.projectId))
+      .filter((q) => q.gt(q.field("status"), -1))
       .paginate(args.paginationOpts);
-  },
-});
 
-export const assignKeyToContainer = mutation({
-  args: {
-    containerId: v.id("screenshotContainers"),
-    translationKeyId: v.id("translationKeys"),
-    workspaceId: v.id("workspaces"),
-  },
-  handler: async (ctx, args) => {
-    await authMiddleware(ctx, args.workspaceId);
+    // Get namespace names for each key
+    const namespaceIds = new Set<Id<"namespaces">>();
+    results.page.forEach((k) => namespaceIds.add(k.namespaceId));
 
-    const container = await ctx.db.get(args.containerId);
-    if (!container) {
-      throw new Error("Container not found or access denied");
-    }
+    const namespaces = await Promise.all([...namespaceIds].map((id) => ctx.db.get(id)));
 
-    const screenshot = await ctx.db.get(container.screenshotId);
-    if (!screenshot) {
-      throw new Error("Screenshot not found or access denied");
-    }
+    const nsMap = new Map<Id<"namespaces">, string>();
+    namespaces.forEach((ns) => {
+      if (ns) {
+        nsMap.set(ns._id, ns.name);
+      }
+    });
 
-    const project = await ctx.db.get(screenshot.projectId);
-    if (!project || project.workspaceId !== args.workspaceId || project.status === -1) {
-      throw new Error("Project not found or access denied");
-    }
-
-    const translationKey = await ctx.db.get(args.translationKeyId);
-    if (!translationKey || translationKey.projectId !== project._id || translationKey.status === -1) {
-      throw new Error("Project not found or access denied");
-    }
-
-    const existingMapping = await ctx.db
-      .query("screenshotKeyMappings")
-      .withIndex("by_container_namespace_translation_key", (q) =>
-        q
-          .eq("containerId", container._id)
-          .eq("namespaceId", translationKey.namespaceId)
-          .eq("translationKeyId", translationKey._id),
-      )
-      .first();
-
-    if (existingMapping) {
-      return existingMapping._id;
-    } else {
-      const mappingId = await ctx.db.insert("screenshotKeyMappings", {
-        containerId: container._id,
-        namespaceId: translationKey.namespaceId,
-        translationKeyId: translationKey._id,
-      });
-      return mappingId;
-    }
-  },
-});
-
-export const removeKeyFromContainer = mutation({
-  args: {
-    containerId: v.id("screenshotContainers"),
-    translationKeyId: v.id("translationKeys"),
-    workspaceId: v.id("workspaces"),
-  },
-  handler: async (ctx, args) => {
-    await authMiddleware(ctx, args.workspaceId);
-
-    const container = await ctx.db.get(args.containerId);
-    if (!container) {
-      throw new Error("Container not found or access denied");
-    }
-
-    const screenshot = await ctx.db.get(container.screenshotId);
-    if (!screenshot) {
-      throw new Error("Screenshot not found or access denied");
-    }
-
-    const project = await ctx.db.get(screenshot.projectId);
-    if (!project || project.workspaceId !== args.workspaceId || project.status === -1) {
-      throw new Error("Project not found or access denied");
-    }
-
-    const translationKey = await ctx.db.get(args.translationKeyId);
-    if (!translationKey || translationKey.projectId !== project._id || translationKey.status === -1) {
-      throw new Error("Project not found or access denied");
-    }
-
-    const mapping = await ctx.db
-      .query("screenshotKeyMappings")
-      .withIndex("by_container_namespace_translation_key", (q) =>
-        q
-          .eq("containerId", container._id)
-          .eq("namespaceId", translationKey.namespaceId)
-          .eq("translationKeyId", translationKey._id),
-      )
-      .first();
-
-    if (mapping) {
-      await ctx.db.delete(mapping._id);
-    }
-
-    return { success: true };
-  },
-});
-
-export const deleteKeyMapping = mutation({
-  args: {
-    mappingId: v.id("screenshotKeyMappings"),
-    workspaceId: v.id("workspaces"),
-  },
-  handler: async (ctx, args) => {
-    await authMiddleware(ctx, args.workspaceId);
-
-    const mapping = await ctx.db.get(args.mappingId);
-    if (!mapping) {
-      throw new Error("Mapping not found");
-    }
-
-    const container = await ctx.db.get(mapping.containerId);
-    if (!container) {
-      throw new Error("Container not found");
-    }
-
-    const screenshot = await ctx.db.get(container.screenshotId);
-    if (!screenshot) {
-      throw new Error("Screenshot not found");
-    }
-
-    const project = await ctx.db.get(screenshot.projectId);
-    if (!project || project.workspaceId !== args.workspaceId) {
-      throw new Error("Project not found or access denied");
-    }
-
-    await ctx.db.delete(args.mappingId);
-    return { success: true };
+    return {
+      ...results,
+      page: results.page.map((key) => ({
+        _id: key._id,
+        key: key.key,
+        namespaceName: nsMap.get(key.namespaceId) || "Unknown",
+        namespaceId: key.namespaceId,
+      })),
+    };
   },
 });
 
 export const createContainer = mutation({
   args: {
     screenshotId: v.id("screenshots"),
+    translationKeyId: v.id("translationKeys"),
     position: v.object({
       x: v.number(),
       y: v.number(),
@@ -330,8 +212,15 @@ export const createContainer = mutation({
       throw new Error("Project not found or access denied");
     }
 
+    // Validate translation key belongs to this project
+    const translationKey = await ctx.db.get(args.translationKeyId);
+    if (!translationKey || translationKey.projectId !== project._id || translationKey.status === -1) {
+      throw new Error("Translation key not found or access denied");
+    }
+
     const containerId = await ctx.db.insert("screenshotContainers", {
       screenshotId: args.screenshotId,
+      translationKeyId: args.translationKeyId,
       position: args.position,
       backgroundColor: args.backgroundColor,
     });
@@ -404,15 +293,6 @@ export const deleteContainer = mutation({
       throw new Error("Project not found or access denied");
     }
 
-    const keyMappings = await ctx.db
-      .query("screenshotKeyMappings")
-      .withIndex("by_container_namespace_translation_key", (q) => q.eq("containerId", args.containerId))
-      .collect();
-
-    for (const mapping of keyMappings) {
-      await ctx.db.delete(mapping._id);
-    }
-
     await ctx.db.delete(args.containerId);
     return { success: true };
   },
@@ -441,7 +321,31 @@ export const getContainersForScreenshot = query({
       .withIndex("by_screenshot", (q) => q.eq("screenshotId", args.screenshotId))
       .collect();
 
-    return containers;
+    // Fetch translation key data for each container
+    const containersWithKeys = await Promise.all(
+      containers.map(async (container) => {
+        const translationKey = await ctx.db.get(container.translationKeyId);
+        if (!translationKey || translationKey.status === -1) {
+          return {
+            ...container,
+            translationKey: null,
+          };
+        }
+
+        const namespace = await ctx.db.get(translationKey.namespaceId);
+
+        return {
+          ...container,
+          translationKey: {
+            _id: translationKey._id,
+            key: translationKey.key,
+            namespaceName: namespace?.name || "Unknown",
+          },
+        };
+      }),
+    );
+
+    return containersWithKeys;
   },
 });
 

@@ -8,8 +8,8 @@ import { toastManager } from '@/components/ui/toast';
 import { useOrganization } from '@clerk/tanstack-react-start';
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { api } from '@unlingo/backend/convex/_generated/api';
-import type { Doc, Id } from '@unlingo/backend/convex/_generated/dataModel';
-import { useMutation, useQuery } from 'convex/react';
+import type { Id } from '@unlingo/backend/convex/_generated/dataModel';
+import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { ArrowLeftIcon, PlusIcon, TrashIcon, KeyIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AutoSizer from 'react-virtualized-auto-sizer';
@@ -18,15 +18,33 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { SearchIcon } from 'lucide-react';
 import { debounce } from '@tanstack/pacer';
+import { Badge } from '@/components/ui/badge';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger
+} from '@/components/ui/tooltip';
 
 // Constants for container size (40x40 pixels on a standard display)
 const CONTAINER_SIZE = 40;
 
-interface ContainerPosition {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
+interface ContainerWithKey {
+    _id: Id<'screenshotContainers'>;
+    screenshotId: Id<'screenshots'>;
+    translationKeyId: Id<'translationKeys'>;
+    position: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
+    backgroundColor?: string;
+    translationKey: {
+        _id: Id<'translationKeys'>;
+        key: string;
+        namespaceName: string;
+    } | null;
 }
 
 export const Route = createFileRoute(
@@ -42,7 +60,7 @@ function RouteComponent() {
     const [selectedContainerId, setSelectedContainerId] = useState<Id<'screenshotContainers'> | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [isKeySearchOpen, setIsKeySearchOpen] = useState(false);
     const [keySearch, setKeySearch] = useState('');
     const [debouncedKeySearch, setDebouncedKeySearch] = useState('');
 
@@ -84,39 +102,32 @@ function RouteComponent() {
                 workspaceId: workspace._id,
             }
             : 'skip'
-    );
+    ) as ContainerWithKey[] | undefined;
 
-    const namespaces = useQuery(
-        api.namespaces.getNamespaces,
-        workspace && project
+    // Search translation keys across all namespaces (only when search term is provided)
+    const {
+        results: searchResults,
+        status: searchStatus,
+        loadMore,
+    } = usePaginatedQuery(
+        api.screenshots.searchTranslationKeysForScreenshot,
+        workspace && project && debouncedKeySearch.length >= 2
             ? {
                 projectId: project._id,
                 workspaceId: workspace._id,
+                search: debouncedKeySearch,
             }
-            : 'skip'
-    );
-
-    const translationKeys = useQuery(
-        api.translationKeys.getTranslationKeys,
-        workspace && project && namespaces?.results && namespaces.results.length > 0
-            ? {
-                projectId: project._id,
-                workspaceId: workspace._id,
-                namespaceId: namespaces.results[0]._id,
-                search: debouncedKeySearch || undefined,
-            }
-            : 'skip'
+            : 'skip',
+        { initialNumItems: 20 }
     );
 
     const createContainer = useMutation(api.screenshots.createContainer);
     const updateContainer = useMutation(api.screenshots.updateContainer);
     const deleteContainer = useMutation(api.screenshots.deleteContainer);
-    const assignKeyToContainer = useMutation(api.screenshots.assignKeyToContainer);
-    const removeKeyFromContainer = useMutation(api.screenshots.removeKeyFromContainer);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const debouncedSetKeySearch = useCallback(
-        debounce((value: string) => setDebouncedKeySearch(value), { wait: 500 }),
+        debounce((value: string) => setDebouncedKeySearch(value), { wait: 400 }),
         []
     );
 
@@ -125,7 +136,13 @@ function RouteComponent() {
         debouncedSetKeySearch(e.target.value);
     };
 
-    const handleAddContainer = async () => {
+    const handleOpenKeySearch = () => {
+        setKeySearch('');
+        setDebouncedKeySearch('');
+        setIsKeySearchOpen(true);
+    };
+
+    const handleSelectKeyAndCreateContainer = async (translationKeyId: Id<'translationKeys'>) => {
         if (!workspace || !screenshot) return;
 
         try {
@@ -149,6 +166,7 @@ function RouteComponent() {
             const containerId = await createContainer({
                 screenshotId: screenshot._id,
                 workspaceId: workspace._id,
+                translationKeyId,
                 position: {
                     x: Math.max(0, Math.min(100 - widthPercent, centerX - widthPercent / 2)),
                     y: Math.max(0, Math.min(100 - heightPercent, centerY - heightPercent / 2)),
@@ -159,13 +177,14 @@ function RouteComponent() {
             });
 
             setSelectedContainerId(containerId);
+            setIsKeySearchOpen(false);
             toastManager.add({
-                description: 'Container added',
+                description: 'Container created with translation key',
                 type: 'success',
             });
         } catch (err) {
             toastManager.add({
-                description: `Failed to add container: ${err}`,
+                description: `Failed to create container: ${err}`,
                 type: 'error',
             });
         }
@@ -198,7 +217,7 @@ function RouteComponent() {
 
     const handleContainerMouseDown = (
         e: React.MouseEvent,
-        container: Doc<'screenshotContainers'>
+        container: ContainerWithKey
     ) => {
         e.preventDefault();
         e.stopPropagation();
@@ -267,28 +286,6 @@ function RouteComponent() {
         };
     }, [isDragging, handleMouseMove, handleMouseUp]);
 
-    const handleAssignKey = async (translationKeyId: Id<'translationKeys'>) => {
-        if (!workspace || !selectedContainerId) return;
-
-        try {
-            await assignKeyToContainer({
-                containerId: selectedContainerId,
-                translationKeyId,
-                workspaceId: workspace._id,
-            });
-
-            toastManager.add({
-                description: 'Key assigned to container',
-                type: 'success',
-            });
-        } catch (err) {
-            toastManager.add({
-                description: `Failed to assign key: ${err}`,
-                type: 'error',
-            });
-        }
-    };
-
     const selectedContainer = containers?.find(c => c._id === selectedContainerId);
 
     return (
@@ -317,30 +314,36 @@ function RouteComponent() {
                         </Button>
                         <h1>{screenshot?.name || 'Screenshot Editor'}</h1>
                         <div className="flex items-center ml-auto gap-2">
-                            <Button onClick={handleAddContainer}>
+                            <Button onClick={handleOpenKeySearch}>
                                 <PlusIcon />
                                 Add Container
                             </Button>
-                            {selectedContainerId && (
-                                <>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setIsSheetOpen(true)}
-                                    >
-                                        <KeyIcon />
-                                        Assign Keys
-                                    </Button>
-                                    <Button
-                                        variant="destructive"
-                                        size="icon"
-                                        onClick={() => handleDeleteContainer(selectedContainerId)}
-                                    >
-                                        <TrashIcon />
-                                    </Button>
-                                </>
+                            {selectedContainerId && selectedContainer && (
+                                <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    onClick={() => handleDeleteContainer(selectedContainerId)}
+                                >
+                                    <TrashIcon />
+                                </Button>
                             )}
                         </div>
                     </div>
+
+                    {/* Selected container info */}
+                    {selectedContainer && selectedContainer.translationKey && (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg">
+                            <KeyIcon className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">Selected:</span>
+                            <Badge variant="secondary" className="font-mono">
+                                {selectedContainer.translationKey.key}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                                ({selectedContainer.translationKey.namespaceName})
+                            </span>
+                        </div>
+                    )}
+
                     {workspace === undefined || project === undefined || screenshot === undefined || containers === undefined ? (
                         <div className="flex items-center justify-center w-full mt-4">
                             <Spinner />
@@ -364,36 +367,51 @@ function RouteComponent() {
                                                 draggable={false}
                                             />
                                             {/* Render containers */}
-                                            {containers.map(container => (
-                                                <div
-                                                    key={container._id}
-                                                    className={`absolute rounded-full cursor-move transition-all ${selectedContainerId === container._id
-                                                        ? 'ring-2 ring-white ring-offset-2'
-                                                        : 'hover:ring-2 hover:ring-white/50'
-                                                        }`}
-                                                    style={{
-                                                        left: `${container.position.x}%`,
-                                                        top: `${container.position.y}%`,
-                                                        width: `${CONTAINER_SIZE}px`,
-                                                        height: `${CONTAINER_SIZE}px`,
-                                                        backgroundColor: container.backgroundColor || '#3b82f6',
-                                                        opacity: 0.9,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        color: 'white',
-                                                        fontSize: '12px',
-                                                        fontWeight: 'bold',
-                                                    }}
-                                                    onMouseDown={(e) => handleContainerMouseDown(e, container)}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedContainerId(container._id);
-                                                    }}
-                                                >
-                                                    {containers.indexOf(container) + 1}
-                                                </div>
-                                            ))}
+                                            <TooltipProvider>
+                                                {containers.map((container, index) => (
+                                                    <Tooltip key={container._id}>
+                                                        <TooltipTrigger asChild>
+                                                            <div
+                                                                className={`absolute rounded-full cursor-move transition-all ${selectedContainerId === container._id
+                                                                    ? 'ring-2 ring-white ring-offset-2'
+                                                                    : 'hover:ring-2 hover:ring-white/50'
+                                                                    }`}
+                                                                style={{
+                                                                    left: `${container.position.x}%`,
+                                                                    top: `${container.position.y}%`,
+                                                                    width: `${CONTAINER_SIZE}px`,
+                                                                    height: `${CONTAINER_SIZE}px`,
+                                                                    backgroundColor: container.backgroundColor || '#3b82f6',
+                                                                    opacity: 0.9,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    color: 'white',
+                                                                    fontSize: '12px',
+                                                                    fontWeight: 'bold',
+                                                                }}
+                                                                onMouseDown={(e) => handleContainerMouseDown(e, container)}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedContainerId(container._id);
+                                                                }}
+                                                            >
+                                                                {index + 1}
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top" className="max-w-[300px]">
+                                                            {container.translationKey ? (
+                                                                <div className="flex flex-col gap-1">
+                                                                    <span className="font-mono text-xs">{container.translationKey.key}</span>
+                                                                    <span className="text-xs text-muted-foreground">{container.translationKey.namespaceName}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-xs text-muted-foreground">Key not found</span>
+                                                            )}
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                ))}
+                                            </TooltipProvider>
                                         </div>
                                     </div>
                                 )}
@@ -402,13 +420,13 @@ function RouteComponent() {
                     )}
                 </div>
 
-                {/* Key Assignment Sheet */}
-                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                    <SheetPopup className="min-w-[400px]">
+                {/* Key Search Sheet for Container Creation */}
+                <Sheet open={isKeySearchOpen} onOpenChange={setIsKeySearchOpen}>
+                    <SheetPopup className="min-w-[450px]">
                         <SheetHeader>
-                            <SheetTitle>Assign Translation Keys</SheetTitle>
+                            <SheetTitle>Select Translation Key</SheetTitle>
                             <SheetDescription>
-                                Select translation keys to associate with this container.
+                                Search for a translation key to create a new container. Type at least 2 characters to search.
                             </SheetDescription>
                         </SheetHeader>
                         <SheetPanel className="flex flex-col gap-4">
@@ -419,38 +437,69 @@ function RouteComponent() {
                                     type="search"
                                     value={keySearch}
                                     onChange={handleKeySearchChange}
+                                    autoFocus
                                 />
                                 <InputGroupAddon>
                                     <SearchIcon />
                                 </InputGroupAddon>
                             </InputGroup>
-                            <ScrollArea className="h-[400px]">
-                                <div className="flex flex-col gap-2">
-                                    {translationKeys?.results?.map(key => (
-                                        <Card
-                                            key={key._id}
-                                            className="py-2 cursor-pointer hover:border-primary/30"
-                                            onClick={() => handleAssignKey(key._id)}
-                                        >
-                                            <CardContent className="p-3">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="font-mono text-sm truncate">
-                                                        {key.key}
-                                                    </div>
-                                                    <Button size="sm" variant="ghost">
-                                                        <PlusIcon className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                    {(!translationKeys?.results || translationKeys.results.length === 0) && (
-                                        <p className="text-sm text-muted-foreground text-center py-4">
-                                            No translation keys found
-                                        </p>
-                                    )}
+
+                            {debouncedKeySearch.length < 2 ? (
+                                <p className="text-sm text-muted-foreground text-center py-8">
+                                    Type at least 2 characters to search for translation keys
+                                </p>
+                            ) : searchStatus === 'LoadingFirstPage' ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Spinner />
                                 </div>
-                            </ScrollArea>
+                            ) : (
+                                <ScrollArea className="h-[400px]">
+                                    <div className="flex flex-col gap-2">
+                                        {searchResults?.map(key => (
+                                            <Card
+                                                key={key._id}
+                                                className="py-2 cursor-pointer hover:border-primary/30 transition-colors"
+                                                onClick={() => handleSelectKeyAndCreateContainer(key._id)}
+                                            >
+                                                <CardContent className="p-3">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                                            <div className="font-mono text-sm truncate">
+                                                                {key.key}
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground">
+                                                                {key.namespaceName}
+                                                            </div>
+                                                        </div>
+                                                        <Button size="sm" variant="ghost">
+                                                            <PlusIcon className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                        {(!searchResults || searchResults.length === 0) && (
+                                            <p className="text-sm text-muted-foreground text-center py-8">
+                                                No translation keys found for "{debouncedKeySearch}"
+                                            </p>
+                                        )}
+                                        {searchStatus === 'CanLoadMore' && (
+                                            <Button
+                                                variant="ghost"
+                                                className="w-full"
+                                                onClick={() => loadMore(20)}
+                                            >
+                                                Load more
+                                            </Button>
+                                        )}
+                                        {searchStatus === 'LoadingMore' && (
+                                            <div className="flex items-center justify-center py-4">
+                                                <Spinner />
+                                            </div>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            )}
                         </SheetPanel>
                     </SheetPopup>
                 </Sheet>

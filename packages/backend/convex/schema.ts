@@ -152,6 +152,7 @@ export default defineSchema({
   }).index("by_project_name", ["projectId", "name"]),
   screenshotContainers: defineTable({
     screenshotId: v.id("screenshots"),
+    translationKeyId: v.id("translationKeys"), // Each container is assigned exactly one translation key
     position: v.object({
       x: v.number(), // X coordinate (percentage of image width)
       y: v.number(), // Y coordinate (percentage of image height)
@@ -159,15 +160,9 @@ export default defineSchema({
       height: v.number(), // height of container (percentage of image height)
     }),
     backgroundColor: v.optional(v.string()), // hex color for background (default: blue)
-  }).index("by_screenshot", ["screenshotId"]),
-  screenshotKeyMappings: defineTable({
-    containerId: v.id("screenshotContainers"),
-    namespaceId: v.id("namespaces"),
-    translationKeyId: v.id("translationKeys"),
   })
-    .index("by_container_namespace_translation_key", ["containerId", "namespaceId", "translationKeyId"])
-    .index("by_container_translation_key", ["containerId", "translationKeyId"])
-    .index("by_namespace_translation_key", ["namespaceId", "translationKeyId"]),
+    .index("by_screenshot", ["screenshotId"])
+    .index("by_translation_key", ["translationKeyId"]),
   glossaryTerms: defineTable({
     projectId: v.id("projects"),
     term: v.string(),
