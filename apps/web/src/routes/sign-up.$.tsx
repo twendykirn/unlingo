@@ -47,6 +47,7 @@ function Page() {
     const [errors, setErrors] = useState<ClerkAPIError[]>([]);
     const [verifyErrors, setVerifyErrors] = useState<ClerkAPIError[]>([]);
     const [isResending, setIsResending] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(false);
 
     const handleSendCode = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -83,6 +84,8 @@ function Page() {
 
         if (!isLoaded && !signUp || !code) return null;
 
+        setIsVerifying(true);
+
         try {
             const signUpAttempt = await signUp.attemptEmailAddressVerification({
                 code,
@@ -114,6 +117,8 @@ function Page() {
                 setVerifyErrors(err.errors);
             }
             console.error("Error:", JSON.stringify(err, null, 2));
+        } finally {
+            setIsVerifying(false);
         }
     };
 
@@ -250,7 +255,9 @@ function Page() {
                                             </FieldDescription>
                                         </Field>
                                         <Field className="items-center w-full">
-                                            <Button type="submit" className="w-8/12">Verify</Button>
+                                            <Button type="submit" className="w-8/12">
+                                                {isVerifying ? "Verifying..." : "Verify"}
+                                            </Button>
                                             {verifyErrors.length > 0 && (
                                                 <p className="text-destructive text-xs text-center">
                                                     {verifyErrors[0].longMessage || verifyErrors[0].message}
