@@ -23,6 +23,7 @@ import AutoSizer from 'react-virtualized-auto-sizer';
 import { GroupSeparator, GroupText, Group as UIGroup } from '@/components/ui/group';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 
 const CONTAINER_SIZE = 40;
 const MIN_ZOOM = 0.1;
@@ -506,14 +507,7 @@ function RouteComponent() {
                 </header>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
                     <div className="flex items-center gap-4">
-                        <div className="flex flex-col">
-                            <h1>{screenshot?.name || 'Screenshot Editor'}</h1>
-                            {selectedContainer?.translationKey && (
-                                <span className="text-sm text-muted-foreground font-mono">
-                                    {selectedContainer.translationKey.key}
-                                </span>
-                            )}
-                        </div>
+                        <h1>{screenshot?.name || 'Screenshot Editor'}</h1>
                         <UIGroup aria-label="Zoom controls" className='ml-auto'>
                             <Button
                                 variant="outline"
@@ -564,163 +558,176 @@ function RouteComponent() {
                             <Spinner />
                         </div>
                     ) : (
-                        <div className="flex-1 min-h-0 flex gap-4">
+                        <div className="flex-1 min-h-0 flex gap-2">
                             <div className="flex-1 min-w-0 overflow-hidden rounded-lg bg-muted/50 border relative">
-                            <AutoSizer>
-                                {({ width, height }) => {
-                                    if (width !== canvasSize.width || height !== canvasSize.height) {
-                                        setTimeout(() => setCanvasSize({ width, height }), 0);
-                                    }
+                                <AutoSizer>
+                                    {({ width, height }) => {
+                                        if (width !== canvasSize.width || height !== canvasSize.height) {
+                                            setTimeout(() => setCanvasSize({ width, height }), 0);
+                                        }
 
-                                    return (
-                                        <Stage
-                                            ref={stageRef}
-                                            width={width}
-                                            height={height}
-                                            scaleX={zoom}
-                                            scaleY={zoom}
-                                            x={stagePosition.x}
-                                            y={stagePosition.y}
-                                            draggable
-                                            onDragEnd={handleStageDragEnd}
-                                            onWheel={handleWheel}
-                                            onClick={(e) => {
-                                                if (e.target === e.target.getStage()) {
-                                                    setSelectedContainerId(null);
-                                                }
-                                            }}
-                                        >
-                                            <Layer>
-                                                <KonvaImage
-                                                    image={loadedImage}
-                                                    width={screenshot.dimensions.width}
-                                                    height={screenshot.dimensions.height}
-                                                />
-                                                {containers.map((container) => {
-                                                    const x = (container.position.x / 100) * screenshot.dimensions.width;
-                                                    const y = (container.position.y / 100) * screenshot.dimensions.height;
-                                                    const isSelected = selectedContainerId === container._id;
-                                                    const isHovered = hoveredContainerId === container._id;
+                                        return (
+                                            <Stage
+                                                ref={stageRef}
+                                                width={width}
+                                                height={height}
+                                                scaleX={zoom}
+                                                scaleY={zoom}
+                                                x={stagePosition.x}
+                                                y={stagePosition.y}
+                                                draggable
+                                                onDragEnd={handleStageDragEnd}
+                                                onWheel={handleWheel}
+                                                onClick={(e) => {
+                                                    if (e.target === e.target.getStage()) {
+                                                        setSelectedContainerId(null);
+                                                    }
+                                                }}
+                                            >
+                                                <Layer>
+                                                    <KonvaImage
+                                                        image={loadedImage}
+                                                        width={screenshot.dimensions.width}
+                                                        height={screenshot.dimensions.height}
+                                                    />
+                                                    {containers.map((container) => {
+                                                        const x = (container.position.x / 100) * screenshot.dimensions.width;
+                                                        const y = (container.position.y / 100) * screenshot.dimensions.height;
+                                                        const isSelected = selectedContainerId === container._id;
+                                                        const isHovered = hoveredContainerId === container._id;
 
-                                                    return (
-                                                        <Group
-                                                            key={container._id}
-                                                            x={x}
-                                                            y={y}
-                                                            draggable
-                                                            onDragStart={(e) => {
-                                                                e.cancelBubble = true;
-                                                                setHoveredContainerId(null);
-                                                                setSelectedContainerId(container._id);
-                                                            }}
-                                                            onDragMove={(e) => {
-                                                                e.cancelBubble = true;
-                                                            }}
-                                                            onDragEnd={(e) => {
-                                                                e.cancelBubble = true;
-                                                                handleContainerDragEnd(container, e);
-                                                            }}
-                                                            onClick={(e) => {
-                                                                e.cancelBubble = true;
-                                                                setSelectedContainerId(container._id);
-                                                            }}
-                                                            onMouseEnter={() => setHoveredContainerId(container._id)}
-                                                            onMouseLeave={() => setHoveredContainerId(null)}
-                                                        >
-                                                            {isSelected && (
+                                                        return (
+                                                            <Group
+                                                                key={container._id}
+                                                                x={x}
+                                                                y={y}
+                                                                draggable
+                                                                onDragStart={(e) => {
+                                                                    e.cancelBubble = true;
+                                                                    setHoveredContainerId(null);
+                                                                    setSelectedContainerId(container._id);
+                                                                }}
+                                                                onDragMove={(e) => {
+                                                                    e.cancelBubble = true;
+                                                                }}
+                                                                onDragEnd={(e) => {
+                                                                    e.cancelBubble = true;
+                                                                    handleContainerDragEnd(container, e);
+                                                                }}
+                                                                onClick={(e) => {
+                                                                    e.cancelBubble = true;
+                                                                    setSelectedContainerId(container._id);
+                                                                }}
+                                                                onMouseEnter={() => setHoveredContainerId(container._id)}
+                                                                onMouseLeave={() => setHoveredContainerId(null)}
+                                                            >
+                                                                {isSelected && (
+                                                                    <Circle
+                                                                        x={CONTAINER_SIZE / 2}
+                                                                        y={CONTAINER_SIZE / 2}
+                                                                        radius={CONTAINER_SIZE / 2 + 4}
+                                                                        stroke="#ffffff"
+                                                                        strokeWidth={2}
+                                                                    />
+                                                                )}
+                                                                {isHovered && !isSelected && (
+                                                                    <Circle
+                                                                        x={CONTAINER_SIZE / 2}
+                                                                        y={CONTAINER_SIZE / 2}
+                                                                        radius={CONTAINER_SIZE / 2 + 2}
+                                                                        stroke="rgba(255,255,255,0.5)"
+                                                                        strokeWidth={2}
+                                                                    />
+                                                                )}
                                                                 <Circle
                                                                     x={CONTAINER_SIZE / 2}
                                                                     y={CONTAINER_SIZE / 2}
-                                                                    radius={CONTAINER_SIZE / 2 + 4}
+                                                                    radius={CONTAINER_SIZE / 2}
+                                                                    fill={container.backgroundColor || '#3b82f6'}
+                                                                    opacity={0.9}
+                                                                />
+                                                                <Circle
+                                                                    x={CONTAINER_SIZE / 2}
+                                                                    y={CONTAINER_SIZE / 2 - 4}
+                                                                    radius={6}
                                                                     stroke="#ffffff"
                                                                     strokeWidth={2}
+                                                                    fill="transparent"
                                                                 />
-                                                            )}
-                                                            {isHovered && !isSelected && (
-                                                                <Circle
-                                                                    x={CONTAINER_SIZE / 2}
-                                                                    y={CONTAINER_SIZE / 2}
-                                                                    radius={CONTAINER_SIZE / 2 + 2}
-                                                                    stroke="rgba(255,255,255,0.5)"
-                                                                    strokeWidth={2}
+                                                                <Text
+                                                                    x={CONTAINER_SIZE / 2 - 1}
+                                                                    y={CONTAINER_SIZE / 2 + 2}
+                                                                    text="|"
+                                                                    fontSize={10}
+                                                                    fontStyle="bold"
+                                                                    fill="#ffffff"
                                                                 />
-                                                            )}
-                                                            <Circle
-                                                                x={CONTAINER_SIZE / 2}
-                                                                y={CONTAINER_SIZE / 2}
-                                                                radius={CONTAINER_SIZE / 2}
-                                                                fill={container.backgroundColor || '#3b82f6'}
-                                                                opacity={0.9}
-                                                            />
-                                                            <Circle
-                                                                x={CONTAINER_SIZE / 2}
-                                                                y={CONTAINER_SIZE / 2 - 4}
-                                                                radius={6}
-                                                                stroke="#ffffff"
-                                                                strokeWidth={2}
-                                                                fill="transparent"
-                                                            />
-                                                            <Text
-                                                                x={CONTAINER_SIZE / 2 - 1}
-                                                                y={CONTAINER_SIZE / 2 + 2}
-                                                                text="|"
-                                                                fontSize={10}
-                                                                fontStyle="bold"
-                                                                fill="#ffffff"
-                                                            />
-                                                        </Group>
-                                                    );
-                                                })}
-                                            </Layer>
-                                        </Stage>
-                                    );
-                                }}
-                            </AutoSizer>
-                            {hoveredContainer && hoveredContainer.translationKey && (
-                                <div
-                                    className="absolute bg-popover text-popover-foreground border rounded-md shadow-md p-2 pointer-events-none z-50"
-                                    style={{
-                                        left: ((hoveredContainer.position.x / 100) * screenshot.dimensions.width * zoom) + stagePosition.x + CONTAINER_SIZE + 10,
-                                        top: ((hoveredContainer.position.y / 100) * screenshot.dimensions.height * zoom) + stagePosition.y,
-                                        maxWidth: '300px',
+                                                            </Group>
+                                                        );
+                                                    })}
+                                                </Layer>
+                                            </Stage>
+                                        );
                                     }}
-                                >
-                                    <div className="flex flex-col gap-1">
-                                        <span className="font-mono text-xs font-medium">{hoveredContainer.translationKey.key}</span>
-                                        <span className="text-xs text-muted-foreground">{hoveredContainer.translationKey.namespaceName}</span>
-                                        {hoveredContainer.translationKey.primaryValue && (
-                                            <span className="text-xs mt-1 border-t pt-1 border-border">
-                                                "{hoveredContainer.translationKey.primaryValue}"
-                                            </span>
-                                        )}
+                                </AutoSizer>
+                                {hoveredContainer && hoveredContainer.translationKey && (
+                                    <div
+                                        className="absolute bg-popover text-popover-foreground border rounded-md shadow-md p-2 pointer-events-none z-50"
+                                        style={{
+                                            left: ((hoveredContainer.position.x / 100) * screenshot.dimensions.width * zoom) + stagePosition.x + CONTAINER_SIZE + 10,
+                                            top: ((hoveredContainer.position.y / 100) * screenshot.dimensions.height * zoom) + stagePosition.y,
+                                            maxWidth: '300px',
+                                        }}
+                                    >
+                                        <div className="flex flex-col gap-1">
+                                            <span className="font-mono text-xs font-medium">{hoveredContainer.translationKey.key}</span>
+                                            <span className="text-xs text-muted-foreground">{hoveredContainer.translationKey.namespaceName}</span>
+                                            {hoveredContainer.translationKey.primaryValue && (
+                                                <span className="text-xs mt-1 border-t pt-1 border-border">
+                                                    "{hoveredContainer.translationKey.primaryValue}"
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
                             </div>
                             {selectedContainer && selectedTranslationKey && (
                                 <div className="w-80 shrink-0 rounded-lg border bg-background overflow-hidden flex flex-col">
-                                    <div className="p-4 border-b bg-muted/30">
-                                        <h3 className="font-mono text-sm font-medium truncate">
-                                            {selectedTranslationKey.key}
-                                        </h3>
-                                        <span className="text-xs text-muted-foreground">
-                                            {selectedTranslationKey.namespaceName}
-                                        </span>
-                                    </div>
-                                    <ScrollArea className="flex-1 p-4">
-                                        <div className="space-y-4">
-                                            {sortedLanguages.map((lang) => (
-                                                <EditableValueCell
-                                                    key={lang._id}
-                                                    value={selectedTranslationKey.values?.[lang._id] || ''}
-                                                    onSave={(newValue) => handleTranslationValueUpdate(lang._id, newValue)}
-                                                    status={selectedTranslationKey.status === 2 ? 2 : selectedTranslationKey.statuses?.[lang._id]}
-                                                    languageCode={lang.languageCode}
-                                                    isPrimary={lang._id === project.primaryLanguageId}
-                                                />
-                                            ))}
-                                        </div>
-                                    </ScrollArea>
+                                    <AutoSizer>
+                                        {({ width, height }) => {
+                                            return (
+                                                <>
+                                                    <div className="p-4 border-b bg-muted/30" style={{ width }}>
+                                                        <Tooltip>
+                                                            <TooltipTrigger delay={0} render={<h3 className="font-mono text-sm font-medium truncate" />}>
+                                                                {selectedTranslationKey.key}
+                                                            </TooltipTrigger>
+                                                            <TooltipPopup>
+                                                                {selectedTranslationKey.key}
+                                                            </TooltipPopup>
+                                                        </Tooltip>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {selectedTranslationKey.namespaceName}
+                                                        </span>
+                                                    </div>
+                                                    <ScrollArea className="p-4" style={{ width, height: height - 77 }}>
+                                                        <div className="space-y-4">
+                                                            {sortedLanguages.map((lang) => (
+                                                                <EditableValueCell
+                                                                    key={lang._id}
+                                                                    value={selectedTranslationKey.values?.[lang._id] || ''}
+                                                                    onSave={(newValue) => handleTranslationValueUpdate(lang._id, newValue)}
+                                                                    status={selectedTranslationKey.status === 2 ? 2 : selectedTranslationKey.statuses?.[lang._id]}
+                                                                    languageCode={lang.languageCode}
+                                                                    isPrimary={lang._id === project.primaryLanguageId}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </ScrollArea>
+                                                </>
+                                            );
+                                        }}
+                                    </AutoSizer>
                                 </div>
                             )}
                         </div>
