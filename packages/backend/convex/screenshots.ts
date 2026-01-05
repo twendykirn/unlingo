@@ -321,15 +321,13 @@ export const getContainersForScreenshot = query({
       .withIndex("by_screenshot", (q) => q.eq("screenshotId", args.screenshotId))
       .collect();
 
-    // Fetch translation key data for each container
+    // Fetch translation key data for each container and filter out those with deleted keys
     const containersWithKeys = await Promise.all(
       containers.map(async (container) => {
         const translationKey = await ctx.db.get(container.translationKeyId);
+        // Skip containers whose translation key is deleted or has deleting status (-1)
         if (!translationKey || translationKey.status === -1) {
-          return {
-            ...container,
-            translationKey: null,
-          };
+          return null;
         }
 
         const namespace = await ctx.db.get(translationKey.namespaceId);
@@ -345,7 +343,8 @@ export const getContainersForScreenshot = query({
       }),
     );
 
-    return containersWithKeys;
+    // Filter out null entries (containers with deleted keys)
+    return containersWithKeys.filter((c) => c !== null);
   },
 });
 
