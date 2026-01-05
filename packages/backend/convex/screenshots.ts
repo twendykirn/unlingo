@@ -135,7 +135,6 @@ export const deleteScreenshot = mutation({
   },
 });
 
-// Search translation keys across all namespaces in a project (for screenshot container assignment)
 export const searchTranslationKeysForScreenshot = query({
   args: {
     projectId: v.id("projects"),
@@ -161,7 +160,6 @@ export const searchTranslationKeysForScreenshot = query({
       .filter((q) => q.gt(q.field("status"), -1))
       .paginate(args.paginationOpts);
 
-    // Get namespace names for each key
     const namespaceIds = new Set<Id<"namespaces">>();
     results.page.forEach((k) => namespaceIds.add(k.namespaceId));
 
@@ -212,7 +210,6 @@ export const createContainer = mutation({
       throw new Error("Project not found or access denied");
     }
 
-    // Validate translation key belongs to this project
     const translationKey = await ctx.db.get(args.translationKeyId);
     if (!translationKey || translationKey.projectId !== project._id || translationKey.status === -1) {
       throw new Error("Translation key not found or access denied");
@@ -321,11 +318,9 @@ export const getContainersForScreenshot = query({
       .withIndex("by_screenshot", (q) => q.eq("screenshotId", args.screenshotId))
       .collect();
 
-    // Fetch translation key data for each container and filter out those with deleted keys
     const containersWithKeys = await Promise.all(
       containers.map(async (container) => {
         const translationKey = await ctx.db.get(container.translationKeyId);
-        // Skip containers whose translation key is deleted or has deleting status (-1)
         if (!translationKey || translationKey.status === -1) {
           return null;
         }
@@ -343,7 +338,6 @@ export const getContainersForScreenshot = query({
       }),
     );
 
-    // Filter out null entries (containers with deleted keys)
     return containersWithKeys.filter((c) => c !== null);
   },
 });

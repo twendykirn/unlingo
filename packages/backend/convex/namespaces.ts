@@ -209,12 +209,7 @@ export const deleteNamespaceContents = internalMutation({
   args: {
     namespaceId: v.id("namespaces"),
     projectId: v.id("projects"),
-    stage: v.union(
-      v.literal("values"),
-      v.literal("containers"),
-      v.literal("keys"),
-      v.literal("final"),
-    ),
+    stage: v.union(v.literal("values"), v.literal("containers"), v.literal("keys"), v.literal("final")),
     cursor: v.union(v.string(), v.null()),
   },
   handler: async (ctx, args) => {
@@ -248,7 +243,6 @@ export const deleteNamespaceContents = internalMutation({
     }
 
     if (args.stage === "containers") {
-      // Get translation keys for this namespace to find associated containers
       const keys = await ctx.db
         .query("translationKeys")
         .withIndex("by_project_namespace_key", (q) =>
@@ -257,7 +251,6 @@ export const deleteNamespaceContents = internalMutation({
         .paginate({ cursor: args.cursor, numItems: LIMIT });
 
       for (const key of keys.page) {
-        // Delete all containers associated with this translation key
         const containers = await ctx.db
           .query("screenshotContainers")
           .withIndex("by_translation_key", (q) => q.eq("translationKeyId", key._id))
