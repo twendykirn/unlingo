@@ -6,21 +6,21 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { Spinner } from '@/components/ui/spinner';
 import { toastManager } from '@/components/ui/toast';
 import { useOrganization } from '@clerk/tanstack-react-start';
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { useMutation, useQuery } from 'convex/react';
-import { ArrowLeftIcon, PlusIcon, TrashIcon, KeyIcon, ZoomInIcon, ZoomOutIcon, RotateCcwIcon } from 'lucide-react';
+import { PlusIcon, TrashIcon, ZoomInIcon, ZoomOutIcon, RotateCcwIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sheet, SheetHeader, SheetPanel, SheetPopup, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { SearchIcon } from 'lucide-react';
 import { debounce } from '@tanstack/pacer';
-import { Badge } from '@/components/ui/badge';
 import { Stage, Layer, Image as KonvaImage, Circle, Group, Text } from 'react-konva';
 import type Konva from 'konva';
 import AutoSizer from 'react-virtualized-auto-sizer';
+import { GroupSeparator, GroupText, Group as UIGroup } from '@/components/ui/group';
 
 const CONTAINER_SIZE = 40;
 const MIN_ZOOM = 0.1;
@@ -61,7 +61,6 @@ function RouteComponent() {
     const [keySearch, setKeySearch] = useState('');
     const [debouncedKeySearch, setDebouncedKeySearch] = useState('');
 
-    // Canvas zoom and pan state
     const [zoom, setZoom] = useState(1);
     const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
     const [initialFitDone, setInitialFitDone] = useState(false);
@@ -123,7 +122,6 @@ function RouteComponent() {
     const updateContainer = useMutation(api.screenshots.updateContainer);
     const deleteContainer = useMutation(api.screenshots.deleteContainer);
 
-    // Load the screenshot image
     useEffect(() => {
         if (screenshot?.imageUrl) {
             const img = new window.Image();
@@ -135,21 +133,19 @@ function RouteComponent() {
         }
     }, [screenshot?.imageUrl]);
 
-    // Fit image to viewport on initial load
     useEffect(() => {
         if (loadedImage && screenshot && canvasSize.width > 0 && canvasSize.height > 0 && !initialFitDone) {
-            const padding = 40; // padding around the image
+            const padding = 40;
             const availableWidth = canvasSize.width - padding * 2;
             const availableHeight = canvasSize.height - padding * 2;
 
             const scaleX = availableWidth / screenshot.dimensions.width;
             const scaleY = availableHeight / screenshot.dimensions.height;
-            const fitScale = Math.min(scaleX, scaleY, 1); // Don't zoom in past 100%
+            const fitScale = Math.min(scaleX, scaleY, 1);
 
             const scaledWidth = screenshot.dimensions.width * fitScale;
             const scaledHeight = screenshot.dimensions.height * fitScale;
 
-            // Center the image
             const offsetX = (canvasSize.width - scaledWidth) / 2;
             const offsetY = (canvasSize.height - scaledHeight) / 2;
 
@@ -180,11 +176,9 @@ function RouteComponent() {
         if (!workspace || !screenshot) return;
 
         try {
-            // Container size as percentage
             const widthPercent = (CONTAINER_SIZE / screenshot.dimensions.width) * 100;
             const heightPercent = (CONTAINER_SIZE / screenshot.dimensions.height) * 100;
 
-            // Position at center of the image
             const centerX = 50 - widthPercent / 2;
             const centerY = 50 - heightPercent / 2;
 
@@ -240,7 +234,6 @@ function RouteComponent() {
         }
     };
 
-    // Zoom controls
     const handleZoomIn = () => {
         setZoom(prev => Math.min(MAX_ZOOM, prev * 1.25)); // 25% increase
     };
@@ -250,7 +243,6 @@ function RouteComponent() {
     };
 
     const handleResetZoom = () => {
-        // Reset to fit image in viewport
         if (screenshot && canvasSize.width > 0 && canvasSize.height > 0) {
             const padding = 40;
             const availableWidth = canvasSize.width - padding * 2;
@@ -315,11 +307,9 @@ function RouteComponent() {
                 y: (pointer.y - stagePosition.y) / oldScale,
             };
 
-            // Use smoother zoom calculation
-            // deltaY is positive when scrolling down (zoom out), negative when scrolling up (zoom in)
             const zoomFactor = evt.ctrlKey || evt.metaKey
-                ? 1 - evt.deltaY * 0.01 // Finer control for pinch-to-zoom
-                : 1 - evt.deltaY * ZOOM_SENSITIVITY * 100; // Smooth wheel zoom
+                ? 1 - evt.deltaY * 0.01
+                : 1 - evt.deltaY * ZOOM_SENSITIVITY * 100;
 
             const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldScale * zoomFactor));
 
@@ -333,7 +323,6 @@ function RouteComponent() {
         }
     };
 
-    // Handle container drag
     const handleContainerDragEnd = async (
         container: ContainerWithKey,
         e: Konva.KonvaEventObject<DragEvent>
@@ -344,7 +333,6 @@ function RouteComponent() {
         const newX = (node.x() / screenshot.dimensions.width) * 100;
         const newY = (node.y() / screenshot.dimensions.height) * 100;
 
-        // Clamp position to image bounds
         const clampedX = Math.max(0, Math.min(100 - container.position.width, newX));
         const clampedY = Math.max(0, Math.min(100 - container.position.height, newY));
 
@@ -366,7 +354,6 @@ function RouteComponent() {
         }
     };
 
-    // Handle stage drag for panning
     const handleStageDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
         setStagePosition({
             x: e.target.x(),
@@ -389,51 +376,37 @@ function RouteComponent() {
                 </header>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
                     <div className="flex items-center gap-4">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            render={
-                                <Link
-                                    to="/projects/$projectId/screenshots"
-                                    params={{ projectId }}
-                                />
-                            }
-                        >
-                            <ArrowLeftIcon />
-                        </Button>
-                        <h1>{screenshot?.name || 'Screenshot Editor'}</h1>
-
-                        {/* Zoom controls */}
-                        <div className="flex items-center gap-1 ml-4 bg-muted rounded-lg p-1">
+                        <h1>{screenshot?.name || 'Screenshot Editor'} {selectedContainer?.translationKey ? `• ${selectedContainer.translationKey.key}` : null}</h1>
+                        <UIGroup aria-label="Zoom controls" className='ml-auto'>
                             <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
                                 onClick={handleZoomOut}
                                 disabled={zoom <= MIN_ZOOM}
                             >
-                                <ZoomOutIcon className="w-4 h-4" />
+                                <ZoomOutIcon />
                             </Button>
-                            <span className="text-sm font-medium min-w-[4rem] text-center">
-                                {Math.round(zoom * 100)}%
-                            </span>
+                            <GroupSeparator />
+                            <GroupText>{Math.round(zoom * 100)}%</GroupText>
+                            <GroupSeparator />
                             <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
                                 onClick={handleZoomIn}
                                 disabled={zoom >= MAX_ZOOM}
                             >
-                                <ZoomInIcon className="w-4 h-4" />
+                                <ZoomInIcon />
                             </Button>
+                            <GroupSeparator />
                             <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
                                 onClick={handleResetZoom}
                             >
-                                <RotateCcwIcon className="w-4 h-4" />
+                                <RotateCcwIcon />
                             </Button>
-                        </div>
-
-                        <div className="flex items-center ml-auto gap-2">
+                        </UIGroup>
+                        <div className="flex items-center gap-2">
                             <Button onClick={handleOpenKeySearch}>
                                 <PlusIcon />
                                 Add Container
@@ -449,26 +422,6 @@ function RouteComponent() {
                             )}
                         </div>
                     </div>
-
-                    {/* Selected container info */}
-                    {selectedContainer && selectedContainer.translationKey && (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg">
-                            <KeyIcon className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">Selected:</span>
-                            <Badge variant="secondary" className="font-mono">
-                                {selectedContainer.translationKey.key}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                                ({selectedContainer.translationKey.namespaceName})
-                            </span>
-                            {selectedContainer.translationKey.primaryValue && (
-                                <span className="text-sm text-muted-foreground ml-2 truncate max-w-[300px]">
-                                    "{selectedContainer.translationKey.primaryValue}"
-                                </span>
-                            )}
-                        </div>
-                    )}
-
                     {workspace === undefined || project === undefined || screenshot === undefined || containers === undefined || !loadedImage ? (
                         <div className="flex items-center justify-center w-full mt-4">
                             <Spinner />
@@ -477,11 +430,10 @@ function RouteComponent() {
                         <div className="flex-1 min-h-0 overflow-hidden rounded-lg bg-muted/50 border relative">
                             <AutoSizer>
                                 {({ width, height }) => {
-                                    // Update canvas size when AutoSizer provides dimensions
                                     if (width !== canvasSize.width || height !== canvasSize.height) {
-                                        // Use setTimeout to avoid state update during render
                                         setTimeout(() => setCanvasSize({ width, height }), 0);
                                     }
+
                                     return (
                                         <Stage
                                             ref={stageRef}
@@ -495,7 +447,6 @@ function RouteComponent() {
                                             onDragEnd={handleStageDragEnd}
                                             onWheel={handleWheel}
                                             onClick={(e) => {
-                                                // Deselect when clicking on empty space
                                                 if (e.target === e.target.getStage()) {
                                                     setSelectedContainerId(null);
                                                 }
@@ -520,11 +471,11 @@ function RouteComponent() {
                                                             y={y}
                                                             draggable
                                                             onDragStart={(e) => {
-                                                                // Stop event from bubbling to stage
                                                                 e.cancelBubble = true;
+                                                                setHoveredContainerId(null);
+                                                                setSelectedContainerId(container._id);
                                                             }}
                                                             onDragMove={(e) => {
-                                                                // Keep event from affecting stage position
                                                                 e.cancelBubble = true;
                                                             }}
                                                             onDragEnd={(e) => {
@@ -538,7 +489,6 @@ function RouteComponent() {
                                                             onMouseEnter={() => setHoveredContainerId(container._id)}
                                                             onMouseLeave={() => setHoveredContainerId(null)}
                                                         >
-                                                            {/* Selection ring */}
                                                             {isSelected && (
                                                                 <Circle
                                                                     x={CONTAINER_SIZE / 2}
@@ -548,7 +498,6 @@ function RouteComponent() {
                                                                     strokeWidth={2}
                                                                 />
                                                             )}
-                                                            {/* Hover ring */}
                                                             {isHovered && !isSelected && (
                                                                 <Circle
                                                                     x={CONTAINER_SIZE / 2}
@@ -558,7 +507,6 @@ function RouteComponent() {
                                                                     strokeWidth={2}
                                                                 />
                                                             )}
-                                                            {/* Main circle with key icon indicator */}
                                                             <Circle
                                                                 x={CONTAINER_SIZE / 2}
                                                                 y={CONTAINER_SIZE / 2}
@@ -566,7 +514,6 @@ function RouteComponent() {
                                                                 fill={container.backgroundColor || '#3b82f6'}
                                                                 opacity={0.9}
                                                             />
-                                                            {/* Key icon (simplified key shape) */}
                                                             <Circle
                                                                 x={CONTAINER_SIZE / 2}
                                                                 y={CONTAINER_SIZE / 2 - 4}
@@ -591,8 +538,6 @@ function RouteComponent() {
                                     );
                                 }}
                             </AutoSizer>
-
-                            {/* Tooltip overlay for hovered container */}
                             {hoveredContainer && hoveredContainer.translationKey && (
                                 <div
                                     className="absolute bg-popover text-popover-foreground border rounded-md shadow-md p-2 pointer-events-none z-50"
