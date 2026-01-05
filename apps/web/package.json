@@ -34,6 +34,8 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-virtualized-auto-sizer": "^1.0.26",
+    "react-konva": "^18.2.10",
+    "konva": "^9.3.18",
     "slugify": "^1.6.6",
     "sonner": "^2.0.3",
     "srvx": "0.8.15",

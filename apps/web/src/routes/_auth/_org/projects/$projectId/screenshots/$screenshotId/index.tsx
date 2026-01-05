@@ -23,6 +23,9 @@ import {
     TooltipContent,
     TooltipTrigger
 } from '@/components/ui/tooltip';
+import { Stage, Layer, Image as KonvaImage, Circle, Group, Text } from 'react-konva';
+import type Konva from 'konva';
+import AutoSizer from 'react-virtualized-auto-sizer';
 
 const CONTAINER_SIZE = 40;
 const MIN_ZOOM = 0.25;
@@ -59,20 +62,17 @@ function RouteComponent() {
     const { organization } = useOrganization();
 
     const [selectedContainerId, setSelectedContainerId] = useState<Id<'screenshotContainers'> | null>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [isKeySearchOpen, setIsKeySearchOpen] = useState(false);
     const [keySearch, setKeySearch] = useState('');
     const [debouncedKeySearch, setDebouncedKeySearch] = useState('');
 
     // Canvas zoom and pan state
     const [zoom, setZoom] = useState(1);
-    const [pan, setPan] = useState({ x: 0, y: 0 });
-    const [isPanning, setIsPanning] = useState(false);
-    const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+    const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
 
-    const canvasRef = useRef<HTMLDivElement>(null);
-    const imageRef = useRef<HTMLImageElement>(null);
+    const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
+    const stageRef = useRef<Konva.Stage>(null);
+    const [hoveredContainerId, setHoveredContainerId] = useState<Id<'screenshotContainers'> | null>(null);
 
     const clerkId = organization?.id;
 
@@ -125,6 +125,18 @@ function RouteComponent() {
     const createContainer = useMutation(api.screenshots.createContainer);
     const updateContainer = useMutation(api.screenshots.updateContainer);
     const deleteContainer = useMutation(api.screenshots.deleteContainer);
+
+    // Load the screenshot image
+    useEffect(() => {
+        if (screenshot?.imageUrl) {
+            const img = new window.Image();
+            img.crossOrigin = 'anonymous';
+            img.src = screenshot.imageUrl;
+            img.onload = () => {
+                setLoadedImage(img);
+            };
+        }
+    }, [screenshot?.imageUrl]);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const debouncedSetKeySearch = useCallback(
@@ -218,112 +230,83 @@ function RouteComponent() {
 
     const handleResetZoom = () => {
         setZoom(1);
-        setPan({ x: 0, y: 0 });
+        setStagePosition({ x: 0, y: 0 });
     };
 
-    // Handle wheel zoom
-    const handleWheel = useCallback((e: React.WheelEvent) => {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-            setZoom(prev => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev + delta)));
-        }
-    }, []);
+    // Handle wheel zoom on stage
+    const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
+        e.evt.preventDefault();
 
-    // Container drag handlers
-    const handleContainerMouseDown = (
-        e: React.MouseEvent,
-        container: ContainerWithKey
+        const stage = stageRef.current;
+        if (!stage) return;
+
+        const oldScale = zoom;
+        const pointer = stage.getPointerPosition();
+        if (!pointer) return;
+
+        const mousePointTo = {
+            x: (pointer.x - stagePosition.x) / oldScale,
+            y: (pointer.y - stagePosition.y) / oldScale,
+        };
+
+        // Check if ctrl/cmd is pressed for zooming, otherwise pan
+        if (e.evt.ctrlKey || e.evt.metaKey) {
+            const direction = e.evt.deltaY > 0 ? -1 : 1;
+            const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldScale + direction * ZOOM_STEP));
+
+            const newPos = {
+                x: pointer.x - mousePointTo.x * newScale,
+                y: pointer.y - mousePointTo.y * newScale,
+            };
+
+            setZoom(newScale);
+            setStagePosition(newPos);
+        }
+    };
+
+    // Handle container drag
+    const handleContainerDragEnd = async (
+        container: ContainerWithKey,
+        e: Konva.KonvaEventObject<DragEvent>
     ) => {
-        e.preventDefault();
-        e.stopPropagation();
+        if (!workspace || !screenshot) return;
 
-        setSelectedContainerId(container._id);
-        setIsDragging(true);
+        const node = e.target;
+        const newX = (node.x() / screenshot.dimensions.width) * 100;
+        const newY = (node.y() / screenshot.dimensions.height) * 100;
 
-        const imageElement = imageRef.current;
-        if (!imageElement) return;
+        // Clamp position to image bounds
+        const clampedX = Math.max(0, Math.min(100 - container.position.width, newX));
+        const clampedY = Math.max(0, Math.min(100 - container.position.height, newY));
 
-        const imageRect = imageElement.getBoundingClientRect();
-        // Calculate container position in screen coordinates
-        const containerX = (container.position.x / 100) * imageRect.width + imageRect.left;
-        const containerY = (container.position.y / 100) * imageRect.height + imageRect.top;
-
-        setDragOffset({
-            x: e.clientX - containerX,
-            y: e.clientY - containerY,
-        });
-    };
-
-    // Canvas panning handlers
-    const handleCanvasMouseDown = (e: React.MouseEvent) => {
-        // Only start panning if middle mouse button or space+click
-        if (e.button === 1) {
-            e.preventDefault();
-            setIsPanning(true);
-            setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-        }
-    };
-
-    const handleMouseMove = useCallback(
-        (e: MouseEvent) => {
-            if (isPanning) {
-                setPan({
-                    x: e.clientX - panStart.x,
-                    y: e.clientY - panStart.y,
-                });
-                return;
-            }
-
-            if (!isDragging || !selectedContainerId || !workspace || !screenshot) return;
-
-            const imageElement = imageRef.current;
-            if (!imageElement) return;
-
-            const imageRect = imageElement.getBoundingClientRect();
-            const selectedContainer = containers?.find(c => c._id === selectedContainerId);
-            if (!selectedContainer) return;
-
-            // Calculate new position as percentage of image dimensions
-            const newX = ((e.clientX - dragOffset.x - imageRect.left) / imageRect.width) * 100;
-            const newY = ((e.clientY - dragOffset.y - imageRect.top) / imageRect.height) * 100;
-
-            // Clamp position to image bounds
-            const clampedX = Math.max(0, Math.min(100 - selectedContainer.position.width, newX));
-            const clampedY = Math.max(0, Math.min(100 - selectedContainer.position.height, newY));
-
-            // Update container position
-            updateContainer({
-                containerId: selectedContainerId,
+        try {
+            await updateContainer({
+                containerId: container._id,
                 workspaceId: workspace._id,
                 position: {
-                    ...selectedContainer.position,
+                    ...container.position,
                     x: clampedX,
                     y: clampedY,
                 },
             });
-        },
-        [isPanning, panStart, isDragging, selectedContainerId, workspace, screenshot, containers, dragOffset, updateContainer]
-    );
-
-    const handleMouseUp = useCallback(() => {
-        setIsDragging(false);
-        setIsPanning(false);
-    }, []);
-
-    useEffect(() => {
-        if (isDragging || isPanning) {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
+        } catch (err) {
+            toastManager.add({
+                description: `Failed to move container: ${err}`,
+                type: 'error',
+            });
         }
+    };
 
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [isDragging, isPanning, handleMouseMove, handleMouseUp]);
+    // Handle stage drag for panning
+    const handleStageDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
+        setStagePosition({
+            x: e.target.x(),
+            y: e.target.y(),
+        });
+    };
 
     const selectedContainer = containers?.find(c => c._id === selectedContainerId);
+    const hoveredContainer = containers?.find(c => c._id === hoveredContainerId);
 
     return (
         <SidebarProvider>
@@ -417,100 +400,126 @@ function RouteComponent() {
                         </div>
                     )}
 
-                    {workspace === undefined || project === undefined || screenshot === undefined || containers === undefined ? (
+                    {workspace === undefined || project === undefined || screenshot === undefined || containers === undefined || !loadedImage ? (
                         <div className="flex items-center justify-center w-full mt-4">
                             <Spinner />
                         </div>
                     ) : (
-                        <div className="flex-1 min-h-0 overflow-hidden rounded-lg bg-muted/50 border">
-                            <div
-                                ref={canvasRef}
-                                className="w-full h-full overflow-auto cursor-grab"
-                                style={{
-                                    cursor: isPanning ? 'grabbing' : 'grab',
-                                }}
-                                onWheel={handleWheel}
-                                onMouseDown={handleCanvasMouseDown}
-                                onClick={() => setSelectedContainerId(null)}
-                            >
-                                <div
-                                    className="inline-block min-w-full min-h-full p-8"
-                                    style={{
-                                        transform: `translate(${pan.x}px, ${pan.y}px)`,
-                                    }}
-                                >
-                                    <div
-                                        className="relative inline-block origin-top-left"
-                                        style={{
-                                            transform: `scale(${zoom})`,
+                        <div className="flex-1 min-h-0 overflow-hidden rounded-lg bg-muted/50 border relative">
+                            <AutoSizer>
+                                {({ width, height }) => (
+                                    <Stage
+                                        ref={stageRef}
+                                        width={width}
+                                        height={height}
+                                        scaleX={zoom}
+                                        scaleY={zoom}
+                                        x={stagePosition.x}
+                                        y={stagePosition.y}
+                                        draggable
+                                        onDragEnd={handleStageDragEnd}
+                                        onWheel={handleWheel}
+                                        onClick={(e) => {
+                                            // Deselect when clicking on empty space
+                                            if (e.target === e.target.getStage()) {
+                                                setSelectedContainerId(null);
+                                            }
                                         }}
                                     >
-                                        <img
-                                            ref={imageRef}
-                                            src={screenshot.imageUrl}
-                                            alt={screenshot.name}
-                                            className="block max-w-none"
-                                            draggable={false}
-                                            style={{
-                                                width: screenshot.dimensions.width,
-                                                height: screenshot.dimensions.height,
-                                            }}
-                                        />
-                                        {containers.map((container, index) => (
-                                            <Tooltip key={container._id}>
-                                                <TooltipTrigger
-                                                    render={
-                                                        <div
-                                                            className={`absolute rounded-full transition-all ${selectedContainerId === container._id
-                                                                ? 'ring-2 ring-white ring-offset-2'
-                                                                : 'hover:ring-2 hover:ring-white/50'
-                                                                }`}
-                                                            style={{
-                                                                left: `${container.position.x}%`,
-                                                                top: `${container.position.y}%`,
-                                                                width: `${CONTAINER_SIZE}px`,
-                                                                height: `${CONTAINER_SIZE}px`,
-                                                                backgroundColor: container.backgroundColor || '#3b82f6',
-                                                                opacity: 0.9,
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                color: 'white',
-                                                                fontSize: '12px',
-                                                                fontWeight: 'bold',
-                                                                cursor: 'move',
-                                                            }}
-                                                            onMouseDown={(e) => handleContainerMouseDown(e, container)}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setSelectedContainerId(container._id);
-                                                            }}
+                                        <Layer>
+                                            <KonvaImage
+                                                image={loadedImage}
+                                                width={screenshot.dimensions.width}
+                                                height={screenshot.dimensions.height}
+                                            />
+                                            {containers.map((container, index) => {
+                                                const x = (container.position.x / 100) * screenshot.dimensions.width;
+                                                const y = (container.position.y / 100) * screenshot.dimensions.height;
+                                                const isSelected = selectedContainerId === container._id;
+                                                const isHovered = hoveredContainerId === container._id;
+
+                                                return (
+                                                    <Group
+                                                        key={container._id}
+                                                        x={x}
+                                                        y={y}
+                                                        draggable
+                                                        onDragEnd={(e) => handleContainerDragEnd(container, e)}
+                                                        onClick={(e) => {
+                                                            e.cancelBubble = true;
+                                                            setSelectedContainerId(container._id);
+                                                        }}
+                                                        onMouseEnter={() => setHoveredContainerId(container._id)}
+                                                        onMouseLeave={() => setHoveredContainerId(null)}
+                                                    >
+                                                        {/* Selection ring */}
+                                                        {isSelected && (
+                                                            <Circle
+                                                                x={CONTAINER_SIZE / 2}
+                                                                y={CONTAINER_SIZE / 2}
+                                                                radius={CONTAINER_SIZE / 2 + 4}
+                                                                stroke="#ffffff"
+                                                                strokeWidth={2}
+                                                            />
+                                                        )}
+                                                        {/* Hover ring */}
+                                                        {isHovered && !isSelected && (
+                                                            <Circle
+                                                                x={CONTAINER_SIZE / 2}
+                                                                y={CONTAINER_SIZE / 2}
+                                                                radius={CONTAINER_SIZE / 2 + 2}
+                                                                stroke="rgba(255,255,255,0.5)"
+                                                                strokeWidth={2}
+                                                            />
+                                                        )}
+                                                        {/* Main circle */}
+                                                        <Circle
+                                                            x={CONTAINER_SIZE / 2}
+                                                            y={CONTAINER_SIZE / 2}
+                                                            radius={CONTAINER_SIZE / 2}
+                                                            fill={container.backgroundColor || '#3b82f6'}
+                                                            opacity={0.9}
                                                         />
-                                                    }
-                                                    delay={0}
-                                                >
-                                                    {index + 1}
-                                                </TooltipTrigger>
-                                                <TooltipContent side="top" className="max-w-[400px]">
-                                                    {container.translationKey ? (
-                                                        <div className="flex flex-col gap-1">
-                                                            <span className="font-mono text-xs font-medium">{container.translationKey.key}</span>
-                                                            <span className="text-xs text-muted-foreground">{container.translationKey.namespaceName}</span>
-                                                            {container.translationKey.primaryValue && (
-                                                                <span className="text-xs mt-1 border-t pt-1 border-border">
-                                                                    "{container.translationKey.primaryValue}"
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground">Key not found</span>
-                                                    )}
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        ))}
+                                                        {/* Index number */}
+                                                        <Text
+                                                            x={0}
+                                                            y={CONTAINER_SIZE / 2 - 6}
+                                                            width={CONTAINER_SIZE}
+                                                            text={String(index + 1)}
+                                                            fontSize={12}
+                                                            fontStyle="bold"
+                                                            fill="#ffffff"
+                                                            align="center"
+                                                        />
+                                                    </Group>
+                                                );
+                                            })}
+                                        </Layer>
+                                    </Stage>
+                                )}
+                            </AutoSizer>
+
+                            {/* Tooltip overlay for hovered container */}
+                            {hoveredContainer && hoveredContainer.translationKey && (
+                                <div
+                                    className="absolute bg-popover text-popover-foreground border rounded-md shadow-md p-2 pointer-events-none z-50"
+                                    style={{
+                                        left: ((hoveredContainer.position.x / 100) * screenshot.dimensions.width * zoom) + stagePosition.x + CONTAINER_SIZE + 10,
+                                        top: ((hoveredContainer.position.y / 100) * screenshot.dimensions.height * zoom) + stagePosition.y,
+                                        maxWidth: '300px',
+                                    }}
+                                >
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-mono text-xs font-medium">{hoveredContainer.translationKey.key}</span>
+                                        <span className="text-xs text-muted-foreground">{hoveredContainer.translationKey.namespaceName}</span>
+                                        {hoveredContainer.translationKey.primaryValue && (
+                                            <span className="text-xs mt-1 border-t pt-1 border-border">
+                                                "{hoveredContainer.translationKey.primaryValue}"
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
                 </div>
