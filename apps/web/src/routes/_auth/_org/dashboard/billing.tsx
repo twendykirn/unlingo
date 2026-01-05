@@ -313,7 +313,9 @@ function RouteComponent() {
                                                         (workspace.currentUsage.translationKeys / workspace.limits.translationKeys) * 100
                                                     )}>
                                                         <div className="flex items-center justify-between gap-2">
-                                                            <ProgressLabel>{`${workspace.currentUsage.translationKeys}/${workspace.limits.translationKeys}`}</ProgressLabel>
+                                                            <ProgressLabel>
+                                                                {`${workspace.currentUsage.translationKeys.toLocaleString()}/${workspace.limits.translationKeys.toLocaleString()}`}
+                                                            </ProgressLabel>
                                                             <ProgressValue />
                                                         </div>
                                                         <ProgressTrack>
@@ -330,7 +332,9 @@ function RouteComponent() {
                                                             (usageData.requests / workspace.limits.requests) * 100
                                                         )}>
                                                             <div className="flex items-center justify-between gap-2">
-                                                                <ProgressLabel>{`${usageData.requests}/${workspace.limits.requests.toLocaleString()}`}</ProgressLabel>
+                                                                <ProgressLabel>
+                                                                    {`${usageData.requests.toLocaleString()}/${workspace.limits.requests.toLocaleString()}`}
+                                                                </ProgressLabel>
                                                                 <ProgressValue />
                                                             </div>
                                                             <ProgressTrack>
