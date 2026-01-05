@@ -43,6 +43,33 @@ export const getTranslationKeys = query({
   },
 });
 
+export const getTranslationKey = query({
+  args: {
+    keyId: v.id("translationKeys"),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const keyDoc = await ctx.db.get(args.keyId);
+    if (!keyDoc || keyDoc.status === -1) {
+      return null;
+    }
+
+    const project = await ctx.db.get(keyDoc.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const namespace = await ctx.db.get(keyDoc.namespaceId);
+
+    return {
+      ...keyDoc,
+      namespaceName: namespace?.name || "Unknown",
+    };
+  },
+});
+
 export const getTranslationKeysGlobalSearch = query({
   args: {
     projectId: v.id("projects"),

@@ -10,7 +10,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { useMutation, useQuery } from 'convex/react';
-import { PlusIcon, TrashIcon, ZoomInIcon, ZoomOutIcon, RotateCcwIcon } from 'lucide-react';
+import { PlusIcon, TrashIcon, ZoomInIcon, ZoomOutIcon, RotateCcwIcon, StarIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sheet, SheetHeader, SheetPanel, SheetPopup, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,11 +21,90 @@ import { Stage, Layer, Image as KonvaImage, Circle, Group, Text } from 'react-ko
 import type Konva from 'konva';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import { GroupSeparator, GroupText, Group as UIGroup } from '@/components/ui/group';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 const CONTAINER_SIZE = 40;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 5;
 const ZOOM_SENSITIVITY = 0.001; // For smooth wheel zooming
+
+function EditableValueCell({
+    value,
+    onSave,
+    status,
+    languageCode,
+    isPrimary,
+}: {
+    value: string;
+    onSave: (newValue: string) => void;
+    status?: number;
+    languageCode: string;
+    isPrimary?: boolean;
+}) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editValue, setEditValue] = useState(value);
+
+    useEffect(() => {
+        setEditValue(value);
+    }, [value]);
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (value !== editValue && editValue.trim()) {
+                onSave(editValue);
+            }
+            setIsEditing(false);
+        } else if (e.key === 'Escape') {
+            setEditValue(value);
+            setIsEditing(false);
+        }
+    };
+
+    if (status === 2) {
+        return (
+            <div className="flex items-center gap-2 p-2 rounded border bg-muted/50">
+                <Spinner className="size-4" />
+                <span className="text-sm text-muted-foreground">Translating...</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-1">
+            <div className="flex items-center gap-2">
+                <Label className="text-xs font-medium uppercase tracking-wide">
+                    {languageCode}
+                </Label>
+                {isPrimary && <StarIcon className="size-3 text-yellow-400" />}
+            </div>
+            {isEditing ? (
+                <Textarea
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onBlur={() => {
+                        if (value !== editValue && editValue.trim()) {
+                            onSave(editValue);
+                        }
+                        setIsEditing(false);
+                    }}
+                    autoFocus
+                    className="min-h-[80px] text-sm"
+                    placeholder="Enter translation..."
+                />
+            ) : (
+                <div
+                    onClick={() => setIsEditing(true)}
+                    className="cursor-pointer p-2 rounded border bg-background hover:bg-muted/50 transition-colors min-h-[80px] text-sm"
+                >
+                    {value || <span className="text-muted-foreground italic">Click to add translation</span>}
+                </div>
+            )}
+        </div>
+    );
+}
 
 interface ContainerWithKey {
     _id: Id<'screenshotContainers'>;
@@ -118,9 +197,32 @@ function RouteComponent() {
             : 'skip',
     );
 
+    const languages = useQuery(
+        api.languages.getLanguages,
+        workspace && project
+            ? {
+                projectId: project._id,
+                workspaceId: workspace._id,
+            }
+            : 'skip'
+    );
+
+    const selectedContainer = containers?.find(c => c._id === selectedContainerId);
+
+    const selectedTranslationKey = useQuery(
+        api.translationKeys.getTranslationKey,
+        workspace && selectedContainer?.translationKeyId
+            ? {
+                keyId: selectedContainer.translationKeyId,
+                workspaceId: workspace._id,
+            }
+            : 'skip'
+    );
+
     const createContainer = useMutation(api.screenshots.createContainer);
     const updateContainer = useMutation(api.screenshots.updateContainer);
     const deleteContainer = useMutation(api.screenshots.deleteContainer);
+    const updateTranslationKey = useMutation(api.translationKeys.updateTranslationKey);
 
     useEffect(() => {
         if (screenshot?.imageUrl) {
@@ -361,8 +463,36 @@ function RouteComponent() {
         });
     };
 
-    const selectedContainer = containers?.find(c => c._id === selectedContainerId);
     const hoveredContainer = containers?.find(c => c._id === hoveredContainerId);
+
+    const sortedLanguages = languages ? [...languages].sort((a, b) => {
+        if (a._id === project?.primaryLanguageId) return -1;
+        if (b._id === project?.primaryLanguageId) return 1;
+        return 0;
+    }) : [];
+
+    const handleTranslationValueUpdate = useCallback(
+        async (languageId: Id<'languages'>, newValue: string) => {
+            if (!workspace || !project || !selectedTranslationKey) return;
+
+            try {
+                await updateTranslationKey({
+                    keyId: selectedTranslationKey._id,
+                    workspaceId: workspace._id,
+                    projectId: project._id,
+                    namespaceId: selectedTranslationKey.namespaceId,
+                    languageId,
+                    value: newValue,
+                });
+            } catch (error) {
+                toastManager.add({
+                    description: `Failed to update translation: ${error}`,
+                    type: 'error',
+                });
+            }
+        },
+        [workspace, project, selectedTranslationKey, updateTranslationKey]
+    );
 
     return (
         <SidebarProvider>
@@ -376,7 +506,14 @@ function RouteComponent() {
                 </header>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
                     <div className="flex items-center gap-4">
-                        <h1>{screenshot?.name || 'Screenshot Editor'} {selectedContainer?.translationKey ? `• ${selectedContainer.translationKey.key}` : null}</h1>
+                        <div className="flex flex-col">
+                            <h1>{screenshot?.name || 'Screenshot Editor'}</h1>
+                            {selectedContainer?.translationKey && (
+                                <span className="text-sm text-muted-foreground font-mono">
+                                    {selectedContainer.translationKey.key}
+                                </span>
+                            )}
+                        </div>
                         <UIGroup aria-label="Zoom controls" className='ml-auto'>
                             <Button
                                 variant="outline"
@@ -427,7 +564,8 @@ function RouteComponent() {
                             <Spinner />
                         </div>
                     ) : (
-                        <div className="flex-1 min-h-0 overflow-hidden rounded-lg bg-muted/50 border relative">
+                        <div className="flex-1 min-h-0 flex gap-4">
+                            <div className="flex-1 min-w-0 overflow-hidden rounded-lg bg-muted/50 border relative">
                             <AutoSizer>
                                 {({ width, height }) => {
                                     if (width !== canvasSize.width || height !== canvasSize.height) {
@@ -556,6 +694,33 @@ function RouteComponent() {
                                             </span>
                                         )}
                                     </div>
+                                </div>
+                            )}
+                            </div>
+                            {selectedContainer && selectedTranslationKey && (
+                                <div className="w-80 shrink-0 rounded-lg border bg-background overflow-hidden flex flex-col">
+                                    <div className="p-4 border-b bg-muted/30">
+                                        <h3 className="font-mono text-sm font-medium truncate">
+                                            {selectedTranslationKey.key}
+                                        </h3>
+                                        <span className="text-xs text-muted-foreground">
+                                            {selectedTranslationKey.namespaceName}
+                                        </span>
+                                    </div>
+                                    <ScrollArea className="flex-1 p-4">
+                                        <div className="space-y-4">
+                                            {sortedLanguages.map((lang) => (
+                                                <EditableValueCell
+                                                    key={lang._id}
+                                                    value={selectedTranslationKey.values?.[lang._id] || ''}
+                                                    onSave={(newValue) => handleTranslationValueUpdate(lang._id, newValue)}
+                                                    status={selectedTranslationKey.status === 2 ? 2 : selectedTranslationKey.statuses?.[lang._id]}
+                                                    languageCode={lang.languageCode}
+                                                    isPrimary={lang._id === project.primaryLanguageId}
+                                                />
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
                                 </div>
                             )}
                         </div>
