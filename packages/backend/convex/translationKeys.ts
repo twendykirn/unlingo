@@ -90,7 +90,6 @@ export const getTranslationKeysGlobalSearch = query({
     const searchBy = args.searchBy ?? "key";
 
     if (searchBy === "value") {
-      // Search by translation value using the translationValues table
       const valueResults = await ctx.db
         .query("translationValues")
         .withSearchIndex("search_values", (q) => q.search("values", args.search).eq("projectId", args.projectId))
@@ -98,17 +97,14 @@ export const getTranslationKeysGlobalSearch = query({
 
       if (valueResults.length === 0) return [];
 
-      // Get unique translation key IDs
       const keyIds = new Set<Id<"translationKeys">>();
       valueResults.forEach((v) => keyIds.add(v.translationKeyId));
 
-      // Fetch translation keys and filter out deleted ones
       const translationKeys = await Promise.all([...keyIds].map((id) => ctx.db.get(id)));
       const validKeys = translationKeys.filter((k): k is NonNullable<typeof k> => !!k && k.status !== -1);
 
       if (validKeys.length === 0) return [];
 
-      // Get namespace names
       const namespaceIds = new Set<Id<"namespaces">>();
       validKeys.forEach((k) => namespaceIds.add(k.namespaceId));
 
@@ -120,7 +116,6 @@ export const getTranslationKeysGlobalSearch = query({
         }
       });
 
-      // Find matched values for each key to include in response
       const keyToMatchedValue = new Map<Id<"translationKeys">, string>();
       valueResults.forEach((v) => {
         if (!keyToMatchedValue.has(v.translationKeyId)) {
@@ -138,7 +133,6 @@ export const getTranslationKeysGlobalSearch = query({
       }));
     }
 
-    // Default: search by key
     const results = await ctx.db
       .query("translationKeys")
       .withSearchIndex("search", (q) => q.search("key", args.search).eq("projectId", args.projectId))
@@ -308,10 +302,12 @@ export const createTranslationKeysBulk = mutation({
     workspaceId: v.id("workspaces"),
     projectId: v.id("projects"),
     namespaceId: v.id("namespaces"),
-    keys: v.array(v.object({
-      key: v.string(),
-      primaryValue: v.string(),
-    })),
+    keys: v.array(
+      v.object({
+        key: v.string(),
+        primaryValue: v.string(),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const workspace = await authMiddleware(ctx, args.workspaceId);
