@@ -7,7 +7,7 @@ import {
     DialogTrigger,
 } from "./ui/dialog";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
-import { KeyRoundIcon, SearchIcon, TextIcon } from "lucide-react";
+import { KeyRoundIcon, SearchIcon } from "lucide-react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "./ui/empty";
 import { Card, CardHeader } from "./ui/card";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
@@ -18,7 +18,7 @@ import { debounce } from "@tanstack/pacer";
 import { useQuery } from "convex/react";
 import { api } from "@unlingo/backend/convex/_generated/api";
 import type { Id } from "@unlingo/backend/convex/_generated/dataModel";
-import { ToggleGroup, Toggle } from "./ui/toggle-group";
+import { Select, SelectTrigger, SelectValue, SelectPopup, SelectItem } from "./ui/select";
 
 interface Props {
     workspaceId?: Id<'workspaces'>;
@@ -53,10 +53,8 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
         debouncedSetSearch(e.target.value);
     };
 
-    const handleSearchByChange = (value: SearchBy[], event: Event) => {
-        if (value.length > 0) {
-            setSearchBy(value[0]);
-        }
+    const handleSearchByChange = (value: SearchBy) => {
+        setSearchBy(value);
     };
 
     return (
@@ -74,8 +72,8 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
             </DialogTrigger>
             <DialogPopup showCloseButton={false}>
                 <DialogHeader>
-                    <div className="flex flex-col gap-2">
-                        <InputGroup>
+                    <div className="flex gap-2">
+                        <InputGroup className="flex-1">
                             <InputGroupInput
                                 aria-label="Search"
                                 placeholder={searchBy === 'key' ? "Search keys" : "Search values"}
@@ -86,22 +84,15 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                                 <SearchIcon />
                             </InputGroupAddon>
                         </InputGroup>
-                        <ToggleGroup
-                            className="w-full"
-                            value={[searchBy]}
-                            onValueChange={handleSearchByChange}
-                            variant="outline"
-                            size="sm"
-                        >
-                            <Toggle value="key" className="flex-1">
-                                <KeyRoundIcon className="size-4" />
-                                By key
-                            </Toggle>
-                            <Toggle value="value" className="flex-1">
-                                <TextIcon className="size-4" />
-                                By value
-                            </Toggle>
-                        </ToggleGroup>
+                        <Select value={searchBy} onValueChange={handleSearchByChange}>
+                            <SelectTrigger size="sm" className="min-w-28 w-auto">
+                                <SelectValue placeholder="By key" />
+                            </SelectTrigger>
+                            <SelectPopup>
+                                <SelectItem value="key">By key</SelectItem>
+                                <SelectItem value="value">By value</SelectItem>
+                            </SelectPopup>
+                        </Select>
                     </div>
                 </DialogHeader>
                 <DialogPanel className="grid gap-2">
