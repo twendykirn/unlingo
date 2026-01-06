@@ -93,7 +93,7 @@ If no UI text is found, return an empty array: []`;
       return [];
     }
 
-    return parsed.filter((item: unknown): item is DetectedTextRegion => {
+    const validItems = parsed.filter((item: unknown): item is DetectedTextRegion => {
       if (typeof item !== "object" || item === null) return false;
       const obj = item as Record<string, unknown>;
       return (
@@ -105,6 +105,26 @@ If no UI text is found, return an empty array: []`;
         typeof (obj.boundingBox as Record<string, unknown>).width === "number" &&
         typeof (obj.boundingBox as Record<string, unknown>).height === "number"
       );
+    });
+
+    // Normalize coordinates - Gemini often returns values in 0-1000 range instead of 0-100
+    // Detect and convert based on the max values found
+    return validItems.map((item) => {
+      const box = item.boundingBox;
+      const maxVal = Math.max(box.x, box.y, box.x + box.width, box.y + box.height);
+
+      // If max value is greater than 100, assume Gemini returned 0-1000 scale
+      const scaleFactor = maxVal > 100 ? 10 : 1;
+
+      return {
+        text: item.text,
+        boundingBox: {
+          x: box.x / scaleFactor,
+          y: box.y / scaleFactor,
+          width: box.width / scaleFactor,
+          height: box.height / scaleFactor,
+        },
+      };
     });
   } catch (e) {
     console.error("Failed to parse AI text detection response:", e);
