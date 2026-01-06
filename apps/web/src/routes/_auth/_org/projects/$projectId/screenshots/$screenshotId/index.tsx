@@ -726,7 +726,7 @@ function RouteComponent() {
                                         }}
                                     >
                                         <div className="flex flex-col gap-1">
-                                            <span className="font-mono text-xs font-medium">{hoveredContainer.translationKey.key}</span>
+                                            <span className="font-mono text-xs font-medium truncate">{hoveredContainer.translationKey.key}</span>
                                             <span className="text-xs text-muted-foreground">{hoveredContainer.translationKey.namespaceName}</span>
                                             {hoveredContainer.translationKey.primaryValue && (
                                                 <span className="text-xs mt-1 border-t pt-1 border-border">
