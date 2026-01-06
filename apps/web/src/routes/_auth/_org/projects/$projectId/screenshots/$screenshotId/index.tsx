@@ -321,7 +321,6 @@ function RouteComponent() {
                     width: widthPercent,
                     height: heightPercent,
                 },
-                backgroundColor: '#3b82f6',
             });
 
             setSelectedContainerId(containerId);
@@ -570,10 +569,10 @@ function RouteComponent() {
                                         <Button
                                             variant="outline"
                                             onClick={handleAutoDetectText}
-                                            disabled={isDetectingText}
+                                            disabled={isDetectingText || screenshot?.status === 3}
                                         >
-                                            {isDetectingText ? (
-                                                <Spinner className="size-4" />
+                                            {isDetectingText || screenshot?.status === 3 ? (
+                                                <Spinner />
                                             ) : (
                                                 <Wand2Icon />
                                             )}
@@ -690,7 +689,7 @@ function RouteComponent() {
                                                                     x={CONTAINER_SIZE / 2}
                                                                     y={CONTAINER_SIZE / 2}
                                                                     radius={CONTAINER_SIZE / 2}
-                                                                    fill={container.backgroundColor || '#3b82f6'}
+                                                                    fill='#3b82f6'
                                                                     opacity={0.9}
                                                                 />
                                                                 <Circle
