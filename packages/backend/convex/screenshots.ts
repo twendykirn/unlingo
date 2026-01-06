@@ -347,7 +347,7 @@ export const detectTextAction = internalAction({
       return { success: true, created: 0, skipped: 0, message: "No UI text detected in screenshot" };
     }
 
-    const result = await ctx.runMutation(internal.screenshots.createContainersFromDetection, {
+    await ctx.runMutation(internal.screenshots.createContainersFromDetection, {
       screenshotId: args.screenshotId,
       projectId: args.projectId,
       detectedRegions: detectedRegions.map((region) => ({
@@ -358,8 +358,6 @@ export const detectTextAction = internalAction({
         height: region.boundingBox.height,
       })),
     });
-
-    return result;
   },
 });
 
@@ -380,11 +378,7 @@ function calculateSimilarity(str1: string, str2: string): number {
   for (let i = 1; i <= str1.length; i++) {
     for (let j = 1; j <= str2.length; j++) {
       const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-      matrix[i][j] = Math.min(
-        matrix[i - 1][j] + 1,
-        matrix[i][j - 1] + 1,
-        matrix[i - 1][j - 1] + cost
-      );
+      matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
     }
   }
 
@@ -404,7 +398,7 @@ export const createContainersFromDetection = internalMutation({
         y: v.number(),
         width: v.number(),
         height: v.number(),
-      })
+      }),
     ),
   },
   handler: async (ctx, args) => {
@@ -426,9 +420,7 @@ export const createContainersFromDetection = internalMutation({
     for (const region of args.detectedRegions) {
       const valueResults = await ctx.db
         .query("translationValues")
-        .withSearchIndex("search_values", (q) =>
-          q.search("values", region.text).eq("projectId", args.projectId)
-        )
+        .withSearchIndex("search_values", (q) => q.search("values", region.text).eq("projectId", args.projectId))
         .take(5);
 
       let matchedKeyId: Id<"translationKeys"> | null = null;
