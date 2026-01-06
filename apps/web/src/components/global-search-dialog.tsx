@@ -7,7 +7,7 @@ import {
     DialogTrigger,
 } from "./ui/dialog";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
-import { KeyRoundIcon, SearchIcon } from "lucide-react";
+import { KeyRoundIcon, SearchIcon, TextIcon } from "lucide-react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "./ui/empty";
 import { Card, CardHeader } from "./ui/card";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
@@ -18,14 +18,18 @@ import { debounce } from "@tanstack/pacer";
 import { useQuery } from "convex/react";
 import { api } from "@unlingo/backend/convex/_generated/api";
 import type { Id } from "@unlingo/backend/convex/_generated/dataModel";
+import { ToggleGroup, Toggle } from "./ui/toggle-group";
 
 interface Props {
     workspaceId?: Id<'workspaces'>;
     projectId?: Id<'projects'>;
 }
 
+type SearchBy = "key" | "value";
+
 const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
     const [search, setSearch] = useState('');
+    const [searchBy, setSearchBy] = useState<SearchBy>('key');
 
     const translationKeys = useQuery(
         api.translationKeys.getTranslationKeysGlobalSearch,
@@ -34,6 +38,7 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                 projectId,
                 workspaceId,
                 search,
+                searchBy,
             }
             : 'skip'
     );
@@ -48,11 +53,18 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
         debouncedSetSearch(e.target.value);
     };
 
+    const handleSearchByChange = (value: SearchBy[], event: Event) => {
+        if (value.length > 0) {
+            setSearchBy(value[0]);
+        }
+    };
+
     return (
         <Dialog
             onOpenChange={value => {
                 if (!value) {
                     setSearch('');
+                    setSearchBy('key');
                 }
             }}
         >
@@ -62,17 +74,35 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
             </DialogTrigger>
             <DialogPopup showCloseButton={false}>
                 <DialogHeader>
-                    <InputGroup>
-                        <InputGroupInput
-                            aria-label="Search"
-                            placeholder="Search keys"
-                            type="search"
-                            onChange={handleSearchChange}
-                        />
-                        <InputGroupAddon>
-                            <SearchIcon />
-                        </InputGroupAddon>
-                    </InputGroup>
+                    <div className="flex flex-col gap-2">
+                        <InputGroup>
+                            <InputGroupInput
+                                aria-label="Search"
+                                placeholder={searchBy === 'key' ? "Search keys" : "Search values"}
+                                type="search"
+                                onChange={handleSearchChange}
+                            />
+                            <InputGroupAddon>
+                                <SearchIcon />
+                            </InputGroupAddon>
+                        </InputGroup>
+                        <ToggleGroup
+                            className="w-full"
+                            value={[searchBy]}
+                            onValueChange={handleSearchByChange}
+                            variant="outline"
+                            size="sm"
+                        >
+                            <Toggle value="key" className="flex-1">
+                                <KeyRoundIcon className="size-4" />
+                                By key
+                            </Toggle>
+                            <Toggle value="value" className="flex-1">
+                                <TextIcon className="size-4" />
+                                By value
+                            </Toggle>
+                        </ToggleGroup>
+                    </div>
                 </DialogHeader>
                 <DialogPanel className="grid gap-2">
                     {!workspaceId || !projectId || translationKeys === undefined ? (
@@ -98,28 +128,38 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                                 }}
                             >
                                 <Card className="py-4 hover:border-primary/30">
-                                    <CardHeader className="px-4 flex justify-between items-center gap-8">
-                                        <Tooltip>
-                                            <TooltipTrigger render={<span className="truncate" />}>
-                                                {item.key}
-                                            </TooltipTrigger>
-                                            <TooltipPopup>{item.key}</TooltipPopup>
-                                        </Tooltip>
-                                        <div className='flex items-center gap-1 text-muted-foreground'>
+                                    <CardHeader className="px-4 flex flex-col gap-1">
+                                        <div className="flex justify-between items-center gap-8">
                                             <Tooltip>
-                                                <TooltipTrigger render={<span className="text-xs p-0" />}>
-                                                    {item.namespaceName}
+                                                <TooltipTrigger render={<span className="truncate" />}>
+                                                    {item.key}
                                                 </TooltipTrigger>
-                                                <TooltipPopup>Namespace</TooltipPopup>
+                                                <TooltipPopup>{item.key}</TooltipPopup>
                                             </Tooltip>
-                                            •
-                                            <Tooltip>
-                                                <TooltipTrigger render={<span className="text-xs p-0" />}>
-                                                    {item.status === 1 ? 'Active' : 'Inactive'}
-                                                </TooltipTrigger>
-                                                <TooltipPopup>Status</TooltipPopup>
-                                            </Tooltip>
+                                            <div className='flex items-center gap-1 text-muted-foreground'>
+                                                <Tooltip>
+                                                    <TooltipTrigger render={<span className="text-xs p-0" />}>
+                                                        {item.namespaceName}
+                                                    </TooltipTrigger>
+                                                    <TooltipPopup>Namespace</TooltipPopup>
+                                                </Tooltip>
+                                                •
+                                                <Tooltip>
+                                                    <TooltipTrigger render={<span className="text-xs p-0" />}>
+                                                        {item.status === 1 ? 'Active' : 'Inactive'}
+                                                    </TooltipTrigger>
+                                                    <TooltipPopup>Status</TooltipPopup>
+                                                </Tooltip>
+                                            </div>
                                         </div>
+                                        {item.matchedValue && (
+                                            <Tooltip>
+                                                <TooltipTrigger render={<p className="text-xs text-muted-foreground truncate" />}>
+                                                    {item.matchedValue}
+                                                </TooltipTrigger>
+                                                <TooltipPopup className="max-w-md">{item.matchedValue}</TooltipPopup>
+                                            </Tooltip>
+                                        )}
                                     </CardHeader>
                                 </Card>
                             </Link>

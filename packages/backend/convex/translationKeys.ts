@@ -75,6 +75,7 @@ export const getTranslationKeysGlobalSearch = query({
     projectId: v.id("projects"),
     workspaceId: v.id("workspaces"),
     search: v.string(),
+    searchBy: v.optional(v.union(v.literal("key"), v.literal("value"))),
   },
   handler: async (ctx, args) => {
     await authMiddleware(ctx, args.workspaceId);
@@ -86,6 +87,58 @@ export const getTranslationKeysGlobalSearch = query({
 
     if (!args.search) return [];
 
+    const searchBy = args.searchBy ?? "key";
+
+    if (searchBy === "value") {
+      // Search by translation value using the translationValues table
+      const valueResults = await ctx.db
+        .query("translationValues")
+        .withSearchIndex("search_values", (q) => q.search("values", args.search).eq("projectId", args.projectId))
+        .take(50);
+
+      if (valueResults.length === 0) return [];
+
+      // Get unique translation key IDs
+      const keyIds = new Set<Id<"translationKeys">>();
+      valueResults.forEach((v) => keyIds.add(v.translationKeyId));
+
+      // Fetch translation keys and filter out deleted ones
+      const translationKeys = await Promise.all([...keyIds].map((id) => ctx.db.get(id)));
+      const validKeys = translationKeys.filter((k): k is NonNullable<typeof k> => !!k && k.status !== -1);
+
+      if (validKeys.length === 0) return [];
+
+      // Get namespace names
+      const namespaceIds = new Set<Id<"namespaces">>();
+      validKeys.forEach((k) => namespaceIds.add(k.namespaceId));
+
+      const namespaces = await Promise.all([...namespaceIds].map((id) => ctx.db.get(id)));
+      const nsMap = new Map<Id<"namespaces">, string>();
+      namespaces.forEach((ns) => {
+        if (ns) {
+          nsMap.set(ns._id, ns.name);
+        }
+      });
+
+      // Find matched values for each key to include in response
+      const keyToMatchedValue = new Map<Id<"translationKeys">, string>();
+      valueResults.forEach((v) => {
+        if (!keyToMatchedValue.has(v.translationKeyId)) {
+          keyToMatchedValue.set(v.translationKeyId, v.values);
+        }
+      });
+
+      return validKeys.map((key) => ({
+        _id: key._id,
+        key: key.key,
+        status: key.status,
+        namespaceName: nsMap.get(key.namespaceId) || "Unknown Namespace",
+        namespaceId: key.namespaceId,
+        matchedValue: keyToMatchedValue.get(key._id),
+      }));
+    }
+
+    // Default: search by key
     const results = await ctx.db
       .query("translationKeys")
       .withSearchIndex("search", (q) => q.search("key", args.search).eq("projectId", args.projectId))
@@ -112,6 +165,7 @@ export const getTranslationKeysGlobalSearch = query({
       status: key.status,
       namespaceName: nsMap.get(key.namespaceId) || "Unknown Namespace",
       namespaceId: key.namespaceId,
+      matchedValue: undefined,
     }));
   },
 });

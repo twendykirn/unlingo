@@ -100,7 +100,11 @@ export default defineSchema({
     values: v.string(),
   })
     .index("by_project_language", ["projectId", "languageId"])
-    .index("by_project_namespace_language_key", ["projectId", "namespaceId", "languageId", "translationKeyId"]),
+    .index("by_project_namespace_language_key", ["projectId", "namespaceId", "languageId", "translationKeyId"])
+    .searchIndex("search_values", {
+      searchField: "values",
+      filterFields: ["projectId"],
+    }),
   builds: defineTable({
     projectId: v.id("projects"),
     namespace: v.string(),
