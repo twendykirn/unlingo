@@ -25,15 +25,18 @@ interface Props {
     projectId?: Id<'projects'>;
 }
 
-type SearchBy = "key" | "value";
+const SORT_BY_OPTIONS = [
+    { value: 'key', label: 'By key' },
+    { value: 'value', label: 'By value' },
+];
 
 const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
     const [search, setSearch] = useState('');
-    const [searchBy, setSearchBy] = useState<SearchBy>('key');
+    const [searchBy, setSearchBy] = useState<'key' | 'value' | null>('key');
 
     const translationKeys = useQuery(
         api.translationKeys.getTranslationKeysGlobalSearch,
-        workspaceId && projectId
+        workspaceId && projectId && searchBy && search
             ? {
                 projectId,
                 workspaceId,
@@ -53,10 +56,6 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
         debouncedSetSearch(e.target.value);
     };
 
-    const handleSearchByChange = (value: SearchBy) => {
-        setSearchBy(value);
-    };
-
     return (
         <Dialog
             onOpenChange={value => {
@@ -72,7 +71,7 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
             </DialogTrigger>
             <DialogPopup showCloseButton={false}>
                 <DialogHeader>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                         <InputGroup className="flex-1">
                             <InputGroupInput
                                 aria-label="Search"
@@ -84,21 +83,35 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                                 <SearchIcon />
                             </InputGroupAddon>
                         </InputGroup>
-                        <Select value={searchBy} onValueChange={handleSearchByChange}>
-                            <SelectTrigger size="sm" className="min-w-28 w-auto">
-                                <SelectValue placeholder="By key" />
+                        <Select
+                            value={searchBy}
+                            onValueChange={setSearchBy}
+                        >
+                            <SelectTrigger className='w-4'>
+                                <SelectValue>
+                                    {(item) => (
+                                        item === 'key' ? (
+                                            'By key'
+                                        ) : (
+                                            'By value'
+                                        )
+                                    )}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectPopup>
-                                <SelectItem value="key">By key</SelectItem>
-                                <SelectItem value="value">By value</SelectItem>
+                                {SORT_BY_OPTIONS.map(({ label, value }) => (
+                                    <SelectItem key={value} value={value}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
                             </SelectPopup>
                         </Select>
                     </div>
                 </DialogHeader>
                 <DialogPanel className="grid gap-2">
-                    {!workspaceId || !projectId || translationKeys === undefined ? (
+                    {!workspaceId || !projectId || (translationKeys === undefined && searchBy && search) ? (
                         <Spinner className="mx-auto mt-2" />
-                    ) : translationKeys?.length === 0 ? (
+                    ) : !translationKeys || translationKeys?.length === 0 || (!searchBy || !search) ? (
                         <Empty>
                             <EmptyHeader>
                                 <EmptyMedia variant="icon">
@@ -109,7 +122,7 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                             </EmptyHeader>
                         </Empty>
                     ) : (
-                        translationKeys.map(item => (
+                        translationKeys?.map(item => (
                             <Link
                                 key={item._id}
                                 to="/projects/$projectId/namespaces/$namespaceId/editor"
@@ -120,7 +133,7 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                             >
                                 <Card className="py-4 hover:border-primary/30">
                                     <CardHeader className="px-4 flex flex-col gap-1">
-                                        <div className="flex justify-between items-center gap-8">
+                                        <div className="flex justify-between items-center gap-8 w-full">
                                             <Tooltip>
                                                 <TooltipTrigger render={<span className="truncate" />}>
                                                     {item.key}
@@ -134,23 +147,16 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                                                     </TooltipTrigger>
                                                     <TooltipPopup>Namespace</TooltipPopup>
                                                 </Tooltip>
-                                                •
-                                                <Tooltip>
-                                                    <TooltipTrigger render={<span className="text-xs p-0" />}>
-                                                        {item.status === 1 ? 'Active' : 'Inactive'}
-                                                    </TooltipTrigger>
-                                                    <TooltipPopup>Status</TooltipPopup>
-                                                </Tooltip>
                                             </div>
                                         </div>
-                                        {item.matchedValue && (
+                                        {item.matchedValue ? (
                                             <Tooltip>
-                                                <TooltipTrigger render={<p className="text-xs text-muted-foreground truncate" />}>
+                                                <TooltipTrigger render={<p className="text-xs text-muted-foreground truncate max-w-full" />}>
                                                     {item.matchedValue}
                                                 </TooltipTrigger>
                                                 <TooltipPopup className="max-w-md">{item.matchedValue}</TooltipPopup>
                                             </Tooltip>
-                                        )}
+                                        ) : null}
                                     </CardHeader>
                                 </Card>
                             </Link>
