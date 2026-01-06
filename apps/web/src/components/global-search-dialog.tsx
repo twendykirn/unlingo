@@ -18,14 +18,14 @@ import { Button } from "./ui/button";
 import { debounce } from "@tanstack/pacer";
 import { useQuery } from "convex/react";
 import { api } from "@unlingo/backend/convex/_generated/api";
-import type { Id } from "@unlingo/backend/convex/_generated/dataModel";
+import type { Doc, Id } from "@unlingo/backend/convex/_generated/dataModel";
 import { Select, SelectTrigger, SelectValue, SelectPopup, SelectItem } from "./ui/select";
 import TranslationKeyEditDialog from "./translation-key-edit-dialog";
 import TranslationKeyDeleteDialog from "./translation-key-delete-dialog";
 
 interface Props {
-    workspaceId?: Id<'workspaces'>;
-    projectId?: Id<'projects'>;
+    workspace?: Doc<'workspaces'> | null;
+    project?: Doc<'projects'> | null;
 }
 
 const SORT_BY_OPTIONS = [
@@ -33,7 +33,7 @@ const SORT_BY_OPTIONS = [
     { value: 'value', label: 'By value' },
 ];
 
-const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
+const GlobalSearchDialog = ({ workspace, project }: Props) => {
     const [search, setSearch] = useState('');
     const [searchBy, setSearchBy] = useState<'key' | 'value' | null>('key');
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -42,38 +42,29 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
     const [selectedKeyData, setSelectedKeyData] = useState<{
         key: string;
         namespaceId: Id<'namespaces'>;
+        status: -1 | 1 | 2;
     } | null>(null);
 
     const translationKeys = useQuery(
         api.translationKeys.getTranslationKeysGlobalSearch,
-        workspaceId && projectId && searchBy && search
+        workspace && project && searchBy && search
             ? {
-                projectId,
-                workspaceId,
+                projectId: project._id,
+                workspaceId: workspace._id,
                 search,
                 searchBy,
             }
             : 'skip'
     );
 
-    const workspace = useQuery(
-        api.workspaces.getWorkspace,
-        workspaceId
-            ? { workspaceId }
-            : 'skip'
-    );
-
-    const project = useQuery(
-        api.projects.getProject,
-        workspaceId && projectId
-            ? { projectId, workspaceId }
-            : 'skip'
-    );
-
     const namespace = useQuery(
         api.namespaces.getNamespace,
-        workspaceId && projectId && selectedKeyData?.namespaceId
-            ? { namespaceId: selectedKeyData.namespaceId, projectId, workspaceId }
+        workspace && project && selectedKeyData?.namespaceId
+            ? {
+                namespaceId: selectedKeyData.namespaceId,
+                projectId: project._id,
+                workspaceId: workspace._id
+            }
             : 'skip'
     );
 
@@ -85,18 +76,27 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         debouncedSetSearch(e.target.value);
+        setSelectedKeyData(null);
+        setSelectedKeyId(null);
     };
 
     const handleSelectKey = (item: {
         _id: Id<'translationKeys'>;
         key: string;
         namespaceId: Id<'namespaces'>;
+        status: -1 | 1 | 2;
     }) => {
-        setSelectedKeyId(item._id);
-        setSelectedKeyData({
-            key: item.key,
-            namespaceId: item.namespaceId,
-        });
+        if (item._id === selectedKeyId) {
+            setSelectedKeyId(null);
+            setSelectedKeyData(null);
+        } else {
+            setSelectedKeyId(item._id);
+            setSelectedKeyData({
+                key: item.key,
+                namespaceId: item.namespaceId,
+                status: item.status,
+            });
+        }
     };
 
     const handleEditKey = () => {
@@ -147,7 +147,11 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                         </InputGroup>
                         <Select
                             value={searchBy}
-                            onValueChange={setSearchBy}
+                            onValueChange={value => {
+                                setSearchBy(value);
+                                setSelectedKeyData(null);
+                                setSelectedKeyId(null);
+                            }}
                         >
                             <SelectTrigger className='w-4'>
                                 <SelectValue>
@@ -171,7 +175,7 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                     </div>
                 </DialogHeader>
                 <DialogPanel className="grid gap-2">
-                    {!workspaceId || !projectId || (translationKeys === undefined && searchBy && search) ? (
+                    {!workspace || !project || (translationKeys === undefined && searchBy && search) ? (
                         <Spinner className="mx-auto mt-2" />
                     ) : !translationKeys || translationKeys?.length === 0 || (!searchBy || !search) ? (
                         <Empty>
@@ -220,52 +224,64 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                         ))
                     )}
                 </DialogPanel>
-                {selectedKeyId && selectedKeyData && projectId && (
-                    <DialogFooter variant="bare">
-                        <Link
-                            to="/projects/$projectId/namespaces/$namespaceId/editor"
-                            params={{
-                                projectId,
-                                namespaceId: selectedKeyData.namespaceId,
-                            }}
-                            search={{
-                                key: selectedKeyData.key,
-                            }}
-                        >
-                            <Button variant="outline">
-                                <SearchIcon className="size-4" />
-                                Go to Editor
+                {selectedKeyId && selectedKeyData && project && (
+                    <DialogFooter>
+                        <div className="flex items-center gap-2 justify-center flex-1">
+                            <Link
+                                to="/projects/$projectId/namespaces/$namespaceId/editor"
+                                params={{
+                                    projectId: project._id,
+                                    namespaceId: selectedKeyData.namespaceId,
+                                }}
+                                search={{
+                                    key: selectedKeyData.key,
+                                }}
+                            >
+                                <Button variant="outline">
+                                    <SearchIcon />
+                                    Go to Editor
+                                </Button>
+                            </Link>
+                            <Button onClick={handleEditKey} disabled={selectedKeyData.status !== 1}>
+                                {selectedKeyData.status !== 1 ? <Spinner /> : (
+                                    <>
+                                        <PencilIcon />
+                                        Edit Values
+                                    </>
+                                )}
                             </Button>
-                        </Link>
-                        <Button onClick={handleEditKey}>
-                            <PencilIcon className="size-4" />
-                            Edit Values
-                        </Button>
-                        <Button variant="destructive" onClick={handleDeleteKey}>
-                            <TrashIcon className="size-4" />
-                            Delete Key
-                        </Button>
+                            <Button variant="destructive" onClick={handleDeleteKey} disabled={selectedKeyData.status !== 1}>
+                                {selectedKeyData.status !== 1 ? <Spinner /> : (
+                                    <>
+                                        <TrashIcon />
+                                        Delete Key
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                        {workspace && project ? (
+                            <>
+                                <TranslationKeyEditDialog
+                                    isOpen={isEditDialogOpen}
+                                    setIsOpen={setIsEditDialogOpen}
+                                    workspaceId={workspace._id}
+                                    projectId={project._id}
+                                    translationKeyId={selectedKeyId}
+                                />
+                                {namespace && selectedKeyId ? (
+                                    <TranslationKeyDeleteDialog
+                                        isOpen={isDeleteDialogOpen}
+                                        setIsOpen={setIsDeleteDialogOpen}
+                                        workspace={workspace}
+                                        project={project}
+                                        namespace={namespace}
+                                        translationKeys={[selectedKeyId]}
+                                        onDeleted={handleDeleted}
+                                    />
+                                ) : null}
+                            </>
+                        ) : null}
                     </DialogFooter>
-                )}
-                {workspaceId && projectId && (
-                    <TranslationKeyEditDialog
-                        isOpen={isEditDialogOpen}
-                        setIsOpen={setIsEditDialogOpen}
-                        workspaceId={workspaceId}
-                        projectId={projectId}
-                        translationKeyId={selectedKeyId}
-                    />
-                )}
-                {workspace && project && namespace && selectedKeyId && (
-                    <TranslationKeyDeleteDialog
-                        isOpen={isDeleteDialogOpen}
-                        setIsOpen={setIsDeleteDialogOpen}
-                        workspace={workspace}
-                        project={project}
-                        namespace={namespace}
-                        translationKeys={[selectedKeyId]}
-                        onDeleted={handleDeleted}
-                    />
                 )}
             </DialogPopup>
         </Dialog>
