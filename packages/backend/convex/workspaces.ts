@@ -238,6 +238,16 @@ export const getWorkspaceForAuthMiddlewareAction = internalQuery({
   },
 });
 
+export const getWorkspace = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    const workspace = await authMiddleware(ctx, args.workspaceId);
+    return workspace;
+  },
+});
+
 export const updatePolarCustomer = internalAction({
   args: {
     workspaceId: v.id("workspaces"),

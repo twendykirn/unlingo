@@ -8,7 +8,7 @@ import {
     DialogTrigger,
 } from "./ui/dialog";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
-import { KeyRoundIcon, PencilIcon, SearchIcon } from "lucide-react";
+import { KeyRoundIcon, PencilIcon, SearchIcon, TrashIcon } from "lucide-react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "./ui/empty";
 import { Card, CardHeader } from "./ui/card";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
@@ -21,6 +21,7 @@ import { api } from "@unlingo/backend/convex/_generated/api";
 import type { Id } from "@unlingo/backend/convex/_generated/dataModel";
 import { Select, SelectTrigger, SelectValue, SelectPopup, SelectItem } from "./ui/select";
 import TranslationKeyEditDialog from "./translation-key-edit-dialog";
+import TranslationKeyDeleteDialog from "./translation-key-delete-dialog";
 
 interface Props {
     workspaceId?: Id<'workspaces'>;
@@ -36,6 +37,7 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
     const [search, setSearch] = useState('');
     const [searchBy, setSearchBy] = useState<'key' | 'value' | null>('key');
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedKeyId, setSelectedKeyId] = useState<Id<'translationKeys'> | null>(null);
     const [selectedKeyData, setSelectedKeyData] = useState<{
         key: string;
@@ -51,6 +53,27 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                 search,
                 searchBy,
             }
+            : 'skip'
+    );
+
+    const workspace = useQuery(
+        api.workspaces.getWorkspace,
+        workspaceId
+            ? { workspaceId }
+            : 'skip'
+    );
+
+    const project = useQuery(
+        api.projects.getProject,
+        workspaceId && projectId
+            ? { projectId, workspaceId }
+            : 'skip'
+    );
+
+    const namespace = useQuery(
+        api.namespaces.getNamespace,
+        workspaceId && projectId && selectedKeyData?.namespaceId
+            ? { namespaceId: selectedKeyData.namespaceId, projectId, workspaceId }
             : 'skip'
     );
 
@@ -80,6 +103,17 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
         if (selectedKeyId) {
             setIsEditDialogOpen(true);
         }
+    };
+
+    const handleDeleteKey = () => {
+        if (selectedKeyId) {
+            setIsDeleteDialogOpen(true);
+        }
+    };
+
+    const handleDeleted = () => {
+        setSelectedKeyId(null);
+        setSelectedKeyData(null);
     };
 
     return (
@@ -207,6 +241,10 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                             <PencilIcon className="size-4" />
                             Edit Values
                         </Button>
+                        <Button variant="destructive" onClick={handleDeleteKey}>
+                            <TrashIcon className="size-4" />
+                            Delete Key
+                        </Button>
                     </DialogFooter>
                 )}
                 {workspaceId && projectId && (
@@ -216,6 +254,17 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                         workspaceId={workspaceId}
                         projectId={projectId}
                         translationKeyId={selectedKeyId}
+                    />
+                )}
+                {workspace && project && namespace && selectedKeyId && (
+                    <TranslationKeyDeleteDialog
+                        isOpen={isDeleteDialogOpen}
+                        setIsOpen={setIsDeleteDialogOpen}
+                        workspace={workspace}
+                        project={project}
+                        namespace={namespace}
+                        translationKeys={[selectedKeyId]}
+                        onDeleted={handleDeleted}
                     />
                 )}
             </DialogPopup>
