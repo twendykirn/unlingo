@@ -75,6 +75,7 @@ export const getTranslationKeysGlobalSearch = query({
     projectId: v.id("projects"),
     workspaceId: v.id("workspaces"),
     search: v.string(),
+    searchBy: v.optional(v.union(v.literal("key"), v.literal("value"))),
   },
   handler: async (ctx, args) => {
     await authMiddleware(ctx, args.workspaceId);
@@ -85,6 +86,52 @@ export const getTranslationKeysGlobalSearch = query({
     }
 
     if (!args.search) return [];
+
+    const searchBy = args.searchBy ?? "key";
+
+    if (searchBy === "value") {
+      const valueResults = await ctx.db
+        .query("translationValues")
+        .withSearchIndex("search_values", (q) => q.search("values", args.search).eq("projectId", args.projectId))
+        .take(50);
+
+      if (valueResults.length === 0) return [];
+
+      const keyIds = new Set<Id<"translationKeys">>();
+      valueResults.forEach((v) => keyIds.add(v.translationKeyId));
+
+      const translationKeys = await Promise.all([...keyIds].map((id) => ctx.db.get(id)));
+      const validKeys = translationKeys.filter((k): k is NonNullable<typeof k> => !!k && k.status !== -1);
+
+      if (validKeys.length === 0) return [];
+
+      const namespaceIds = new Set<Id<"namespaces">>();
+      validKeys.forEach((k) => namespaceIds.add(k.namespaceId));
+
+      const namespaces = await Promise.all([...namespaceIds].map((id) => ctx.db.get(id)));
+      const nsMap = new Map<Id<"namespaces">, string>();
+      namespaces.forEach((ns) => {
+        if (ns) {
+          nsMap.set(ns._id, ns.name);
+        }
+      });
+
+      const keyToMatchedValue = new Map<Id<"translationKeys">, string>();
+      valueResults.forEach((v) => {
+        if (!keyToMatchedValue.has(v.translationKeyId)) {
+          keyToMatchedValue.set(v.translationKeyId, v.values);
+        }
+      });
+
+      return validKeys.map((key) => ({
+        _id: key._id,
+        key: key.key,
+        status: key.status,
+        namespaceName: nsMap.get(key.namespaceId) || "Unknown Namespace",
+        namespaceId: key.namespaceId,
+        matchedValue: keyToMatchedValue.get(key._id),
+      }));
+    }
 
     const results = await ctx.db
       .query("translationKeys")
@@ -112,6 +159,7 @@ export const getTranslationKeysGlobalSearch = query({
       status: key.status,
       namespaceName: nsMap.get(key.namespaceId) || "Unknown Namespace",
       namespaceId: key.namespaceId,
+      matchedValue: undefined,
     }));
   },
 });
@@ -254,10 +302,12 @@ export const createTranslationKeysBulk = mutation({
     workspaceId: v.id("workspaces"),
     projectId: v.id("projects"),
     namespaceId: v.id("namespaces"),
-    keys: v.array(v.object({
-      key: v.string(),
-      primaryValue: v.string(),
-    })),
+    keys: v.array(
+      v.object({
+        key: v.string(),
+        primaryValue: v.string(),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const workspace = await authMiddleware(ctx, args.workspaceId);

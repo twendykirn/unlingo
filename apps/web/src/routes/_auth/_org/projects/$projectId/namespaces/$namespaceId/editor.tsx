@@ -20,7 +20,7 @@ import {
     StarIcon,
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     createColumnHelper,
     flexRender,
@@ -40,10 +40,19 @@ import { debounce } from '@tanstack/pacer';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 
+interface EditorSearchParams {
+    key?: string;
+}
+
 export const Route = createFileRoute(
     '/_auth/_org/projects/$projectId/namespaces/$namespaceId/editor'
 )({
     component: EditorComponent,
+    validateSearch: (search: Record<string, unknown>): EditorSearchParams => {
+        return {
+            key: typeof search.key === 'string' ? search.key : undefined,
+        };
+    },
 });
 
 const columnHelper = createColumnHelper<Doc<'translationKeys'>>();
@@ -181,10 +190,12 @@ function SelectableColumnHeader({
 
 function EditorComponent() {
     const { projectId, namespaceId } = Route.useParams();
+    const { key: searchParamKey } = Route.useSearch();
     const { organization } = useOrganization();
     const navigate = useNavigate();
 
     const [search, setSearch] = useState('');
+    const [searchInputValue, setSearchInputValue] = useState('');
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
     const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
 
@@ -441,8 +452,14 @@ function EditorComponent() {
     );
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchInputValue(e.target.value);
         debouncedSetSearch(e.target.value);
     };
+
+    useEffect(() => {
+        setSearch(searchParamKey || '');
+        setSearchInputValue(searchParamKey || '');
+    }, [searchParamKey]);
 
     if (!workspace || !project || !namespace || !languages) {
         return (
@@ -453,7 +470,7 @@ function EditorComponent() {
                         <div className="flex items-center gap-2 px-4">
                             <SidebarTrigger className="-ml-1" />
                         </div>
-                        <GlobalSearchDialog workspaceId={workspace?._id} projectId={project?._id} />
+                        <GlobalSearchDialog workspace={workspace} project={project} />
                     </header>
                     <div className="flex items-center justify-center h-full">
                         <Spinner />
@@ -472,7 +489,7 @@ function EditorComponent() {
                         <div className="flex items-center gap-2 px-4">
                             <SidebarTrigger className="-ml-1" />
                         </div>
-                        <GlobalSearchDialog workspaceId={workspace._id} projectId={project._id} />
+                        <GlobalSearchDialog workspace={workspace} project={project} />
                     </header>
                     <div className="flex items-center justify-center h-full">
                         <Empty>
@@ -531,7 +548,7 @@ function EditorComponent() {
                     <div className="flex items-center gap-2 px-4">
                         <SidebarTrigger className="-ml-1" />
                     </div>
-                    <GlobalSearchDialog workspaceId={workspace._id} projectId={project._id} />
+                    <GlobalSearchDialog workspace={workspace} project={project} />
                 </header>
                 <div className="flex flex-col gap-4 p-4 pt-0 max-w-full flex-1">
                     <div className="flex items-center">
@@ -545,8 +562,9 @@ function EditorComponent() {
                             <InputGroup>
                                 <InputGroupInput
                                     aria-label="Search"
-                                    placeholder="Search namespaces"
+                                    placeholder="Search keys"
                                     type="search"
+                                    value={searchInputValue}
                                     onChange={handleSearchChange}
                                 />
                                 <InputGroupAddon>
