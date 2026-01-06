@@ -1,4 +1,5 @@
 import { AppSidebar } from '@/components/app-sidebar'
+import { CheckoutLink, CustomerPortalLink } from '@/components/polar'
 import { Badge } from '@/components/ui/badge'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,6 @@ import { api } from '@unlingo/backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { CreditCard } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { CheckoutLink, CustomerPortalLink } from '@convex-dev/polar/react';
 
 export const Route = createFileRoute('/_auth/_org/dashboard/billing')({
     component: RouteComponent,
@@ -47,7 +47,7 @@ function RouteComponent() {
         clerkId && workspace ? { clerkId, workspaceUsageId: workspace.workspaceUsageId } : 'skip'
     );
 
-    const products = useQuery(api.polar.getConfiguredProducts, !clerkId ? 'skip' : undefined);
+    const products = useQuery(api.polarActions.getConfiguredProducts, !clerkId ? 'skip' : undefined);
 
     const updateContactEmail = useMutation(api.workspaces.updateWorkspaceContactEmail);
 
@@ -58,7 +58,7 @@ function RouteComponent() {
 
         return Object.values(products)
             .filter(p => p !== undefined)
-            .map(p => ({ value: p.id, label: p.name }));
+            .map(p => ({ value: p.polarId, label: p.name }));
     }, [products]);
 
     const handleSave = async () => {
@@ -143,7 +143,7 @@ function RouteComponent() {
 
     useEffect(() => {
         if (products && products.pro10kRequests) {
-            setSelectedPackage(products.pro10kRequests.id);
+            setSelectedPackage(products.pro10kRequests.polarId);
         }
     }, [products]);
 
@@ -225,10 +225,7 @@ function RouteComponent() {
                                         <div className='flex items-center justify-between flex-wrap gap-2'>
                                             <CardTitle>Billing & Subscription</CardTitle>
                                             {workspace.isPremium ? (
-                                                <CustomerPortalLink
-                                                    polarApi={{
-                                                        generateCustomerPortalUrl: api.polar.generateCustomerPortalUrl,
-                                                    }}>
+                                                <CustomerPortalLink>
                                                     <Button>Manage Subscription</Button>
                                                 </CustomerPortalLink>
                                             ) : products ? (
@@ -252,7 +249,6 @@ function RouteComponent() {
                                                     </Select>
                                                     {selectedPackage ? (
                                                         <CheckoutLink
-                                                            polarApi={api.polar}
                                                             productIds={[selectedPackage as string]}>
                                                             <Button>Upgrade</Button>
                                                         </CheckoutLink>

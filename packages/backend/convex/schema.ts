@@ -1,6 +1,51 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+// Polar-related validators
+const vRecurringInterval = v.union(
+  v.literal("day"),
+  v.literal("week"),
+  v.literal("month"),
+  v.literal("year"),
+  v.null(),
+);
+
+const vPolarPrice = v.object({
+  id: v.string(),
+  createdAt: v.string(),
+  modifiedAt: v.union(v.string(), v.null()),
+  amountType: v.optional(v.string()),
+  isArchived: v.boolean(),
+  productId: v.string(),
+  priceCurrency: v.optional(v.string()),
+  priceAmount: v.optional(v.number()),
+  type: v.optional(v.string()),
+  recurringInterval: v.optional(vRecurringInterval),
+  maximumAmount: v.optional(v.union(v.number(), v.null())),
+  minimumAmount: v.optional(v.union(v.number(), v.null())),
+  presetAmount: v.optional(v.union(v.number(), v.null())),
+});
+
+const vPolarMedia = v.object({
+  id: v.string(),
+  organizationId: v.string(),
+  name: v.string(),
+  path: v.string(),
+  mimeType: v.string(),
+  size: v.number(),
+  storageVersion: v.union(v.string(), v.null()),
+  checksumEtag: v.union(v.string(), v.null()),
+  checksumSha256Base64: v.union(v.string(), v.null()),
+  checksumSha256Hex: v.union(v.string(), v.null()),
+  createdAt: v.string(),
+  lastModifiedAt: v.union(v.string(), v.null()),
+  version: v.union(v.string(), v.null()),
+  service: v.optional(v.string()),
+  isUploaded: v.boolean(),
+  sizeReadable: v.string(),
+  publicUrl: v.string(),
+});
+
 export default defineSchema({
   workspaces: defineTable({
     clerkId: v.string(),
@@ -186,4 +231,54 @@ export default defineSchema({
       searchField: "term",
       filterFields: ["projectId"],
     }),
+  polarCustomers: defineTable({
+    polarId: v.string(), // Polar's customer ID
+    workspaceId: v.id("workspaces"), // Links to workspace (used as externalId in Polar)
+    email: v.string(),
+    metadata: v.optional(v.record(v.string(), v.any())),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_polar_id", ["polarId"]),
+  polarProducts: defineTable({
+    polarId: v.string(), // Polar's product ID
+    organizationId: v.string(),
+    name: v.string(),
+    description: v.union(v.string(), v.null()),
+    isRecurring: v.boolean(),
+    isArchived: v.boolean(),
+    createdAt: v.string(),
+    modifiedAt: v.union(v.string(), v.null()),
+    recurringInterval: v.optional(vRecurringInterval),
+    metadata: v.optional(v.record(v.string(), v.any())),
+    prices: v.array(vPolarPrice),
+    medias: v.array(vPolarMedia),
+  })
+    .index("by_polar_id", ["polarId"])
+    .index("by_is_archived", ["isArchived"]),
+  polarSubscriptions: defineTable({
+    polarId: v.string(), // Polar's subscription ID
+    customerId: v.id("polarCustomers"), // Reference to our polarCustomers table
+    polarCustomerId: v.string(), // Polar's customer ID for webhook lookup
+    productId: v.string(), // Polar's product ID
+    checkoutId: v.union(v.string(), v.null()),
+    createdAt: v.string(),
+    modifiedAt: v.union(v.string(), v.null()),
+    amount: v.union(v.number(), v.null()),
+    currency: v.union(v.string(), v.null()),
+    recurringInterval: vRecurringInterval,
+    status: v.string(),
+    currentPeriodStart: v.string(),
+    currentPeriodEnd: v.union(v.string(), v.null()),
+    cancelAtPeriodEnd: v.boolean(),
+    startedAt: v.union(v.string(), v.null()),
+    endedAt: v.union(v.string(), v.null()),
+    metadata: v.record(v.string(), v.any()),
+    customerCancellationReason: v.optional(v.union(v.string(), v.null())),
+    customerCancellationComment: v.optional(v.union(v.string(), v.null())),
+  })
+    .index("by_polar_id", ["polarId"])
+    .index("by_customer", ["customerId"])
+    .index("by_polar_customer_id", ["polarCustomerId"])
+    .index("by_customer_status", ["customerId", "status"])
+    .index("by_customer_ended_at", ["customerId", "endedAt"]),
 });

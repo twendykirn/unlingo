@@ -1,5 +1,4 @@
 import type { Id } from "../convex/_generated/dataModel";
-import { polar } from "../convex/polar";
 import type { MutationCtx, QueryCtx, ActionCtx } from "../convex/_generated/server";
 import { internal } from "../convex/_generated/api";
 
@@ -19,12 +18,27 @@ export const authMiddleware = async (
       throw new Error("Workspace not found or access denied");
     }
 
-    const currentSubscription = await polar.getCurrentSubscription(ctx, {
-      userId: workspace._id,
-    });
+    // Get customer for this workspace
+    const customer = await ctx.db
+      .query("polarCustomers")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id))
+      .unique();
 
-    const isPremium =
-      currentSubscription && currentSubscription.status === "active" && !currentSubscription.customerCancellationReason;
+    let isPremium = false;
+    if (customer) {
+      // Get active subscription (endedAt is null)
+      const currentSubscription = await ctx.db
+        .query("polarSubscriptions")
+        .withIndex("by_customer_ended_at", (q) =>
+          q.eq("customerId", customer._id).eq("endedAt", null)
+        )
+        .unique();
+
+      isPremium =
+        currentSubscription !== null &&
+        currentSubscription.status === "active" &&
+        !currentSubscription.customerCancellationReason;
+    }
 
     if (!isPremium) {
       throw new Error("Workspace not found or access denied");
