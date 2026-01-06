@@ -1,10 +1,7 @@
-import { internalMutation, internalQuery, MutationCtx, query, mutation, internalAction } from "./_generated/server";
+import { internalMutation, internalQuery, MutationCtx, query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
-import { polar } from "./polar";
-import { internal } from "./_generated/api";
-import { customersDelete } from "@polar-sh/sdk/funcs/customersDelete.js";
-import { customersUpdate } from "@polar-sh/sdk/funcs/customersUpdate.js";
+import { internal, api } from "./_generated/api";
 import { getCurrentMonth } from "./utils";
 import { authMiddleware } from "../middlewares/auth";
 
@@ -67,25 +64,17 @@ export const createOrganizationWorkspace = mutation({
       workspaceUsageId,
     });
 
+    // Schedule Polar customer creation asynchronously
+    await ctx.scheduler.runAfter(0, internal.polarActions.createPolarCustomer, {
+      workspaceId,
+      email: args.contactEmail,
+    });
+
     console.log(`Created team workspace for organization ${args.clerkOrgId} by user ${identity.issuer}`);
     return workspaceId;
   },
 });
 
-export const deletePolarCustomer = internalAction({
-  args: {
-    workspaceId: v.id("workspaces"),
-  },
-  handler: async (ctx, args) => {
-    const customer = await polar.getCustomerByUserId(ctx, args.workspaceId);
-
-    if (customer) {
-      await customersDelete(polar.polar, {
-        id: customer.id,
-      });
-    }
-  },
-});
 
 export const deleteOrganizationWorkspace = internalMutation({
   args: {
@@ -112,13 +101,14 @@ async function deleteWorkspaceAndRelatedData(
   workspaceId: Id<"workspaces">,
   workspaceUsageId: Id<"workspaceUsage">,
 ) {
+  // Schedule Polar customer deletion asynchronously
   try {
-    await ctx.scheduler.runAfter(0, internal.workspaces.deletePolarCustomer, {
+    await ctx.scheduler.runAfter(0, internal.polarActions.deletePolarCustomer, {
       workspaceId,
     });
-    console.log(`Delete Polar customer for workspace ${workspaceId}`);
+    console.log(`Scheduled Polar customer deletion for workspace ${workspaceId}`);
   } catch (error) {
-    console.warn(`Failed to delete Polar customer for workspace ${workspaceId}:`, error);
+    console.warn(`Failed to schedule Polar customer deletion for workspace ${workspaceId}:`, error);
   }
 
   await ctx.db.delete(workspaceUsageId);
@@ -196,9 +186,26 @@ export const getWorkspaceWithSubscription = query({
     }
 
     try {
-      const currentSubscription = await polar.getCurrentSubscription(ctx, {
-        userId: workspace._id,
-      });
+      // Get customer for this workspace
+      const customer = await ctx.db
+        .query("polarCustomers")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id))
+        .unique();
+
+      if (!customer) {
+        return {
+          ...workspace,
+          isPremium: false,
+        };
+      }
+
+      // Get active subscription (endedAt is null)
+      const currentSubscription = await ctx.db
+        .query("polarSubscriptions")
+        .withIndex("by_customer_ended_at", (q) =>
+          q.eq("customerId", customer._id).eq("endedAt", null)
+        )
+        .unique();
 
       const isPremium =
         currentSubscription &&
@@ -206,7 +213,7 @@ export const getWorkspaceWithSubscription = query({
         !currentSubscription.customerCancellationReason;
 
       console.log(
-        `Workspace ${workspace._id} premium status: ${isPremium}, subscription: ${currentSubscription?.id || "none"}`,
+        `Workspace ${workspace._id} premium status: ${isPremium}, subscription: ${currentSubscription?.polarId || "none"}`,
       );
 
       return {
@@ -238,24 +245,6 @@ export const getWorkspaceForAuthMiddlewareAction = internalQuery({
   },
 });
 
-export const updatePolarCustomer = internalAction({
-  args: {
-    workspaceId: v.id("workspaces"),
-    contactEmail: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const customer = await polar.getCustomerByUserId(ctx, args.workspaceId);
-
-    if (customer) {
-      await customersUpdate(polar.polar, {
-        id: customer.id,
-        customerUpdate: {
-          email: args.contactEmail,
-        },
-      });
-    }
-  },
-});
 
 export const updateWorkspaceContactEmail = mutation({
   args: {
@@ -299,6 +288,12 @@ export const updateWorkspaceContactEmail = mutation({
 
     await ctx.db.patch(workspace._id, {
       contactEmail: args.contactEmail,
+    });
+
+    // Schedule Polar customer email update
+    await ctx.scheduler.runAfter(0, internal.polarActions.updatePolarCustomerEmail, {
+      workspaceId: workspace._id,
+      email: args.contactEmail,
     });
 
     return { success: true };

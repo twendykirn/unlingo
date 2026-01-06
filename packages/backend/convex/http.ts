@@ -1,11 +1,16 @@
 import { createClerkClient, type WebhookEvent } from "@clerk/backend";
 import { httpRouter } from "convex/server";
 import { Webhook } from "svix";
+import { WebhookVerificationError, validateEvent } from "@polar-sh/sdk/webhooks";
+import type { WebhookSubscriptionCreatedPayload } from "@polar-sh/sdk/models/components/webhooksubscriptioncreatedpayload.js";
+import type { WebhookSubscriptionUpdatedPayload } from "@polar-sh/sdk/models/components/webhooksubscriptionupdatedpayload.js";
+import type { WebhookProductCreatedPayload } from "@polar-sh/sdk/models/components/webhookproductcreatedpayload.js";
+import type { WebhookProductUpdatedPayload } from "@polar-sh/sdk/models/components/webhookproductupdatedpayload.js";
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
-import { polar } from "./polar";
 import { Id } from "./_generated/dataModel";
 import { emailWorkpool } from "./resend";
+import { getPolarConfig, convertToDatabaseProduct, convertWebhookSubscription, getTierFromProductId } from "./polarUtils";
 
 async function validateRequest(req: Request): Promise<WebhookEvent | null> {
   const payloadString = await req.text();
@@ -20,63 +25,6 @@ async function validateRequest(req: Request): Promise<WebhookEvent | null> {
   } catch (error) {
     console.error("Error verifying webhook event", error);
     return null;
-  }
-}
-
-function getTranslationKeysLimitFromProduct(productId?: string): number | undefined {
-  if (!productId) return undefined;
-
-  const translationKeysLimits: Record<string, number> = {
-    [process.env.POLAR_PRO_10K_PRODUCT_ID!]: 1000,
-    [process.env.POLAR_PRO_50K_PRODUCT_ID!]: 5000,
-    [process.env.POLAR_PRO_250K_PRODUCT_ID!]: 25000,
-    [process.env.POLAR_PRO_500K_PRODUCT_ID!]: 50000,
-    [process.env.POLAR_PRO_1M_PRODUCT_ID!]: 100000,
-    [process.env.POLAR_PRO_2M_PRODUCT_ID!]: 200000,
-    [process.env.POLAR_PRO_10M_PRODUCT_ID!]: 200000,
-    [process.env.POLAR_PRO_50M_PRODUCT_ID!]: 200000,
-    [process.env.POLAR_PRO_100M_PRODUCT_ID!]: 200000,
-  };
-
-  return translationKeysLimits[productId] || 50000;
-}
-
-function getRequestLimitFromProduct(productId?: string): number | undefined {
-  if (!productId) return undefined;
-
-  const requestLimits: Record<string, number> = {
-    [process.env.POLAR_PRO_10K_PRODUCT_ID!]: 10000,
-    [process.env.POLAR_PRO_50K_PRODUCT_ID!]: 50000,
-    [process.env.POLAR_PRO_250K_PRODUCT_ID!]: 250000,
-    [process.env.POLAR_PRO_500K_PRODUCT_ID!]: 500000,
-    [process.env.POLAR_PRO_1M_PRODUCT_ID!]: 1000000,
-    [process.env.POLAR_PRO_2M_PRODUCT_ID!]: 2000000,
-    [process.env.POLAR_PRO_10M_PRODUCT_ID!]: 10000000,
-    [process.env.POLAR_PRO_50M_PRODUCT_ID!]: 50000000,
-    [process.env.POLAR_PRO_100M_PRODUCT_ID!]: 100000000,
-  };
-
-  return requestLimits[productId] || 50000;
-}
-
-function getTierFromProduct(productId?: string) {
-  if (!productId) return "starter";
-
-  switch (productId) {
-    case process.env.POLAR_PRO_10K_PRODUCT_ID!:
-      return "starter";
-    case process.env.POLAR_PRO_50K_PRODUCT_ID!:
-      return "hobby";
-    case process.env.POLAR_PRO_250K_PRODUCT_ID!:
-    case process.env.POLAR_PRO_500K_PRODUCT_ID!:
-    case process.env.POLAR_PRO_1M_PRODUCT_ID!:
-    case process.env.POLAR_PRO_2M_PRODUCT_ID!:
-    case process.env.POLAR_PRO_10M_PRODUCT_ID!:
-    case process.env.POLAR_PRO_50M_PRODUCT_ID!:
-    case process.env.POLAR_PRO_100M_PRODUCT_ID!:
-      return "premium";
-    default:
-      return "starter";
   }
 }
 
@@ -335,31 +283,158 @@ http.route({
   }),
 });
 
-polar.registerRoutes(http, {
+// Polar webhook handler
+http.route({
   path: "/polar/events",
-  onSubscriptionCreated: async (ctx, event) => {
-    const workspaceId = event.data.customer.metadata.userId;
-    if (workspaceId) {
-      await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {
-        workspaceId: workspaceId as Id<"workspaces">,
-        tier: getTierFromProduct(event.data.product?.id),
-        requestLimit: getRequestLimitFromProduct(event.data.product?.id),
-        translationKeysLimit: getTranslationKeysLimitFromProduct(event.data.product?.id),
-      });
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    if (!request.body) {
+      return new Response("No body", { status: 400 });
     }
-  },
-  onSubscriptionUpdated: async (ctx, event) => {
-    const workspaceId = event.data.customer.metadata.userId;
-    if (workspaceId) {
-      const isActive = event.data.status === "active" && !event.data.customerCancellationReason;
-      await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {
-        workspaceId: workspaceId as Id<"workspaces">,
-        tier: getTierFromProduct(event.data.product?.id),
-        requestLimit: isActive ? getRequestLimitFromProduct(event.data.product?.id) : undefined,
-        translationKeysLimit: isActive ? getTranslationKeysLimitFromProduct(event.data.product?.id) : undefined,
-      });
+
+    const body = await request.text();
+    const headers = Object.fromEntries(request.headers.entries());
+    const { webhookSecret } = getPolarConfig();
+
+    try {
+      const event = validateEvent(body, headers, webhookSecret);
+
+      switch (event.type) {
+        case "subscription.created": {
+          const subscriptionEvent = event as WebhookSubscriptionCreatedPayload;
+          const subscriptionData = convertWebhookSubscription(subscriptionEvent.data);
+
+          // Create subscription in our database
+          await ctx.runMutation(internal.polarDb.createSubscription, {
+            polarId: subscriptionData.polarId,
+            polarCustomerId: subscriptionData.polarCustomerId,
+            productId: subscriptionData.productId,
+            checkoutId: subscriptionData.checkoutId,
+            createdAt: subscriptionData.createdAt,
+            modifiedAt: subscriptionData.modifiedAt,
+            amount: subscriptionData.amount,
+            currency: subscriptionData.currency,
+            recurringInterval: subscriptionData.recurringInterval,
+            status: subscriptionData.status,
+            currentPeriodStart: subscriptionData.currentPeriodStart,
+            currentPeriodEnd: subscriptionData.currentPeriodEnd,
+            cancelAtPeriodEnd: subscriptionData.cancelAtPeriodEnd,
+            startedAt: subscriptionData.startedAt,
+            endedAt: subscriptionData.endedAt,
+            metadata: subscriptionData.metadata,
+            customerCancellationReason: subscriptionData.customerCancellationReason,
+            customerCancellationComment: subscriptionData.customerCancellationComment,
+          });
+
+          // Get workspace ID from customer's externalId (which is the workspace ID)
+          const workspaceId = subscriptionEvent.data.customer.externalId;
+          if (workspaceId) {
+            const tierInfo = getTierFromProductId(subscriptionEvent.data.product?.id);
+            await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {
+              workspaceId: workspaceId as Id<"workspaces">,
+              tier: tierInfo.tier,
+              requestLimit: tierInfo.requests,
+              translationKeysLimit: tierInfo.translationKeys,
+            });
+          }
+          break;
+        }
+
+        case "subscription.updated": {
+          const subscriptionEvent = event as WebhookSubscriptionUpdatedPayload;
+          const subscriptionData = convertWebhookSubscription(subscriptionEvent.data);
+
+          // Update subscription in our database
+          await ctx.runMutation(internal.polarDb.updateSubscription, {
+            polarId: subscriptionData.polarId,
+            productId: subscriptionData.productId,
+            modifiedAt: subscriptionData.modifiedAt,
+            amount: subscriptionData.amount,
+            currency: subscriptionData.currency,
+            recurringInterval: subscriptionData.recurringInterval,
+            status: subscriptionData.status,
+            currentPeriodStart: subscriptionData.currentPeriodStart,
+            currentPeriodEnd: subscriptionData.currentPeriodEnd,
+            cancelAtPeriodEnd: subscriptionData.cancelAtPeriodEnd,
+            startedAt: subscriptionData.startedAt,
+            endedAt: subscriptionData.endedAt,
+            metadata: subscriptionData.metadata,
+            customerCancellationReason: subscriptionData.customerCancellationReason,
+            customerCancellationComment: subscriptionData.customerCancellationComment,
+          });
+
+          // Get workspace ID from customer's externalId
+          const workspaceId = subscriptionEvent.data.customer.externalId;
+          if (workspaceId) {
+            const isActive = subscriptionEvent.data.status === "active" && !subscriptionEvent.data.customerCancellationReason;
+            const tierInfo = getTierFromProductId(subscriptionEvent.data.product?.id);
+
+            await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {
+              workspaceId: workspaceId as Id<"workspaces">,
+              tier: tierInfo.tier,
+              requestLimit: isActive ? tierInfo.requests : undefined,
+              translationKeysLimit: isActive ? tierInfo.translationKeys : undefined,
+            });
+          }
+          break;
+        }
+
+        case "product.created": {
+          const productEvent = event as WebhookProductCreatedPayload;
+          const productData = convertToDatabaseProduct(productEvent.data);
+
+          await ctx.runMutation(internal.polarDb.createProduct, {
+            polarId: productData.polarId,
+            organizationId: productData.organizationId,
+            name: productData.name,
+            description: productData.description,
+            isRecurring: productData.isRecurring,
+            isArchived: productData.isArchived,
+            createdAt: productData.createdAt,
+            modifiedAt: productData.modifiedAt,
+            recurringInterval: productData.recurringInterval,
+            metadata: productData.metadata,
+            prices: productData.prices,
+            medias: productData.medias,
+          });
+          break;
+        }
+
+        case "product.updated": {
+          const productEvent = event as WebhookProductUpdatedPayload;
+          const productData = convertToDatabaseProduct(productEvent.data);
+
+          await ctx.runMutation(internal.polarDb.updateProduct, {
+            polarId: productData.polarId,
+            organizationId: productData.organizationId,
+            name: productData.name,
+            description: productData.description,
+            isRecurring: productData.isRecurring,
+            isArchived: productData.isArchived,
+            createdAt: productData.createdAt,
+            modifiedAt: productData.modifiedAt,
+            recurringInterval: productData.recurringInterval,
+            metadata: productData.metadata,
+            prices: productData.prices,
+            medias: productData.medias,
+          });
+          break;
+        }
+
+        default:
+          console.log(`Unhandled Polar webhook event: ${event.type}`);
+      }
+
+      return new Response("Accepted", { status: 202 });
+    } catch (error) {
+      if (error instanceof WebhookVerificationError) {
+        console.error("Polar webhook verification failed:", error);
+        return new Response("Forbidden", { status: 403 });
+      }
+      console.error("Polar webhook error:", error);
+      throw error;
     }
-  },
+  }),
 });
 
 export default http;
