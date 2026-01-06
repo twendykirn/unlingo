@@ -335,9 +335,13 @@ export const detectTextAction = internalAction({
     screenshotId: v.id("screenshots"),
     projectId: v.id("projects"),
     imageUrl: v.string(),
+    imageDimensions: v.object({
+      width: v.number(),
+      height: v.number(),
+    }),
   },
   handler: async (ctx, args) => {
-    const detectedRegions = await detectTextInScreenshot(args.imageUrl);
+    const detectedRegions = await detectTextInScreenshot(args.imageUrl, args.imageDimensions);
 
     if (detectedRegions.length === 0) {
       return { success: true, created: 0, skipped: 0, message: "No UI text detected in screenshot" };
@@ -358,6 +362,36 @@ export const detectTextAction = internalAction({
     return result;
   },
 });
+
+// Calculate similarity between two strings using Levenshtein distance
+function calculateSimilarity(str1: string, str2: string): number {
+  if (str1 === str2) return 1;
+  if (str1.length === 0 || str2.length === 0) return 0;
+
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= str1.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= str2.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= str1.length; i++) {
+    for (let j = 1; j <= str2.length; j++) {
+      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  const distance = matrix[str1.length][str2.length];
+  const maxLength = Math.max(str1.length, str2.length);
+  return 1 - distance / maxLength;
+}
 
 export const createContainersFromDetection = internalMutation({
   args: {
@@ -395,27 +429,29 @@ export const createContainersFromDetection = internalMutation({
         .withSearchIndex("search_values", (q) =>
           q.search("values", region.text).eq("projectId", args.projectId)
         )
-        .take(10);
+        .take(5);
 
       let matchedKeyId: Id<"translationKeys"> | null = null;
+      let bestSimilarity = 0;
 
       for (const valueResult of valueResults) {
-        if (valueResult.values.toLowerCase() === region.text.toLowerCase()) {
-          const key = await ctx.db.get(valueResult.translationKeyId);
-          if (key && key.status !== -1) {
-            matchedKeyId = valueResult.translationKeyId;
-            break;
-          }
+        const key = await ctx.db.get(valueResult.translationKeyId);
+        if (!key || key.status === -1) {
+          continue;
         }
-      }
 
-      if (!matchedKeyId) {
-        for (const valueResult of valueResults) {
-          const key = await ctx.db.get(valueResult.translationKeyId);
-          if (key && key.status !== -1) {
-            matchedKeyId = valueResult.translationKeyId;
-            break;
-          }
+        const similarity = calculateSimilarity(region.text.toLowerCase(), valueResult.values.toLowerCase());
+
+        // Exact match (case-insensitive) - use immediately
+        if (similarity === 1) {
+          matchedKeyId = valueResult.translationKeyId;
+          break;
+        }
+
+        // Only accept matches with at least 70% similarity
+        if (similarity >= 0.7 && similarity > bestSimilarity) {
+          bestSimilarity = similarity;
+          matchedKeyId = valueResult.translationKeyId;
         }
       }
 
@@ -481,6 +517,7 @@ export const triggerTextDetection = mutation({
       screenshotId: args.screenshotId,
       projectId: project._id,
       imageUrl,
+      imageDimensions: screenshot.dimensions,
     });
 
     return { success: true };

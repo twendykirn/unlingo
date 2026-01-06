@@ -12,10 +12,13 @@ export interface DetectedTextRegion {
 
 export async function detectTextInScreenshot(
   imageUrl: string,
+  imageDimensions: { width: number; height: number },
 ): Promise<DetectedTextRegion[]> {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
   const prompt = `You are an expert UI text extraction assistant. Analyze this screenshot and extract all UI text elements that would need to be translated in an internationalization (i18n) context.
+
+IMAGE DIMENSIONS: ${imageDimensions.width}px wide × ${imageDimensions.height}px tall
 
 IMPORTANT GUIDELINES:
 1. ONLY extract static UI text - buttons, labels, menu items, headings, navigation items, form labels, tooltips, error messages, etc.
@@ -29,8 +32,15 @@ IMPORTANT GUIDELINES:
    - If you see text like "Hello John" or "Welcome User123", extract the template form "Hello {{name}}" or "Welcome {{username}}"
    - If you see "3 items selected", extract "{{count}} items selected"
    - Common patterns: "X minutes ago" -> "{{time}} ago", "$19.99" -> "{{price}}"
-4. Return coordinates as percentages of the image dimensions (0-100 for both x, y, width, height)
-5. The x,y coordinates should represent the TOP-LEFT corner of the text bounding box
+4. COORDINATE ACCURACY IS CRITICAL:
+   - The image is ${imageDimensions.width}px wide and ${imageDimensions.height}px tall
+   - Return coordinates as PERCENTAGES (0-100) of these dimensions
+   - x: horizontal position from LEFT edge as percentage (0 = left, 100 = right)
+   - y: vertical position from TOP edge as percentage (0 = top, 100 = bottom)
+   - width/height: size of text bounding box as percentage of image dimensions
+   - The x,y coordinates should represent the TOP-LEFT corner of the text bounding box
+   - Be PRECISE with coordinates - carefully measure where text appears on screen
+   - Ensure ALL detected text falls WITHIN the image bounds (x + width <= 100, y + height <= 100)
 
 Return ONLY a valid JSON array with this exact structure (no markdown, no explanation):
 [
