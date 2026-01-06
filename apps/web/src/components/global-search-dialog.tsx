@@ -1,13 +1,14 @@
 import { useCallback, useState } from "react";
 import {
     Dialog,
+    DialogFooter,
     DialogHeader,
     DialogPanel,
     DialogPopup,
     DialogTrigger,
 } from "./ui/dialog";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
-import { KeyRoundIcon, SearchIcon } from "lucide-react";
+import { KeyRoundIcon, PencilIcon, SearchIcon } from "lucide-react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "./ui/empty";
 import { Card, CardHeader } from "./ui/card";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
@@ -19,6 +20,7 @@ import { useQuery } from "convex/react";
 import { api } from "@unlingo/backend/convex/_generated/api";
 import type { Id } from "@unlingo/backend/convex/_generated/dataModel";
 import { Select, SelectTrigger, SelectValue, SelectPopup, SelectItem } from "./ui/select";
+import TranslationKeyEditDialog from "./translation-key-edit-dialog";
 
 interface Props {
     workspaceId?: Id<'workspaces'>;
@@ -33,6 +35,12 @@ const SORT_BY_OPTIONS = [
 const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
     const [search, setSearch] = useState('');
     const [searchBy, setSearchBy] = useState<'key' | 'value' | null>('key');
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [selectedKeyId, setSelectedKeyId] = useState<Id<'translationKeys'> | null>(null);
+    const [selectedKeyData, setSelectedKeyData] = useState<{
+        key: string;
+        namespaceId: Id<'namespaces'>;
+    } | null>(null);
 
     const translationKeys = useQuery(
         api.translationKeys.getTranslationKeysGlobalSearch,
@@ -56,12 +64,32 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
         debouncedSetSearch(e.target.value);
     };
 
+    const handleSelectKey = (item: {
+        _id: Id<'translationKeys'>;
+        key: string;
+        namespaceId: Id<'namespaces'>;
+    }) => {
+        setSelectedKeyId(item._id);
+        setSelectedKeyData({
+            key: item.key,
+            namespaceId: item.namespaceId,
+        });
+    };
+
+    const handleEditKey = () => {
+        if (selectedKeyId) {
+            setIsEditDialogOpen(true);
+        }
+    };
+
     return (
         <Dialog
             onOpenChange={value => {
                 if (!value) {
                     setSearch('');
                     setSearchBy('key');
+                    setSelectedKeyId(null);
+                    setSelectedKeyData(null);
                 }
             }}
         >
@@ -123,46 +151,73 @@ const GlobalSearchDialog = ({ workspaceId, projectId }: Props) => {
                         </Empty>
                     ) : (
                         translationKeys?.map(item => (
-                            <Link
+                            <Card
                                 key={item._id}
-                                to="/projects/$projectId/namespaces/$namespaceId/editor"
-                                params={{
-                                    projectId,
-                                    namespaceId: item.namespaceId,
-                                }}
+                                className={`py-4 cursor-pointer hover:border-primary/30 ${selectedKeyId === item._id ? 'border-primary ring-1 ring-primary' : ''}`}
+                                onClick={() => handleSelectKey(item)}
                             >
-                                <Card className="py-4 hover:border-primary/30">
-                                    <CardHeader className="px-4 flex flex-col gap-1">
-                                        <div className="flex justify-between items-center gap-8 w-full">
+                                <CardHeader className="px-4 flex flex-col gap-1">
+                                    <div className="flex justify-between items-center gap-8 w-full">
+                                        <Tooltip>
+                                            <TooltipTrigger render={<span className="truncate" />}>
+                                                {item.key}
+                                            </TooltipTrigger>
+                                            <TooltipPopup>{item.key}</TooltipPopup>
+                                        </Tooltip>
+                                        <div className='flex items-center gap-1 text-muted-foreground'>
                                             <Tooltip>
-                                                <TooltipTrigger render={<span className="truncate" />}>
-                                                    {item.key}
+                                                <TooltipTrigger render={<span className="text-xs p-0" />}>
+                                                    {item.namespaceName}
                                                 </TooltipTrigger>
-                                                <TooltipPopup>{item.key}</TooltipPopup>
+                                                <TooltipPopup>Namespace</TooltipPopup>
                                             </Tooltip>
-                                            <div className='flex items-center gap-1 text-muted-foreground'>
-                                                <Tooltip>
-                                                    <TooltipTrigger render={<span className="text-xs p-0" />}>
-                                                        {item.namespaceName}
-                                                    </TooltipTrigger>
-                                                    <TooltipPopup>Namespace</TooltipPopup>
-                                                </Tooltip>
-                                            </div>
                                         </div>
-                                        {item.matchedValue ? (
-                                            <Tooltip>
-                                                <TooltipTrigger render={<p className="text-xs text-muted-foreground truncate max-w-full" />}>
-                                                    {item.matchedValue}
-                                                </TooltipTrigger>
-                                                <TooltipPopup className="max-w-md">{item.matchedValue}</TooltipPopup>
-                                            </Tooltip>
-                                        ) : null}
-                                    </CardHeader>
-                                </Card>
-                            </Link>
+                                    </div>
+                                    {item.matchedValue ? (
+                                        <Tooltip>
+                                            <TooltipTrigger render={<p className="text-xs text-muted-foreground truncate max-w-full" />}>
+                                                {item.matchedValue}
+                                            </TooltipTrigger>
+                                            <TooltipPopup className="max-w-md">{item.matchedValue}</TooltipPopup>
+                                        </Tooltip>
+                                    ) : null}
+                                </CardHeader>
+                            </Card>
                         ))
                     )}
                 </DialogPanel>
+                {selectedKeyId && selectedKeyData && projectId && (
+                    <DialogFooter variant="bare">
+                        <Link
+                            to="/projects/$projectId/namespaces/$namespaceId/editor"
+                            params={{
+                                projectId,
+                                namespaceId: selectedKeyData.namespaceId,
+                            }}
+                            search={{
+                                key: selectedKeyData.key,
+                            }}
+                        >
+                            <Button variant="outline">
+                                <SearchIcon className="size-4" />
+                                Go to Editor
+                            </Button>
+                        </Link>
+                        <Button onClick={handleEditKey}>
+                            <PencilIcon className="size-4" />
+                            Edit Values
+                        </Button>
+                    </DialogFooter>
+                )}
+                {workspaceId && projectId && (
+                    <TranslationKeyEditDialog
+                        isOpen={isEditDialogOpen}
+                        setIsOpen={setIsEditDialogOpen}
+                        workspaceId={workspaceId}
+                        projectId={projectId}
+                        translationKeyId={selectedKeyId}
+                    />
+                )}
             </DialogPopup>
         </Dialog>
     );

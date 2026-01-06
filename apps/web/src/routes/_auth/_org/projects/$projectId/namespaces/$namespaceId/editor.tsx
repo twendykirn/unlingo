@@ -40,10 +40,19 @@ import { debounce } from '@tanstack/pacer';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 
+interface EditorSearchParams {
+    key?: string;
+}
+
 export const Route = createFileRoute(
     '/_auth/_org/projects/$projectId/namespaces/$namespaceId/editor'
 )({
     component: EditorComponent,
+    validateSearch: (search: Record<string, unknown>): EditorSearchParams => {
+        return {
+            key: typeof search.key === 'string' ? search.key : undefined,
+        };
+    },
 });
 
 const columnHelper = createColumnHelper<Doc<'translationKeys'>>();
@@ -181,10 +190,12 @@ function SelectableColumnHeader({
 
 function EditorComponent() {
     const { projectId, namespaceId } = Route.useParams();
+    const { key: searchParamKey } = Route.useSearch();
     const { organization } = useOrganization();
     const navigate = useNavigate();
 
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(searchParamKey || '');
+    const [searchInputValue, setSearchInputValue] = useState(searchParamKey || '');
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
     const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
 
@@ -441,6 +452,7 @@ function EditorComponent() {
     );
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchInputValue(e.target.value);
         debouncedSetSearch(e.target.value);
     };
 
@@ -545,8 +557,9 @@ function EditorComponent() {
                             <InputGroup>
                                 <InputGroupInput
                                     aria-label="Search"
-                                    placeholder="Search namespaces"
+                                    placeholder="Search keys"
                                     type="search"
+                                    value={searchInputValue}
                                     onChange={handleSearchChange}
                                 />
                                 <InputGroupAddon>
