@@ -387,6 +387,11 @@ function calculateSimilarity(str1: string, str2: string): number {
   return 1 - distance / maxLength;
 }
 
+// Convert double braces to single braces: {{var}} -> {var}
+function normalizeDoubleBraces(text: string): string {
+  return text.replace(/\{\{(\w+)\}\}/g, "{$1}");
+}
+
 export const createContainersFromDetection = internalMutation({
   args: {
     screenshotId: v.id("screenshots"),
@@ -418,32 +423,42 @@ export const createContainersFromDetection = internalMutation({
     let skipped = 0;
 
     for (const region of args.detectedRegions) {
-      const valueResults = await ctx.db
-        .query("translationValues")
-        .withSearchIndex("search_values", (q) => q.search("values", region.text).eq("projectId", args.projectId))
-        .take(5);
+      // Try original text first, then with double braces normalized to single braces
+      const originalText = region.text;
+      const normalizedText = normalizeDoubleBraces(originalText);
+      const textsToTry = originalText !== normalizedText ? [originalText, normalizedText] : [originalText];
 
       let matchedKeyId: Id<"translationKeys"> | null = null;
       let bestSimilarity = 0;
 
-      for (const valueResult of valueResults) {
-        const key = await ctx.db.get(valueResult.translationKeyId);
-        if (!key || key.status === -1) {
-          continue;
-        }
+      for (const searchText of textsToTry) {
+        if (matchedKeyId) break;
 
-        const similarity = calculateSimilarity(region.text.toLowerCase(), valueResult.values.toLowerCase());
+        const valueResults = await ctx.db
+          .query("translationValues")
+          .withSearchIndex("search_values", (q) => q.search("values", searchText).eq("projectId", args.projectId))
+          .take(5);
 
-        // Exact match (case-insensitive) - use immediately
-        if (similarity === 1) {
-          matchedKeyId = valueResult.translationKeyId;
-          break;
-        }
+        for (const valueResult of valueResults) {
+          const key = await ctx.db.get(valueResult.translationKeyId);
+          if (!key || key.status === -1) {
+            continue;
+          }
 
-        // Only accept matches with at least 70% similarity
-        if (similarity >= 0.7 && similarity > bestSimilarity) {
-          bestSimilarity = similarity;
-          matchedKeyId = valueResult.translationKeyId;
+          // Compare using the current search text (handles both original and normalized)
+          const similarity = calculateSimilarity(searchText.toLowerCase(), valueResult.values.toLowerCase());
+
+          // Exact match (case-insensitive) - use immediately
+          if (similarity === 1) {
+            matchedKeyId = valueResult.translationKeyId;
+            break;
+          }
+
+          // Only accept matches with at least 70% similarity
+          if (similarity >= 0.7 && similarity > bestSimilarity) {
+            bestSimilarity = similarity;
+            matchedKeyId = valueResult.translationKeyId;
+          }
         }
       }
 

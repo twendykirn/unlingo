@@ -24,14 +24,19 @@ IMPORTANT GUIDELINES:
 1. ONLY extract static UI text - buttons, labels, menu items, headings, navigation items, form labels, tooltips, error messages, etc.
 2. DO NOT extract:
    - User-generated content (usernames, comments, posts, messages)
-   - Dynamic/generated content (timestamps, dates, numbers, IDs)
    - Code snippets or technical identifiers
    - URLs or email addresses
    - Company/product names that should remain unchanged
-3. Handle variables intelligently:
-   - If you see text like "Hello John" or "Welcome User123", extract the template form "Hello {{name}}" or "Welcome {{username}}"
-   - If you see "3 items selected", extract "{{count}} items selected"
-   - Common patterns: "X minutes ago" -> "{{time}} ago", "$19.99" -> "{{price}}"
+3. VARIABLE REPLACEMENT IS CRITICAL - use SINGLE curly braces {variable}:
+   - ANY number you see MUST be replaced with {count}. Examples:
+     * "3 items" -> "{count} items"
+     * "5 cal" -> "{count} cal"
+     * "127 results" -> "{count} results"
+     * "42" by itself -> "{count}"
+   - Replace usernames/names with {name}: "Hello John" -> "Hello {name}"
+   - Replace time values: "5 minutes ago" -> "{time} ago"
+   - Replace prices: "$19.99" -> "{price}"
+   - IMPORTANT: Use SINGLE braces like {count}, NOT double braces like {{count}}
 4. COORDINATE ACCURACY IS CRITICAL:
    - The image is ${imageDimensions.width}px wide and ${imageDimensions.height}px tall
    - Return coordinates as PERCENTAGES (0-100) of these dimensions
