@@ -720,7 +720,7 @@ function RouteComponent() {
                                     <div
                                         className="absolute bg-popover text-popover-foreground border rounded-md shadow-md p-2 pointer-events-none z-50"
                                         style={{
-                                            left: ((hoveredContainer.position.x / 100) * screenshot.dimensions.width * zoom) + stagePosition.x + CONTAINER_SIZE + 30,
+                                            left: ((hoveredContainer.position.x / 100) * screenshot.dimensions.width * zoom) + stagePosition.x + CONTAINER_SIZE - 30,
                                             top: ((hoveredContainer.position.y / 100) * screenshot.dimensions.height * zoom) + stagePosition.y,
                                             maxWidth: '300px',
                                         }}
