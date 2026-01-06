@@ -24,10 +24,14 @@ IMPORTANT GUIDELINES:
 1. ONLY extract static UI text - buttons, labels, menu items, headings, navigation items, form labels, tooltips, error messages, etc.
 2. DO NOT extract:
    - User-generated content (usernames, comments, posts, messages)
+   - Dynamic/generated content (timestamps, dates, numbers, IDs)
    - Code snippets or technical identifiers
    - URLs or email addresses
    - Company/product names that should remain unchanged
-3. Extract text EXACTLY as it appears on the screen, including any numbers or dynamic values.
+3. Handle variables intelligently:
+   - If you see text like "Hello John" or "Welcome User123", extract the template form "Hello {{name}}" or "Welcome {{username}}"
+   - If you see "3 items selected", extract "{{count}} items selected"
+   - Common patterns: "X minutes ago" -> "{{time}} ago", "$19.99" -> "{{price}}"
 4. COORDINATE ACCURACY IS CRITICAL:
    - The image is ${imageDimensions.width}px wide and ${imageDimensions.height}px tall
    - Return coordinates as PERCENTAGES (0-100) of these dimensions
@@ -59,7 +63,7 @@ If no UI text is found, return an empty array: []`;
   const mimeType = imageResponse.headers.get("content-type") || "image/png";
 
   const result = await ai.models.generateContent({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-3-flash-preview",
     contents: [
       {
         role: "user",
