@@ -1,9 +1,11 @@
-import { mutation, query } from "./_generated/server";
+import { internalAction, internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { deleteFile, getFileUrl } from "./files";
 import { authMiddleware } from "../middlewares/auth";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
+import { detectTextInScreenshot, DetectedTextRegion } from "../lib/gemini";
 
 export const getScreenshotsForProject = query({
   args: {
@@ -324,5 +326,163 @@ export const getScreenshot = query({
       ...screenshot,
       imageUrl,
     };
+  },
+});
+
+// AI Text Detection
+export const detectTextAction = internalAction({
+  args: {
+    screenshotId: v.id("screenshots"),
+    projectId: v.id("projects"),
+    imageUrl: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const detectedRegions = await detectTextInScreenshot(args.imageUrl);
+
+    if (detectedRegions.length === 0) {
+      return { success: true, created: 0, skipped: 0, message: "No UI text detected in screenshot" };
+    }
+
+    const result = await ctx.runMutation(internal.screenshots.createContainersFromDetection, {
+      screenshotId: args.screenshotId,
+      projectId: args.projectId,
+      detectedRegions: detectedRegions.map((region) => ({
+        text: region.text,
+        x: region.boundingBox.x,
+        y: region.boundingBox.y,
+        width: region.boundingBox.width,
+        height: region.boundingBox.height,
+      })),
+    });
+
+    return result;
+  },
+});
+
+export const createContainersFromDetection = internalMutation({
+  args: {
+    screenshotId: v.id("screenshots"),
+    projectId: v.id("projects"),
+    detectedRegions: v.array(
+      v.object({
+        text: v.string(),
+        x: v.number(),
+        y: v.number(),
+        width: v.number(),
+        height: v.number(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    const existingContainers = await ctx.db
+      .query("screenshotContainers")
+      .withIndex("by_screenshot", (q) => q.eq("screenshotId", args.screenshotId))
+      .collect();
+
+    const existingKeyIds = new Set(existingContainers.map((c) => c.translationKeyId));
+
+    let created = 0;
+    let skipped = 0;
+
+    for (const region of args.detectedRegions) {
+      const valueResults = await ctx.db
+        .query("translationValues")
+        .withSearchIndex("search_values", (q) =>
+          q.search("values", region.text).eq("projectId", args.projectId)
+        )
+        .take(10);
+
+      let matchedKeyId: Id<"translationKeys"> | null = null;
+
+      for (const valueResult of valueResults) {
+        if (valueResult.values.toLowerCase() === region.text.toLowerCase()) {
+          const key = await ctx.db.get(valueResult.translationKeyId);
+          if (key && key.status !== -1) {
+            matchedKeyId = valueResult.translationKeyId;
+            break;
+          }
+        }
+      }
+
+      if (!matchedKeyId) {
+        for (const valueResult of valueResults) {
+          const key = await ctx.db.get(valueResult.translationKeyId);
+          if (key && key.status !== -1) {
+            matchedKeyId = valueResult.translationKeyId;
+            break;
+          }
+        }
+      }
+
+      if (!matchedKeyId) {
+        skipped++;
+        continue;
+      }
+
+      if (existingKeyIds.has(matchedKeyId)) {
+        skipped++;
+        continue;
+      }
+
+      await ctx.db.insert("screenshotContainers", {
+        screenshotId: args.screenshotId,
+        translationKeyId: matchedKeyId,
+        position: {
+          x: Math.max(0, Math.min(100, region.x)),
+          y: Math.max(0, Math.min(100, region.y)),
+          width: Math.max(1, Math.min(100, region.width)),
+          height: Math.max(1, Math.min(100, region.height)),
+        },
+        backgroundColor: "#10b981",
+      });
+
+      existingKeyIds.add(matchedKeyId);
+      created++;
+    }
+
+    return {
+      success: true,
+      created,
+      skipped,
+      message:
+        created > 0
+          ? `Created ${created} container${created !== 1 ? "s" : ""} from detected text`
+          : "No matching translation keys found for detected text",
+    };
+  },
+});
+
+export const triggerTextDetection = mutation({
+  args: {
+    screenshotId: v.id("screenshots"),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const screenshot = await ctx.db.get(args.screenshotId);
+    if (!screenshot) {
+      throw new Error("Screenshot not found or access denied");
+    }
+
+    const project = await ctx.db.get(screenshot.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const imageUrl = await getFileUrl(screenshot.imageFileId, 60 * 60);
+
+    await ctx.scheduler.runAfter(0, internal.screenshots.detectTextAction, {
+      screenshotId: args.screenshotId,
+      projectId: project._id,
+      imageUrl,
+    });
+
+    return { success: true };
   },
 });

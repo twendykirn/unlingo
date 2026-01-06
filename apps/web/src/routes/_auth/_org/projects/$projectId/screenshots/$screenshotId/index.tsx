@@ -10,7 +10,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { useMutation, useQuery } from 'convex/react';
-import { PlusIcon, TrashIcon, ZoomInIcon, ZoomOutIcon, RotateCcwIcon, StarIcon } from 'lucide-react';
+import { PlusIcon, TrashIcon, ZoomInIcon, ZoomOutIcon, RotateCcwIcon, StarIcon, Wand2Icon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sheet, SheetHeader, SheetPanel, SheetPopup, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -224,6 +224,9 @@ function RouteComponent() {
     const updateContainer = useMutation(api.screenshots.updateContainer);
     const deleteContainer = useMutation(api.screenshots.deleteContainer);
     const updateTranslationKey = useMutation(api.translationKeys.updateTranslationKey);
+    const triggerTextDetection = useMutation(api.screenshots.triggerTextDetection);
+
+    const [isDetectingText, setIsDetectingText] = useState(false);
 
     useEffect(() => {
         if (screenshot?.imageUrl) {
@@ -273,6 +276,29 @@ function RouteComponent() {
         setKeySearch('');
         setDebouncedKeySearch('');
         setIsKeySearchOpen(true);
+    };
+
+    const handleAutoDetectText = async () => {
+        if (!workspace || !screenshot || isDetectingText) return;
+
+        setIsDetectingText(true);
+        try {
+            await triggerTextDetection({
+                screenshotId: screenshot._id,
+                workspaceId: workspace._id,
+            });
+            toastManager.add({
+                description: 'AI text detection started. Containers will be created automatically.',
+                type: 'success',
+            });
+        } catch (err) {
+            toastManager.add({
+                description: `Failed to start text detection: ${err}`,
+                type: 'error',
+            });
+        } finally {
+            setIsDetectingText(false);
+        }
     };
 
     const handleSelectKeyAndCreateContainer = async (translationKeyId: Id<'translationKeys'>) => {
@@ -538,6 +564,27 @@ function RouteComponent() {
                             </Button>
                         </UIGroup>
                         <div className="flex items-center gap-2">
+                            <Tooltip>
+                                <TooltipTrigger
+                                    render={
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleAutoDetectText}
+                                            disabled={isDetectingText}
+                                        >
+                                            {isDetectingText ? (
+                                                <Spinner className="size-4" />
+                                            ) : (
+                                                <Wand2Icon />
+                                            )}
+                                            Auto-Detect
+                                        </Button>
+                                    }
+                                />
+                                <TooltipPopup>
+                                    Use AI to detect text in the screenshot and automatically create containers for matching translation keys
+                                </TooltipPopup>
+                            </Tooltip>
                             <Button onClick={handleOpenKeySearch}>
                                 <PlusIcon />
                                 Add Container
