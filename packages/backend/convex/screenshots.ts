@@ -361,35 +361,16 @@ export const detectTextAction = internalAction({
   },
 });
 
-// Calculate similarity between two strings using Levenshtein distance
-function calculateSimilarity(str1: string, str2: string): number {
-  if (str1 === str2) return 1;
-  if (str1.length === 0 || str2.length === 0) return 0;
-
-  const matrix: number[][] = [];
-
-  for (let i = 0; i <= str1.length; i++) {
-    matrix[i] = [i];
-  }
-  for (let j = 0; j <= str2.length; j++) {
-    matrix[0][j] = j;
-  }
-
-  for (let i = 1; i <= str1.length; i++) {
-    for (let j = 1; j <= str2.length; j++) {
-      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-      matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
-    }
-  }
-
-  const distance = matrix[str1.length][str2.length];
-  const maxLength = Math.max(str1.length, str2.length);
-  return 1 - distance / maxLength;
-}
-
-// Convert double braces to single braces: {{var}} -> {var}
-function normalizeDoubleBraces(text: string): string {
-  return text.replace(/\{\{(\w+)\}\}/g, "{$1}");
+// Extract brackets and variable names from text, leaving only the static text
+// Handles both single {var} and double {{var}} braces
+function extractVariablesFromText(text: string): string {
+  // Replace double braces {{var}} with empty string
+  let result = text.replace(/\{\{\w+\}\}/g, "");
+  // Replace single braces {var} with empty string
+  result = result.replace(/\{\w+\}/g, "");
+  // Normalize whitespace (collapse multiple spaces into one, trim)
+  result = result.replace(/\s+/g, " ").trim();
+  return result.toLowerCase();
 }
 
 export const createContainersFromDetection = internalMutation({
@@ -423,42 +404,31 @@ export const createContainersFromDetection = internalMutation({
     let skipped = 0;
 
     for (const region of args.detectedRegions) {
-      // Try original text first, then with double braces normalized to single braces
-      const originalText = region.text;
-      const normalizedText = normalizeDoubleBraces(originalText);
-      const textsToTry = originalText !== normalizedText ? [originalText, normalizedText] : [originalText];
+      const detectedText = region.text;
+      // Extract variable-free version for comparison
+      const detectedTextNormalized = extractVariablesFromText(detectedText);
+
+      // Search using the original detected text
+      const valueResults = await ctx.db
+        .query("translationValues")
+        .withSearchIndex("search_values", (q) => q.search("values", detectedText).eq("projectId", args.projectId))
+        .take(5);
 
       let matchedKeyId: Id<"translationKeys"> | null = null;
-      let bestSimilarity = 0;
 
-      for (const searchText of textsToTry) {
-        if (matchedKeyId) break;
+      for (const valueResult of valueResults) {
+        const key = await ctx.db.get(valueResult.translationKeyId);
+        if (!key || key.status === -1) {
+          continue;
+        }
 
-        const valueResults = await ctx.db
-          .query("translationValues")
-          .withSearchIndex("search_values", (q) => q.search("values", searchText).eq("projectId", args.projectId))
-          .take(5);
+        // Extract variable-free version of the search result for comparison
+        const searchResultNormalized = extractVariablesFromText(valueResult.values);
 
-        for (const valueResult of valueResults) {
-          const key = await ctx.db.get(valueResult.translationKeyId);
-          if (!key || key.status === -1) {
-            continue;
-          }
-
-          // Compare using the current search text (handles both original and normalized)
-          const similarity = calculateSimilarity(searchText.toLowerCase(), valueResult.values.toLowerCase());
-
-          // Exact match (case-insensitive) - use immediately
-          if (similarity === 1) {
-            matchedKeyId = valueResult.translationKeyId;
-            break;
-          }
-
-          // Only accept matches with at least 70% similarity
-          if (similarity >= 0.7 && similarity > bestSimilarity) {
-            bestSimilarity = similarity;
-            matchedKeyId = valueResult.translationKeyId;
-          }
+        // Compare the normalized versions (without brackets/variables)
+        if (detectedTextNormalized === searchResultNormalized) {
+          matchedKeyId = valueResult.translationKeyId;
+          break;
         }
       }
 

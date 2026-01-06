@@ -27,16 +27,7 @@ IMPORTANT GUIDELINES:
    - Code snippets or technical identifiers
    - URLs or email addresses
    - Company/product names that should remain unchanged
-3. VARIABLE REPLACEMENT IS CRITICAL - use SINGLE curly braces {variable}:
-   - ANY number you see MUST be replaced with {count}. Examples:
-     * "3 items" -> "{count} items"
-     * "5 cal" -> "{count} cal"
-     * "127 results" -> "{count} results"
-     * "42" by itself -> "{count}"
-   - Replace usernames/names with {name}: "Hello John" -> "Hello {name}"
-   - Replace time values: "5 minutes ago" -> "{time} ago"
-   - Replace prices: "$19.99" -> "{price}"
-   - IMPORTANT: Use SINGLE braces like {count}, NOT double braces like {{count}}
+3. Extract text EXACTLY as it appears on the screen, including any numbers or dynamic values.
 4. COORDINATE ACCURACY IS CRITICAL:
    - The image is ${imageDimensions.width}px wide and ${imageDimensions.height}px tall
    - Return coordinates as PERCENTAGES (0-100) of these dimensions
