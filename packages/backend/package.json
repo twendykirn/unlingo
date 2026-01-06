@@ -23,6 +23,7 @@
     "@react-email/components": "^1.0.1",
     "@react-email/render": "^2.0.0",
     "ajv": "^8.17.1",
+    "buffer": "^6.0.3",
     "convex": "catalog:",
     "svix": "^1.81.0",
     "zod": "^4.1.12"

@@ -1,15 +1,15 @@
+import "../lib/polyfill";
 import { v } from "convex/values";
 import { action, internalAction, query } from "./_generated/server";
-import { internal, api } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { PolarCore } from "@polar-sh/sdk/core.js";
 import { customersCreate } from "@polar-sh/sdk/funcs/customersCreate.js";
 import { customersDelete } from "@polar-sh/sdk/funcs/customersDelete.js";
 import { customersUpdate } from "@polar-sh/sdk/funcs/customersUpdate.js";
 import { checkoutsCreate } from "@polar-sh/sdk/funcs/checkoutsCreate.js";
 import { customerSessionsCreate } from "@polar-sh/sdk/funcs/customerSessionsCreate.js";
-import { subscriptionsUpdate } from "@polar-sh/sdk/funcs/subscriptionsUpdate.js";
 import { productsList } from "@polar-sh/sdk/funcs/productsList.js";
-import { getPolarConfig, convertToDatabaseProduct, getProductIds } from "./polarUtils";
+import { getPolarConfig, convertToDatabaseProduct, getProductIds, omitSystemFields } from "./polarUtils";
 
 /**
  * Get configured Polar client
@@ -21,10 +21,6 @@ const getPolarClient = () => {
     server: config.server,
   });
 };
-
-// ============================================================================
-// CUSTOMER ACTIONS
-// ============================================================================
 
 /**
  * Create a Polar customer for a workspace
@@ -39,13 +35,17 @@ export const createPolarCustomer = internalAction({
     const polar = getPolarClient();
 
     // Check if customer already exists in our database
-    const existingCustomer = await ctx.runQuery(internal.polarDb.getCustomerByWorkspaceId, {
+    const existingCustomer: any = await ctx.runQuery(internal.polarDb.getCustomerByWorkspaceId, {
       workspaceId: args.workspaceId,
     });
 
     if (existingCustomer) {
       console.log(`Customer already exists for workspace ${args.workspaceId}`);
-      return existingCustomer;
+      return {
+        polarId: existingCustomer.polarId,
+        workspaceId: args.workspaceId,
+        email: args.email,
+      };
     }
 
     // Create customer in Polar with workspaceId as external ID
@@ -159,10 +159,6 @@ export const updatePolarCustomerEmail = internalAction({
   },
 });
 
-// ============================================================================
-// CHECKOUT & PORTAL ACTIONS
-// ============================================================================
-
 /**
  * Generate checkout link for purchasing a subscription
  */
@@ -196,6 +192,7 @@ export const generateCheckoutLink = action({
         workspaceId: workspace._id,
         email: workspace.contactEmail,
       });
+
       customer = {
         polarId: customerResult.polarId,
         workspaceId: customerResult.workspaceId,
@@ -258,102 +255,6 @@ export const generateCustomerPortalUrl = action({
   },
 });
 
-// ============================================================================
-// SUBSCRIPTION ACTIONS
-// ============================================================================
-
-/**
- * Change current subscription to a different product
- */
-export const changeCurrentSubscription = action({
-  args: {
-    productId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity || !identity.org) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.runQuery(internal.workspaces.getWorkspaceInfo);
-    const polar = getPolarClient();
-
-    const subscription = await ctx.runQuery(internal.polarDb.getCurrentSubscriptionInternal, {
-      workspaceId: workspace._id,
-    });
-
-    if (!subscription) {
-      throw new Error("No active subscription found");
-    }
-
-    if (subscription.productId === args.productId) {
-      throw new Error("Already subscribed to this product");
-    }
-
-    const result = await subscriptionsUpdate(polar, {
-      id: subscription.polarId,
-      subscriptionUpdate: {
-        productId: args.productId,
-      },
-    });
-
-    if (!result.value) {
-      console.error("Failed to update subscription:", result);
-      throw new Error("Failed to change subscription");
-    }
-
-    return result.value;
-  },
-});
-
-/**
- * Cancel current subscription
- */
-export const cancelCurrentSubscription = action({
-  args: {
-    revokeImmediately: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity || !identity.org) {
-      throw new Error("Not authenticated");
-    }
-
-    const workspace = await ctx.runQuery(internal.workspaces.getWorkspaceInfo);
-    const polar = getPolarClient();
-
-    const subscription = await ctx.runQuery(internal.polarDb.getCurrentSubscriptionInternal, {
-      workspaceId: workspace._id,
-    });
-
-    if (!subscription) {
-      throw new Error("No active subscription found");
-    }
-
-    if (subscription.status !== "active") {
-      throw new Error("Subscription is not active");
-    }
-
-    const result = await subscriptionsUpdate(polar, {
-      id: subscription.polarId,
-      subscriptionUpdate: args.revokeImmediately
-        ? { revoke: true }
-        : { cancelAtPeriodEnd: true },
-    });
-
-    if (!result.value) {
-      console.error("Failed to cancel subscription:", result);
-      throw new Error("Failed to cancel subscription");
-    }
-
-    return result.value;
-  },
-});
-
-// ============================================================================
-// PRODUCT SYNC ACTIONS
-// ============================================================================
-
 /**
  * Sync products from Polar
  */
@@ -389,40 +290,31 @@ export const syncProducts = internalAction({
   },
 });
 
-// ============================================================================
-// QUERY HELPERS
-// ============================================================================
-
 /**
  * Get configured products (products mapped by key)
  */
 export const getConfiguredProducts = query({
   args: {},
   handler: async (ctx) => {
-    const products = await ctx.runQuery(api.polarDb.listProducts, {
-      includeArchived: false,
-    });
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const q = ctx.db.query("polarProducts");
+
+    const products = await q.withIndex("by_is_archived", (q) => q.lt("isArchived", true)).collect();
+
+    const omitedProducts = products.map((p) => omitSystemFields(p));
 
     const productIds = getProductIds();
 
-    const result: Record<string, typeof products[number] | undefined> = {};
+    const result: Record<string, (typeof omitedProducts)[number] | undefined> = {};
 
     for (const [key, id] of Object.entries(productIds)) {
-      result[key] = products.find((p) => p.polarId === id);
+      result[key] = omitedProducts.find((p) => p.polarId === id);
     }
 
     return result;
-  },
-});
-
-/**
- * List all products
- */
-export const listAllProducts = query({
-  args: {},
-  handler: async (ctx) => {
-    return ctx.runQuery(api.polarDb.listProducts, {
-      includeArchived: false,
-    });
   },
 });

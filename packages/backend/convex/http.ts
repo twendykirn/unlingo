@@ -10,7 +10,13 @@ import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { emailWorkpool } from "./resend";
-import { getPolarConfig, convertToDatabaseProduct, convertWebhookSubscription, getTierFromProductId } from "./polarUtils";
+import {
+  getPolarConfig,
+  convertToDatabaseProduct,
+  convertWebhookSubscription,
+  getTierFromProductId,
+} from "./polarUtils";
+import "../lib/polyfill";
 
 async function validateRequest(req: Request): Promise<WebhookEvent | null> {
   const payloadString = await req.text();
@@ -293,11 +299,13 @@ http.route({
     }
 
     const body = await request.text();
-    const headers = Object.fromEntries(request.headers.entries());
+    let newHeaders: Record<string, string> = {};
+    request.headers.forEach((value, key) => (newHeaders[key] = value));
+
     const { webhookSecret } = getPolarConfig();
 
     try {
-      const event = validateEvent(body, headers, webhookSecret);
+      const event = validateEvent(body, newHeaders, webhookSecret);
 
       switch (event.type) {
         case "subscription.created": {
@@ -366,7 +374,8 @@ http.route({
           // Get workspace ID from customer's externalId
           const workspaceId = subscriptionEvent.data.customer.externalId;
           if (workspaceId) {
-            const isActive = subscriptionEvent.data.status === "active" && !subscriptionEvent.data.customerCancellationReason;
+            const isActive =
+              subscriptionEvent.data.status === "active" && !subscriptionEvent.data.customerCancellationReason;
             const tierInfo = getTierFromProductId(subscriptionEvent.data.product?.id);
 
             await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {

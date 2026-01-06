@@ -17,7 +17,6 @@
       "tailwind-merge": "^3.3.1",
       "vite-tsconfig-paths": "^5.1.4",
       "convex": "^1.27.0",
-      "@convex-dev/polar": "^0.7.1",
       "@tanstack/react-router-devtools": "1.134.4",
       "@types/react": "~19.1.10",
       "@types/react-dom": "^19.0.4",

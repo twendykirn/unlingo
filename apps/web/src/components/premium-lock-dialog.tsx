@@ -12,13 +12,13 @@ import {
     DialogPopup,
     DialogTitle
 } from "./ui/dialog";
-import { CheckoutLink } from '@convex-dev/polar/react';
 import { cn } from "@/lib/utils";
 import { useClerk, useOrganization, useOrganizationList, useUser } from "@clerk/tanstack-react-start";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "./ui/menu";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { toastManager } from "./ui/toast";
 import { useNavigate } from "@tanstack/react-router";
+import { CheckoutLink } from "./polar";
 
 interface Props {
     isOpen: boolean;
@@ -39,9 +39,9 @@ const PLAN_CONFIG: Record<string, { requests: string; keys: string }> = {
 const INCLUDED_FEATURES = [
     "Unlimited projects",
     "Unlimited namespaces",
+    "Unlimited glossary",
+    "Unlimited language rules",
     "90+ languages",
-    "Glossary & terminology",
-    "Language rules",
     "Screenshots",
     "Releases with A/B tests",
     "AI translations",
@@ -87,7 +87,7 @@ const PremiumLockDialog = ({ isOpen }: Props) => {
         }
     };
 
-    const products = useQuery(api.polar.getConfiguredProducts, undefined);
+    const products = useQuery(api.polarActions.getConfiguredProducts, undefined);
 
     const planList = useMemo(() => {
         if (!products) return [];
@@ -97,7 +97,7 @@ const PremiumLockDialog = ({ isOpen }: Props) => {
             .map(([key, product]) => {
                 const config = PLAN_CONFIG[key] || { requests: "N/A", keys: 1 };
                 return {
-                    id: product!.id,
+                    id: product!.polarId,
                     name: product!.name,
                     price: product!.prices?.[0]?.priceAmount
                         ? (product!.prices[0].priceAmount / 100)
@@ -326,7 +326,6 @@ const PremiumLockDialog = ({ isOpen }: Props) => {
                         </div>
                         {selectedPackage ? (
                             <CheckoutLink
-                                polarApi={api.polar}
                                 productIds={[selectedPackage]}>
                                 <Button className="gap-2" size="lg">
                                     <CreditCard className="size-4" />

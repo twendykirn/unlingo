@@ -40,9 +40,7 @@ export const convertToDatabaseSubscription = (
 /**
  * Convert Polar SDK Subscription from webhook to database format (without customerId conversion)
  */
-export const convertWebhookSubscription = (
-  subscription: Subscription,
-): Omit<PolarSubscriptionData, "customerId"> => {
+export const convertWebhookSubscription = (subscription: Subscription): Omit<PolarSubscriptionData, "customerId"> => {
   return {
     polarId: subscription.id,
     polarCustomerId: subscription.customerId,
@@ -87,21 +85,12 @@ export const convertToDatabaseProduct = (product: Product): PolarProductData => 
       isArchived: price.isArchived,
       createdAt: price.createdAt.toISOString(),
       modifiedAt: price.modifiedAt?.toISOString() ?? null,
-      recurringInterval:
-        price.type === "recurring"
-          ? price.recurringInterval ?? undefined
-          : undefined,
+      recurringInterval: price.type === "recurring" ? (price.recurringInterval ?? undefined) : undefined,
       priceAmount: price.amountType === "fixed" ? price.priceAmount : undefined,
-      priceCurrency:
-        price.amountType === "fixed" || price.amountType === "custom"
-          ? price.priceCurrency
-          : undefined,
-      minimumAmount:
-        price.amountType === "custom" ? price.minimumAmount : undefined,
-      maximumAmount:
-        price.amountType === "custom" ? price.maximumAmount : undefined,
-      presetAmount:
-        price.amountType === "custom" ? price.presetAmount : undefined,
+      priceCurrency: price.amountType === "fixed" || price.amountType === "custom" ? price.priceCurrency : undefined,
+      minimumAmount: price.amountType === "custom" ? price.minimumAmount : undefined,
+      maximumAmount: price.amountType === "custom" ? price.maximumAmount : undefined,
+      presetAmount: price.amountType === "custom" ? price.presetAmount : undefined,
       type: price.type,
     })),
     medias: product.medias.map((media) => ({
@@ -209,7 +198,9 @@ export const getProductIds = () => ({
 /**
  * Get tier info from product ID
  */
-export const getTierFromProductId = (productId?: string): {
+export const getTierFromProductId = (
+  productId?: string,
+): {
   tier: "starter" | "hobby" | "premium";
   requests: number;
   translationKeys: number;
@@ -232,14 +223,10 @@ export const getTierFromProductId = (productId?: string): {
 /**
  * Omit Convex system fields from a document
  */
-export const omitSystemFields = <
-  T extends { _id: unknown; _creationTime: number } | null | undefined,
->(
-  doc: T,
-): T extends null | undefined ? T : Omit<NonNullable<T>, "_id" | "_creationTime"> => {
+export const omitSystemFields = <T extends { _id: string; _creationTime: number } | null | undefined>(doc: T) => {
   if (!doc) {
-    return doc as any;
+    return doc;
   }
   const { _id, _creationTime, ...rest } = doc;
-  return rest as any;
+  return rest;
 };

@@ -1,11 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
-import { omitSystemFields, type PolarProductData } from "./polarUtils";
-import type { Id, Doc } from "./_generated/dataModel";
-
-// ============================================================================
-// CUSTOMER QUERIES & MUTATIONS
-// ============================================================================
+import { query, internalMutation, internalQuery } from "./_generated/server";
+import { omitSystemFields } from "./polarUtils";
 
 /**
  * Get customer by workspace ID
@@ -19,23 +14,8 @@ export const getCustomerByWorkspaceId = internalQuery({
       .query("polarCustomers")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
       .unique();
-    return customer ? omitSystemFields(customer) : null;
-  },
-});
 
-/**
- * Get customer by Polar ID
- */
-export const getCustomerByPolarId = internalQuery({
-  args: {
-    polarId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const customer = await ctx.db
-      .query("polarCustomers")
-      .withIndex("by_polar_id", (q) => q.eq("polarId", args.polarId))
-      .unique();
-    return customer;
+    return customer ? omitSystemFields(customer) : null;
   },
 });
 
@@ -124,26 +104,6 @@ export const deleteCustomer = internalMutation({
   },
 });
 
-// ============================================================================
-// SUBSCRIPTION QUERIES & MUTATIONS
-// ============================================================================
-
-/**
- * Get subscription by Polar ID
- */
-export const getSubscriptionByPolarId = internalQuery({
-  args: {
-    polarId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const subscription = await ctx.db
-      .query("polarSubscriptions")
-      .withIndex("by_polar_id", (q) => q.eq("polarId", args.polarId))
-      .unique();
-    return subscription ? omitSystemFields(subscription) : null;
-  },
-});
-
 /**
  * Get current active subscription for a workspace
  */
@@ -164,9 +124,7 @@ export const getCurrentSubscription = query({
     // Find active subscription (endedAt is null)
     const subscription = await ctx.db
       .query("polarSubscriptions")
-      .withIndex("by_customer_ended_at", (q) =>
-        q.eq("customerId", customer._id).eq("endedAt", null)
-      )
+      .withIndex("by_customer_ended_at", (q) => q.eq("customerId", customer._id).eq("endedAt", null))
       .unique();
 
     if (!subscription) {
@@ -205,9 +163,7 @@ export const getCurrentSubscriptionInternal = internalQuery({
 
     const subscription = await ctx.db
       .query("polarSubscriptions")
-      .withIndex("by_customer_ended_at", (q) =>
-        q.eq("customerId", customer._id).eq("endedAt", null)
-      )
+      .withIndex("by_customer_ended_at", (q) => q.eq("customerId", customer._id).eq("endedAt", null))
       .unique();
 
     if (!subscription) {
@@ -228,51 +184,6 @@ export const getCurrentSubscriptionInternal = internalQuery({
 });
 
 /**
- * List all subscriptions for a workspace
- */
-export const listWorkspaceSubscriptions = query({
-  args: {
-    workspaceId: v.id("workspaces"),
-  },
-  handler: async (ctx, args) => {
-    const customer = await ctx.db
-      .query("polarCustomers")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .unique();
-
-    if (!customer) {
-      return [];
-    }
-
-    const subscriptions = await ctx.db
-      .query("polarSubscriptions")
-      .withIndex("by_customer", (q) => q.eq("customerId", customer._id))
-      .collect();
-
-    const results = await Promise.all(
-      subscriptions.map(async (subscription) => {
-        // Skip ended subscriptions
-        if (subscription.endedAt && subscription.endedAt <= new Date().toISOString()) {
-          return null;
-        }
-
-        const product = await ctx.db
-          .query("polarProducts")
-          .withIndex("by_polar_id", (q) => q.eq("polarId", subscription.productId))
-          .unique();
-
-        return {
-          ...omitSystemFields(subscription),
-          product: product ? omitSystemFields(product) : null,
-        };
-      })
-    );
-
-    return results.filter((s): s is NonNullable<typeof s> => s !== null);
-  },
-});
-
-/**
  * Create subscription
  */
 export const createSubscription = internalMutation({
@@ -285,13 +196,7 @@ export const createSubscription = internalMutation({
     modifiedAt: v.union(v.string(), v.null()),
     amount: v.union(v.number(), v.null()),
     currency: v.union(v.string(), v.null()),
-    recurringInterval: v.union(
-      v.literal("day"),
-      v.literal("week"),
-      v.literal("month"),
-      v.literal("year"),
-      v.null()
-    ),
+    recurringInterval: v.union(v.literal("day"), v.literal("week"), v.literal("month"), v.literal("year"), v.null()),
     status: v.string(),
     currentPeriodStart: v.string(),
     currentPeriodEnd: v.union(v.string(), v.null()),
@@ -357,13 +262,7 @@ export const updateSubscription = internalMutation({
     modifiedAt: v.union(v.string(), v.null()),
     amount: v.union(v.number(), v.null()),
     currency: v.union(v.string(), v.null()),
-    recurringInterval: v.union(
-      v.literal("day"),
-      v.literal("week"),
-      v.literal("month"),
-      v.literal("year"),
-      v.null()
-    ),
+    recurringInterval: v.union(v.literal("day"), v.literal("week"), v.literal("month"), v.literal("year"), v.null()),
     status: v.string(),
     currentPeriodStart: v.string(),
     currentPeriodEnd: v.union(v.string(), v.null()),
@@ -391,26 +290,6 @@ export const updateSubscription = internalMutation({
   },
 });
 
-// ============================================================================
-// PRODUCT QUERIES & MUTATIONS
-// ============================================================================
-
-/**
- * Get product by Polar ID
- */
-export const getProductByPolarId = internalQuery({
-  args: {
-    polarId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const product = await ctx.db
-      .query("polarProducts")
-      .withIndex("by_polar_id", (q) => q.eq("polarId", args.polarId))
-      .unique();
-    return product ? omitSystemFields(product) : null;
-  },
-});
-
 /**
  * List all products
  */
@@ -423,29 +302,7 @@ export const listProducts = query({
 
     const products = args.includeArchived
       ? await q.collect()
-      : await q
-          .withIndex("by_is_archived", (q) => q.lt("isArchived", true))
-          .collect();
-
-    return products.map((p) => omitSystemFields(p));
-  },
-});
-
-/**
- * Internal list products
- */
-export const listProductsInternal = internalQuery({
-  args: {
-    includeArchived: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const q = ctx.db.query("polarProducts");
-
-    const products = args.includeArchived
-      ? await q.collect()
-      : await q
-          .withIndex("by_is_archived", (q) => q.lt("isArchived", true))
-          .collect();
+      : await q.withIndex("by_is_archived", (q) => q.lt("isArchived", true)).collect();
 
     return products.map((p) => omitSystemFields(p));
   },
@@ -465,13 +322,7 @@ export const createProduct = internalMutation({
     createdAt: v.string(),
     modifiedAt: v.union(v.string(), v.null()),
     recurringInterval: v.optional(
-      v.union(
-        v.literal("day"),
-        v.literal("week"),
-        v.literal("month"),
-        v.literal("year"),
-        v.null()
-      )
+      v.union(v.literal("day"), v.literal("week"), v.literal("month"), v.literal("year"), v.null()),
     ),
     metadata: v.optional(v.record(v.string(), v.any())),
     prices: v.array(v.any()),
@@ -505,13 +356,7 @@ export const updateProduct = internalMutation({
     createdAt: v.string(),
     modifiedAt: v.union(v.string(), v.null()),
     recurringInterval: v.optional(
-      v.union(
-        v.literal("day"),
-        v.literal("week"),
-        v.literal("month"),
-        v.literal("year"),
-        v.null()
-      )
+      v.union(v.literal("day"), v.literal("week"), v.literal("month"), v.literal("year"), v.null()),
     ),
     metadata: v.optional(v.record(v.string(), v.any())),
     prices: v.array(v.any()),
@@ -554,22 +399,5 @@ export const upsertProducts = internalMutation({
         await ctx.db.insert("polarProducts", product);
       }
     }
-  },
-});
-
-/**
- * Get workspace ID from Polar customer ID
- */
-export const getWorkspaceIdFromPolarCustomer = internalQuery({
-  args: {
-    polarCustomerId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const customer = await ctx.db
-      .query("polarCustomers")
-      .withIndex("by_polar_id", (q) => q.eq("polarId", args.polarCustomerId))
-      .unique();
-
-    return customer?.workspaceId ?? null;
   },
 });

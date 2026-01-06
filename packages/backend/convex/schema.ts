@@ -231,8 +231,6 @@ export default defineSchema({
       searchField: "term",
       filterFields: ["projectId"],
     }),
-
-  // Polar integration tables
   polarCustomers: defineTable({
     polarId: v.string(), // Polar's customer ID
     workspaceId: v.id("workspaces"), // Links to workspace (used as externalId in Polar)
@@ -241,7 +239,6 @@ export default defineSchema({
   })
     .index("by_workspace", ["workspaceId"])
     .index("by_polar_id", ["polarId"]),
-
   polarProducts: defineTable({
     polarId: v.string(), // Polar's product ID
     organizationId: v.string(),
@@ -258,7 +255,6 @@ export default defineSchema({
   })
     .index("by_polar_id", ["polarId"])
     .index("by_is_archived", ["isArchived"]),
-
   polarSubscriptions: defineTable({
     polarId: v.string(), // Polar's subscription ID
     customerId: v.id("polarCustomers"), // Reference to our polarCustomers table

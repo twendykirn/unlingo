@@ -21,7 +21,7 @@ export const addEmailToContacts = internalAction({
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${process.env.RESEND_SECRET}`,
+            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
             "Content-Type": "application/json",
           },
         },
@@ -33,9 +33,7 @@ export const addEmailToContacts = internalAction({
         throw new Error(data?.name || "Rate limit exceeded");
       }
     } catch (error) {
-      throw new Error(
-        `Failed to add a contact with email ${args.email}: ${error}`,
-      );
+      throw new Error(`Failed to add a contact with email ${args.email}: ${error}`);
     }
   },
 });
@@ -50,7 +48,7 @@ export const sendWelcomeEmail = internalAction({
       const result = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.RESEND_SECRET}`,
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -92,7 +90,7 @@ export const sendLimitsEmail = internalAction({
       const result = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.RESEND_SECRET}`,
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
