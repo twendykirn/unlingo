@@ -10,7 +10,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { useMutation, useQuery } from 'convex/react';
-import { PlusIcon, TrashIcon, ZoomInIcon, ZoomOutIcon, RotateCcwIcon, StarIcon } from 'lucide-react';
+import { PlusIcon, TrashIcon, ZoomInIcon, ZoomOutIcon, RotateCcwIcon, StarIcon, Wand2Icon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sheet, SheetHeader, SheetPanel, SheetPopup, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,7 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 
-const CONTAINER_SIZE = 40;
+const CONTAINER_SIZE = 60;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 5;
 const ZOOM_SENSITIVITY = 0.001; // For smooth wheel zooming
@@ -224,6 +224,9 @@ function RouteComponent() {
     const updateContainer = useMutation(api.screenshots.updateContainer);
     const deleteContainer = useMutation(api.screenshots.deleteContainer);
     const updateTranslationKey = useMutation(api.translationKeys.updateTranslationKey);
+    const triggerTextDetection = useMutation(api.screenshots.triggerTextDetection);
+
+    const [isDetectingText, setIsDetectingText] = useState(false);
 
     useEffect(() => {
         if (screenshot?.imageUrl) {
@@ -275,6 +278,29 @@ function RouteComponent() {
         setIsKeySearchOpen(true);
     };
 
+    const handleAutoDetectText = async () => {
+        if (!workspace || !screenshot || isDetectingText) return;
+
+        setIsDetectingText(true);
+        try {
+            await triggerTextDetection({
+                screenshotId: screenshot._id,
+                workspaceId: workspace._id,
+            });
+            toastManager.add({
+                description: 'AI text detection started. Containers will be created automatically.',
+                type: 'success',
+            });
+        } catch (err) {
+            toastManager.add({
+                description: `Failed to start text detection: ${err}`,
+                type: 'error',
+            });
+        } finally {
+            setIsDetectingText(false);
+        }
+    };
+
     const handleSelectKeyAndCreateContainer = async (translationKeyId: Id<'translationKeys'>) => {
         if (!workspace || !screenshot) return;
 
@@ -295,7 +321,6 @@ function RouteComponent() {
                     width: widthPercent,
                     height: heightPercent,
                 },
-                backgroundColor: '#3b82f6',
             });
 
             setSelectedContainerId(containerId);
@@ -538,6 +563,27 @@ function RouteComponent() {
                             </Button>
                         </UIGroup>
                         <div className="flex items-center gap-2">
+                            <Tooltip>
+                                <TooltipTrigger
+                                    render={
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleAutoDetectText}
+                                            disabled={isDetectingText || screenshot?.status === 3}
+                                        >
+                                            {isDetectingText || screenshot?.status === 3 ? (
+                                                <Spinner />
+                                            ) : (
+                                                <Wand2Icon />
+                                            )}
+                                            Auto-Detect
+                                        </Button>
+                                    }
+                                />
+                                <TooltipPopup>
+                                    Use AI to detect text in the screenshot and automatically create containers for matching translation keys
+                                </TooltipPopup>
+                            </Tooltip>
                             <Button onClick={handleOpenKeySearch}>
                                 <PlusIcon />
                                 Add Container
@@ -643,7 +689,7 @@ function RouteComponent() {
                                                                     x={CONTAINER_SIZE / 2}
                                                                     y={CONTAINER_SIZE / 2}
                                                                     radius={CONTAINER_SIZE / 2}
-                                                                    fill={container.backgroundColor || '#3b82f6'}
+                                                                    fill='#3b82f6'
                                                                     opacity={0.9}
                                                                 />
                                                                 <Circle
@@ -674,7 +720,7 @@ function RouteComponent() {
                                     <div
                                         className="absolute bg-popover text-popover-foreground border rounded-md shadow-md p-2 pointer-events-none z-50"
                                         style={{
-                                            left: ((hoveredContainer.position.x / 100) * screenshot.dimensions.width * zoom) + stagePosition.x + CONTAINER_SIZE + 10,
+                                            left: ((hoveredContainer.position.x / 100) * screenshot.dimensions.width * zoom) + stagePosition.x + CONTAINER_SIZE + 30,
                                             top: ((hoveredContainer.position.y / 100) * screenshot.dimensions.height * zoom) + stagePosition.y,
                                             maxWidth: '300px',
                                         }}

@@ -153,6 +153,12 @@ export default defineSchema({
       width: v.number(), // original image width in pixels
       height: v.number(), // original image height in pixels
     }),
+    status: v.union(
+      v.literal(1), // active
+      v.literal(-1), // deleting
+      v.literal(2), // processing
+      v.literal(3), // text-detection-in-progress
+    ),
   }).index("by_project_name", ["projectId", "name"]),
   screenshotContainers: defineTable({
     screenshotId: v.id("screenshots"),
@@ -163,7 +169,6 @@ export default defineSchema({
       width: v.number(), // width of container (percentage of image width)
       height: v.number(), // height of container (percentage of image height)
     }),
-    backgroundColor: v.optional(v.string()), // hex color for background (default: blue)
   })
     .index("by_screenshot", ["screenshotId"])
     .index("by_translation_key", ["translationKeyId"]),
