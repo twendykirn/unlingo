@@ -290,7 +290,6 @@ export const deleteProjectContents = internalMutation({
         .paginate({ cursor: args.cursor, numItems: STANDARD_LIMIT });
 
       for (const release of res.page) {
-        // Delete all connections for this release
         const connections = await ctx.db
           .query("releaseBuildConnections")
           .withIndex("by_release_build", (q) => q.eq("releaseId", release._id))
@@ -300,7 +299,6 @@ export const deleteProjectContents = internalMutation({
           await ctx.db.delete(conn._id);
         }
 
-        // Delete the release itself
         await ctx.db.delete(release._id);
       }
 
