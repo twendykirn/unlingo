@@ -41,11 +41,11 @@ const ReleaseEditDialog = ({ isOpen, setIsOpen, workspace, project, release }: P
     const [selectedBuilds, setSelectedBuilds] = useState<SelectedBuild[]>([]);
     const [isBuildSearchOpen, setIsBuildSearchOpen] = useState(false);
 
-    const connections = useQuery(api.releases.getReleaseConnections, {
+    const connections = useQuery(api.releases.getReleaseConnections, isOpen ? {
         workspaceId: workspace._id,
         projectId: project._id,
         releaseId: release._id,
-    });
+    } : 'skip');
 
     const updateRelease = useMutation(api.releases.updateRelease);
 
