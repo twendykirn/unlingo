@@ -156,99 +156,97 @@ const ReleaseEditDialog = ({ isOpen, setIsOpen, workspace, project, release }: P
     };
 
     return (
-        <>
-            <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogPopup className="sm:max-w-md">
-                    <Form className="contents" onSubmit={handleUpdate}>
-                        <DialogHeader>
-                            <DialogTitle>Edit Release</DialogTitle>
-                            <DialogDescription>
-                                Update the release tag and builds.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <DialogPanel className="grid gap-4 max-h-[60vh] overflow-y-auto">
-                            <Field>
-                                <FieldLabel>Tag</FieldLabel>
-                                <Input type="text" name="tag" defaultValue={release.tag} required />
-                            </Field>
-                            <Field className="border-t pt-4">
-                                <div className="flex items-center justify-between mb-3 w-full">
-                                    <FieldLabel className="mb-0">Builds</FieldLabel>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={() => setIsBuildSearchOpen(true)}
-                                    >
-                                        <PlusIcon />
-                                    </Button>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogPopup className="sm:max-w-md">
+                <Form className="contents" onSubmit={handleUpdate}>
+                    <DialogHeader>
+                        <DialogTitle>Edit Release</DialogTitle>
+                        <DialogDescription>
+                            Update the release tag and builds.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogPanel className="grid gap-4 max-h-[60vh] overflow-y-auto">
+                        <Field>
+                            <FieldLabel>Tag</FieldLabel>
+                            <Input type="text" name="tag" defaultValue={release.tag} required />
+                        </Field>
+                        <Field className="border-t pt-4">
+                            <div className="flex items-center justify-between mb-3 w-full">
+                                <FieldLabel className="mb-0">Builds</FieldLabel>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setIsBuildSearchOpen(true)}
+                                >
+                                    <PlusIcon />
+                                </Button>
+                            </div>
+                            {connections === undefined ? (
+                                <div className="flex items-center justify-center py-4 border rounded-lg">
+                                    <Spinner />
                                 </div>
-                                {connections === undefined ? (
-                                    <div className="flex items-center justify-center py-4 border rounded-lg">
-                                        <Spinner />
-                                    </div>
-                                ) : selectedBuilds.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground text-center py-4 border rounded-lg w-full">
-                                        No builds added yet.
-                                    </p>
-                                ) : (
-                                    <div className="border rounded-lg divide-y w-full">
-                                        {Object.entries(buildsByNamespace).map(([namespace, builds]) => (
-                                            <div key={namespace}>
-                                                <div className="px-3 py-2 bg-muted/50 text-sm font-medium text-muted-foreground">
-                                                    {namespace}
-                                                </div>
-                                                <div className="divide-y">
-                                                    {builds.map((item) => (
-                                                        <div key={item.build._id} className="flex items-center gap-3 px-3 py-2">
-                                                            <span className="text-sm flex-1 truncate">{item.build.tag}</span>
-                                                            <div className="flex items-center gap-2">
-                                                                <Input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    max="100"
-                                                                    value={item.selectionChance}
-                                                                    onChange={(e) => handleChanceChange(item.build._id, Number(e.target.value))}
-                                                                    className="w-16 text-sm"
-                                                                />
-                                                                <span className="text-sm text-muted-foreground">%</span>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() => handleRemoveBuild(item.build._id)}
-                                                                    className="text-destructive hover:text-destructive"
-                                                                >
-                                                                    <TrashIcon className="size-4" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
+                            ) : selectedBuilds.length === 0 ? (
+                                <p className="text-sm text-muted-foreground text-center py-4 border rounded-lg w-full">
+                                    No builds added yet.
+                                </p>
+                            ) : (
+                                <div className="border rounded-lg divide-y w-full">
+                                    {Object.entries(buildsByNamespace).map(([namespace, builds]) => (
+                                        <div key={namespace}>
+                                            <div className="px-3 py-2 bg-muted/50 text-sm font-medium text-muted-foreground">
+                                                {namespace}
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </Field>
-                        </DialogPanel>
-                        <DialogFooter>
-                            <DialogClose render={<Button variant="ghost" />}>
-                                Cancel
-                            </DialogClose>
-                            <Button type="submit">{isLoading ? <Spinner /> : 'Update'}</Button>
-                        </DialogFooter>
-                    </Form>
-                </DialogPopup>
-            </Dialog>
-            <BuildSearchDialog
-                isOpen={isBuildSearchOpen}
-                setIsOpen={setIsBuildSearchOpen}
-                projectId={project._id}
-                workspaceId={workspace._id}
-                excludeBuildIds={selectedBuilds.map((item) => item.build._id)}
-                onSelectBuild={handleAddBuild}
-            />
-        </>
+                                            <div className="divide-y">
+                                                {builds.map((item) => (
+                                                    <div key={item.build._id} className="flex items-center gap-3 px-3 py-2">
+                                                        <span className="text-sm flex-1 truncate">{item.build.tag}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                max="100"
+                                                                value={item.selectionChance}
+                                                                onChange={(e) => handleChanceChange(item.build._id, Number(e.target.value))}
+                                                                className="w-16 text-sm"
+                                                            />
+                                                            <span className="text-sm text-muted-foreground">%</span>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleRemoveBuild(item.build._id)}
+                                                                className="text-destructive hover:text-destructive"
+                                                            >
+                                                                <TrashIcon className="size-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </Field>
+                    </DialogPanel>
+                    <DialogFooter>
+                        <DialogClose render={<Button variant="ghost" />}>
+                            Cancel
+                        </DialogClose>
+                        <Button type="submit">{isLoading ? <Spinner /> : 'Update'}</Button>
+                        <BuildSearchDialog
+                            isOpen={isBuildSearchOpen}
+                            setIsOpen={setIsBuildSearchOpen}
+                            projectId={project._id}
+                            workspaceId={workspace._id}
+                            excludeBuildIds={selectedBuilds.map((item) => item.build._id)}
+                            onSelectBuild={handleAddBuild}
+                        />
+                    </DialogFooter>
+                </Form>
+            </DialogPopup>
+        </Dialog>
     );
 };
 
