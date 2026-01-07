@@ -20,6 +20,7 @@ import { Input } from "./ui/input";
 import { Spinner } from "./ui/spinner";
 import { PlusIcon, TrashIcon } from "lucide-react";
 import BuildSearchDialog from "./build-search-dialog";
+import { NumberField, NumberFieldDecrement, NumberFieldGroup, NumberFieldIncrement, NumberFieldInput } from "./ui/number-field";
 
 interface SelectedBuild {
     build: Doc<'builds'>;
@@ -236,14 +237,19 @@ const ReleaseEditDialog = ({ isOpen, setIsOpen, workspace, project, release }: P
                                                     <div key={item.build._id} className="flex items-center gap-3 px-3 py-2">
                                                         <span className="text-sm flex-1 truncate">{item.build.tag}</span>
                                                         <div className="flex items-center gap-2">
-                                                            <Input
-                                                                type="number"
-                                                                min="0"
-                                                                max="100"
+                                                            <NumberField
                                                                 value={item.selectionChance}
-                                                                onChange={(e) => handleChanceChange(item.build._id, Number(e.target.value))}
-                                                                className="w-16 text-sm"
-                                                            />
+                                                                onValueChange={value => handleChanceChange(item.build._id, value ?? 0)}
+                                                                max={100}
+                                                                min={0}
+                                                                size='sm'
+                                                            >
+                                                                <NumberFieldGroup>
+                                                                    <NumberFieldDecrement />
+                                                                    <NumberFieldInput className='w-16' />
+                                                                    <NumberFieldIncrement />
+                                                                </NumberFieldGroup>
+                                                            </NumberField>
                                                             <span className="text-sm text-muted-foreground">%</span>
                                                             <Button
                                                                 type="button"

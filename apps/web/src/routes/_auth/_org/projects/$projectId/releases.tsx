@@ -146,7 +146,6 @@ function RouteComponent() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Tag</TableHead>
-                                            <TableHead>Builds</TableHead>
                                             <TableHead>Created</TableHead>
                                             <TableHead className="text-right" />
                                         </TableRow>
@@ -155,9 +154,6 @@ function RouteComponent() {
                                         {releases.map(release => (
                                             <TableRow key={release._id}>
                                                 <TableCell className="font-medium font-mono">{release.tag}</TableCell>
-                                                <TableCell>
-                                                    {release.builds.length} build(s)
-                                                </TableCell>
                                                 <TableCell>
                                                     {new Date(release._creationTime).toLocaleDateString(undefined, {
                                                         year: 'numeric',

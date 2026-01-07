@@ -348,7 +348,7 @@ export const handleBuildDeleted = internalMutation({
 const recalculateConnectionPercentages = async (ctx: any, releaseId: Id<"releases">, namespace: string) => {
   const connections = await ctx.db
     .query("releaseBuildConnections")
-    .withIndex("by_release", (q: any) => q.eq("releaseId", releaseId))
+    .withIndex("by_release_build", (q: any) => q.eq("releaseId", releaseId))
     .collect();
 
   const namespaceConnections: { conn: any; build: any }[] = [];
