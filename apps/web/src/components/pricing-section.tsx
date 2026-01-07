@@ -1,23 +1,21 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Check, Mail, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { api } from '@unlingo/backend/convex/_generated/api'
-import { useQuery } from 'convex/react'
 import { Link } from '@tanstack/react-router'
 
-const PLAN_CONFIG: Record<string, { requests: string; keys: string }> = {
-    pro10kRequests: { requests: "10K", keys: "1K" },
-    pro50kRequests: { requests: "50K", keys: "5K" },
-    pro250kRequests: { requests: "250K", keys: "25K" },
-    pro500kRequests: { requests: "500K", keys: "50K" },
-    pro1mRequests: { requests: "1M", keys: "100K" },
-    pro2mRequests: { requests: "2M", keys: "200K" },
-    pro10mRequests: { requests: "10M", keys: "200K" },
-    pro50mRequests: { requests: "50M", keys: "200K" },
-    pro100mRequests: { requests: "100M", keys: "200K" },
-}
+const PLANS: { requests: string; keys: string, price: number }[] = [
+    { requests: "10K", keys: "1K", price: 5 },
+    { requests: "50K", keys: "5K", price: 12 },
+    { requests: "250K", keys: "25K", price: 25 },
+    { requests: "500K", keys: "50K", price: 50 },
+    { requests: "1M", keys: "100K", price: 75 },
+    { requests: "2M", keys: "200K", price: 100 },
+    { requests: "10M", keys: "200K", price: 250 },
+    { requests: "50M", keys: "200K", price: 500 },
+    { requests: "100M", keys: "200K", price: 1000 },
+];
 
 const INCLUDED_FEATURES = [
     "Unlimited projects",
@@ -31,40 +29,16 @@ const INCLUDED_FEATURES = [
 export default function PricingSection() {
     const [selectedTier, setSelectedTier] = useState<string | null>(null)
 
-    const products = useQuery(api.polarActions.getConfiguredProducts, undefined)
-
-    const planList = useMemo(() => {
-        if (!products) return []
-
-        return Object.entries(products)
-            .filter(([_, product]) => product !== undefined)
-            .map(([key, product]) => {
-                const config = PLAN_CONFIG[key] || { requests: "N/A", keys: "1" }
-                return {
-                    id: product!.polarId,
-                    name: product!.name,
-                    price: product!.prices?.[0]?.priceAmount
-                        ? (product!.prices[0].priceAmount / 100)
-                        : 0,
-                    interval: "month",
-                    requests: config.requests,
-                    keys: config.keys,
-                    key,
-                }
-            })
-            .sort((a, b) => a.price - b.price)
-    }, [products])
-
     useEffect(() => {
-        if (planList.length > 0 && !selectedTier) {
-            const defaultPlan = planList.find(p => p.requests === "250K") || planList[2] || planList[0]
+        if (!selectedTier) {
+            const defaultPlan = PLANS.find(p => p.requests === "250K") || PLANS[2] || PLANS[0]
             if (defaultPlan) {
-                setSelectedTier(defaultPlan.id)
+                setSelectedTier(defaultPlan.requests)
             }
         }
-    }, [planList, selectedTier])
+    }, [selectedTier])
 
-    const selectedPlan = planList.find(p => p.id === selectedTier)
+    const selectedPlan = PLANS.find(p => p.requests === selectedTier)
 
     return (
         <section
@@ -73,22 +47,22 @@ export default function PricingSection() {
         >
             <div className="mx-auto max-w-5xl px-6">
                 <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
-                    <Card className="p-8 md:p-10">
-                        <div className="space-y-6">
-                            <p className="text-muted-foreground text-sm">
-                                Choose how many requests you'll need per month
-                            </p>
+                    <Card className="p-8 md:p-10 h-full">
+                        <div className="h-full flex flex-col justify-between gap-6">
+                            <div className='flex flex-col gap-6'>
+                                <p className="text-muted-foreground text-sm">
+                                    Choose how many requests you'll need per month
+                                </p>
 
-                            {planList.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
-                                    {planList.map((plan) => (
+                                    {PLANS.map((plan) => (
                                         <button
-                                            key={plan.id}
+                                            key={plan.requests}
                                             type="button"
-                                            onClick={() => setSelectedTier(plan.id)}
+                                            onClick={() => setSelectedTier(plan.requests)}
                                             className={cn(
                                                 "px-4 py-2 rounded-full text-sm font-medium transition-all border",
-                                                selectedTier === plan.id
+                                                selectedTier === plan.requests
                                                     ? "bg-foreground text-background border-foreground"
                                                     : "bg-transparent text-foreground border-border hover:border-foreground/50"
                                             )}
@@ -103,20 +77,9 @@ export default function PricingSection() {
                                         Custom
                                     </a>
                                 </div>
-                            ) : (
-                                <div className="flex flex-wrap gap-2">
-                                    {["10K", "50K", "250K", "500K", "1M", "2M"].map((tier) => (
-                                        <div
-                                            key={tier}
-                                            className="px-4 py-2 rounded-full text-sm font-medium bg-muted/50 text-muted-foreground animate-pulse"
-                                        >
-                                            {tier}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                            </div>
 
-                            <div className="pt-8 border-t border-border">
+                            <div>
                                 <div className="flex items-baseline justify-between">
                                     <div>
                                         <span className="text-5xl md:text-6xl font-bold text-foreground">
