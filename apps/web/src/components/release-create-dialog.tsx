@@ -223,19 +223,21 @@ const ReleaseCreateDialog = ({ isOpen, setIsOpen, workspace, project }: Props) =
                                                     <div key={item.build._id} className="flex items-center gap-3 px-3 py-2">
                                                         <span className="text-sm flex-1 truncate">{item.build.tag}</span>
                                                         <div className="flex items-center gap-2">
-                                                            <NumberField
-                                                                value={item.selectionChance}
-                                                                onValueChange={value => handleChanceChange(item.build._id, value ?? 0)}
-                                                                max={100}
-                                                                min={0}
-                                                                size='sm'
-                                                            >
-                                                                <NumberFieldGroup>
-                                                                    <NumberFieldDecrement />
-                                                                    <NumberFieldInput className='w-16' />
-                                                                    <NumberFieldIncrement />
-                                                                </NumberFieldGroup>
-                                                            </NumberField>
+                                                            <Field>
+                                                                <NumberField
+                                                                    value={item.selectionChance}
+                                                                    onValueChange={value => handleChanceChange(item.build._id, value ?? 0)}
+                                                                    max={100}
+                                                                    min={0}
+                                                                    size='sm'
+                                                                >
+                                                                    <NumberFieldGroup>
+                                                                        <NumberFieldDecrement />
+                                                                        <NumberFieldInput className='w-16' />
+                                                                        <NumberFieldIncrement />
+                                                                    </NumberFieldGroup>
+                                                                </NumberField>
+                                                            </Field>
                                                             <span className="text-sm text-muted-foreground">%</span>
                                                             <Button
                                                                 type="button"
