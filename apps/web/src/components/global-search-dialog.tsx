@@ -6,6 +6,7 @@ import {
     DialogPanel,
     DialogPopup,
     DialogTrigger,
+    DialogFooter,
 } from "./ui/dialog";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
 import { KeyRoundIcon, MoreVerticalIcon, PencilIcon, SearchIcon, TrashIcon } from "lucide-react";
@@ -235,21 +236,19 @@ const GlobalSearchDialog = ({ workspace, project }: Props) => {
                                         <MenuTrigger
                                             render={
                                                 <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8"
+                                                    size="icon-xs"
                                                     onClick={(e) => e.stopPropagation()}
                                                 />
                                             }
                                         >
-                                            <MoreVerticalIcon className="h-4 w-4" />
+                                            <MoreVerticalIcon />
                                         </MenuTrigger>
                                         <MenuPopup align="end">
                                             <MenuItem
                                                 disabled={item.status !== 1}
                                                 onClick={() => handleEditKey(item)}
                                             >
-                                                <PencilIcon className="h-4 w-4" />
+                                                <PencilIcon />
                                                 Edit Values
                                             </MenuItem>
                                             <MenuSeparator />
@@ -258,7 +257,7 @@ const GlobalSearchDialog = ({ workspace, project }: Props) => {
                                                 disabled={item.status !== 1}
                                                 onClick={() => handleDeleteKey(item)}
                                             >
-                                                <TrashIcon className="h-4 w-4" />
+                                                <TrashIcon />
                                                 Delete Key
                                             </MenuItem>
                                         </MenuPopup>
@@ -268,28 +267,30 @@ const GlobalSearchDialog = ({ workspace, project }: Props) => {
                         ))
                     )}
                 </DialogPanel>
-                {workspace && project && activeKeyId && activeKeyData && (
-                    <>
-                        <TranslationKeyEditDialog
-                            isOpen={isEditDialogOpen}
-                            setIsOpen={setIsEditDialogOpen}
-                            workspaceId={workspace._id}
-                            projectId={project._id}
-                            translationKeyId={activeKeyId}
-                        />
-                        {namespace ? (
-                            <TranslationKeyDeleteDialog
-                                isOpen={isDeleteDialogOpen}
-                                setIsOpen={setIsDeleteDialogOpen}
-                                workspace={workspace}
-                                project={project}
-                                namespace={namespace}
-                                translationKeys={[activeKeyId]}
-                                onDeleted={handleDeleted}
+                <DialogFooter>
+                    {workspace && project && activeKeyId && activeKeyData ? (
+                        <>
+                            <TranslationKeyEditDialog
+                                isOpen={isEditDialogOpen}
+                                setIsOpen={setIsEditDialogOpen}
+                                workspaceId={workspace._id}
+                                projectId={project._id}
+                                translationKeyId={activeKeyId}
                             />
-                        ) : null}
-                    </>
-                )}
+                            {namespace ? (
+                                <TranslationKeyDeleteDialog
+                                    isOpen={isDeleteDialogOpen}
+                                    setIsOpen={setIsDeleteDialogOpen}
+                                    workspace={workspace}
+                                    project={project}
+                                    namespace={namespace}
+                                    translationKeys={[activeKeyId]}
+                                    onDeleted={handleDeleted}
+                                />
+                            ) : null}
+                        </>
+                    ) : null}
+                </DialogFooter>
             </DialogPopup>
         </Dialog>
     );
