@@ -1,42 +1,53 @@
+import BentoFour from "@/components/bento-4";
+import SmartHomeBento from "@/components/bento-5";
+import CallToAction from "@/components/call-to-action";
+import FAQs from "@/components/faqs-1";
+import FooterSection from "@/components/footer";
+import GithubSpaceLogo from "@/components/github-space-logo";
+import HeroSection from "@/components/hero-section";
+import IntegrationsSection from "@/components/integrations-6";
+import { Button } from "@/components/ui/button";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
 	component: HomeComponent,
 });
 
-const TITLE_TEXT = `
- ██████╗ ███████╗████████╗████████╗███████╗██████╗
- ██╔══██╗██╔════╝╚══██╔══╝╚══██╔══╝██╔════╝██╔══██╗
- ██████╔╝█████╗     ██║      ██║   █████╗  ██████╔╝
- ██╔══██╗██╔══╝     ██║      ██║   ██╔══╝  ██╔══██╗
- ██████╔╝███████╗   ██║      ██║   ███████╗██║  ██║
- ╚═════╝ ╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚═╝  ╚═╝
-
- ████████╗    ███████╗████████╗ █████╗  ██████╗██╗  ██╗
- ╚══██╔══╝    ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
-    ██║       ███████╗   ██║   ███████║██║     █████╔╝
-    ██║       ╚════██║   ██║   ██╔══██║██║     ██╔═██╗
-    ██║       ███████║   ██║   ██║  ██║╚██████╗██║  ██╗
-    ╚═╝       ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
- `;
-
 function HomeComponent() {
 	return (
-		<div className="container mx-auto max-w-3xl px-4 py-2">
-			<pre className="overflow-x-auto font-mono text-sm">{TITLE_TEXT}</pre>
-			<div className="grid gap-6">
-				<section className="rounded-lg border p-4">
-					<h2 className="mb-2 font-medium">API Status</h2>
-					<div className="flex items-center gap-2">
-						<div
-							className={`h-2 w-2 rounded-full bg-green-500`}
-						/>
-						<span className="text-muted-foreground text-sm">
-							"Connected"
-						</span>
+		<div className="min-h-screen w-full">
+			<HeroSection />
+			<BentoFour />
+			<section className="bg-background">
+				<div className="py-24">
+					<div className="perspective-dramatic group mx-auto max-w-5xl px-6">
+						<div className="rotate-x-6 hover:rotate-x-0 mask-radial-from-70% mask-radial-[50%_90%] group relative mx-auto max-w-2xl scale-y-90 items-center justify-between space-y-6 from-transparent pb-1 transition-transform duration-1000 hover:scale-y-100">
+							<div className="mask-radial-to-55% absolute inset-0 bg-[radial-gradient(var(--color-foreground)_1px,transparent_1px)] opacity-25 [background-size:16px_16px]" />
+							<GithubSpaceLogo />
+						</div>
+						<div className="mx-auto mt-12 max-w-xl text-center">
+							<h2 className="text-balance text-3xl font-semibold md:text-5xl">Open Source</h2>
+							<p className="text-muted-foreground mb-6 mt-4 text-balance">Connect seamlessly with popular frameworks and platforms to enhance your workflow.</p>
+							<div className="flex w-full gap-2 justify-center">
+								<Button size='sm' render={<a href='https://github.com/twendykirn/unlingo' target='_blank' />}>
+									Visit repository
+								</Button>
+								<Button
+									size="sm"
+									variant="outline"
+									render={<a href='https://docs.unlingo.com' target='_blank' />}>
+									Docs
+								</Button>
+							</div>
+						</div>
 					</div>
-				</section>
-			</div>
+				</div>
+			</section>
+			<SmartHomeBento />
+			<IntegrationsSection />
+			<FAQs />
+			<CallToAction />
+			<FooterSection />
 		</div>
 	);
 }

@@ -19,6 +19,14 @@
     "hooks": "@/hooks"
   },
   "registries": {
-    "@coss": "https://coss.com/ui/r/{name}.json"
+    "@coss": "https://coss.com/ui/r/{name}.json",
+    "@tailark": "https://tailark.com/r/{name}.json",
+    "@tailark-pro": {
+      "url": "https://pro.tailark.com/registry/{name}",
+      "headers": {
+        "Authorization": "Bearer ${TAILARK_API_KEY}"
+      }
+    },
+    "@motion-primitives": "https://motion-primitives.com/c/{name}.json"
   }
 }
