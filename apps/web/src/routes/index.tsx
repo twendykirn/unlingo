@@ -6,6 +6,7 @@ import FooterSection from "@/components/footer";
 import GithubSpaceLogo from "@/components/github-space-logo";
 import HeroSection from "@/components/hero-section";
 import IntegrationsSection from "@/components/integrations-6";
+import PricingSection from "@/components/pricing-section";
 import { Button } from "@/components/ui/button";
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -45,6 +46,7 @@ function HomeComponent() {
 			</section>
 			<SmartHomeBento />
 			<IntegrationsSection />
+			<PricingSection />
 			<FAQs />
 			<CallToAction />
 			<FooterSection />
