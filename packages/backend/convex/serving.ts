@@ -18,10 +18,16 @@ export const resolveTranslationFile = internalQuery({
       return { error: "release_not_found" };
     }
 
-    const buildPromises = release.builds.map(async (item) => {
-      const doc = await ctx.db.get(item.buildId);
+    const connections = await ctx.db
+      .query("releaseBuildConnections")
+      .withIndex("by_release", (q) => q.eq("releaseId", release._id))
+      .collect();
+
+    const buildPromises = connections.map(async (conn) => {
+      const doc = await ctx.db.get(conn.buildId);
       return {
-        ...item,
+        buildId: conn.buildId,
+        selectionChance: conn.selectionChance,
         doc,
       };
     });

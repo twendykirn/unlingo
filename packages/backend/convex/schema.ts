@@ -176,18 +176,20 @@ export default defineSchema({
   releases: defineTable({
     projectId: v.id("projects"),
     tag: v.string(),
-    builds: v.array(
-      v.object({
-        buildId: v.id("builds"),
-        selectionChance: v.number(), // 0-100%, for A/B testing
-      }),
-    ),
   })
     .index("by_project_tag", ["projectId", "tag"])
     .searchIndex("search", {
       searchField: "tag",
       filterFields: ["projectId"],
     }),
+  releaseBuildConnections: defineTable({
+    releaseId: v.id("releases"),
+    buildId: v.id("builds"),
+    selectionChance: v.number(), // 0-100%, for A/B testing
+  })
+    .index("by_release", ["releaseId"])
+    .index("by_build", ["buildId"])
+    .index("by_release_build", ["releaseId", "buildId"]),
   screenshots: defineTable({
     projectId: v.id("projects"),
     name: v.string(),

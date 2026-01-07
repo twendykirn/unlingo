@@ -1,5 +1,5 @@
 import { paginationOptsValidator } from "convex/server";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { authMiddleware } from "../middlewares/auth";
@@ -36,6 +36,44 @@ export const getReleases = query({
       .withIndex("by_project_tag", (q) => q.eq("projectId", args.projectId))
       .order("desc")
       .paginate(args.paginationOpts);
+  },
+});
+
+export const getReleaseConnections = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+    projectId: v.id("projects"),
+    releaseId: v.id("releases"),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const release = await ctx.db.get(args.releaseId);
+    if (!release || release.projectId !== args.projectId) {
+      throw new Error("Release not found or access denied");
+    }
+
+    const connections = await ctx.db
+      .query("releaseBuildConnections")
+      .withIndex("by_release", (q) => q.eq("releaseId", args.releaseId))
+      .collect();
+
+    const result = await Promise.all(
+      connections.map(async (conn) => {
+        const build = await ctx.db.get(conn.buildId);
+        return {
+          ...conn,
+          build,
+        };
+      })
+    );
+
+    return result.filter((r) => r.build !== null && r.build.status !== -1);
   },
 });
 
@@ -76,8 +114,15 @@ export const createRelease = mutation({
     const releaseId = await ctx.db.insert("releases", {
       projectId: args.projectId,
       tag: args.tag,
-      builds: args.builds,
     });
+
+    for (const build of args.builds) {
+      await ctx.db.insert("releaseBuildConnections", {
+        releaseId,
+        buildId: build.buildId,
+        selectionChance: build.selectionChance,
+      });
+    }
 
     return releaseId;
   },
@@ -123,12 +168,147 @@ export const updateRelease = mutation({
       updates.tag = args.tag;
     }
 
-    if (args.builds) {
-      await validateBuildsConfiguration(ctx, release.projectId, args.builds);
-      updates.builds = args.builds;
+    if (Object.keys(updates).length > 0) {
+      await ctx.db.patch(args.releaseId, updates);
     }
 
-    await ctx.db.patch(args.releaseId, updates);
+    if (args.builds) {
+      await validateBuildsConfiguration(ctx, release.projectId, args.builds);
+
+      const existingConnections = await ctx.db
+        .query("releaseBuildConnections")
+        .withIndex("by_release", (q) => q.eq("releaseId", args.releaseId))
+        .collect();
+
+      for (const conn of existingConnections) {
+        await ctx.db.delete(conn._id);
+      }
+
+      for (const build of args.builds) {
+        await ctx.db.insert("releaseBuildConnections", {
+          releaseId: args.releaseId,
+          buildId: build.buildId,
+          selectionChance: build.selectionChance,
+        });
+      }
+    }
+  },
+});
+
+export const addBuildToRelease = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    projectId: v.id("projects"),
+    releaseId: v.id("releases"),
+    buildId: v.id("builds"),
+    selectionChance: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const release = await ctx.db.get(args.releaseId);
+    if (!release || release.projectId !== args.projectId) {
+      throw new Error("Release not found or access denied");
+    }
+
+    const build = await ctx.db.get(args.buildId);
+    if (!build || build.projectId !== args.projectId) {
+      throw new Error("Build not found or access denied");
+    }
+
+    if (build.status !== 1) {
+      throw new Error(`Build ${build.tag} is not active.`);
+    }
+
+    const existingConnection = await ctx.db
+      .query("releaseBuildConnections")
+      .withIndex("by_release_build", (q) => q.eq("releaseId", args.releaseId).eq("buildId", args.buildId))
+      .first();
+
+    if (existingConnection) {
+      throw new Error("Build is already connected to this release.");
+    }
+
+    await ctx.db.insert("releaseBuildConnections", {
+      releaseId: args.releaseId,
+      buildId: args.buildId,
+      selectionChance: args.selectionChance,
+    });
+
+    await recalculateConnectionPercentages(ctx, args.releaseId, build.namespace);
+  },
+});
+
+export const removeBuildFromRelease = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    projectId: v.id("projects"),
+    releaseId: v.id("releases"),
+    connectionId: v.id("releaseBuildConnections"),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const release = await ctx.db.get(args.releaseId);
+    if (!release || release.projectId !== args.projectId) {
+      throw new Error("Release not found or access denied");
+    }
+
+    const connection = await ctx.db.get(args.connectionId);
+    if (!connection || connection.releaseId !== args.releaseId) {
+      throw new Error("Connection not found or access denied");
+    }
+
+    const build = await ctx.db.get(connection.buildId);
+    const namespace = build?.namespace;
+
+    await ctx.db.delete(args.connectionId);
+
+    if (namespace) {
+      await recalculateConnectionPercentages(ctx, args.releaseId, namespace);
+    }
+  },
+});
+
+export const updateConnectionChance = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    projectId: v.id("projects"),
+    releaseId: v.id("releases"),
+    connectionId: v.id("releaseBuildConnections"),
+    selectionChance: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const release = await ctx.db.get(args.releaseId);
+    if (!release || release.projectId !== args.projectId) {
+      throw new Error("Release not found or access denied");
+    }
+
+    const connection = await ctx.db.get(args.connectionId);
+    if (!connection || connection.releaseId !== args.releaseId) {
+      throw new Error("Connection not found or access denied");
+    }
+
+    await ctx.db.patch(args.connectionId, {
+      selectionChance: args.selectionChance,
+    });
   },
 });
 
@@ -149,6 +329,15 @@ export const deleteRelease = mutation({
     const release = await ctx.db.get(args.releaseId);
     if (!release || release.projectId !== args.projectId) {
       throw new Error("Release not found or access denied");
+    }
+
+    const connections = await ctx.db
+      .query("releaseBuildConnections")
+      .withIndex("by_release", (q) => q.eq("releaseId", args.releaseId))
+      .collect();
+
+    for (const conn of connections) {
+      await ctx.db.delete(conn._id);
     }
 
     await ctx.db.delete(args.releaseId);
@@ -174,12 +363,17 @@ export const getConfiguration = query({
       throw new Error("Release not found or access denied");
     }
 
-    const groups: Record<string, { id: Id<"builds">; chance: number; tag: string }[]> = {};
+    const connections = await ctx.db
+      .query("releaseBuildConnections")
+      .withIndex("by_release", (q) => q.eq("releaseId", args.releaseId))
+      .collect();
+
+    const groups: Record<string, { id: Id<"builds">; connectionId: Id<"releaseBuildConnections">; chance: number; tag: string }[]> = {};
     let isDirty = false;
     let validBuildCount = 0;
 
-    for (const item of release.builds) {
-      const build = await ctx.db.get(item.buildId);
+    for (const conn of connections) {
+      const build = await ctx.db.get(conn.buildId);
 
       if (build && build.status !== -1) {
         if (!groups[build.namespace]) {
@@ -187,7 +381,8 @@ export const getConfiguration = query({
         }
         groups[build.namespace].push({
           id: build._id,
-          chance: item.selectionChance,
+          connectionId: conn._id,
+          chance: conn.selectionChance,
           tag: build.tag,
         });
         validBuildCount++;
@@ -199,7 +394,7 @@ export const getConfiguration = query({
     const cleanBuildsForDB: { buildId: Id<"builds">; selectionChance: number }[] = [];
     const uiGroups: Array<{
       namespace: string;
-      builds: Array<{ buildId: Id<"builds">; buildTag: string; selectionChance: number }>;
+      builds: Array<{ buildId: Id<"builds">; connectionId: Id<"releaseBuildConnections">; buildTag: string; selectionChance: number }>;
     }> = [];
 
     for (const [namespaceName, builds] of Object.entries(groups)) {
@@ -223,13 +418,14 @@ export const getConfiguration = query({
         namespace: namespaceName,
         builds: builds.map((b) => ({
           buildId: b.id,
+          connectionId: b.connectionId,
           buildTag: b.tag,
           selectionChance: b.chance,
         })),
       });
     }
 
-    if (validBuildCount !== release.builds.length) {
+    if (validBuildCount !== connections.length) {
       isDirty = true;
     }
 
@@ -267,11 +463,75 @@ export const repairConfiguration = mutation({
       throw new Error("Release not found or access denied");
     }
 
-    await ctx.db.patch(args.releaseId, {
-      builds: args.cleanBuilds,
-    });
+    const existingConnections = await ctx.db
+      .query("releaseBuildConnections")
+      .withIndex("by_release", (q) => q.eq("releaseId", args.releaseId))
+      .collect();
+
+    for (const conn of existingConnections) {
+      await ctx.db.delete(conn._id);
+    }
+
+    for (const build of args.cleanBuilds) {
+      await ctx.db.insert("releaseBuildConnections", {
+        releaseId: args.releaseId,
+        buildId: build.buildId,
+        selectionChance: build.selectionChance,
+      });
+    }
   },
 });
+
+export const handleBuildDeleted = internalMutation({
+  args: {
+    buildId: v.id("builds"),
+    namespace: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const connections = await ctx.db
+      .query("releaseBuildConnections")
+      .withIndex("by_build", (q) => q.eq("buildId", args.buildId))
+      .collect();
+
+    const releaseIds = new Set<Id<"releases">>();
+    for (const conn of connections) {
+      releaseIds.add(conn.releaseId);
+      await ctx.db.delete(conn._id);
+    }
+
+    for (const releaseId of releaseIds) {
+      await recalculateConnectionPercentages(ctx, releaseId, args.namespace);
+    }
+  },
+});
+
+const recalculateConnectionPercentages = async (
+  ctx: any,
+  releaseId: Id<"releases">,
+  namespace: string,
+) => {
+  const connections = await ctx.db
+    .query("releaseBuildConnections")
+    .withIndex("by_release", (q: any) => q.eq("releaseId", releaseId))
+    .collect();
+
+  const namespaceConnections: { conn: any; build: any }[] = [];
+
+  for (const conn of connections) {
+    const build = await ctx.db.get(conn.buildId);
+    if (build && build.namespace === namespace && build.status !== -1) {
+      namespaceConnections.push({ conn, build });
+    }
+  }
+
+  if (namespaceConnections.length === 0) return;
+
+  const evenChance = 100 / namespaceConnections.length;
+
+  for (const { conn } of namespaceConnections) {
+    await ctx.db.patch(conn._id, { selectionChance: evenChance });
+  }
+};
 
 const validateBuildsConfiguration = async (
   ctx: any,

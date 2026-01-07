@@ -152,6 +152,11 @@ export const deleteBuild = mutation({
       throw new Error("Project not found or access denied");
     }
 
+    await ctx.scheduler.runAfter(0, internal.releases.handleBuildDeleted, {
+      buildId: args.buildId,
+      namespace: build.namespace,
+    });
+
     await ctx.db.delete(args.buildId);
 
     if (Object.keys(build.languageFiles).length > 0) {
