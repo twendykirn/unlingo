@@ -141,7 +141,7 @@ function EditableCell({
             className='cursor-pointer max-w-[250px] relative group flex items-center'
         >
             <Tooltip>
-                <TooltipTrigger delay={0} render={<div className={`truncate text-sm pr-6 w-full ${!isKey && 'text-muted-foreground'}`} />}>
+                <TooltipTrigger delay={300} render={<div className={`truncate text-sm pr-6 w-full ${!isKey && 'text-muted-foreground'}`} />}>
                     {value || <span className="text-gray-300 italic">Empty</span>}
                 </TooltipTrigger>
                 <TooltipPopup className='pointer-events-none'>
