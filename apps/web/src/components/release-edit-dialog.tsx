@@ -109,10 +109,44 @@ const ReleaseEditDialog = ({ isOpen, setIsOpen, workspace, project, release }: P
     };
 
     const handleChanceChange = (buildId: Id<'builds'>, chance: number) => {
+        const targetBuild = selectedBuilds.find((item) => item.build._id === buildId);
+        if (!targetBuild) return;
+
+        const namespace = targetBuild.build.namespace;
+        const buildsInNamespace = selectedBuilds.filter(
+            (item) => item.build.namespace === namespace
+        );
+        const otherBuildsInNamespace = buildsInNamespace.filter(
+            (item) => item.build._id !== buildId
+        );
+
+        if (otherBuildsInNamespace.length === 0) {
+            setSelectedBuilds(
+                selectedBuilds.map((item) =>
+                    item.build._id === buildId ? { ...item, selectionChance: chance } : item
+                )
+            );
+            return;
+        }
+
+        const oldChance = targetBuild.selectionChance;
+        const chanceChange = chance - oldChance;
+        const totalOtherChance = otherBuildsInNamespace.reduce(
+            (sum, item) => sum + item.selectionChance, 0
+        );
+
         setSelectedBuilds(
-            selectedBuilds.map((item) =>
-                item.build._id === buildId ? { ...item, selectionChance: chance } : item
-            )
+            selectedBuilds.map((item) => {
+                if (item.build._id === buildId) {
+                    return { ...item, selectionChance: chance };
+                }
+                if (item.build.namespace === namespace && totalOtherChance > 0) {
+                    const proportion = item.selectionChance / totalOtherChance;
+                    const newChance = Math.max(0, item.selectionChance - (chanceChange * proportion));
+                    return { ...item, selectionChance: newChance };
+                }
+                return item;
+            })
         );
     };
 

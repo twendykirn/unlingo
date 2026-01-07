@@ -109,14 +109,14 @@ export const createRelease = mutation({
       throw new Error(`Release tag "${args.tag}" already exists.`);
     }
 
-    await validateBuildsConfiguration(ctx, args.projectId, args.builds);
+    const validatedBuilds = await validateBuildsConfiguration(ctx, args.projectId, args.builds);
 
     const releaseId = await ctx.db.insert("releases", {
       projectId: args.projectId,
       tag: args.tag,
     });
 
-    for (const build of args.builds) {
+    for (const build of validatedBuilds) {
       await ctx.db.insert("releaseBuildConnections", {
         releaseId,
         buildId: build.buildId,
@@ -169,23 +169,37 @@ export const updateRelease = mutation({
     }
 
     if (args.builds) {
-      await validateBuildsConfiguration(ctx, release.projectId, args.builds);
+      const validatedBuilds = await validateBuildsConfiguration(ctx, release.projectId, args.builds);
 
       const existingConnections = await ctx.db
         .query("releaseBuildConnections")
         .withIndex("by_release_build", (q) => q.eq("releaseId", args.releaseId))
         .collect();
 
+      const existingMap = new Map(existingConnections.map((conn) => [conn.buildId, conn]));
+      const newBuildIds = new Set(validatedBuilds.map((b) => b.buildId));
+
       for (const conn of existingConnections) {
-        await ctx.db.delete(conn._id);
+        if (!newBuildIds.has(conn.buildId)) {
+          await ctx.db.delete(conn._id);
+        }
       }
 
-      for (const build of args.builds) {
-        await ctx.db.insert("releaseBuildConnections", {
-          releaseId: args.releaseId,
-          buildId: build.buildId,
-          selectionChance: build.selectionChance,
-        });
+      for (const build of validatedBuilds) {
+        const existingConn = existingMap.get(build.buildId);
+        if (existingConn) {
+          if (existingConn.selectionChance !== build.selectionChance) {
+            await ctx.db.patch(existingConn._id, {
+              selectionChance: build.selectionChance,
+            });
+          }
+        } else {
+          await ctx.db.insert("releaseBuildConnections", {
+            releaseId: args.releaseId,
+            buildId: build.buildId,
+            selectionChance: build.selectionChance,
+          });
+        }
       }
     }
   },
@@ -302,9 +316,46 @@ export const updateConnectionChance = mutation({
       throw new Error("Connection not found or access denied");
     }
 
+    const build = await ctx.db.get(connection.buildId);
+    if (!build) {
+      throw new Error("Build not found");
+    }
+
+    const oldChance = connection.selectionChance;
+    const chanceChange = args.selectionChance - oldChance;
+
     await ctx.db.patch(args.connectionId, {
       selectionChance: args.selectionChance,
     });
+
+    const allConnections = await ctx.db
+      .query("releaseBuildConnections")
+      .withIndex("by_release", (q) => q.eq("releaseId", args.releaseId))
+      .collect();
+
+    const otherNamespaceConnections: { conn: any; build: any }[] = [];
+    for (const conn of allConnections) {
+      if (conn._id === args.connectionId) continue;
+      const connBuild = await ctx.db.get(conn.buildId);
+      if (connBuild && connBuild.namespace === build.namespace && connBuild.status !== -1) {
+        otherNamespaceConnections.push({ conn, build: connBuild });
+      }
+    }
+
+    if (otherNamespaceConnections.length > 0) {
+      const totalOtherChance = otherNamespaceConnections.reduce(
+        (sum, { conn }) => sum + conn.selectionChance,
+        0
+      );
+
+      if (totalOtherChance > 0) {
+        for (const { conn } of otherNamespaceConnections) {
+          const proportion = conn.selectionChance / totalOtherChance;
+          const newChance = Math.max(0, conn.selectionChance - chanceChange * proportion);
+          await ctx.db.patch(conn._id, { selectionChance: newChance });
+        }
+      }
+    }
   },
 });
 
@@ -380,10 +431,19 @@ const recalculateConnectionPercentages = async (ctx: any, releaseId: Id<"release
 
   if (namespaceConnections.length === 0) return;
 
-  const evenChance = 100 / namespaceConnections.length;
+  const totalChance = namespaceConnections.reduce((sum, { conn }) => sum + conn.selectionChance, 0);
 
-  for (const { conn } of namespaceConnections) {
-    await ctx.db.patch(conn._id, { selectionChance: evenChance });
+  if (totalChance === 0) {
+    const evenChance = 100 / namespaceConnections.length;
+    for (const { conn } of namespaceConnections) {
+      await ctx.db.patch(conn._id, { selectionChance: evenChance });
+    }
+  } else {
+    const scaleFactor = 100 / totalChance;
+    for (const { conn } of namespaceConnections) {
+      const newChance = conn.selectionChance * scaleFactor;
+      await ctx.db.patch(conn._id, { selectionChance: newChance });
+    }
   }
 };
 
@@ -391,8 +451,8 @@ const validateBuildsConfiguration = async (
   ctx: any,
   projectId: string,
   buildsInput: { buildId: string; selectionChance: number }[],
-) => {
-  const chanceMap: Record<string, number> = {};
+): Promise<{ buildId: Id<"builds">; selectionChance: number }[]> => {
+  const buildDataMap: Map<string, { buildId: Id<"builds">; namespace: string; selectionChance: number }> = new Map();
 
   for (const item of buildsInput) {
     const build = await ctx.db.get(item.buildId);
@@ -409,13 +469,47 @@ const validateBuildsConfiguration = async (
       throw new Error(`Build ${build.tag} is not active.`);
     }
 
-    const ns = build.namespace;
-    chanceMap[ns] = (chanceMap[ns] || 0) + item.selectionChance;
+    buildDataMap.set(item.buildId, {
+      buildId: item.buildId as Id<"builds">,
+      namespace: build.namespace,
+      selectionChance: item.selectionChance,
+    });
   }
 
-  for (const [ns, total] of Object.entries(chanceMap)) {
+  const namespaceGroups: Record<string, { buildId: Id<"builds">; selectionChance: number }[]> = {};
+  for (const data of buildDataMap.values()) {
+    if (!namespaceGroups[data.namespace]) {
+      namespaceGroups[data.namespace] = [];
+    }
+    namespaceGroups[data.namespace].push({
+      buildId: data.buildId,
+      selectionChance: data.selectionChance,
+    });
+  }
+
+  const result: { buildId: Id<"builds">; selectionChance: number }[] = [];
+
+  for (const [, builds] of Object.entries(namespaceGroups)) {
+    const total = builds.reduce((sum, b) => sum + b.selectionChance, 0);
+
     if (Math.abs(total - 100) > 0.1) {
-      throw new Error(`Selection chances for namespace "${ns}" must sum to 100%. Current: ${total}%`);
+      if (total === 0) {
+        const evenChance = 100 / builds.length;
+        for (const b of builds) {
+          result.push({ buildId: b.buildId, selectionChance: evenChance });
+        }
+      } else {
+        const scaleFactor = 100 / total;
+        for (const b of builds) {
+          result.push({ buildId: b.buildId, selectionChance: b.selectionChance * scaleFactor });
+        }
+      }
+    } else {
+      for (const b of builds) {
+        result.push({ buildId: b.buildId, selectionChance: b.selectionChance });
+      }
     }
   }
+
+  return result;
 };
