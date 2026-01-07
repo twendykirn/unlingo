@@ -53,11 +53,11 @@ export default function FAQs() {
                         <h2 className="text-foreground text-4xl font-semibold">FAQs</h2>
                         <p className="text-muted-foreground mt-4 text-balance text-lg">Your questions answered</p>
                         <p className="text-muted-foreground mt-6 max-md:hidden">
-                            Can't find what you're looking for? Reach out via{' '}
+                            Can't find what you're looking for? Contact our{' '}
                             <Link
                                 to="/"
                                 className="text-primary font-medium hover:underline">
-                                email, Discord, or GitHub
+                                customer support team
                             </Link>
                         </p>
                     </div>
@@ -88,11 +88,11 @@ export default function FAQs() {
                 </div>
 
                 <p className="text-muted-foreground mt-12 px-6 md:hidden">
-                    Can't find what you're looking for? Reach out via{' '}
+                    Can't find what you're looking for? Contact our{' '}
                     <Link
                         to="/"
                         className="text-primary font-medium hover:underline">
-                        email, Discord, or GitHub
+                        customer support team
                     </Link>
                 </p>
             </div>
