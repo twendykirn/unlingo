@@ -279,7 +279,30 @@ export const deleteProjectContents = internalMutation({
         await ctx.db.delete(d._id);
       }
 
-      await next(res.isDone, res.continueCursor, "releases");
+      await next(res.isDone, res.continueCursor, "releaseBuildConnections");
+      return;
+    }
+
+    if (args.table === "releaseBuildConnections") {
+      // Get releases for this project to find their connections
+      const releases = await ctx.db
+        .query("releases")
+        .withIndex("by_project_tag", (q) => q.eq("projectId", args.projectId))
+        .paginate({ cursor: args.cursor, numItems: STANDARD_LIMIT });
+
+      for (const release of releases.page) {
+        // Delete all connections for this release
+        const connections = await ctx.db
+          .query("releaseBuildConnections")
+          .withIndex("by_release_build", (q) => q.eq("releaseId", release._id))
+          .collect();
+
+        for (const conn of connections) {
+          await ctx.db.delete(conn._id);
+        }
+      }
+
+      await next(releases.isDone, releases.continueCursor, "releases");
       return;
     }
 
