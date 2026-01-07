@@ -43,11 +43,11 @@ export function BuildSearchDialog({
         status,
     } = usePaginatedQuery(
         api.builds.getBuilds,
-        {
+        isOpen ? {
             projectId,
             workspaceId,
             search: search || undefined,
-        },
+        } : 'skip',
         { initialNumItems: 20 }
     );
 

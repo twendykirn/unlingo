@@ -162,24 +162,23 @@ const ReleaseCreateDialog = ({ isOpen, setIsOpen, workspace, project }: Props) =
                                 <Input type="text" name="tag" placeholder="e.g., v1.0.0" required />
                             </Field>
                             <Field className="border-t pt-4">
-                                <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center justify-between mb-3 w-full">
                                     <FieldLabel className="mb-0">Builds</FieldLabel>
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        size="sm"
+                                        size="icon"
                                         onClick={() => setIsBuildSearchOpen(true)}
                                     >
-                                        <PlusIcon className="size-4 mr-1" />
-                                        Add Build
+                                        <PlusIcon />
                                     </Button>
                                 </div>
                                 {selectedBuilds.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground text-center py-4 border rounded-lg">
-                                        No builds added yet. Click "Add Build" to get started.
+                                    <p className="text-sm text-muted-foreground text-center py-4 border rounded-lg w-full">
+                                        No builds added yet.
                                     </p>
                                 ) : (
-                                    <div className="border rounded-lg divide-y">
+                                    <div className="border rounded-lg divide-y w-full">
                                         {Object.entries(buildsByNamespace).map(([namespace, builds]) => (
                                             <div key={namespace}>
                                                 <div className="px-3 py-2 bg-muted/50 text-sm font-medium text-muted-foreground">

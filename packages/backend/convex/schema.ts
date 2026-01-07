@@ -187,7 +187,6 @@ export default defineSchema({
     buildId: v.id("builds"),
     selectionChance: v.number(), // 0-100%, for A/B testing
   })
-    .index("by_release", ["releaseId"])
     .index("by_build", ["buildId"])
     .index("by_release_build", ["releaseId", "buildId"]),
   screenshots: defineTable({

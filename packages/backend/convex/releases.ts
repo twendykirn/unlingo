@@ -60,7 +60,7 @@ export const getReleaseConnections = query({
 
     const connections = await ctx.db
       .query("releaseBuildConnections")
-      .withIndex("by_release", (q) => q.eq("releaseId", args.releaseId))
+      .withIndex("by_release_build", (q) => q.eq("releaseId", args.releaseId))
       .collect();
 
     const result = await Promise.all(
@@ -70,7 +70,7 @@ export const getReleaseConnections = query({
           ...conn,
           build,
         };
-      })
+      }),
     );
 
     return result.filter((r) => r.build !== null && r.build.status !== -1);
@@ -149,8 +149,6 @@ export const updateRelease = mutation({
       throw new Error("Release not found or access denied");
     }
 
-    const updates: any = {};
-
     if (args.tag?.trim() && args.tag.trim() !== release.tag) {
       if (args.tag.length > 50) {
         throw new Error("Release tag cannot exceed 50 characters");
@@ -165,11 +163,9 @@ export const updateRelease = mutation({
         throw new Error(`Release tag "${args.tag}" is already taken.`);
       }
 
-      updates.tag = args.tag;
-    }
-
-    if (Object.keys(updates).length > 0) {
-      await ctx.db.patch(args.releaseId, updates);
+      await ctx.db.patch(args.releaseId, {
+        tag: args.tag,
+      });
     }
 
     if (args.builds) {
@@ -177,7 +173,7 @@ export const updateRelease = mutation({
 
       const existingConnections = await ctx.db
         .query("releaseBuildConnections")
-        .withIndex("by_release", (q) => q.eq("releaseId", args.releaseId))
+        .withIndex("by_release_build", (q) => q.eq("releaseId", args.releaseId))
         .collect();
 
       for (const conn of existingConnections) {
@@ -333,7 +329,7 @@ export const deleteRelease = mutation({
 
     const connections = await ctx.db
       .query("releaseBuildConnections")
-      .withIndex("by_release", (q) => q.eq("releaseId", args.releaseId))
+      .withIndex("by_release_build", (q) => q.eq("releaseId", args.releaseId))
       .collect();
 
     for (const conn of connections) {
@@ -341,144 +337,6 @@ export const deleteRelease = mutation({
     }
 
     await ctx.db.delete(args.releaseId);
-  },
-});
-
-export const getConfiguration = query({
-  args: {
-    workspaceId: v.id("workspaces"),
-    projectId: v.id("projects"),
-    releaseId: v.id("releases"),
-  },
-  handler: async (ctx, args) => {
-    await authMiddleware(ctx, args.workspaceId);
-
-    const project = await ctx.db.get(args.projectId);
-    if (!project || project.workspaceId !== args.workspaceId) {
-      throw new Error("Project not found or access denied");
-    }
-
-    const release = await ctx.db.get(args.releaseId);
-    if (!release || release.projectId !== args.projectId) {
-      throw new Error("Release not found or access denied");
-    }
-
-    const connections = await ctx.db
-      .query("releaseBuildConnections")
-      .withIndex("by_release", (q) => q.eq("releaseId", args.releaseId))
-      .collect();
-
-    const groups: Record<string, { id: Id<"builds">; connectionId: Id<"releaseBuildConnections">; chance: number; tag: string }[]> = {};
-    let isDirty = false;
-    let validBuildCount = 0;
-
-    for (const conn of connections) {
-      const build = await ctx.db.get(conn.buildId);
-
-      if (build && build.status !== -1) {
-        if (!groups[build.namespace]) {
-          groups[build.namespace] = [];
-        }
-        groups[build.namespace].push({
-          id: build._id,
-          connectionId: conn._id,
-          chance: conn.selectionChance,
-          tag: build.tag,
-        });
-        validBuildCount++;
-      } else {
-        isDirty = true;
-      }
-    }
-
-    const cleanBuildsForDB: { buildId: Id<"builds">; selectionChance: number }[] = [];
-    const uiGroups: Array<{
-      namespace: string;
-      builds: Array<{ buildId: Id<"builds">; connectionId: Id<"releaseBuildConnections">; buildTag: string; selectionChance: number }>;
-    }> = [];
-
-    for (const [namespaceName, builds] of Object.entries(groups)) {
-      let currentSum = builds.reduce((s, b) => s + b.chance, 0);
-
-      if (Math.abs(currentSum - 100) > 0.1) {
-        isDirty = true;
-        if (currentSum === 0 || builds.length === 0) {
-          const split = 100 / (builds.length || 1);
-          builds.forEach((b) => (b.chance = split));
-        } else {
-          builds.forEach((b) => (b.chance = (b.chance / currentSum) * 100));
-        }
-      }
-
-      builds.forEach((b) => {
-        cleanBuildsForDB.push({ buildId: b.id, selectionChance: b.chance });
-      });
-
-      uiGroups.push({
-        namespace: namespaceName,
-        builds: builds.map((b) => ({
-          buildId: b.id,
-          connectionId: b.connectionId,
-          buildTag: b.tag,
-          selectionChance: b.chance,
-        })),
-      });
-    }
-
-    if (validBuildCount !== connections.length) {
-      isDirty = true;
-    }
-
-    return {
-      release,
-      config: uiGroups,
-      cleanBuilds: cleanBuildsForDB,
-      isDirty,
-    };
-  },
-});
-
-export const repairConfiguration = mutation({
-  args: {
-    workspaceId: v.id("workspaces"),
-    projectId: v.id("projects"),
-    releaseId: v.id("releases"),
-    cleanBuilds: v.array(
-      v.object({
-        buildId: v.id("builds"),
-        selectionChance: v.number(),
-      }),
-    ),
-  },
-  handler: async (ctx, args) => {
-    await authMiddleware(ctx, args.workspaceId);
-
-    const project = await ctx.db.get(args.projectId);
-    if (!project || project.workspaceId !== args.workspaceId) {
-      throw new Error("Project not found or access denied");
-    }
-
-    const release = await ctx.db.get(args.releaseId);
-    if (!release || release.projectId !== args.projectId) {
-      throw new Error("Release not found or access denied");
-    }
-
-    const existingConnections = await ctx.db
-      .query("releaseBuildConnections")
-      .withIndex("by_release", (q) => q.eq("releaseId", args.releaseId))
-      .collect();
-
-    for (const conn of existingConnections) {
-      await ctx.db.delete(conn._id);
-    }
-
-    for (const build of args.cleanBuilds) {
-      await ctx.db.insert("releaseBuildConnections", {
-        releaseId: args.releaseId,
-        buildId: build.buildId,
-        selectionChance: build.selectionChance,
-      });
-    }
   },
 });
 
@@ -505,11 +363,7 @@ export const handleBuildDeleted = internalMutation({
   },
 });
 
-const recalculateConnectionPercentages = async (
-  ctx: any,
-  releaseId: Id<"releases">,
-  namespace: string,
-) => {
+const recalculateConnectionPercentages = async (ctx: any, releaseId: Id<"releases">, namespace: string) => {
   const connections = await ctx.db
     .query("releaseBuildConnections")
     .withIndex("by_release", (q: any) => q.eq("releaseId", releaseId))

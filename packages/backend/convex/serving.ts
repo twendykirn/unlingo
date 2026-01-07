@@ -20,7 +20,7 @@ export const resolveTranslationFile = internalQuery({
 
     const connections = await ctx.db
       .query("releaseBuildConnections")
-      .withIndex("by_release", (q) => q.eq("releaseId", release._id))
+      .withIndex("by_release_build", (q) => q.eq("releaseId", release._id))
       .collect();
 
     const buildPromises = connections.map(async (conn) => {
