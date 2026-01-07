@@ -1,14 +1,15 @@
 import { useCallback, useState } from "react";
 import {
     Dialog,
-    DialogFooter,
+    DialogClose,
     DialogHeader,
     DialogPanel,
     DialogPopup,
     DialogTrigger,
+    DialogFooter,
 } from "./ui/dialog";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
-import { KeyRoundIcon, PencilIcon, SearchIcon, TrashIcon } from "lucide-react";
+import { KeyRoundIcon, MoreVerticalIcon, PencilIcon, SearchIcon, TrashIcon } from "lucide-react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "./ui/empty";
 import { Card, CardHeader } from "./ui/card";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
@@ -22,6 +23,7 @@ import type { Doc, Id } from "@unlingo/backend/convex/_generated/dataModel";
 import { Select, SelectTrigger, SelectValue, SelectPopup, SelectItem } from "./ui/select";
 import TranslationKeyEditDialog from "./translation-key-edit-dialog";
 import TranslationKeyDeleteDialog from "./translation-key-delete-dialog";
+import { Menu, MenuTrigger, MenuPopup, MenuItem, MenuSeparator } from "./ui/menu";
 
 interface Props {
     workspace?: Doc<'workspaces'> | null;
@@ -38,8 +40,8 @@ const GlobalSearchDialog = ({ workspace, project }: Props) => {
     const [searchBy, setSearchBy] = useState<'key' | 'value' | null>('key');
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [selectedKeyId, setSelectedKeyId] = useState<Id<'translationKeys'> | null>(null);
-    const [selectedKeyData, setSelectedKeyData] = useState<{
+    const [activeKeyId, setActiveKeyId] = useState<Id<'translationKeys'> | null>(null);
+    const [activeKeyData, setActiveKeyData] = useState<{
         key: string;
         namespaceId: Id<'namespaces'>;
         status: -1 | 1 | 2;
@@ -59,9 +61,9 @@ const GlobalSearchDialog = ({ workspace, project }: Props) => {
 
     const namespace = useQuery(
         api.namespaces.getNamespace,
-        workspace && project && selectedKeyData?.namespaceId
+        workspace && project && activeKeyData?.namespaceId
             ? {
-                namespaceId: selectedKeyData.namespaceId,
+                namespaceId: activeKeyData.namespaceId,
                 projectId: project._id,
                 workspaceId: workspace._id
             }
@@ -76,44 +78,41 @@ const GlobalSearchDialog = ({ workspace, project }: Props) => {
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         debouncedSetSearch(e.target.value);
-        setSelectedKeyData(null);
-        setSelectedKeyId(null);
     };
 
-    const handleSelectKey = (item: {
+    const handleEditKey = (item: {
         _id: Id<'translationKeys'>;
         key: string;
         namespaceId: Id<'namespaces'>;
         status: -1 | 1 | 2;
     }) => {
-        if (item._id === selectedKeyId) {
-            setSelectedKeyId(null);
-            setSelectedKeyData(null);
-        } else {
-            setSelectedKeyId(item._id);
-            setSelectedKeyData({
-                key: item.key,
-                namespaceId: item.namespaceId,
-                status: item.status,
-            });
-        }
+        setActiveKeyId(item._id);
+        setActiveKeyData({
+            key: item.key,
+            namespaceId: item.namespaceId,
+            status: item.status,
+        });
+        setIsEditDialogOpen(true);
     };
 
-    const handleEditKey = () => {
-        if (selectedKeyId) {
-            setIsEditDialogOpen(true);
-        }
-    };
-
-    const handleDeleteKey = () => {
-        if (selectedKeyId) {
-            setIsDeleteDialogOpen(true);
-        }
+    const handleDeleteKey = (item: {
+        _id: Id<'translationKeys'>;
+        key: string;
+        namespaceId: Id<'namespaces'>;
+        status: -1 | 1 | 2;
+    }) => {
+        setActiveKeyId(item._id);
+        setActiveKeyData({
+            key: item.key,
+            namespaceId: item.namespaceId,
+            status: item.status,
+        });
+        setIsDeleteDialogOpen(true);
     };
 
     const handleDeleted = () => {
-        setSelectedKeyId(null);
-        setSelectedKeyData(null);
+        setActiveKeyId(null);
+        setActiveKeyData(null);
     };
 
     return (
@@ -122,8 +121,8 @@ const GlobalSearchDialog = ({ workspace, project }: Props) => {
                 if (!value) {
                     setSearch('');
                     setSearchBy('key');
-                    setSelectedKeyId(null);
-                    setSelectedKeyData(null);
+                    setActiveKeyId(null);
+                    setActiveKeyData(null);
                 }
             }}
         >
@@ -149,8 +148,6 @@ const GlobalSearchDialog = ({ workspace, project }: Props) => {
                             value={searchBy}
                             onValueChange={value => {
                                 setSearchBy(value);
-                                setSelectedKeyData(null);
-                                setSelectedKeyId(null);
                             }}
                         >
                             <SelectTrigger className='w-4'>
@@ -191,98 +188,109 @@ const GlobalSearchDialog = ({ workspace, project }: Props) => {
                         translationKeys?.map(item => (
                             <Card
                                 key={item._id}
-                                className={`py-4 cursor-pointer hover:border-primary/30 ${selectedKeyId === item._id ? 'border-primary ring-1 ring-primary' : ''}`}
-                                onClick={() => handleSelectKey(item)}
+                                className="py-4 hover:border-primary/30 group relative"
                             >
-                                <CardHeader className="px-4 flex flex-col gap-1">
-                                    <div className="flex justify-between items-center gap-8 w-full">
-                                        <Tooltip>
-                                            <TooltipTrigger render={<span className="truncate" />}>
-                                                {item.key}
-                                            </TooltipTrigger>
-                                            <TooltipPopup>{item.key}</TooltipPopup>
-                                        </Tooltip>
-                                        <div className='flex items-center gap-1 text-muted-foreground'>
+                                <DialogClose
+                                    render={
+                                        <Link
+                                            to="/projects/$projectId/namespaces/$namespaceId/editor"
+                                            params={{
+                                                projectId: project!._id,
+                                                namespaceId: item.namespaceId,
+                                            }}
+                                            search={{
+                                                key: item.key,
+                                            }}
+                                        />
+                                    }
+                                >
+                                    <CardHeader className="px-4 flex flex-col gap-1 cursor-pointer">
+                                        <div className="flex justify-between items-center gap-2 w-full">
                                             <Tooltip>
-                                                <TooltipTrigger render={<span className="text-xs p-0" />}>
-                                                    {item.namespaceName}
+                                                <TooltipTrigger render={<span className="truncate flex-1 min-w-0" />}>
+                                                    {item.key}
                                                 </TooltipTrigger>
-                                                <TooltipPopup>Namespace</TooltipPopup>
+                                                <TooltipPopup>{item.key}</TooltipPopup>
                                             </Tooltip>
+                                            <div className='flex items-center gap-1 text-muted-foreground shrink-0'>
+                                                <Tooltip>
+                                                    <TooltipTrigger render={<span className="text-xs p-0 truncate max-w-24" />}>
+                                                        {item.namespaceName}
+                                                    </TooltipTrigger>
+                                                    <TooltipPopup>Namespace</TooltipPopup>
+                                                </Tooltip>
+                                            </div>
                                         </div>
-                                    </div>
-                                    {item.matchedValue ? (
-                                        <Tooltip>
-                                            <TooltipTrigger render={<p className="text-xs text-muted-foreground truncate max-w-full" />}>
-                                                {item.matchedValue}
-                                            </TooltipTrigger>
-                                            <TooltipPopup className="max-w-md">{item.matchedValue}</TooltipPopup>
-                                        </Tooltip>
-                                    ) : null}
-                                </CardHeader>
+                                        {item.matchedValue ? (
+                                            <Tooltip>
+                                                <TooltipTrigger render={<p className="text-xs text-muted-foreground truncate max-w-full" />}>
+                                                    {item.matchedValue}
+                                                </TooltipTrigger>
+                                                <TooltipPopup className="max-w-md">{item.matchedValue}</TooltipPopup>
+                                            </Tooltip>
+                                        ) : null}
+                                    </CardHeader>
+                                </DialogClose>
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Menu>
+                                        <MenuTrigger
+                                            render={
+                                                <Button
+                                                    size="icon-xs"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            }
+                                        >
+                                            <MoreVerticalIcon />
+                                        </MenuTrigger>
+                                        <MenuPopup align="end">
+                                            <MenuItem
+                                                disabled={item.status !== 1}
+                                                onClick={() => handleEditKey(item)}
+                                            >
+                                                <PencilIcon />
+                                                Edit Values
+                                            </MenuItem>
+                                            <MenuSeparator />
+                                            <MenuItem
+                                                variant="destructive"
+                                                disabled={item.status !== 1}
+                                                onClick={() => handleDeleteKey(item)}
+                                            >
+                                                <TrashIcon />
+                                                Delete Key
+                                            </MenuItem>
+                                        </MenuPopup>
+                                    </Menu>
+                                </div>
                             </Card>
                         ))
                     )}
                 </DialogPanel>
-                {selectedKeyId && selectedKeyData && project && (
-                    <DialogFooter>
-                        <div className="flex items-center gap-2 justify-center flex-1">
-                            <Link
-                                to="/projects/$projectId/namespaces/$namespaceId/editor"
-                                params={{
-                                    projectId: project._id,
-                                    namespaceId: selectedKeyData.namespaceId,
-                                }}
-                                search={{
-                                    key: selectedKeyData.key,
-                                }}
-                            >
-                                <Button variant="outline">
-                                    <SearchIcon />
-                                    Go to Editor
-                                </Button>
-                            </Link>
-                            <Button onClick={handleEditKey} disabled={selectedKeyData.status !== 1}>
-                                {selectedKeyData.status !== 1 ? <Spinner /> : (
-                                    <>
-                                        <PencilIcon />
-                                        Edit Values
-                                    </>
-                                )}
-                            </Button>
-                            <Button variant="destructive" onClick={handleDeleteKey} disabled={selectedKeyData.status !== 1}>
-                                {selectedKeyData.status !== 1 ? <Spinner /> : (
-                                    <>
-                                        <TrashIcon />
-                                        Delete Key
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                        {workspace && project ? (
-                            <>
-                                <TranslationKeyEditDialog
-                                    isOpen={isEditDialogOpen}
-                                    setIsOpen={setIsEditDialogOpen}
-                                    workspaceId={workspace._id}
-                                    projectId={project._id}
-                                    translationKeyId={selectedKeyId}
+                <DialogFooter>
+                    {workspace && project && activeKeyId && activeKeyData ? (
+                        <>
+                            <TranslationKeyEditDialog
+                                isOpen={isEditDialogOpen}
+                                setIsOpen={setIsEditDialogOpen}
+                                workspaceId={workspace._id}
+                                projectId={project._id}
+                                translationKeyId={activeKeyId}
+                            />
+                            {namespace ? (
+                                <TranslationKeyDeleteDialog
+                                    isOpen={isDeleteDialogOpen}
+                                    setIsOpen={setIsDeleteDialogOpen}
+                                    workspace={workspace}
+                                    project={project}
+                                    namespace={namespace}
+                                    translationKeys={[activeKeyId]}
+                                    onDeleted={handleDeleted}
                                 />
-                                {namespace && selectedKeyId ? (
-                                    <TranslationKeyDeleteDialog
-                                        isOpen={isDeleteDialogOpen}
-                                        setIsOpen={setIsDeleteDialogOpen}
-                                        workspace={workspace}
-                                        project={project}
-                                        namespace={namespace}
-                                        translationKeys={[selectedKeyId]}
-                                        onDeleted={handleDeleted}
-                                    />
-                                ) : null}
-                            </>
-                        ) : null}
-                    </DialogFooter>
-                )}
+                            ) : null}
+                        </>
+                    ) : null}
+                </DialogFooter>
             </DialogPopup>
         </Dialog>
     );
