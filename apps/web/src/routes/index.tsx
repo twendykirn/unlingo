@@ -1,6 +1,5 @@
 import BentoFour from "@/components/bento-4";
 import SmartHomeBento from "@/components/bento-5";
-import BentoSix from "@/components/bento-6";
 import CallToAction from "@/components/call-to-action";
 import FAQs from "@/components/faqs-1";
 import FooterSection from "@/components/footer";
@@ -45,7 +44,6 @@ function HomeComponent() {
 				</div>
 			</section>
 			<SmartHomeBento />
-			<BentoSix />
 			<IntegrationsSection />
 			<FAQs />
 			<CallToAction />

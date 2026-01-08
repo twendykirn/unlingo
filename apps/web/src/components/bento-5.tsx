@@ -287,14 +287,23 @@ function CICDBuildAnimation() {
     )
 }
 
-// Simple API Animation - Shows code snippet with syntax highlighting
+// Simple API Animation - Shows fetch logic with blurred endpoint
 function SimpleAPIAnimation() {
     const [activeStep, setActiveStep] = useState(0)
+    const [showResponse, setShowResponse] = useState(false)
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setActiveStep(prev => (prev + 1) % 3)
-        }, 2000)
+            setActiveStep(prev => {
+                const next = (prev + 1) % 3
+                if (next === 2) {
+                    setTimeout(() => setShowResponse(true), 300)
+                } else {
+                    setShowResponse(false)
+                }
+                return next
+            })
+        }, 2500)
         return () => clearInterval(interval)
     }, [])
 
@@ -307,46 +316,48 @@ function SimpleAPIAnimation() {
             </div>
 
             {/* Code preview */}
-            <div className="rounded-lg border border-border/50 bg-zinc-900 p-3 font-mono text-xs">
+            <div className="rounded-lg border border-border/50 bg-zinc-900 p-3 font-mono text-[10px] leading-relaxed">
                 <motion.div
-                    animate={{ opacity: activeStep === 0 ? 1 : 0.4 }}
-                    className="text-muted-foreground"
+                    animate={{ opacity: activeStep >= 0 ? 1 : 0.4 }}
                 >
-                    <span className="text-purple-400">import</span> {'{ t }'} <span className="text-purple-400">from</span> <span className="text-emerald-400">'unlingo'</span>
+                    <span className="text-blue-400">const</span> <span className="text-foreground">res</span> = <span className="text-purple-400">await</span> <span className="text-yellow-400">fetch</span>(
                 </motion.div>
-                <div className="my-2" />
                 <motion.div
-                    animate={{ opacity: activeStep === 1 ? 1 : 0.4 }}
+                    className="ml-2"
+                    animate={{ opacity: activeStep >= 1 ? 1 : 0.4 }}
                 >
-                    <span className="text-blue-400">const</span> <span className="text-foreground">msg</span> = <span className="text-yellow-400">t</span>(<span className="text-emerald-400">'welcome'</span>)
+                    <span className="text-emerald-400">'https://</span>
+                    <span className="text-emerald-400 blur-[3px] select-none">api.unlingo</span>
+                    <span className="text-emerald-400">/v1/translations'</span>
                 </motion.div>
-                <div className="my-2" />
+                <motion.div animate={{ opacity: activeStep >= 0 ? 1 : 0.4 }}>
+                    <span className="text-foreground">)</span>
+                </motion.div>
+                <div className="my-1" />
                 <motion.div
-                    animate={{ opacity: activeStep === 2 ? 1 : 0.4 }}
+                    animate={{ opacity: activeStep >= 2 ? 1 : 0.4 }}
                 >
-                    <span className="text-muted-foreground">// Output: </span>
-                    <motion.span
-                        className="text-foreground"
-                        animate={{ opacity: [0.5, 1] }}
-                        transition={{ duration: 0.5, repeat: activeStep === 2 ? Infinity : 0, repeatType: 'reverse' }}
-                    >
-                        "Welcome to Unlingo!"
-                    </motion.span>
+                    <span className="text-blue-400">const</span> <span className="text-foreground">data</span> = <span className="text-purple-400">await</span> <span className="text-foreground">res</span>.<span className="text-yellow-400">json</span>()
                 </motion.div>
-            </div>
 
-            {/* Framework badges */}
-            <div className="mt-3 flex flex-wrap gap-1">
-                {['React', 'Vue', 'Next.js', 'Svelte'].map((fw, i) => (
+                {/* JSON Response */}
+                {showResponse && (
                     <motion.div
-                        key={fw}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="mt-2 rounded border border-border/30 bg-zinc-800/50 p-2"
                     >
-                        <Badge variant="outline" size="sm">{fw}</Badge>
+                        <span className="text-muted-foreground text-[9px]">// Response:</span>
+                        <div className="text-foreground">{'{'}</div>
+                        <div className="ml-2">
+                            <span className="text-indigo-300">"welcome"</span>: <span className="text-emerald-400">"Welcome!"</span>,
+                        </div>
+                        <div className="ml-2">
+                            <span className="text-indigo-300">"goodbye"</span>: <span className="text-emerald-400">"Goodbye!"</span>
+                        </div>
+                        <div className="text-foreground">{'}'}</div>
                     </motion.div>
-                ))}
+                )}
             </div>
         </div>
     )
@@ -366,7 +377,7 @@ export default function SmartHomeBento() {
                                 <h3 className="text-foreground font-semibold">Glossary Management</h3>
                                 <p className="text-muted-foreground mt-3">Define terms and unique words. Ensure consistent translations with a centralized glossary.</p>
                             </div>
-                            <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
+                            <div className="relative min-h-[200px] overflow-hidden rounded-lg bg-muted">
                                 <GlossaryAnimation />
                             </div>
                         </Card>
@@ -377,14 +388,14 @@ export default function SmartHomeBento() {
                                 <h3 className="text-foreground font-semibold">Releases with A/B Testing</h3>
                                 <p className="text-muted-foreground mt-3">Create releases and run A/B tests for over-the-air translations. Dynamically test and optimize your builds in production.</p>
                             </div>
-                            <div className="relative aspect-video overflow-hidden rounded-lg">
+                            <div className="relative min-h-[200px] overflow-hidden rounded-lg">
                                 <ABTestingAnimation />
                             </div>
                         </Card>
 
                         {/* Language Rules */}
                         <Card className="@4xl:col-span-3 group grid grid-rows-[1fr_auto] gap-8 overflow-hidden rounded-2xl p-8">
-                            <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
+                            <div className="relative min-h-[180px] overflow-hidden rounded-lg bg-muted">
                                 <LanguageRulesAnimation />
                             </div>
                             <div>
@@ -395,7 +406,7 @@ export default function SmartHomeBento() {
 
                         {/* CI/CD Build Integration */}
                         <Card className="@4xl:col-span-4 group grid grid-rows-[1fr_auto] gap-8 overflow-hidden rounded-2xl p-8 [--color-background:var(--color-muted)]">
-                            <div className="relative aspect-video overflow-hidden rounded-lg">
+                            <div className="relative min-h-[180px] overflow-hidden rounded-lg">
                                 <CICDBuildAnimation />
                             </div>
                             <div>
@@ -406,7 +417,7 @@ export default function SmartHomeBento() {
 
                         {/* Simple API */}
                         <Card className="@4xl:row-start-auto @4xl:col-span-3 row-start-1 grid grid-rows-[1fr_auto] gap-8 overflow-hidden rounded-2xl p-8">
-                            <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
+                            <div className="relative min-h-[180px] overflow-hidden rounded-lg bg-muted">
                                 <SimpleAPIAnimation />
                             </div>
                             <div>
