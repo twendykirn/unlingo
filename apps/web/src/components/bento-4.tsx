@@ -19,7 +19,7 @@ function AITranslationAnimation() {
     }, [])
 
     return (
-        <div aria-hidden className="relative flex h-full flex-col items-center justify-center gap-4 overflow-hidden rounded-lg bg-zinc-900/50 p-6">
+        <div aria-hidden className="relative flex h-full flex-col items-center justify-center gap-4 overflow-hidden rounded-lg p-6">
             {/* Grid background */}
             <div className="absolute inset-0 bg-[radial-gradient(var(--color-border)_1px,transparent_1px)] [background-size:16px_16px] opacity-30" />
 
@@ -84,7 +84,7 @@ function RealTimeSyncAnimation() {
     }, [])
 
     return (
-        <div aria-hidden className="relative flex h-full items-center justify-center overflow-hidden rounded-lg bg-zinc-900/50 p-4">
+        <div aria-hidden className="relative flex h-full items-center justify-center overflow-hidden rounded-lg p-4">
             {/* Center hub */}
             <div className="relative">
                 <motion.div
@@ -145,7 +145,7 @@ function ScreenshotContextAnimation() {
     }, [])
 
     return (
-        <div aria-hidden className="relative flex h-full items-center justify-center overflow-hidden rounded-lg bg-zinc-900/50 p-4">
+        <div aria-hidden className="relative flex h-full items-center justify-center overflow-hidden rounded-lg p-4">
             {/* Mock UI screenshot */}
             <div className="relative w-full max-w-[200px] overflow-hidden rounded-lg border border-border bg-zinc-800/80 p-3 shadow-lg">
                 {/* App header */}
@@ -291,7 +291,7 @@ function GlobalSearchAnimation() {
     }, [])
 
     return (
-        <div aria-hidden className="relative flex h-full flex-col items-center justify-center gap-3 overflow-hidden rounded-lg bg-zinc-900/50 p-4">
+        <div aria-hidden className="relative flex h-full flex-col items-center justify-center gap-3 overflow-hidden rounded-lg p-4">
             {/* Search input */}
             <motion.div
                 className="flex w-full max-w-[180px] items-center gap-2 rounded-lg border border-border bg-zinc-800 px-3 py-2"

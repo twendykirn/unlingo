@@ -24,7 +24,7 @@ function GlossaryAnimation() {
     }, [])
 
     return (
-        <div aria-hidden className="relative flex h-full flex-col justify-center overflow-hidden rounded-lg bg-zinc-900/50 p-4">
+        <div aria-hidden className="relative flex h-full flex-col justify-center overflow-hidden rounded-lg p-4">
             {/* Glossary header */}
             <div className="mb-3 flex items-center gap-2">
                 <BookOpen className="size-4 text-indigo-400" />
@@ -53,15 +53,9 @@ function GlossaryAnimation() {
                                 <Badge variant="outline" size="sm">{item.translations.fr}</Badge>
                             </motion.div>
                         </div>
-                        {activeIndex === i && (
-                            <motion.p
-                                className="mt-1 text-xs text-muted-foreground"
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                            >
-                                {item.definition}
-                            </motion.p>
-                        )}
+                        <p className={`mt-1 text-xs text-muted-foreground transition-opacity ${activeIndex === i ? 'opacity-100' : 'opacity-0'}`}>
+                            {item.definition}
+                        </p>
                     </motion.div>
                 ))}
             </div>
@@ -115,15 +109,9 @@ function ABTestingAnimation() {
                             <div className="h-2 w-full rounded bg-zinc-700" />
                             <div className="h-2 w-3/4 rounded bg-zinc-700" />
                         </div>
-                        {activeVariant === variant && (
-                            <motion.div
-                                className="mt-2 flex items-center gap-1 text-xs text-emerald-400"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                            >
-                                <Check className="size-3" /> Active
-                            </motion.div>
-                        )}
+                        <div className={`mt-2 flex items-center gap-1 text-xs text-emerald-400 transition-opacity ${activeVariant === variant ? 'opacity-100' : 'opacity-0'}`}>
+                            <Check className="size-3" /> Active
+                        </div>
                     </motion.div>
                 ))}
             </div>
@@ -169,7 +157,7 @@ function LanguageRulesAnimation() {
     }, [])
 
     return (
-        <div aria-hidden className="relative flex h-full flex-col justify-center overflow-hidden rounded-lg bg-zinc-900/50 p-4">
+        <div aria-hidden className="relative flex h-full flex-col justify-center overflow-hidden rounded-lg p-4">
             {/* Header */}
             <div className="mb-3 flex items-center gap-2">
                 <Languages className="size-4 text-indigo-400" />
@@ -193,15 +181,9 @@ function LanguageRulesAnimation() {
                         </Badge>
                         <div className="flex-1">
                             <p className="text-xs font-medium text-foreground">{item.rule}</p>
-                            {activeRule === i && (
-                                <motion.p
-                                    className="mt-0.5 font-mono text-xs text-muted-foreground"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                >
-                                    {item.example}
-                                </motion.p>
-                            )}
+                            <p className={`mt-0.5 font-mono text-xs text-muted-foreground transition-opacity ${activeRule === i ? 'opacity-100' : 'opacity-0'}`}>
+                                {item.example}
+                            </p>
                         </div>
                         <ChevronRight className={`size-3 transition-colors ${activeRule === i ? 'text-indigo-400' : 'text-muted-foreground'}`} />
                     </motion.div>
@@ -268,17 +250,15 @@ function CICDBuildAnimation() {
                                 {isCompleted ? <Check className="size-3" /> : i + 1}
                             </motion.div>
                             <span className="flex-1 text-xs text-foreground">{step.name}</span>
-                            {isRunning && (
-                                <motion.div
-                                    className="h-1 w-8 overflow-hidden rounded-full bg-zinc-700"
-                                >
+                            <div className="h-1 w-8 overflow-hidden rounded-full bg-zinc-700">
+                                {isRunning && (
                                     <motion.div
                                         className="h-full bg-amber-500"
                                         animate={{ x: ['-100%', '100%'] }}
                                         transition={{ duration: 1, repeat: Infinity }}
                                     />
-                                </motion.div>
-                            )}
+                                )}
+                            </div>
                         </motion.div>
                     )
                 })}
@@ -287,78 +267,86 @@ function CICDBuildAnimation() {
     )
 }
 
-// Simple API Animation - Shows fetch logic with blurred endpoint
+// Simple API Animation - Shows multiple endpoints abstractly with dots
 function SimpleAPIAnimation() {
-    const [activeStep, setActiveStep] = useState(0)
-    const [showResponse, setShowResponse] = useState(false)
+    const [activeEndpoint, setActiveEndpoint] = useState(0)
+
+    const endpoints = [
+        { method: 'GET', name: 'translations', color: 'emerald' },
+        { method: 'GET', name: 'keys', color: 'blue' },
+        { method: 'POST', name: 'builds', color: 'amber' },
+        { method: 'GET', name: 'releases', color: 'purple' },
+    ]
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setActiveStep(prev => {
-                const next = (prev + 1) % 3
-                if (next === 2) {
-                    setTimeout(() => setShowResponse(true), 300)
-                } else {
-                    setShowResponse(false)
-                }
-                return next
-            })
-        }, 2500)
+            setActiveEndpoint(prev => (prev + 1) % endpoints.length)
+        }, 2000)
         return () => clearInterval(interval)
     }, [])
 
     return (
-        <div aria-hidden className="relative flex h-full flex-col justify-center overflow-hidden rounded-lg bg-zinc-900/50 p-4">
+        <div aria-hidden className="relative flex h-full flex-col justify-center overflow-hidden rounded-lg p-4">
             {/* Header */}
             <div className="mb-3 flex items-center gap-2">
                 <Braces className="size-4 text-indigo-400" />
-                <span className="text-xs font-medium text-muted-foreground">Simple Integration</span>
+                <span className="text-xs font-medium text-muted-foreground">API Endpoints</span>
             </div>
 
-            {/* Code preview */}
-            <div className="rounded-lg border border-border/50 bg-zinc-900 p-3 font-mono text-[10px] leading-relaxed">
-                <motion.div
-                    animate={{ opacity: activeStep >= 0 ? 1 : 0.4 }}
-                >
-                    <span className="text-blue-400">const</span> <span className="text-foreground">res</span> = <span className="text-purple-400">await</span> <span className="text-yellow-400">fetch</span>(
-                </motion.div>
-                <motion.div
-                    className="ml-2"
-                    animate={{ opacity: activeStep >= 1 ? 1 : 0.4 }}
-                >
-                    <span className="text-emerald-400">'https://</span>
-                    <span className="text-emerald-400 blur-[3px] select-none">api.unlingo</span>
-                    <span className="text-emerald-400">/v1/translations'</span>
-                </motion.div>
-                <motion.div animate={{ opacity: activeStep >= 0 ? 1 : 0.4 }}>
-                    <span className="text-foreground">)</span>
-                </motion.div>
-                <div className="my-1" />
-                <motion.div
-                    animate={{ opacity: activeStep >= 2 ? 1 : 0.4 }}
-                >
-                    <span className="text-blue-400">const</span> <span className="text-foreground">data</span> = <span className="text-purple-400">await</span> <span className="text-foreground">res</span>.<span className="text-yellow-400">json</span>()
-                </motion.div>
+            {/* Endpoints list */}
+            <div className="space-y-2">
+                {endpoints.map((endpoint, i) => {
+                    const isActive = activeEndpoint === i
+                    const methodColors: Record<string, string> = {
+                        GET: 'bg-emerald-500/20 text-emerald-400',
+                        POST: 'bg-amber-500/20 text-amber-400',
+                    }
 
-                {/* JSON Response */}
-                {showResponse && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="mt-2 rounded border border-border/30 bg-zinc-800/50 p-2"
-                    >
-                        <span className="text-muted-foreground text-[9px]">// Response:</span>
-                        <div className="text-foreground">{'{'}</div>
-                        <div className="ml-2">
-                            <span className="text-indigo-300">"welcome"</span>: <span className="text-emerald-400">"Welcome!"</span>,
-                        </div>
-                        <div className="ml-2">
-                            <span className="text-indigo-300">"goodbye"</span>: <span className="text-emerald-400">"Goodbye!"</span>
-                        </div>
-                        <div className="text-foreground">{'}'}</div>
-                    </motion.div>
-                )}
+                    return (
+                        <motion.div
+                            key={endpoint.name}
+                            className="flex items-center gap-3 rounded-lg border border-border/50 bg-zinc-800/60 p-2"
+                            animate={{
+                                borderColor: isActive ? 'var(--color-indigo-500)' : 'var(--color-border)',
+                                scale: isActive ? 1.02 : 1
+                            }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${methodColors[endpoint.method]}`}>
+                                {endpoint.method}
+                            </span>
+                            <div className="flex flex-1 items-center gap-1">
+                                <span className="text-muted-foreground">•••</span>
+                                <span className="text-xs text-foreground">/{endpoint.name}</span>
+                            </div>
+                            <div className={`flex gap-1 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`}>
+                                {[0, 1, 2].map((dot) => (
+                                    <motion.div
+                                        key={dot}
+                                        className="size-1.5 rounded-full bg-indigo-400"
+                                        animate={isActive ? { opacity: [0.3, 1, 0.3] } : { opacity: 0.3 }}
+                                        transition={{ duration: 0.8, delay: dot * 0.2, repeat: isActive ? Infinity : 0 }}
+                                    />
+                                ))}
+                            </div>
+                        </motion.div>
+                    )
+                })}
             </div>
+
+            {/* Response preview */}
+            <motion.div
+                className="mt-3 rounded-lg border border-border/30 bg-zinc-900/80 p-2"
+                animate={{ opacity: 1 }}
+            >
+                <div className="font-mono text-[10px]">
+                    <span className="text-muted-foreground">{'{'}</span>
+                    <span className="text-indigo-300"> "data"</span>
+                    <span className="text-muted-foreground">: [</span>
+                    <span className="text-emerald-400">...</span>
+                    <span className="text-muted-foreground">] {'}'}</span>
+                </div>
+            </motion.div>
         </div>
     )
 }
