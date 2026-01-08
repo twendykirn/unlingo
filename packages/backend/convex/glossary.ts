@@ -3,6 +3,7 @@ import { internalQuery, mutation, query } from "./_generated/server";
 import { ConvexError } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { authMiddleware } from "../middlewares/auth";
+import { internal } from "./_generated/api";
 
 export const getAllTerms = query({
   args: {
@@ -77,6 +78,14 @@ export const createTerm = mutation({
       isCaseSensitive: args.isCaseSensitive,
       isForbidden: args.isForbidden,
       translations: finalTranslations,
+    });
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      event: "glossary.termCreated",
+      term: args.term,
     });
 
     return termId;
@@ -168,6 +177,14 @@ export const deleteTerm = mutation({
     }
 
     await ctx.db.delete(term._id);
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: term.projectId as unknown as string,
+      event: "glossary.termDeleted",
+      term: term.term,
+    });
 
     return term._id;
   },

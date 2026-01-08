@@ -94,6 +94,15 @@ export const createBuild = mutation({
       queue: languagesData,
     });
 
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      event: "build.created",
+      buildTag: args.tag,
+      namespaceName: namespace.name,
+    });
+
     return buildId;
   },
 });
@@ -164,6 +173,15 @@ export const deleteBuild = mutation({
         await deleteFile(ctx, file.fileId);
       }
     }
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: build.projectId as unknown as string,
+      event: "build.deleted",
+      buildTag: build.tag,
+      namespaceName: build.namespace,
+    });
   },
 });
 

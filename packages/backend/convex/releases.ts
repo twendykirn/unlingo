@@ -3,6 +3,7 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { authMiddleware } from "../middlewares/auth";
+import { internal } from "./_generated/api";
 
 const buildInput = v.object({
   buildId: v.id("builds"),
@@ -123,6 +124,14 @@ export const createRelease = mutation({
         selectionChance: build.selectionChance,
       });
     }
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      event: "release.created",
+      releaseTag: args.tag,
+    });
 
     return releaseId;
   },
@@ -319,6 +328,14 @@ export const deleteRelease = mutation({
     }
 
     await ctx.db.delete(args.releaseId);
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      event: "release.deleted",
+      releaseTag: release.tag,
+    });
   },
 });
 

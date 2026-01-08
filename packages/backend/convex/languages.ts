@@ -62,6 +62,14 @@ export const createLanguage = mutation({
         primaryLanguageId: languageId,
       });
     }
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      event: "language.created",
+      languageCode: args.languageCode,
+    });
   },
 });
 
@@ -191,6 +199,14 @@ export const deleteLanguage = mutation({
       projectId: args.projectId,
       stage: "values",
       cursor: null,
+    });
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      event: "language.deleted",
+      languageCode: language.languageCode,
     });
   },
 });

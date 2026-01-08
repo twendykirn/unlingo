@@ -104,6 +104,15 @@ export const createNamespace = mutation({
       },
     });
 
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      event: "namespace.created",
+      namespaceId: namespaceId as unknown as string,
+      namespaceName: args.name.trim(),
+    });
+
     return namespaceId;
   },
 });
@@ -201,6 +210,15 @@ export const deleteNamespace = mutation({
       projectId: args.projectId,
       stage: "values",
       cursor: null,
+    });
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      event: "namespace.deleted",
+      namespaceId: args.namespaceId as unknown as string,
+      namespaceName: namespace.name,
     });
   },
 });

@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { deleteFile } from "./files";
 import { authMiddleware } from "../middlewares/auth";
+import { Id } from "./_generated/dataModel";
 
 export const getProjects = query({
   args: {
@@ -68,6 +69,14 @@ export const createProject = mutation({
     await ctx.scheduler.runAfter(0, internal.keys.createUnkeyIdentity, {
       projectId,
       workspaceId: workspace._id,
+    });
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: workspace._id as unknown as string,
+      projectId: projectId as unknown as string,
+      projectName: args.name,
+      event: "project.created",
     });
 
     return projectId;
@@ -166,6 +175,14 @@ export const deleteProject = mutation({
       projectId: args.projectId,
       table: "translationValues",
       cursor: null,
+    });
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: workspace._id as unknown as string,
+      projectId: project._id as unknown as string,
+      projectName: project.name,
+      event: "project.deleted",
     });
   },
 });

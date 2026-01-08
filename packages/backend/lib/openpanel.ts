@@ -11,6 +11,12 @@ export const ApiRequestEvent = z.object({
     namespaceId: z.string().optional(),
     namespaceName: z.string().optional(),
     responseSize: z.number().optional(),
+    // Additional properties for user-facing events
+    count: z.number().optional(),
+    releaseTag: z.string().optional(),
+    buildTag: z.string().optional(),
+    term: z.string().optional(),
+    screenshotName: z.string().optional(),
 });
 
 const OPEN_PANEL_API_URL = 'https://api.openpanel.dev';
@@ -86,6 +92,12 @@ export async function ingestApiRequest(params: ApiRequestEventType): Promise<voi
             namespaceName: params.namespaceName || null,
             responseSize: params.responseSize || null,
             success: !params.deniedReason,
+            // Additional properties for user-facing events
+            count: params.count || null,
+            releaseTag: params.releaseTag || null,
+            buildTag: params.buildTag || null,
+            term: params.term || null,
+            screenshotName: params.screenshotName || null,
         };
 
         const config = getOpenpanelConfig();

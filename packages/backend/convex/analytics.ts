@@ -17,7 +17,39 @@ export const getEvents = action({
     try {
       const result = await fetchEvents({
         profileId: args.workspaceId,
-        event: ["api/v1/translations", "getLanguageContent", "getJsonSchema"],
+        event: [
+          // API events
+          "api/v1/translations",
+          "getLanguageContent",
+          "getJsonSchema",
+          // Project events
+          "project.created",
+          "project.deleted",
+          // Language events
+          "language.created",
+          "language.deleted",
+          // Namespace events
+          "namespace.created",
+          "namespace.deleted",
+          // Translation key events
+          "translationKey.created",
+          "translationKey.bulkCreated",
+          "translationKey.deleted",
+          "translationKey.batchTranslation",
+          // Release events
+          "release.created",
+          "release.deleted",
+          // Build events
+          "build.created",
+          "build.deleted",
+          // Glossary events
+          "glossary.termCreated",
+          "glossary.termDeleted",
+          // Screenshot events
+          "screenshot.created",
+          "screenshot.deleted",
+          "screenshot.textDetection",
+        ],
         start: args.start,
         end: args.end,
         page: args.page || 1,
@@ -44,6 +76,12 @@ export const ingestEvent = internalAction({
     namespaceId: v.optional(v.string()),
     namespaceName: v.optional(v.string()),
     responseSize: v.optional(v.number()),
+    // Additional properties for user-facing events
+    count: v.optional(v.number()),
+    releaseTag: v.optional(v.string()),
+    buildTag: v.optional(v.string()),
+    term: v.optional(v.string()),
+    screenshotName: v.optional(v.string()),
   },
   handler: async (_, args) => {
     try {
@@ -58,6 +96,11 @@ export const ingestEvent = internalAction({
         namespaceId: args.namespaceId,
         namespaceName: args.namespaceName,
         responseSize: args.responseSize,
+        count: args.count,
+        releaseTag: args.releaseTag,
+        buildTag: args.buildTag,
+        term: args.term,
+        screenshotName: args.screenshotName,
       };
 
       await ingestApiRequest(params);

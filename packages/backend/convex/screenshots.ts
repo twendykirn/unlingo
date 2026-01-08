@@ -98,6 +98,14 @@ export const createScreenshot = mutation({
       status: 1,
     });
 
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      event: "screenshot.created",
+      screenshotName: args.name,
+    });
+
     return { screenshotId, error: null };
   },
 });
@@ -133,6 +141,14 @@ export const deleteScreenshot = mutation({
     await deleteFile(ctx, screenshot.imageFileId);
 
     await ctx.db.delete(args.screenshotId);
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: screenshot.projectId as unknown as string,
+      event: "screenshot.deleted",
+      screenshotName: screenshot.name,
+    });
 
     return { success: true };
   },
@@ -515,6 +531,14 @@ export const triggerTextDetection = mutation({
         projectId: project._id,
         imageUrl,
         imageDimensions: screenshot.dimensions,
+      });
+
+      // Track analytics event
+      await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+        workspaceId: args.workspaceId as unknown as string,
+        projectId: project._id as unknown as string,
+        event: "screenshot.textDetection",
+        screenshotName: screenshot.name,
       });
     } catch (error) {
       await ctx.db.patch(screenshot._id, { status: 1 });
