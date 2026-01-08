@@ -30,7 +30,7 @@ interface MobileLink {
 }
 
 const mobileLinks: MobileLink[] = [
-    { name: 'About', href: '/' },
+    { name: 'About', href: '/about' },
     { name: 'Docs', href: '/' },
     { name: 'Pricing', href: '/' },
     { name: 'Discord', href: '/' },
@@ -144,7 +144,7 @@ export default function Header() {
                                 <Button
                                     size="sm">
                                     <Link to="/sign-up/$">
-                                        <span>Start for free</span>
+                                        <span>Get started</span>
                                     </Link>
                                 </Button>
                             </div>
@@ -222,7 +222,7 @@ const NavMenu = () => {
                     <NavigationMenuLink
                         asChild
                         className={navigationMenuTriggerStyle({ className: 'text-foreground/75 h-7 px-3 text-sm' })}>
-                        <Link to="/">About</Link>
+                        <Link to="/about">About</Link>
                     </NavigationMenuLink>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
