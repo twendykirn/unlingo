@@ -14,12 +14,13 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Form } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
+import { Spinner } from '@/components/ui/spinner';
 import { useSignIn } from '@clerk/tanstack-react-start';
 import { auth } from '@clerk/tanstack-react-start/server';
 import type { ClerkAPIError, EmailCodeFactor, SignInFirstFactor } from '@clerk/types';
 import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { isClerkAPIResponseError } from '@clerk/tanstack-react-start/errors';
 
 const authStateFn = createServerFn({ method: 'GET' }).handler(async () => {
@@ -46,8 +47,11 @@ function RouteComponent() {
     const [open, setOpen] = useState(false);
     const [errors, setErrors] = useState<ClerkAPIError[]>([]);
     const [verifyErrors, setVerifyErrors] = useState<ClerkAPIError[]>([]);
+    const [isSendingCode, setIsSendingCode] = useState(false);
     const [isResending, setIsResending] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
+    const [otpValue, setOtpValue] = useState("");
+    const verifyFormRef = useRef<HTMLFormElement>(null);
 
     const handleSendCode = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -57,6 +61,8 @@ function RouteComponent() {
         const email = formData.get("email") as string;
 
         if (!isLoaded && !signIn || !email) return null;
+
+        setIsSendingCode(true);
 
         try {
             const { supportedFirstFactors } = await signIn.create({
@@ -90,18 +96,15 @@ function RouteComponent() {
                 setErrors(err.errors);
             }
             console.error("Error:", JSON.stringify(err, null, 2));
+        } finally {
+            setIsSendingCode(false);
         }
     };
 
-    const handleVerifyCode = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setVerifyErrors([]);
-
-        const formData = new FormData(e.currentTarget);
-        const code = formData.get("otp") as string;
-
+    const handleVerifyCode = async (code: string) => {
         if (!isLoaded && !signIn || !code) return null;
 
+        setVerifyErrors([]);
         setIsVerifying(true);
 
         try {
@@ -139,6 +142,13 @@ function RouteComponent() {
             console.error("Error:", JSON.stringify(err, null, 2));
         } finally {
             setIsVerifying(false);
+        }
+    };
+
+    const handleVerifyFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (otpValue.length === 6) {
+            handleVerifyCode(otpValue);
         }
     };
 
@@ -196,7 +206,9 @@ function RouteComponent() {
                                     />
                                 </Field>
                                 <Field className="items-center">
-                                    <Button type="submit" className="w-full">Send Code</Button>
+                                    <Button type="submit" className="w-full" disabled={isSendingCode}>
+                                        {isSendingCode ? <Spinner /> : "Send Code"}
+                                    </Button>
                                     {errors.length > 0 && (
                                         <p className="text-destructive text-xs text-center">
                                             {errors[0].longMessage || errors[0].message}
@@ -244,7 +256,7 @@ function RouteComponent() {
                         </Field>
                         <Dialog open={open} onOpenChange={setOpen}>
                             <DialogPopup>
-                                <Form className="contents" onSubmit={handleVerifyCode}>
+                                <Form className="contents" onSubmit={handleVerifyFormSubmit} ref={verifyFormRef}>
                                     <DialogHeader>
                                         <DialogTitle className='text-center'>Enter verification code</DialogTitle>
                                         <DialogDescription className='text-center'>
@@ -262,6 +274,10 @@ function RouteComponent() {
                                                 required
                                                 containerClassName="gap-4"
                                                 name="otp"
+                                                value={otpValue}
+                                                onChange={setOtpValue}
+                                                onComplete={handleVerifyCode}
+                                                disabled={isVerifying}
                                             >
                                                 <InputOTPGroup>
                                                     <InputOTPSlot index={0} />
@@ -280,8 +296,8 @@ function RouteComponent() {
                                             </FieldDescription>
                                         </Field>
                                         <Field className="items-center w-full">
-                                            <Button type="submit" className="w-8/12">
-                                                {isVerifying ? "Verifying..." : "Verify"}
+                                            <Button type="submit" className="w-8/12" disabled={isVerifying}>
+                                                {isVerifying ? <Spinner /> : "Verify"}
                                             </Button>
                                             {verifyErrors.length > 0 && (
                                                 <p className="text-destructive text-xs text-center">
@@ -295,7 +311,7 @@ function RouteComponent() {
                                                 onClick={handleResendCode}
                                                 disabled={isResending}
                                             >
-                                                {isResending ? "Resending..." : "Resend Code"}
+                                                {isResending ? <Spinner /> : "Resend Code"}
                                             </Button>
                                         </Field>
                                     </DialogPanel>
