@@ -1,0 +1,214 @@
+---
+title: 'Billing & Subscriptions'
+description: 'Manage your subscription, usage limits, and billing'
+---
+
+## Overview
+
+Unlingo uses **Polar** for subscription and billing management. Your subscription tier determines your usage limits for API requests and translation keys.
+
+## Subscription Tiers
+
+<CardGroup cols={3}>
+    <Card title='Starter' icon='seedling'>
+        **10,000** API requests/month
+
+        **1,000** translation keys
+
+        Perfect for small projects
+    </Card>
+    <Card title='Hobby' icon='rocket'>
+        **50,000** API requests/month
+
+        **5,000** translation keys
+
+        Growing applications
+    </Card>
+    <Card title='Premium' icon='crown'>
+        **250,000+** API requests/month
+
+        **Up to 200,000** keys
+
+        Production applications
+    </Card>
+</CardGroup>
+
+## Usage Limits
+
+### API Requests
+
+API requests are counted each time your application fetches translations through the API:
+
+```
+GET /v1/translations?release=main&namespace=common&lang=en
+```
+
+Each request counts against your monthly limit regardless of response size.
+
+### Translation Keys
+
+Translation keys are counted across all projects in your workspace:
+
+- Each unique translation key counts once
+- Keys across multiple namespaces are counted separately
+- Deleted keys free up capacity immediately
+
+<Tip>
+    Monitor your usage regularly through the dashboard to avoid hitting limits during peak times.
+</Tip>
+
+## Usage Alerts
+
+Unlingo sends email notifications at key usage thresholds:
+
+<Steps>
+    <Step title='80% Warning'>
+        Heads up that you're approaching your limit
+    </Step>
+    <Step title='100% Limit Reached'>
+        You've reached your plan's limit
+    </Step>
+    <Step title='130% Hard Limit'>
+        API requests will be blocked until reset or upgrade
+    </Step>
+</Steps>
+
+<Warning>
+    At 130% of your limit, API requests will return errors. Upgrade your plan or wait for the monthly reset.
+</Warning>
+
+## Managing Your Subscription
+
+### Viewing Current Plan
+
+1. Navigate to your workspace settings
+2. Select "Billing" or "Subscription"
+3. View your current tier and usage
+
+### Upgrading Your Plan
+
+<Steps>
+    <Step title='Access Billing'>
+        Go to workspace settings and select Billing
+    </Step>
+    <Step title='Choose Plan'>
+        Select your desired plan tier
+    </Step>
+    <Step title='Complete Checkout'>
+        Complete payment through Polar's secure checkout
+    </Step>
+    <Step title='Instant Upgrade'>
+        New limits apply immediately
+    </Step>
+</Steps>
+
+### Downgrading Your Plan
+
+- Downgrades take effect at the next billing cycle
+- Ensure your usage fits within the new limits
+- Export any excess data before downgrade
+
+<Danger>
+    Downgrading below your current usage may result in restricted functionality until you reduce usage.
+</Danger>
+
+## Customer Portal
+
+Access the Polar customer portal to:
+
+- View invoices and payment history
+- Update payment methods
+- Manage subscription
+- Download receipts
+
+## Billing Cycle
+
+- Usage resets at the start of each billing month
+- Billing date is based on your subscription start date
+- Not aligned to calendar months
+
+### Example
+
+If you subscribed on January 15th:
+- Month 1: January 15 - February 14
+- Month 2: February 15 - March 14
+- And so on...
+
+## Premium Plan Configuration
+
+Premium plans offer configurable limits:
+
+| Configuration | API Requests | Translation Keys |
+|--------------|--------------|------------------|
+| Base | 250,000 | 50,000 |
+| Scale | 1,000,000 | 100,000 |
+| Enterprise | Up to 100M | 200,000 |
+
+<Tip>
+    Contact support for custom enterprise configurations tailored to your needs.
+</Tip>
+
+## Product Integration
+
+Unlingo integrates with Polar for:
+
+- **Customer Management**: Automatic customer creation/sync
+- **Subscription Tracking**: Real-time subscription status
+- **Checkout**: Secure payment processing
+- **Webhooks**: Automatic updates on subscription changes
+
+## Best Practices
+
+### Cost Optimization
+
+<Tip>
+    **Cache Translations**: Implement client-side caching to reduce API requests and stay within limits.
+</Tip>
+
+- Use build releases for static content
+- Implement proper caching strategies
+- Monitor usage trends
+
+### Planning Ahead
+
+- Review usage patterns monthly
+- Plan upgrades before hitting limits
+- Set up alerts for usage spikes
+- Consider annual plans for savings
+
+## Troubleshooting
+
+<AccordionGroup>
+    <Accordion title='API requests blocked'>
+        You've exceeded 130% of your limit. Options:
+        - Upgrade your plan for immediate relief
+        - Wait for monthly reset
+        - Implement caching to reduce requests
+    </Accordion>
+
+    <Accordion title='Cannot create translation keys'>
+        You've reached your translation key limit. Options:
+        - Delete unused keys
+        - Upgrade your plan
+        - Consolidate namespaces
+    </Accordion>
+
+    <Accordion title='Subscription not updating'>
+        Allow a few minutes for webhook processing. If issues persist, contact support.
+    </Accordion>
+
+    <Accordion title='Usage not resetting'>
+        Usage resets based on your billing cycle, not calendar month. Check your subscription start date.
+    </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='Workspaces' icon='building' href='/features/workspaces'>
+        Manage your workspace settings
+    </Card>
+    <Card title='API Reference' icon='code' href='/api-reference/translations/get-translations'>
+        Learn about API usage and optimization
+    </Card>
+</CardGroup>

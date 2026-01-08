@@ -1,0 +1,327 @@
+---
+title: 'Error Handling'
+description: 'Understanding and handling API errors'
+---
+
+## Overview
+
+The Unlingo API uses standard HTTP status codes and returns detailed error messages to help you handle issues gracefully.
+
+## Error Response Format
+
+All errors follow a consistent JSON format:
+
+```json
+{
+  "error": "ErrorType",
+  "message": "Human-readable description of the error"
+}
+```
+
+## Common Errors
+
+### Authentication Errors
+
+#### Invalid API Key (401)
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "Invalid or missing API key"
+}
+```
+
+**Causes:**
+- API key is missing from request
+- API key is invalid or revoked
+- API key doesn't have access to the requested project
+
+**Solutions:**
+- Verify your API key is correct
+- Check that the key hasn't been revoked
+- Ensure the key is for the correct project
+
+#### Bearer Token Malformed (401)
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "Invalid Authorization header format"
+}
+```
+
+**Solutions:**
+- Use format: `Authorization: Bearer YOUR_API_KEY`
+- Ensure no extra spaces or characters
+
+### Request Errors
+
+#### Missing Parameters (400)
+
+```json
+{
+  "error": "Bad Request",
+  "message": "Missing required parameter: release"
+}
+```
+
+**Required parameters for `/v1/translations`:**
+- `release` - The release tag
+- `namespace` - The namespace name
+- `lang` - The language code
+
+#### Invalid Parameter Values (400)
+
+```json
+{
+  "error": "Bad Request",
+  "message": "Invalid language code: xyz"
+}
+```
+
+### Resource Errors
+
+#### Release Not Found (404)
+
+```json
+{
+  "error": "Not Found",
+  "message": "Release 'v2.0.0' not found"
+}
+```
+
+**Solutions:**
+- Verify the release exists in your project
+- Check for typos in the release name
+- Ensure the release has been created
+
+#### Namespace Not Found (404)
+
+```json
+{
+  "error": "Not Found",
+  "message": "Namespace 'common' not found in release"
+}
+```
+
+**Solutions:**
+- Verify the namespace is included in the release
+- Check namespace spelling
+- Ensure the build includes the namespace
+
+#### Language Not Found (404)
+
+```json
+{
+  "error": "Not Found",
+  "message": "Language 'jp' not found. Did you mean 'ja'?"
+}
+```
+
+**Solutions:**
+- Use correct language codes (e.g., `ja` not `jp`)
+- Verify the language exists in your project
+
+### Rate Limit Errors
+
+#### Rate Limit Exceeded (429)
+
+```json
+{
+  "error": "Too Many Requests",
+  "message": "Monthly API request limit exceeded. Current usage: 130% of limit."
+}
+```
+
+**Solutions:**
+- Upgrade your subscription plan
+- Wait for monthly limit reset
+- Implement caching to reduce requests
+
+#### Approaching Rate Limit (200 with warning)
+
+Successful requests near the limit include warning headers:
+
+```
+X-RateLimit-Warning: Usage at 85% of monthly limit
+X-RateLimit-Remaining: 1500
+X-RateLimit-Limit: 10000
+```
+
+<Warning>
+    Monitor these headers to avoid hitting hard limits.
+</Warning>
+
+### Server Errors
+
+#### Internal Server Error (500)
+
+```json
+{
+  "error": "Internal Server Error",
+  "message": "An unexpected error occurred"
+}
+```
+
+**Solutions:**
+- Retry the request after a brief delay
+- Check the status page for outages
+- Contact support if the issue persists
+
+#### Service Unavailable (503)
+
+```json
+{
+  "error": "Service Unavailable",
+  "message": "The service is temporarily unavailable"
+}
+```
+
+**Solutions:**
+- Implement retry logic with exponential backoff
+- Use cached translations as fallback
+- Monitor status for resolution
+
+## Error Handling Best Practices
+
+### Implement Retry Logic
+
+<CodeGroup>
+
+```javascript JavaScript
+async function fetchWithRetry(url, options, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+
+      if (response.ok) {
+        return response.json();
+      }
+
+      // Don't retry client errors (4xx)
+      if (response.status >= 400 && response.status < 500) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+
+      // Retry server errors (5xx)
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+    }
+  }
+}
+```
+
+```typescript TypeScript
+async function fetchWithRetry<T>(
+  url: string,
+  options: RequestInit,
+  maxRetries: number = 3
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+
+      if (response.ok) {
+        return response.json() as Promise<T>;
+      }
+
+      if (response.status >= 400 && response.status < 500) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+
+      throw new Error(`Request failed after ${maxRetries} attempts`);
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+    }
+  }
+
+  throw new Error('Unexpected error in retry logic');
+}
+```
+
+</CodeGroup>
+
+### Graceful Degradation
+
+Always have fallback behavior:
+
+```javascript
+async function loadTranslations(lang) {
+  try {
+    return await fetchTranslations(lang);
+  } catch (error) {
+    console.error('Failed to load translations:', error.message);
+
+    // Try cached translations
+    const cached = localStorage.getItem(`translations_${lang}`);
+    if (cached) {
+      console.log('Using cached translations');
+      return JSON.parse(cached);
+    }
+
+    // Fall back to default language
+    console.log('Using default language translations');
+    return defaultTranslations;
+  }
+}
+```
+
+### Monitor Rate Limits
+
+```javascript
+async function fetchTranslations(params) {
+  const response = await fetch(buildUrl(params), {
+    headers: { 'x-api-key': API_KEY }
+  });
+
+  // Check rate limit headers
+  const remaining = response.headers.get('X-RateLimit-Remaining');
+  const warning = response.headers.get('X-RateLimit-Warning');
+
+  if (warning) {
+    console.warn('Rate limit warning:', warning);
+    // Alert your monitoring system
+  }
+
+  if (remaining && parseInt(remaining) < 1000) {
+    console.warn('Low rate limit remaining:', remaining);
+  }
+
+  return response.json();
+}
+```
+
+## Error Reference Table
+
+| Status | Error | Common Cause | Solution |
+|--------|-------|--------------|----------|
+| 400 | Bad Request | Missing/invalid parameters | Check request parameters |
+| 401 | Unauthorized | Invalid API key | Verify API key |
+| 404 | Not Found | Resource doesn't exist | Check release/namespace/language |
+| 429 | Too Many Requests | Rate limit exceeded | Upgrade plan or wait |
+| 500 | Internal Error | Server issue | Retry with backoff |
+| 503 | Service Unavailable | Temporary outage | Retry later |
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='API Overview' icon='book' href='/api-reference/overview'>
+        Learn about API basics
+    </Card>
+    <Card title='Get Translations' icon='download' href='/api-reference/translations/get-translations'>
+        See the main API endpoint
+    </Card>
+</CardGroup>

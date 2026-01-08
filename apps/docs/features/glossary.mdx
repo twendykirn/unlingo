@@ -1,0 +1,214 @@
+---
+title: 'Glossary'
+description: 'Manage terminology and translation rules across your project'
+---
+
+## What is the Glossary?
+
+The **Glossary** in Unlingo is a project-wide dictionary of terms that controls how specific words and phrases are translated. It ensures consistent terminology across all languages and helps maintain brand voice.
+
+## Key Features
+
+<CardGroup cols={2}>
+    <Card title='Term Dictionary' icon='book'>
+        Define how specific terms should be translated
+    </Card>
+    <Card title='Non-translatable Terms' icon='lock'>
+        Mark terms that should never be translated
+    </Card>
+    <Card title='Forbidden Terms' icon='ban'>
+        Flag terms that should trigger warnings
+    </Card>
+    <Card title='Case Sensitivity' icon='text-size'>
+        Control case-sensitive matching
+    </Card>
+</CardGroup>
+
+## Glossary Term Structure
+
+Each glossary term includes:
+
+- **Term**: The word or phrase to match
+- **Description**: Context for translators
+- **Translations**: Language-specific translations
+- **Non-translatable**: Whether to keep the original term
+- **Forbidden**: Whether to warn when term is used
+- **Case Sensitive**: Whether matching is case-sensitive
+
+## Creating Glossary Terms
+
+### Via Dashboard
+
+<Steps>
+    <Step title='Open Project Glossary'>
+        Navigate to your project and select the Glossary tab
+    </Step>
+    <Step title='Add Term'>
+        Click "Add Term" and enter the base term
+    </Step>
+    <Step title='Configure Translations'>
+        Add translations for each target language
+    </Step>
+    <Step title='Set Options'>
+        Configure non-translatable, forbidden, and case sensitivity flags
+    </Step>
+</Steps>
+
+## Term Types
+
+### Standard Terms
+
+Standard terms define how specific words should be translated:
+
+```json
+{
+  "term": "Dashboard",
+  "description": "The main user interface",
+  "translations": {
+    "fr": "Tableau de bord",
+    "de": "Übersicht",
+    "es": "Panel de control"
+  }
+}
+```
+
+### Non-translatable Terms
+
+Mark brand names, product names, or technical terms that should remain unchanged:
+
+```json
+{
+  "term": "Unlingo",
+  "nonTranslatable": true,
+  "description": "Our product name - never translate"
+}
+```
+
+<Tip>
+    Use non-translatable terms for brand names, product features, and technical terminology that should remain consistent globally.
+</Tip>
+
+### Forbidden Terms
+
+Flag outdated or inappropriate terminology:
+
+```json
+{
+  "term": "deprecated-feature",
+  "forbidden": true,
+  "description": "This feature has been removed - do not reference"
+}
+```
+
+<Warning>
+    Forbidden terms generate warnings during translation but don't block the process.
+</Warning>
+
+## Case Sensitivity
+
+Control how terms are matched:
+
+| Setting | Example | Matches |
+|---------|---------|---------|
+| Case Sensitive | "API" | "API" only |
+| Case Insensitive | "api" | "api", "API", "Api" |
+
+## Best Practices
+
+### Building Your Glossary
+
+<Tip>
+    **Start with Brand Terms**: Begin by adding all brand names, product names, and key feature terminology to ensure consistency from day one.
+</Tip>
+
+1. **Brand Terms**: Company name, product names, feature names
+2. **Technical Terms**: Industry-specific terminology
+3. **UI Elements**: Button labels, menu items, section headers
+4. **Tone Words**: Terms that define your brand voice
+
+### Glossary Organization
+
+- Add descriptions for context
+- Group related terms logically
+- Review and update regularly
+- Remove outdated terms
+
+### Translation Quality
+
+- Verify translations with native speakers
+- Consider regional variations
+- Test in context
+
+## Glossary in AI Translation
+
+The glossary is automatically applied during:
+
+- Automatic translation of new keys
+- Language backfill operations
+- Batch translation actions
+
+AI translations will:
+1. Check for glossary matches
+2. Apply defined translations
+3. Keep non-translatable terms
+4. Flag forbidden terms
+
+## Example Glossary
+
+```json
+[
+  {
+    "term": "Unlingo",
+    "nonTranslatable": true,
+    "description": "Product name"
+  },
+  {
+    "term": "Dashboard",
+    "translations": {
+      "fr": "Tableau de bord",
+      "de": "Übersicht",
+      "es": "Panel"
+    }
+  },
+  {
+    "term": "Settings",
+    "translations": {
+      "fr": "Paramètres",
+      "de": "Einstellungen",
+      "es": "Configuración"
+    }
+  },
+  {
+    "term": "old-branding",
+    "forbidden": true,
+    "description": "Deprecated - use new brand name"
+  }
+]
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+    <Accordion title='Glossary terms not being applied'>
+        Check that case sensitivity settings match your content. Also verify the term exists in your glossary.
+    </Accordion>
+
+    <Accordion title='AI ignoring glossary translations'>
+        Ensure translations are defined for the target language in the glossary term.
+    </Accordion>
+
+    <Accordion title='Too many matches'>
+        Use case sensitivity for terms that shouldn't match common words.
+    </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='Languages' icon='globe' href='/features/languages'>
+        Configure language-specific translation rules
+    </Card>
+    <Card title='Translations' icon='text' href='/concepts/translations'>
+        Create and manage translation keys
+    </Card>
+</CardGroup>

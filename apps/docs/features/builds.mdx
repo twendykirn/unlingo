@@ -1,0 +1,227 @@
+---
+title: 'Builds'
+description: 'Generate and manage translation builds for deployment'
+---
+
+## What are Builds?
+
+A **Build** in Unlingo is a generated snapshot of your translations at a specific point in time. Builds create JSON files for each language that can be served to your application through releases.
+
+## Key Features
+
+<CardGroup cols={2}>
+    <Card title='JSON Generation' icon='file-code'>
+        Generates language-specific JSON files from translations
+    </Card>
+    <Card title='S3 Storage' icon='cloud'>
+        Securely stores build files in cloud storage
+    </Card>
+    <Card title='Build Tagging' icon='tag'>
+        Tag builds for easy identification and searching
+    </Card>
+    <Card title='Status Tracking' icon='circle-check'>
+        Monitor build generation progress in real-time
+    </Card>
+</CardGroup>
+
+## Build Structure
+
+Each build includes:
+
+- **Build Tag**: A unique identifier/name for the build
+- **Namespace**: The namespace being built
+- **Language Files**: JSON files for each language
+- **Status**: Processing, completed, or failed
+- **Created At**: Timestamp of build creation
+
+## Build Generation Process
+
+<Steps>
+    <Step title='Initiate Build'>
+        Create a build from the dashboard or API
+    </Step>
+    <Step title='Collect Translations'>
+        System gathers all translation keys and values for the namespace
+    </Step>
+    <Step title='Generate JSON'>
+        Creates JSON files for each language in the namespace
+    </Step>
+    <Step title='Upload to Storage'>
+        Files are securely uploaded to S3
+    </Step>
+    <Step title='Build Complete'>
+        Build is marked complete and ready for release
+    </Step>
+</Steps>
+
+## Creating Builds
+
+### Via Dashboard
+
+<Steps>
+    <Step title='Navigate to Namespace'>
+        Open your project and select the namespace you want to build
+    </Step>
+    <Step title='Click Create Build'>
+        Click the "Create Build" button in the builds section
+    </Step>
+    <Step title='Enter Build Tag'>
+        Provide a meaningful tag (e.g., "v1.2.0", "release-2024-01")
+    </Step>
+    <Step title='Confirm'>
+        Build generation begins automatically
+    </Step>
+</Steps>
+
+## Build Output Format
+
+Builds generate JSON files in a flat key-value format:
+
+```json
+{
+  "welcome.title": "Welcome to our app",
+  "welcome.subtitle": "Get started today",
+  "navigation.home": "Home",
+  "navigation.settings": "Settings",
+  "errors.notFound": "Page not found"
+}
+```
+
+<Tip>
+    The JSON format is compatible with most i18n libraries including i18next, next-intl, react-intl, and vue-i18n.
+</Tip>
+
+## Build Tags
+
+Tags help identify and organize builds:
+
+### Naming Conventions
+
+| Pattern | Example | Use Case |
+|---------|---------|----------|
+| Semantic Version | `v1.2.0` | Production releases |
+| Date-based | `2024-01-15` | Daily builds |
+| Feature-based | `feature-dark-mode` | Feature testing |
+| Environment | `staging-build` | Environment-specific |
+
+<Warning>
+    Build tags must be unique within a namespace. Attempting to create a build with an existing tag will fail.
+</Warning>
+
+## Build Status
+
+Builds go through several states:
+
+| Status | Description |
+|--------|-------------|
+| Processing | Build generation in progress |
+| Completed | All language files generated successfully |
+| Failed | Error during generation |
+
+### Handling Failed Builds
+
+If a build fails:
+
+1. Check that all translations have values in the primary language
+2. Verify namespace contains translation keys
+3. Review any error messages in the build details
+4. Delete the failed build and retry
+
+## Managing Builds
+
+### Viewing Build Details
+
+Access build details to see:
+
+- Generation timestamp
+- Number of language files
+- File sizes
+- Direct download links (signed URLs)
+
+### Deleting Builds
+
+When deleting a build:
+
+- All S3 files are removed
+- Release connections are automatically updated
+- The operation cannot be undone
+
+<Danger>
+    Before deleting a build, ensure it's not actively used by any release. Releases will automatically rebalance if their builds are deleted.
+</Danger>
+
+## Best Practices
+
+### Build Strategy
+
+<Tip>
+    **Build Often, Release Selectively**: Create builds frequently during development, but only create releases for production-ready content.
+</Tip>
+
+- Create builds after significant translation updates
+- Use meaningful tags for easy identification
+- Keep recent builds for rollback capability
+
+### Performance
+
+- Build namespaces individually for faster generation
+- Avoid building during peak usage times
+- Monitor build completion before creating releases
+
+### Cleanup
+
+- Regularly delete old, unused builds
+- Archive important builds before deletion
+- Maintain at least 2-3 builds for rollback
+
+## Build Files and Storage
+
+Build files are stored securely in AWS S3:
+
+- Files are private by default
+- Access through signed URLs (time-limited)
+- Automatic cleanup when builds are deleted
+
+### File Naming
+
+```
+{namespace}/{build_id}/{language}.json
+```
+
+Example:
+```
+common/build_abc123/en.json
+common/build_abc123/fr.json
+common/build_abc123/de.json
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+    <Accordion title='Build stuck in processing'>
+        Large namespaces with many keys may take longer. Wait a few minutes. If it persists, delete and retry.
+    </Accordion>
+
+    <Accordion title='Build completed but no files'>
+        Ensure the namespace has translation keys with values. Empty namespaces produce empty builds.
+    </Accordion>
+
+    <Accordion title='Cannot delete build'>
+        A build actively being processed cannot be deleted. Wait for completion or failure first.
+    </Accordion>
+
+    <Accordion title='Missing language in build'>
+        Check that the language exists in your project and has translations for the namespace being built.
+    </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='Releases' icon='rocket' href='/concepts/releases'>
+        Create releases from your builds
+    </Card>
+    <Card title='API Reference' icon='code' href='/api-reference/translations/get-translations'>
+        Serve translations through the API
+    </Card>
+</CardGroup>

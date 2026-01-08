@@ -1,0 +1,264 @@
+---
+title: 'AI Translation'
+description: 'Automatic translation powered by Google Gemini AI'
+---
+
+## Overview
+
+Unlingo uses **Google Gemini AI** to automatically translate your content. AI translation helps you quickly expand to new languages while maintaining context and quality.
+
+## Key Features
+
+<CardGroup cols={2}>
+    <Card title='Automatic Translation' icon='bolt'>
+        Instantly translate new keys to all languages
+    </Card>
+    <Card title='Context-Aware' icon='brain'>
+        AI understands context for accurate translations
+    </Card>
+    <Card title='Glossary Integration' icon='book'>
+        Respects your glossary terms and rules
+    </Card>
+    <Card title='Batch Processing' icon='layer-group'>
+        Translate multiple keys efficiently
+    </Card>
+</CardGroup>
+
+## When AI Translation is Used
+
+AI translation triggers automatically in these scenarios:
+
+### New Translation Keys
+
+When you create a new translation key:
+
+1. You provide the value in the primary language
+2. AI translates to all other project languages
+3. Translations are created automatically
+
+### Language Backfill
+
+When you add a new language to a project:
+
+1. System identifies existing translation keys
+2. AI translates all keys from primary language
+3. New language is populated with translations
+
+### Manual Translation Request
+
+You can trigger AI translation manually:
+
+1. Select keys needing translation
+2. Click "Translate" or "Auto-translate"
+3. AI generates translations for missing languages
+
+## Translation Quality
+
+### Glossary Integration
+
+AI translation automatically applies your glossary:
+
+```json
+// Glossary Term
+{
+  "term": "Dashboard",
+  "translations": {
+    "fr": "Tableau de bord"
+  }
+}
+
+// AI Output
+"Dashboard" → "Tableau de bord" (uses glossary)
+"Settings" → "Paramètres" (AI translated)
+```
+
+### Non-translatable Terms
+
+Terms marked as non-translatable are preserved:
+
+```json
+// Glossary
+{
+  "term": "Unlingo",
+  "nonTranslatable": true
+}
+
+// Input: "Welcome to Unlingo"
+// Output: "Bienvenue sur Unlingo"  // Brand name preserved
+```
+
+### Context Consideration
+
+AI considers surrounding content for better translations:
+
+- Key names provide context
+- Related keys inform tone
+- Project-wide patterns are learned
+
+<Tip>
+    Use descriptive key names like `checkout.payment.submit` instead of `btn1` for better AI context.
+</Tip>
+
+## Batch Translation
+
+For large-scale translation needs:
+
+### How It Works
+
+<Steps>
+    <Step title='Select Keys'>
+        Choose keys that need translation
+    </Step>
+    <Step title='Choose Languages'>
+        Select target languages
+    </Step>
+    <Step title='Start Batch'>
+        Initiate batch translation process
+    </Step>
+    <Step title='Progress Tracking'>
+        Monitor translation progress
+    </Step>
+    <Step title='Review'>
+        Review and adjust translations
+    </Step>
+</Steps>
+
+### Performance
+
+| Keys | Approximate Time |
+|------|-----------------|
+| 10 | Few seconds |
+| 100 | ~30 seconds |
+| 1,000 | ~5 minutes |
+
+<Warning>
+    Large batch operations may take several minutes. The process runs in the background.
+</Warning>
+
+## Translation Rules
+
+Configure language-specific translation rules:
+
+### Formal vs Informal
+
+```json
+{
+  "language": "de",
+  "rules": {
+    "formalTone": true  // Uses "Sie" instead of "du"
+  }
+}
+```
+
+### Regional Variants
+
+Different rules for regional language variants:
+
+- `es-ES` - Spanish (Spain)
+- `es-MX` - Spanish (Mexico)
+
+## Best Practices
+
+### Improving AI Quality
+
+<CardGroup cols={2}>
+    <Card title='Build Glossary' icon='book'>
+        Add key terms for consistent translations
+    </Card>
+    <Card title='Clear Source Text' icon='text'>
+        Write clear, unambiguous source content
+    </Card>
+    <Card title='Review Output' icon='eye'>
+        Always review AI translations before publishing
+    </Card>
+    <Card title='Provide Context' icon='info'>
+        Use descriptive key names and descriptions
+    </Card>
+</CardGroup>
+
+### Source Text Guidelines
+
+**Good source text:**
+```json
+{
+  "checkout.submit": "Complete your purchase"
+}
+```
+
+**Avoid:**
+```json
+{
+  "btn1": "Click here"  // No context
+}
+```
+
+### Review Process
+
+1. AI generates initial translations
+2. Review translations for accuracy
+3. Check brand-specific terminology
+4. Verify cultural appropriateness
+5. Test in context
+
+## Limitations
+
+### What AI Handles Well
+
+- General UI text
+- Common phrases
+- Structured content
+- Technical documentation
+
+### What Needs Human Review
+
+- Marketing copy and slogans
+- Legal or medical content
+- Culturally sensitive material
+- Creative writing
+- Humor and idioms
+
+<Warning>
+    AI translation is a starting point. Critical content should always be reviewed by native speakers.
+</Warning>
+
+## Cost Considerations
+
+AI translation usage is included in your plan:
+
+- Translation requests don't count against API limits
+- Batch translations are processed efficiently
+- No additional charges for AI features
+
+## Troubleshooting
+
+<AccordionGroup>
+    <Accordion title='Translation not matching glossary'>
+        Verify the glossary term exists and has a translation for the target language.
+    </Accordion>
+
+    <Accordion title='Poor quality translations'>
+        - Check source text clarity
+        - Add context through key names
+        - Build out your glossary
+        - Consider translation rules
+    </Accordion>
+
+    <Accordion title='Translation taking too long'>
+        Large batches may take several minutes. Check progress in the dashboard.
+    </Accordion>
+
+    <Accordion title='Some keys not translated'>
+        Ensure the primary language has values for all keys. AI cannot translate empty source text.
+    </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='Glossary' icon='book' href='/features/glossary'>
+        Build your glossary for better translations
+    </Card>
+    <Card title='Languages' icon='globe' href='/features/languages'>
+        Add languages and configure rules
+    </Card>
+</CardGroup>

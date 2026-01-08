@@ -1,0 +1,245 @@
+---
+title: 'A/B Testing'
+description: 'Test different translation variations with built-in A/B testing support'
+---
+
+## Overview
+
+Unlingo supports **A/B testing** for translations through the release system. You can attach multiple builds to a single release with different selection percentages, allowing you to test different translation variations with real users.
+
+## How It Works
+
+<Steps>
+    <Step title='Create Multiple Builds'>
+        Create different builds with translation variations you want to test
+    </Step>
+    <Step title='Configure Release'>
+        Add builds to a release with percentage allocations
+    </Step>
+    <Step title='Serve Translations'>
+        API randomly selects a build based on the configured percentages
+    </Step>
+    <Step title='Analyze Results'>
+        Monitor performance and user feedback for each variation
+    </Step>
+</Steps>
+
+## Setting Up A/B Tests
+
+### Creating Test Builds
+
+First, create the builds you want to test:
+
+```
+Build A: "control" - Your current translations
+Build B: "variation-1" - Alternative translations to test
+```
+
+### Configuring Selection Percentages
+
+When adding builds to a release, specify the selection chance (0-100%):
+
+| Build | Selection Chance |
+|-------|-----------------|
+| control | 70% |
+| variation-1 | 30% |
+
+<Tip>
+    Start with a smaller percentage for new variations (10-30%) to limit risk while gathering data.
+</Tip>
+
+### Release Configuration
+
+```json
+{
+  "release": "main",
+  "builds": [
+    {
+      "build": "control",
+      "selectionChance": 70
+    },
+    {
+      "build": "variation-1",
+      "selectionChance": 30
+    }
+  ]
+}
+```
+
+## API Behavior
+
+When your application requests translations from a release with A/B testing:
+
+1. API receives the request
+2. System generates a random number
+3. Build is selected based on cumulative percentages
+4. Translations from selected build are returned
+
+### Selection Algorithm
+
+```
+Random: 0.45 (45%)
+
+Builds:
+- control: 0-70% → Selected if random < 0.70
+- variation-1: 70-100% → Selected if random >= 0.70
+
+Result: "control" selected (45% < 70%)
+```
+
+## Best Practices
+
+### Test Design
+
+<CardGroup cols={2}>
+    <Card title='Single Variable' icon='target'>
+        Test one change at a time for clear results
+    </Card>
+    <Card title='Meaningful Differences' icon='shuffle'>
+        Make variations distinct enough to measure
+    </Card>
+    <Card title='Statistical Significance' icon='chart-line'>
+        Run tests long enough for reliable data
+    </Card>
+    <Card title='User Experience' icon='users'>
+        Ensure all variations provide good UX
+    </Card>
+</CardGroup>
+
+### Percentage Guidelines
+
+| Scenario | Control | Variation |
+|----------|---------|-----------|
+| Initial test | 90% | 10% |
+| Growing confidence | 70% | 30% |
+| Equal split | 50% | 50% |
+| Winner rollout | 0% | 100% |
+
+### Test Duration
+
+<Warning>
+    Don't end tests too early. Ensure you have enough data for statistical significance before declaring a winner.
+</Warning>
+
+## Managing A/B Tests
+
+### Adding Builds to Release
+
+Add a new variation to an existing release:
+
+1. Navigate to the release
+2. Click "Add Build"
+3. Select the build
+4. Set selection percentage
+5. Other builds auto-rebalance if needed
+
+### Removing Builds
+
+When removing a build from a release:
+
+- Selection percentages automatically rebalance
+- Remaining builds maintain their relative proportions
+- No service interruption
+
+### Adjusting Percentages
+
+Update percentages as you gain confidence:
+
+<Steps>
+    <Step title='Review Data'>
+        Analyze performance metrics for each variation
+    </Step>
+    <Step title='Update Percentages'>
+        Increase winning variation, decrease others
+    </Step>
+    <Step title='Continue Testing'>
+        Monitor for sustained performance
+    </Step>
+    <Step title='Roll Out Winner'>
+        Set winning variation to 100%
+    </Step>
+</Steps>
+
+## Use Cases
+
+### Testing Call-to-Action Text
+
+```
+Control: "Sign Up Now"
+Variation: "Get Started Free"
+```
+
+### Tone Testing
+
+```
+Control: Formal tone - "Please submit your request"
+Variation: Casual tone - "Send us your request"
+```
+
+### Length Testing
+
+```
+Control: "Welcome to our platform. Get started today."
+Variation: "Welcome! Start now."
+```
+
+## Monitoring Results
+
+While Unlingo doesn't provide built-in analytics for A/B test results, you can track:
+
+- API request counts per release
+- User behavior in your analytics platform
+- Conversion rates per variation
+
+<Tip>
+    Integrate with your existing analytics to track which translation variation users received and correlate with their behavior.
+</Tip>
+
+## Auto-Rebalancing
+
+When builds are added or removed, Unlingo automatically rebalances percentages:
+
+### Adding a Build
+
+Original:
+- Build A: 100%
+
+After adding Build B:
+- Build A: 50%
+- Build B: 50%
+
+### Removing a Build
+
+Original:
+- Build A: 60%
+- Build B: 40%
+
+After removing Build B:
+- Build A: 100%
+
+## Troubleshooting
+
+<AccordionGroup>
+    <Accordion title='Unexpected build being served'>
+        Selection is random based on percentages. Over many requests, the distribution should match your configured percentages.
+    </Accordion>
+
+    <Accordion title='Percentages not adding to 100%'>
+        Unlingo allows flexible percentages. If they don't add to 100%, the system normalizes them proportionally.
+    </Accordion>
+
+    <Accordion title='Build not appearing in A/B test'>
+        Ensure the build is completed (not failed or processing) and properly added to the release.
+    </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='Builds' icon='hammer' href='/features/builds'>
+        Create builds for your A/B test variations
+    </Card>
+    <Card title='Releases' icon='rocket' href='/concepts/releases'>
+        Learn more about release management
+    </Card>
+</CardGroup>

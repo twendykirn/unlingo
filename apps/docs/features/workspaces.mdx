@@ -1,0 +1,132 @@
+---
+title: 'Workspaces'
+description: 'Organization-level workspace management for teams and billing'
+---
+
+## What are Workspaces?
+
+A **Workspace** in Unlingo represents an organization-level container that manages team access, billing, usage tracking, and resource limits. Workspaces are automatically created when you sign up and are linked to your Clerk organization.
+
+## Key Features
+
+<CardGroup cols={2}>
+    <Card title='Team Management' icon='users'>
+        Invite team members and manage access through your organization
+    </Card>
+    <Card title='Usage Tracking' icon='gauge-high'>
+        Monitor translation keys and API request usage in real-time
+    </Card>
+    <Card title='Billing Integration' icon='credit-card'>
+        Seamless subscription management with Polar
+    </Card>
+    <Card title='Resource Limits' icon='layer-group'>
+        Configurable limits based on your subscription tier
+    </Card>
+</CardGroup>
+
+## Workspace Structure
+
+Each workspace contains:
+
+- **Projects**: Multiple translation projects
+- **Usage Metrics**: Monthly API request and translation key tracking
+- **Subscription**: Current billing tier and limits
+- **Contact Information**: Primary contact email for notifications
+
+## Subscription Tiers
+
+Unlingo offers three subscription tiers with different resource limits:
+
+| Tier | API Requests/Month | Translation Keys |
+|------|-------------------|------------------|
+| Starter | 10,000 | 1,000 |
+| Hobby | 50,000 | 5,000 |
+| Premium | 250,000 - 100M | Up to 200,000 |
+
+<Tip>
+    Premium plans have configurable limits based on your needs. Contact support for custom enterprise plans.
+</Tip>
+
+## Usage Monitoring
+
+Unlingo tracks your usage and sends notifications at key thresholds:
+
+<Steps>
+    <Step title='80% Warning'>
+        You receive an email notification when approaching your limit
+    </Step>
+    <Step title='100% Limit Reached'>
+        Notification that you've reached your plan limit
+    </Step>
+    <Step title='130% Hard Limit'>
+        API requests are blocked until the next billing cycle or upgrade
+    </Step>
+</Steps>
+
+## Managing Your Workspace
+
+### Viewing Usage
+
+Navigate to your workspace settings to view:
+
+- Current month's API request count
+- Total translation keys across all projects
+- Days until usage reset
+- Subscription status and limits
+
+### Updating Contact Email
+
+Your workspace contact email receives important notifications including:
+
+- Usage alerts and warnings
+- Billing notifications
+- Security alerts
+
+<Warning>
+    The contact email must be unique across all Unlingo workspaces.
+</Warning>
+
+## Best Practices
+
+### Resource Management
+
+<Tip>
+    **Monitor Usage Regularly**: Check your usage dashboard weekly to avoid hitting limits unexpectedly.
+</Tip>
+
+- Archive unused projects to free up translation key limits
+- Clean up old namespaces that are no longer in use
+- Consider upgrading before hitting 80% usage
+
+### Team Organization
+
+- Use meaningful project names that reflect their purpose
+- Assign clear ownership of projects within your team
+- Regularly review team member access
+
+## Troubleshooting
+
+<AccordionGroup>
+    <Accordion title='API requests are being blocked'>
+        You may have exceeded 130% of your plan's request limit. Check your usage in the dashboard and consider upgrading your plan or waiting for the monthly reset.
+    </Accordion>
+
+    <Accordion title='Cannot create new translation keys'>
+        Your workspace has reached its translation key limit. Delete unused keys or upgrade your subscription tier.
+    </Accordion>
+
+    <Accordion title='Usage not resetting'>
+        Usage resets at the start of each billing month based on your subscription date, not the calendar month.
+    </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='Projects' icon='folder' href='/concepts/projects'>
+        Create and manage translation projects within your workspace
+    </Card>
+    <Card title='Billing' icon='credit-card' href='/features/billing'>
+        Learn about subscription management and billing
+    </Card>
+</CardGroup>

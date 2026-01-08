@@ -1,0 +1,158 @@
+---
+title: 'Languages'
+description: 'Multi-language support and automatic translation features'
+---
+
+## What are Languages?
+
+**Languages** in Unlingo define the target locales for your translation project. Each project has a primary language (typically your source language) and can have multiple target languages for translation.
+
+## Key Features
+
+<CardGroup cols={2}>
+    <Card title='Primary Language' icon='star'>
+        Designate your source language for translations
+    </Card>
+    <Card title='Auto-Translation' icon='bolt'>
+        AI-powered automatic translation when adding new languages
+    </Card>
+    <Card title='Translation Rules' icon='list-check'>
+        Custom rules per language for consistent translations
+    </Card>
+    <Card title='Status Tracking' icon='circle-check'>
+        Track translation progress per language
+    </Card>
+</CardGroup>
+
+## Language Structure
+
+Each language in a project includes:
+
+- **Language Code**: Standard locale code (e.g., `en-US`, `fr-FR`, `ja`)
+- **Primary Flag**: Whether this is the source language
+- **Translation Rules**: Custom rules applied during translation
+- **Status**: Active or processing state
+
+## Adding Languages
+
+### Via Dashboard
+
+<Steps>
+    <Step title='Open Project Settings'>
+        Navigate to your project and open the Languages section
+    </Step>
+    <Step title='Add Language'>
+        Click "Add Language" and select from available locales
+    </Step>
+    <Step title='Configure Options'>
+        Choose whether to enable automatic backfill translation
+    </Step>
+    <Step title='Save'>
+        The language is added and translations begin if backfill is enabled
+    </Step>
+</Steps>
+
+## Automatic Backfill
+
+When adding a new language with backfill enabled, Unlingo automatically:
+
+1. Identifies all existing translation keys
+2. Uses AI (Google Gemini) to translate from the primary language
+3. Creates translation values for the new language
+4. Applies any language-specific rules during translation
+
+<Tip>
+    Enable backfill for instant translations when adding new languages to established projects.
+</Tip>
+
+## Translation Rules
+
+Translation rules help maintain consistency across your translations:
+
+```json
+{
+  "preserveCase": true,
+  "formalTone": true,
+  "customTerms": {
+    "Dashboard": "Tableau de bord",
+    "Settings": "Paramètres"
+  }
+}
+```
+
+### Rule Types
+
+| Rule | Description |
+|------|-------------|
+| `preserveCase` | Maintain original casing in translations |
+| `formalTone` | Use formal language (vous vs tu in French) |
+| `customTerms` | Specific term translations that override AI |
+
+## Primary Language
+
+The primary language serves as the source for all translations:
+
+- All translation keys must have values in the primary language
+- Auto-translation uses primary language values as source
+- Changing the primary language doesn't automatically re-translate
+
+<Warning>
+    Choose your primary language carefully. Changing it later requires manual re-translation of existing content.
+</Warning>
+
+## Language Deletion
+
+When deleting a language:
+
+1. All translation values for that language are removed
+2. Build files containing the language are updated
+3. The operation cannot be undone
+
+<Danger>
+    Deleting a language permanently removes all translations for that language. Export your translations first if you need a backup.
+</Danger>
+
+## Best Practices
+
+### Language Selection
+
+<Tip>
+    **Start with Core Languages**: Begin with your most important markets, then expand. It's easier to manage 3-5 languages well than 20 poorly.
+</Tip>
+
+- Use standard locale codes (e.g., `en-US` not `english`)
+- Consider regional variants when necessary (`es-ES` vs `es-MX`)
+- Group similar languages for easier rule management
+
+### Translation Quality
+
+- Review auto-translated content before publishing
+- Use glossary terms for consistent brand language
+- Set up translation rules for formal/informal tone
+
+## Troubleshooting
+
+<AccordionGroup>
+    <Accordion title='Auto-translation not working'>
+        Ensure your project has a primary language set and that the primary language has values for all translation keys.
+    </Accordion>
+
+    <Accordion title='Wrong translations appearing'>
+        Check your translation rules and glossary terms. Custom terms override AI translations.
+    </Accordion>
+
+    <Accordion title='Cannot delete language'>
+        A language currently being processed cannot be deleted. Wait for all operations to complete.
+    </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='Translations' icon='text' href='/concepts/translations'>
+        Learn how to manage translation keys and values
+    </Card>
+    <Card title='Glossary' icon='book' href='/features/glossary'>
+        Set up consistent terminology across languages
+    </Card>
+</CardGroup>

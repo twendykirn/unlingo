@@ -42,12 +42,30 @@
             ]
         },
         {
+            "group": "Features",
+            "pages": [
+                "features/workspaces",
+                "features/languages",
+                "features/builds",
+                "features/glossary",
+                "features/screenshots",
+                "features/ai-translation",
+                "features/ab-testing",
+                "features/billing"
+            ]
+        },
+        {
             "group": "Integrations",
             "pages": ["integrations/i18next", "integrations/next-intl"]
         },
         {
             "group": "API Reference",
-            "pages": ["api-reference/translations/get-translations"]
+            "pages": [
+                "api-reference/overview",
+                "api-reference/translations/get-translations",
+                "api-reference/health",
+                "api-reference/errors"
+            ]
         }
     ],
     "footerSocials": {

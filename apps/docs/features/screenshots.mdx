@@ -1,0 +1,260 @@
+---
+title: 'Screenshots'
+description: 'Visual translation mapping with AI-powered text detection'
+---
+
+## What are Screenshots?
+
+**Screenshots** in Unlingo provide visual context for your translations. Upload screenshots of your UI and map translation keys to specific text regions, making it easier for translators to understand where and how translations are used.
+
+## Key Features
+
+<CardGroup cols={2}>
+    <Card title='Visual Context' icon='image'>
+        See exactly where translations appear in your UI
+    </Card>
+    <Card title='AI Text Detection' icon='eye'>
+        Automatically detect and extract text from screenshots
+    </Card>
+    <Card title='Container Mapping' icon='vector-square'>
+        Draw regions to link text to translation keys
+    </Card>
+    <Card title='Auto-Linking' icon='link'>
+        AI matches detected text to existing translation keys
+    </Card>
+</CardGroup>
+
+## Screenshot Structure
+
+Each screenshot includes:
+
+- **Image File**: The uploaded screenshot (PNG, JPG, WebP)
+- **Containers**: Defined regions marking text locations
+- **Detected Text**: AI-identified text within the image
+- **Linked Keys**: Translation keys associated with containers
+
+## Uploading Screenshots
+
+### Via Dashboard
+
+<Steps>
+    <Step title='Open Project'>
+        Navigate to your project and select the Screenshots section
+    </Step>
+    <Step title='Upload Image'>
+        Click "Upload Screenshot" and select an image file
+    </Step>
+    <Step title='Processing'>
+        Image is uploaded and stored securely
+    </Step>
+    <Step title='Add Containers'>
+        Draw regions around text to map translation keys
+    </Step>
+</Steps>
+
+### File Requirements
+
+| Requirement | Limit |
+|-------------|-------|
+| Max File Size | 10 MB |
+| Supported Formats | PNG, JPG, JPEG, WebP |
+| Recommended Resolution | 1920x1080 or higher |
+
+<Tip>
+    Higher resolution screenshots produce better text detection results.
+</Tip>
+
+## Text Detection
+
+Unlingo uses Google Gemini AI to automatically detect text in screenshots:
+
+### How It Works
+
+<Steps>
+    <Step title='Trigger Detection'>
+        Click "Detect Text" on any uploaded screenshot
+    </Step>
+    <Step title='AI Analysis'>
+        Gemini analyzes the image and identifies text regions
+    </Step>
+    <Step title='Extract Text'>
+        Text content and bounding boxes are returned
+    </Step>
+    <Step title='Create Containers'>
+        Automatically generate containers from detected regions
+    </Step>
+</Steps>
+
+### Detection Output
+
+```json
+{
+  "detections": [
+    {
+      "text": "Welcome",
+      "boundingBox": {
+        "x": 100,
+        "y": 50,
+        "width": 200,
+        "height": 40
+      }
+    },
+    {
+      "text": "Get Started",
+      "boundingBox": {
+        "x": 150,
+        "y": 300,
+        "width": 150,
+        "height": 35
+      }
+    }
+  ]
+}
+```
+
+## Containers
+
+Containers are regions on a screenshot that mark where specific text appears:
+
+### Creating Containers
+
+**Manually:**
+1. Click and drag on the screenshot to draw a region
+2. Select the associated translation key
+3. Save the container
+
+**Automatically:**
+1. Run text detection on the screenshot
+2. Review detected regions
+3. Confirm or adjust container positions
+
+### Container Properties
+
+| Property | Description |
+|----------|-------------|
+| Position (x, y) | Top-left corner coordinates |
+| Dimensions (width, height) | Size of the region |
+| Translation Key | Linked translation key |
+
+## Auto-Linking
+
+After text detection, Unlingo attempts to match detected text with existing translation keys:
+
+<Steps>
+    <Step title='Extract Text'>
+        Get detected text from each region
+    </Step>
+    <Step title='Search Keys'>
+        Search translation values for matches
+    </Step>
+    <Step title='Link Keys'>
+        Automatically associate matching keys with containers
+    </Step>
+    <Step title='Review'>
+        Manual review and adjustment of links
+    </Step>
+</Steps>
+
+<Warning>
+    Auto-linking works best with exact text matches. Partial matches or different casing may require manual linking.
+</Warning>
+
+## Best Practices
+
+### Screenshot Quality
+
+<Tip>
+    **Capture Full Screens**: Include complete UI elements in screenshots for better context and more accurate text detection.
+</Tip>
+
+- Use high resolution (at least 1080p)
+- Ensure text is clearly readable
+- Avoid heavy compression artifacts
+- Include sufficient context around text
+
+### Organization
+
+- Name screenshots descriptively (e.g., "homepage-hero", "checkout-form")
+- Group related screenshots by feature
+- Update screenshots when UI changes
+- Delete outdated screenshots regularly
+
+### Container Mapping
+
+- Draw containers tightly around text
+- Include all visible translated text
+- Link to correct translation keys
+- Update containers when translations change
+
+## Screenshot Workflow
+
+A typical workflow for using screenshots:
+
+<Steps>
+    <Step title='Design Review'>
+        Capture screenshots of new or updated UI designs
+    </Step>
+    <Step title='Upload'>
+        Upload screenshots to the relevant project
+    </Step>
+    <Step title='Detect Text'>
+        Run AI text detection to identify translatable content
+    </Step>
+    <Step title='Map Keys'>
+        Link detected text to translation keys
+    </Step>
+    <Step title='Translation'>
+        Translators use visual context for accurate translations
+    </Step>
+    <Step title='Verification'>
+        Review translations in context using screenshots
+    </Step>
+</Steps>
+
+## Secure Access
+
+Screenshots are stored securely with:
+
+- Private S3 storage
+- Signed URLs for access (time-limited)
+- Workspace-level access control
+- Automatic cleanup on deletion
+
+## Troubleshooting
+
+<AccordionGroup>
+    <Accordion title='Text detection not finding all text'>
+        - Ensure screenshot resolution is high enough
+        - Check that text is clearly visible
+        - Very small text may not be detected
+        - Try different image formats (PNG often works best)
+    </Accordion>
+
+    <Accordion title='Upload failing'>
+        - Verify file size is under 10 MB
+        - Check file format is supported
+        - Ensure stable internet connection
+    </Accordion>
+
+    <Accordion title='Auto-linking missing matches'>
+        Auto-linking requires exact text matches. Check:
+        - Translation key values match detected text exactly
+        - No extra spaces or formatting differences
+        - Correct language is being searched
+    </Accordion>
+
+    <Accordion title='Cannot delete screenshot'>
+        Wait for any ongoing text detection to complete before deleting.
+    </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+    <Card title='Translations' icon='text' href='/concepts/translations'>
+        Create translation keys to map to screenshots
+    </Card>
+    <Card title='Namespaces' icon='folder' href='/concepts/namespaces'>
+        Organize translations by feature or screen
+    </Card>
+</CardGroup>
