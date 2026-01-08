@@ -289,8 +289,17 @@ export const deleteProjectContents = internalMutation({
         .withIndex("by_project_tag", (q) => q.eq("projectId", args.projectId))
         .paginate({ cursor: args.cursor, numItems: STANDARD_LIMIT });
 
-      for (const d of res.page) {
-        await ctx.db.delete(d._id);
+      for (const release of res.page) {
+        const connections = await ctx.db
+          .query("releaseBuildConnections")
+          .withIndex("by_release_build", (q) => q.eq("releaseId", release._id))
+          .collect();
+
+        for (const conn of connections) {
+          await ctx.db.delete(conn._id);
+        }
+
+        await ctx.db.delete(release._id);
       }
 
       await next(res.isDone, res.continueCursor, "screenshots");
