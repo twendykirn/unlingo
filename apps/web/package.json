@@ -10,6 +10,7 @@
   "dependencies": {
     "@base-ui-components/react": "^1.0.0-beta.7",
     "@clerk/tanstack-react-start": "^0.26.3",
+    "@clerk/themes": "^2.4.47",
     "@clerk/types": "^4.101.4",
     "@convex-dev/react-query": "^0.1.0",
     "@polar-sh/checkout": "^0.1.14",
