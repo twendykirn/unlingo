@@ -239,11 +239,10 @@ function CICDBuildAnimation() {
                             }}
                         >
                             <motion.div
-                                className={`flex size-5 items-center justify-center rounded-full text-xs ${
-                                    isCompleted ? 'bg-emerald-500/20 text-emerald-400' :
-                                    isRunning ? 'bg-amber-500/20 text-amber-400' :
-                                    'bg-zinc-700 text-muted-foreground'
-                                }`}
+                                className={`flex size-5 items-center justify-center rounded-full text-xs ${isCompleted ? 'bg-emerald-500/20 text-emerald-400' :
+                                        isRunning ? 'bg-amber-500/20 text-amber-400' :
+                                            'bg-zinc-700 text-muted-foreground'
+                                    }`}
                                 animate={isRunning ? { scale: [1, 1.1, 1] } : {}}
                                 transition={{ duration: 0.5, repeat: isRunning ? Infinity : 0 }}
                             >
@@ -316,7 +315,6 @@ function SimpleAPIAnimation() {
                                 {endpoint.method}
                             </span>
                             <div className="flex flex-1 items-center gap-1">
-                                <span className="text-muted-foreground">•••</span>
                                 <span className="text-xs text-foreground">/{endpoint.name}</span>
                             </div>
                             <div className={`flex gap-1 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`}>
