@@ -17,6 +17,7 @@ import { ClerkProvider, useAuth } from "@clerk/tanstack-react-start";
 import { auth } from "@clerk/tanstack-react-start/server";
 import { createServerFn } from "@tanstack/react-start";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { dark } from '@clerk/themes';
 
 const fetchClerkAuth = createServerFn({ method: "GET" }).handler(async () => {
 	const clerkAuth = await auth();
@@ -64,7 +65,9 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 function RootDocument() {
 	const context = useRouteContext({ from: Route.id });
 	return (
-		<ClerkProvider>
+		<ClerkProvider appearance={{
+			theme: dark
+		}}>
 			<ConvexProviderWithClerk client={context.convexClient} useAuth={useAuth}>
 				<html lang="en" className="dark">
 					<head>

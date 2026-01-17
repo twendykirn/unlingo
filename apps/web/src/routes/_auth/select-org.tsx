@@ -4,9 +4,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { toastManager } from '@/components/ui/toast';
-import { useOrganization, useOrganizationList } from '@clerk/tanstack-react-start';
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
+import { useClerk, useOrganization, useOrganizationList, useUser } from '@clerk/tanstack-react-start';
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Plus } from 'lucide-react';
+import { BadgeCheck, LogOut, Plus } from 'lucide-react';
 import { useMemo } from 'react';
 
 export const Route = createFileRoute('/_auth/select-org')({
@@ -16,6 +17,8 @@ export const Route = createFileRoute('/_auth/select-org')({
 function RouteComponent() {
     const navigate = useNavigate();
 
+    const { user } = useUser();
+    const { openUserProfile, signOut } = useClerk();
     const { organization } = useOrganization();
     const {
         userMemberships,
@@ -26,6 +29,9 @@ function RouteComponent() {
             infinite: true,
         },
     });
+
+    const email = user?.primaryEmailAddress?.emailAddress || '';
+    const avatar = user?.imageUrl || '';
 
     const userOrgs = useMemo(() => {
         if (!orgListLoaded || userMemberships.isLoading) return [];
@@ -74,10 +80,63 @@ function RouteComponent() {
             <AlertDialog open={true}>
                 <AlertDialogPopup>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Select Organization</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Select or create your organization.
-                        </AlertDialogDescription>
+                        <div className="flex items-center justify-between w-full">
+                            <div className='flex flex-col gap-2'>
+                                <AlertDialogTitle>Select Organization</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Select or create your organization.
+                                </AlertDialogDescription>
+                            </div>
+                            <Menu>
+                                <MenuTrigger
+                                    className="flex items-center gap-2"
+                                    render={<Avatar className="cursor-pointer hover:opacity-90" />}
+                                >
+                                    <AvatarImage src={avatar} alt={email} />
+                                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                </MenuTrigger>
+                                <MenuPopup
+                                    side="right"
+                                    align="end"
+                                    sideOffset={4}
+                                >
+                                    <MenuGroup>
+                                        <MenuGroupLabel className="p-0 font-normal">
+                                            <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                                                <Avatar className="h-8 w-8 rounded-lg">
+                                                    <AvatarImage src={avatar} alt={email} />
+                                                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                                </Avatar>
+                                                <div className="grid flex-1 text-left text-sm leading-tight">
+                                                    <span className="truncate font-medium">{email}</span>
+                                                </div>
+                                            </div>
+                                        </MenuGroupLabel>
+                                    </MenuGroup>
+                                    <MenuSeparator />
+                                    <MenuGroup>
+                                        <MenuItem onClick={() => {
+                                            openUserProfile();
+                                        }}>
+                                            <BadgeCheck />
+                                            Account
+                                        </MenuItem>
+                                    </MenuGroup>
+                                    <MenuSeparator />
+                                    <MenuItem
+                                        variant="destructive"
+                                        onClick={() => {
+                                            (window as any).uj?.identify(null);
+                                            (window as any).uj?.destroy();
+                                            signOut();
+                                        }}
+                                    >
+                                        <LogOut />
+                                        Log out
+                                    </MenuItem>
+                                </MenuPopup>
+                            </Menu>
+                        </div>
                     </AlertDialogHeader>
                     <AlertDialogPanel className='grid gap-4'>
                         {userOrgs.map(org => (

@@ -17,6 +17,7 @@ import {
   getTierFromProductId,
 } from "./polarUtils";
 import "../lib/polyfill";
+import { getFileUrl } from "./files";
 
 async function validateRequest(req: Request): Promise<WebhookEvent | null> {
   const payloadString = await req.text();
@@ -262,7 +263,16 @@ http.route({
         parsedContent = fileContent;
       }
 
-      const responseBody = JSON.stringify(parsedContent);
+      const responseBody = JSON.stringify({
+        translations: parsedContent,
+        release: {
+          tag: resolution.release!.tag,
+        },
+        build: {
+          tag: resolution.build!.tag,
+          namespace: resolution.build!.namespace,
+        },
+      });
 
       await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
         ...ingestBase,
@@ -271,6 +281,573 @@ http.route({
 
       return new Response(responseBody, {
         status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error: any) {
+      console.error("API Error:", error);
+      return new Response(
+        JSON.stringify({
+          error: "Internal server error",
+          message: error.message,
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+  }),
+});
+
+http.route({
+  path: "/v1/keys",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const apiKey = request.headers.get("x-api-key") || request.headers.get("authorization")?.replace("Bearer ", "");
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "API key required" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const url = new URL(request.url);
+    const namespace = url.searchParams.get("namespace");
+    const key = url.searchParams.get("key");
+    const lang = url.searchParams.get("lang");
+
+    if (!namespace || !key || !lang) {
+      return new Response(
+        JSON.stringify({
+          error: "Missing required parameters: namespace, key, and lang are required",
+          example: "/v1/keys?namespace=common&key=greeting.hello&lang=en",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    try {
+      const verifyResponse = await ctx.runAction(internal.keys.verifyUnkeyKey, {
+        key: apiKey,
+      });
+
+      if (!verifyResponse.valid || !verifyResponse.permissions.includes("translations.read")) {
+        return new Response(JSON.stringify({ error: "Invalid API key" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const { externalId } = verifyResponse.identity;
+      const workspaceId = externalId.split("_")[0];
+      const projectId = externalId.split("_")[1];
+
+      if (!workspaceId || !projectId) {
+        return new Response(JSON.stringify({ error: "Invalid API key metadata" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const limitCheck = await ctx.runMutation(internal.internalWorkspaces.checkAndUpdateRequestUsage, {
+        workspaceId,
+        projectId,
+      });
+
+      if (limitCheck.nearLimit) {
+        await emailWorkpool.enqueueAction(ctx, internal.resend.sendLimitsEmail, {
+          email: limitCheck.workspace.contactEmail,
+          currentUsage: 80,
+        });
+      }
+
+      if (limitCheck.exceedsHardLimit && limitCheck.shouldSendHardLimitEmail) {
+        await emailWorkpool.enqueueAction(ctx, internal.resend.sendLimitsEmail, {
+          email: limitCheck.workspace.contactEmail,
+          currentUsage: 130,
+        });
+      }
+
+      if (limitCheck.exceedsLimit) {
+        await emailWorkpool.enqueueAction(ctx, internal.resend.sendLimitsEmail, {
+          email: limitCheck.workspace.contactEmail,
+          currentUsage: 100,
+        });
+      }
+
+      const ingestBase = {
+        workspaceId,
+        projectId,
+        projectName: limitCheck.project.name,
+        event: "api/v1/keys",
+        languageCode: lang,
+        namespaceName: namespace,
+      };
+
+      if (!limitCheck.isRequestAllowed) {
+        await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+          ...ingestBase,
+          deniedReason: "limit_exceeded",
+        });
+        return new Response(
+          JSON.stringify({
+            error: "Request limit exceeded. Please upgrade your plan or wait for the monthly reset.",
+            currentUsage: limitCheck.currentRequests,
+            limit: limitCheck.limit,
+            resetPeriod: "monthly",
+          }),
+          {
+            status: 429,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      const resolution = await ctx.runQuery(internal.serving.resolveSingleKey, {
+        projectId,
+        keyTag: key,
+        namespaceName: namespace,
+        languageCode: lang,
+      });
+
+      if (resolution.error) {
+        const errorMap: Record<string, string> = {
+          namespace_not_found: `Namespace '${namespace}' not found`,
+          language_not_found: `Language '${lang}' not found`,
+          key_not_found: `Key '${key}' not found in namespace '${namespace}'`,
+          value_not_found: `Value not found for key '${key}' in language '${lang}'`,
+        };
+
+        await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+          ...ingestBase,
+          deniedReason: resolution.error,
+        });
+
+        return new Response(JSON.stringify({ error: errorMap[resolution.error] || "Not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const responseBody = JSON.stringify({
+        key: resolution.key,
+        value: resolution.value,
+        namespace: resolution.namespace,
+        language: resolution.language,
+      });
+
+      await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+        ...ingestBase,
+        responseSize: new TextEncoder().encode(responseBody).length,
+      });
+
+      return new Response(responseBody, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error: any) {
+      console.error("API Error:", error);
+      return new Response(
+        JSON.stringify({
+          error: "Internal server error",
+          message: error.message,
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+  }),
+});
+
+http.route({
+  path: "/v1/builds",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const apiKey = request.headers.get("x-api-key") || request.headers.get("authorization")?.replace("Bearer ", "");
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "API key required" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const url = new URL(request.url);
+    const buildTag = url.searchParams.get("build");
+    const lang = url.searchParams.get("lang"); // Optional - if not provided, returns all languages
+
+    if (!buildTag) {
+      return new Response(
+        JSON.stringify({
+          error: "Missing required parameter: build is required",
+          example: "/v1/builds?build=v1.0.0 or /v1/builds?build=v1.0.0&lang=en",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    try {
+      const verifyResponse = await ctx.runAction(internal.keys.verifyUnkeyKey, {
+        key: apiKey,
+      });
+
+      if (!verifyResponse.valid || !verifyResponse.permissions.includes("translations.load")) {
+        return new Response(JSON.stringify({ error: "Invalid API key" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const { externalId } = verifyResponse.identity;
+      const workspaceId = externalId.split("_")[0];
+      const projectId = externalId.split("_")[1];
+
+      if (!workspaceId || !projectId) {
+        return new Response(JSON.stringify({ error: "Invalid API key metadata" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const limitCheck = await ctx.runMutation(internal.internalWorkspaces.checkAndUpdateRequestUsage, {
+        workspaceId,
+        projectId,
+      });
+
+      if (limitCheck.nearLimit) {
+        await emailWorkpool.enqueueAction(ctx, internal.resend.sendLimitsEmail, {
+          email: limitCheck.workspace.contactEmail,
+          currentUsage: 80,
+        });
+      }
+
+      if (limitCheck.exceedsHardLimit && limitCheck.shouldSendHardLimitEmail) {
+        await emailWorkpool.enqueueAction(ctx, internal.resend.sendLimitsEmail, {
+          email: limitCheck.workspace.contactEmail,
+          currentUsage: 130,
+        });
+      }
+
+      if (limitCheck.exceedsLimit) {
+        await emailWorkpool.enqueueAction(ctx, internal.resend.sendLimitsEmail, {
+          email: limitCheck.workspace.contactEmail,
+          currentUsage: 100,
+        });
+      }
+
+      const ingestBase = {
+        workspaceId,
+        projectId,
+        projectName: limitCheck.project.name,
+        event: "api/v1/builds",
+        languageCode: lang || undefined,
+      };
+
+      if (!limitCheck.isRequestAllowed) {
+        await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+          ...ingestBase,
+          deniedReason: "limit_exceeded",
+        });
+        return new Response(
+          JSON.stringify({
+            error: "Request limit exceeded. Please upgrade your plan or wait for the monthly reset.",
+            currentUsage: limitCheck.currentRequests,
+            limit: limitCheck.limit,
+            resetPeriod: "monthly",
+          }),
+          {
+            status: 429,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // If lang is provided, get single language file
+      if (lang) {
+        const resolution = await ctx.runQuery(internal.serving.resolveBuildSingleLanguage, {
+          projectId,
+          buildTag,
+          languageCode: lang,
+        });
+
+        if (resolution.error) {
+          const errorMap: Record<string, string> = {
+            build_not_found: `Build '${buildTag}' not found`,
+            build_not_ready: `Build '${buildTag}' is not ready yet${resolution.statusDescription ? `: ${resolution.statusDescription}` : ""}`,
+            language_not_found: `Language '${lang}' not found in build '${buildTag}'`,
+          };
+
+          await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+            ...ingestBase,
+            deniedReason: resolution.error,
+          });
+
+          return new Response(JSON.stringify({ error: errorMap[resolution.error] || "Not found" }), {
+            status: resolution.error === "build_not_ready" ? 202 : 404,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        // Generate signed URL with 10 minute expiry
+        const signedUrl = await getFileUrl(resolution.fileId!, 600);
+
+        const responseBody = JSON.stringify({
+          build: resolution.tag,
+          namespace: resolution.namespace,
+          language: lang,
+          url: signedUrl,
+          expiresIn: 600,
+        });
+
+        await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+          ...ingestBase,
+          responseSize: new TextEncoder().encode(responseBody).length,
+        });
+
+        return new Response(responseBody, {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Return all languages
+      const resolution = await ctx.runQuery(internal.serving.resolveBuildAllLanguages, {
+        projectId,
+        buildTag,
+      });
+
+      if (resolution.error) {
+        const errorMap: Record<string, string> = {
+          build_not_found: `Build '${buildTag}' not found`,
+          build_not_ready: `Build '${buildTag}' is not ready yet${resolution.statusDescription ? `: ${resolution.statusDescription}` : ""}`,
+        };
+
+        await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+          ...ingestBase,
+          deniedReason: resolution.error,
+        });
+
+        return new Response(JSON.stringify({ error: errorMap[resolution.error] || "Not found" }), {
+          status: resolution.error === "build_not_ready" ? 202 : 404,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Generate signed URLs for all language files
+      const languageUrls: Record<string, { url: string; fileSize?: number }> = {};
+      for (const [langCode, fileInfo] of Object.entries(resolution.languageFiles!)) {
+        const signedUrl = await getFileUrl(fileInfo.fileId, 600);
+        languageUrls[langCode] = {
+          url: signedUrl,
+          fileSize: fileInfo.fileSize,
+        };
+      }
+
+      const responseBody = JSON.stringify({
+        build: resolution.tag,
+        namespace: resolution.namespace,
+        languages: languageUrls,
+        expiresIn: 600,
+      });
+
+      await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+        ...ingestBase,
+        responseSize: new TextEncoder().encode(responseBody).length,
+      });
+
+      return new Response(responseBody, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error: any) {
+      console.error("API Error:", error);
+      return new Response(
+        JSON.stringify({
+          error: "Internal server error",
+          message: error.message,
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+  }),
+});
+
+http.route({
+  path: "/v1/builds",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const apiKey = request.headers.get("x-api-key") || request.headers.get("authorization")?.replace("Bearer ", "");
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "API key required" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    let body: { namespace?: string; build?: string };
+    try {
+      body = await request.json();
+    } catch {
+      return new Response(
+        JSON.stringify({
+          error: "Invalid JSON body",
+          example: '{ "namespace": "common", "build": "v1.0.0" }',
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const { namespace, build: buildTag } = body;
+
+    if (!namespace || !buildTag) {
+      return new Response(
+        JSON.stringify({
+          error: "Missing required fields: namespace and build are required",
+          example: '{ "namespace": "common", "build": "v1.0.0" }',
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    try {
+      const verifyResponse = await ctx.runAction(internal.keys.verifyUnkeyKey, {
+        key: apiKey,
+      });
+
+      if (!verifyResponse.valid || !verifyResponse.permissions.includes("translations.write")) {
+        return new Response(JSON.stringify({ error: "Invalid API key" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const { externalId } = verifyResponse.identity;
+      const workspaceId = externalId.split("_")[0];
+      const projectId = externalId.split("_")[1];
+
+      if (!workspaceId || !projectId) {
+        return new Response(JSON.stringify({ error: "Invalid API key metadata" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const limitCheck = await ctx.runMutation(internal.internalWorkspaces.checkAndUpdateRequestUsage, {
+        workspaceId,
+        projectId,
+      });
+
+      if (limitCheck.nearLimit) {
+        await emailWorkpool.enqueueAction(ctx, internal.resend.sendLimitsEmail, {
+          email: limitCheck.workspace.contactEmail,
+          currentUsage: 80,
+        });
+      }
+
+      if (limitCheck.exceedsHardLimit && limitCheck.shouldSendHardLimitEmail) {
+        await emailWorkpool.enqueueAction(ctx, internal.resend.sendLimitsEmail, {
+          email: limitCheck.workspace.contactEmail,
+          currentUsage: 130,
+        });
+      }
+
+      if (limitCheck.exceedsLimit) {
+        await emailWorkpool.enqueueAction(ctx, internal.resend.sendLimitsEmail, {
+          email: limitCheck.workspace.contactEmail,
+          currentUsage: 100,
+        });
+      }
+
+      const ingestBase = {
+        workspaceId,
+        projectId,
+        projectName: limitCheck.project.name,
+        event: "api/v1/builds/create",
+        namespaceName: namespace,
+      };
+
+      if (!limitCheck.isRequestAllowed) {
+        await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+          ...ingestBase,
+          deniedReason: "limit_exceeded",
+        });
+        return new Response(
+          JSON.stringify({
+            error: "Request limit exceeded. Please upgrade your plan or wait for the monthly reset.",
+            currentUsage: limitCheck.currentRequests,
+            limit: limitCheck.limit,
+            resetPeriod: "monthly",
+          }),
+          {
+            status: 429,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      const result = await ctx.runMutation(internal.serving.createBuildViaApi, {
+        projectId,
+        namespaceName: namespace,
+        buildTag,
+      });
+
+      if (result.error) {
+        const errorMap: Record<string, string> = {
+          namespace_not_found: `Namespace '${namespace}' not found`,
+          build_tag_exists: `Build tag '${buildTag}' already exists`,
+        };
+
+        await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+          ...ingestBase,
+          deniedReason: result.error,
+        });
+
+        return new Response(JSON.stringify({ error: errorMap[result.error] || "Build creation failed" }), {
+          status: result.error === "build_tag_exists" ? 409 : 404,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Schedule the build generation
+      await ctx.scheduler.runAfter(0, internal.builds.generateLanguageAction, {
+        buildId: result.buildId!,
+        projectId,
+        namespaceId: result.namespaceId!,
+        queue: result.languagesData!,
+      });
+
+      const responseBody = JSON.stringify({
+        success: true,
+        buildId: result.buildId,
+        build: buildTag,
+        namespace,
+        status: "building",
+        message: "Build creation started. Use GET /v1/builds?build=" + buildTag + " to check status.",
+      });
+
+      await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+        ...ingestBase,
+        responseSize: new TextEncoder().encode(responseBody).length,
+      });
+
+      return new Response(responseBody, {
+        status: 202,
         headers: { "Content-Type": "application/json" },
       });
     } catch (error: any) {

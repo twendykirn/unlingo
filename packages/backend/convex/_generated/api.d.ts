@@ -88,13 +88,24 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   emailWorkpool: {
+    config: {
+      update: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+          maxParallelism?: number;
+        },
+        any
+      >;
+    };
     lib: {
       cancel: FunctionReference<
         "mutation",
         "internal",
         {
           id: string;
-          logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+          logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
         },
         any
       >;
@@ -104,7 +115,7 @@ export declare const components: {
         {
           before?: number;
           limit?: number;
-          logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+          logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
         },
         any
       >;
@@ -113,8 +124,8 @@ export declare const components: {
         "internal",
         {
           config: {
-            logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
-            maxParallelism: number;
+            logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism?: number;
           };
           fnArgs: any;
           fnHandle: string;
@@ -135,8 +146,8 @@ export declare const components: {
         "internal",
         {
           config: {
-            logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
-            maxParallelism: number;
+            logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism?: number;
           };
           items: Array<{
             fnArgs: any;
