@@ -15,7 +15,7 @@ export const resolveTranslationFile = internalQuery({
       .first();
 
     if (!release) {
-      return { error: "release_not_found" };
+      return { error: "release_not_found" as const };
     }
 
     const connections = await ctx.db
@@ -37,31 +37,45 @@ export const resolveTranslationFile = internalQuery({
     const candidates = allBuilds.filter((b) => b.doc && b.doc.status === 1 && b.doc.namespace === args.namespaceName);
 
     if (candidates.length === 0) {
-      return { error: "namespace_not_found" };
+      return { error: "namespace_not_found" as const };
     }
 
-    let selectedBuild = candidates[0].doc!;
+    let selectedCandidate = candidates[0];
 
     if (candidates.length > 1) {
-      const rnd = Math.random() * 100;
+      // Calculate total selection chance
+      const totalChance = candidates.reduce((sum, c) => sum + c.selectionChance, 0);
+      const rnd = Math.random() * totalChance;
       let currentSum = 0;
 
       for (const candidate of candidates) {
         currentSum += candidate.selectionChance;
         if (rnd <= currentSum) {
-          selectedBuild = candidate.doc!;
+          selectedCandidate = candidate;
           break;
         }
       }
     }
 
+    const selectedBuild = selectedCandidate.doc!;
     const fileInfo = selectedBuild.languageFiles[args.languageCode];
 
     if (!fileInfo) {
-      return { error: "language_not_found" };
+      return { error: "language_not_found" as const };
     }
 
-    return { fileId: fileInfo.fileId };
+    return {
+      fileId: fileInfo.fileId,
+      release: {
+        tag: release.tag,
+        id: release._id,
+      },
+      build: {
+        tag: selectedBuild.tag,
+        id: selectedBuild._id,
+        namespace: selectedBuild.namespace,
+      },
+    };
   },
 });
 

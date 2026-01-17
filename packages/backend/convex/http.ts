@@ -262,7 +262,16 @@ http.route({
         parsedContent = fileContent;
       }
 
-      const responseBody = JSON.stringify(parsedContent);
+      const responseBody = JSON.stringify({
+        translations: parsedContent,
+        release: {
+          tag: resolution.release!.tag,
+        },
+        build: {
+          tag: resolution.build!.tag,
+          namespace: resolution.build!.namespace,
+        },
+      });
 
       await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
         ...ingestBase,
@@ -587,29 +596,19 @@ http.route({
           });
         }
 
-        const fileContent = await ctx.runAction(internal.files.getFileContent, {
+        // Generate signed URL with 10 minute expiry
+        const signedUrl = await ctx.runAction(internal.files.getSignedUrl, {
           fileId: resolution.fileId!,
+          expiresIn: 600,
         });
 
-        if (!fileContent) {
-          await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
-            ...ingestBase,
-            deniedReason: "storage_blob_missing",
-          });
-          return new Response(JSON.stringify({ error: "Failed to retrieve build file" }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          });
-        }
-
-        let parsedContent;
-        try {
-          parsedContent = JSON.parse(fileContent);
-        } catch {
-          parsedContent = fileContent;
-        }
-
-        const responseBody = JSON.stringify(parsedContent);
+        const responseBody = JSON.stringify({
+          build: resolution.tag,
+          namespace: resolution.namespace,
+          language: lang,
+          url: signedUrl,
+          expiresIn: 600,
+        });
 
         await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
           ...ingestBase,
@@ -645,26 +644,24 @@ http.route({
         });
       }
 
-      // Fetch all language file contents
-      const languageContents: Record<string, any> = {};
+      // Generate signed URLs for all language files
+      const languageUrls: Record<string, { url: string; fileSize?: number }> = {};
       for (const [langCode, fileInfo] of Object.entries(resolution.languageFiles!)) {
-        const fileContent = await ctx.runAction(internal.files.getFileContent, {
+        const signedUrl = await ctx.runAction(internal.files.getSignedUrl, {
           fileId: fileInfo.fileId,
+          expiresIn: 600,
         });
-
-        if (fileContent) {
-          try {
-            languageContents[langCode] = JSON.parse(fileContent);
-          } catch {
-            languageContents[langCode] = fileContent;
-          }
-        }
+        languageUrls[langCode] = {
+          url: signedUrl,
+          fileSize: fileInfo.fileSize,
+        };
       }
 
       const responseBody = JSON.stringify({
         build: resolution.tag,
         namespace: resolution.namespace,
-        languages: languageContents,
+        languages: languageUrls,
+        expiresIn: 600,
       });
 
       await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
