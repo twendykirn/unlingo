@@ -299,7 +299,6 @@ http.route({
   }),
 });
 
-// API Route: Get single translation key value
 http.route({
   path: "/v1/keys",
   method: "GET",
@@ -465,7 +464,6 @@ http.route({
   }),
 });
 
-// API Route: Get build content (all languages or single language)
 http.route({
   path: "/v1/builds",
   method: "GET",
@@ -500,7 +498,7 @@ http.route({
         key: apiKey,
       });
 
-      if (!verifyResponse.valid || !verifyResponse.permissions.includes("translations.read")) {
+      if (!verifyResponse.valid || !verifyResponse.permissions.includes("translations.load")) {
         return new Response(JSON.stringify({ error: "Invalid API key" }), {
           status: 401,
           headers: { "Content-Type": "application/json" },
@@ -684,7 +682,6 @@ http.route({
   }),
 });
 
-// API Route: Create a new build
 http.route({
   path: "/v1/builds",
   method: "POST",
@@ -733,7 +730,7 @@ http.route({
         key: apiKey,
       });
 
-      if (!verifyResponse.valid || !verifyResponse.permissions.includes("translations.read")) {
+      if (!verifyResponse.valid || !verifyResponse.permissions.includes("translations.write")) {
         return new Response(JSON.stringify({ error: "Invalid API key" }), {
           status: 401,
           headers: { "Content-Type": "application/json" },
