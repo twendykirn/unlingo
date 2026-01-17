@@ -67,6 +67,7 @@ export const createLanguage = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: args.projectId as unknown as string,
+      projectName: project.name,
       event: "language.created",
       languageCode: args.languageCode,
     });
@@ -155,6 +156,15 @@ export const updateLanguage = mutation({
         rules: args.rules,
       });
     }
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: project.name,
+      event: "language.update",
+      languageCode: language.languageCode,
+    });
   },
 });
 
@@ -205,6 +215,7 @@ export const deleteLanguage = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: args.projectId as unknown as string,
+      projectName: project.name,
       event: "language.deleted",
       languageCode: language.languageCode,
     });

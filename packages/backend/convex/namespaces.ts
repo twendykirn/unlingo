@@ -108,6 +108,7 @@ export const createNamespace = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: args.projectId as unknown as string,
+      projectName: project.name,
       event: "namespace.created",
       namespaceId: namespaceId as unknown as string,
       namespaceName: args.name.trim(),
@@ -164,6 +165,16 @@ export const updateNamespace = mutation({
 
       await ctx.db.patch(args.namespaceId, {
         name: args.name.trim(),
+      });
+
+      // Track analytics event
+      await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+        workspaceId: args.workspaceId as unknown as string,
+        projectId: args.projectId as unknown as string,
+        projectName: project.name,
+        event: "namespace.updated",
+        namespaceId: args.namespaceId as unknown as string,
+        namespaceName: args.name.trim(),
       });
     }
 

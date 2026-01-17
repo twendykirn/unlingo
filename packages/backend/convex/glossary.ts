@@ -84,6 +84,7 @@ export const createTerm = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: args.projectId as unknown as string,
+      projectName: project.name,
       event: "glossary.termCreated",
       term: args.term,
     });
@@ -155,6 +156,15 @@ export const updateTerm = mutation({
     }
 
     await ctx.db.patch(args.termId, updates);
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: project.name,
+      event: "glossary.termUpdated",
+      term: args.term,
+    });
   },
 });
 
@@ -182,6 +192,7 @@ export const deleteTerm = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: term.projectId as unknown as string,
+      projectName: project.name,
       event: "glossary.termDeleted",
       term: term.term,
     });

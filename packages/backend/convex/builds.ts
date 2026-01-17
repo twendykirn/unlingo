@@ -98,6 +98,7 @@ export const createBuild = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: args.projectId as unknown as string,
+      projectName: project.name,
       event: "build.created",
       buildTag: args.tag,
       namespaceName: namespace.name,
@@ -140,6 +141,16 @@ export const updateBuild = mutation({
     }
 
     await ctx.db.patch(args.buildId, { tag: args.tag });
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: project._id as unknown as string,
+      projectName: project.name,
+      event: "build.updated",
+      buildTag: args.tag,
+      namespaceName: build.namespace,
+    });
   },
 });
 
@@ -178,6 +189,7 @@ export const deleteBuild = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: build.projectId as unknown as string,
+      projectName: project.name,
       event: "build.deleted",
       buildTag: build.tag,
       namespaceName: build.namespace,

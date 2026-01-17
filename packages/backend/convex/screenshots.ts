@@ -5,7 +5,7 @@ import { deleteFile, getFileUrl } from "./files";
 import { authMiddleware } from "../middlewares/auth";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
-import { detectTextInScreenshot, DetectedTextRegion } from "../lib/gemini";
+import { detectTextInScreenshot } from "../lib/gemini";
 
 export const getScreenshotsForProject = query({
   args: {
@@ -102,6 +102,7 @@ export const createScreenshot = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: args.projectId as unknown as string,
+      projectName: project.name,
       event: "screenshot.created",
       screenshotName: args.name,
     });
@@ -146,6 +147,7 @@ export const deleteScreenshot = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: screenshot.projectId as unknown as string,
+      projectName: project.name,
       event: "screenshot.deleted",
       screenshotName: screenshot.name,
     });
@@ -188,6 +190,16 @@ export const createContainer = mutation({
       screenshotId: args.screenshotId,
       translationKeyId: args.translationKeyId,
       position: args.position,
+    });
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: screenshot.projectId as unknown as string,
+      projectName: project.name,
+      event: "screenshot.containerAdded",
+      screenshotName: screenshot.name,
+      translationKey: translationKey.key,
     });
 
     return containerId;
@@ -256,7 +268,23 @@ export const deleteContainer = mutation({
       throw new Error("Project not found or access denied");
     }
 
+    const translationKey = await ctx.db.get(container.translationKeyId);
+    if (!translationKey || translationKey.projectId !== project._id || translationKey.status === -1) {
+      throw new Error("Translation key not found or access denied");
+    }
+
     await ctx.db.delete(args.containerId);
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: screenshot.projectId as unknown as string,
+      projectName: project.name,
+      event: "screenshot.containerDeleted",
+      screenshotName: screenshot.name,
+      translationKey: translationKey.key,
+    });
+
     return { success: true };
   },
 });
@@ -537,6 +565,7 @@ export const triggerTextDetection = mutation({
       await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
         workspaceId: args.workspaceId as unknown as string,
         projectId: project._id as unknown as string,
+        projectName: project.name,
         event: "screenshot.textDetection",
         screenshotName: screenshot.name,
       });

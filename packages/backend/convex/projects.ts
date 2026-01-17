@@ -115,6 +115,14 @@ export const updateProject = mutation({
       name,
     });
 
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: name,
+      event: "project.updated",
+    });
+
     return args.projectId;
   },
 });

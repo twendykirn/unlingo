@@ -129,6 +129,7 @@ export const createRelease = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: args.projectId as unknown as string,
+      projectName: project.name,
       event: "release.created",
       releaseTag: args.tag,
     });
@@ -211,6 +212,15 @@ export const updateRelease = mutation({
         }
       }
     }
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: project.name,
+      event: "release.updated",
+      releaseTag: args.tag?.trim() || release.tag,
+    });
   },
 });
 
@@ -260,6 +270,16 @@ export const addBuildToRelease = mutation({
     });
 
     await recalculateConnectionPercentages(ctx, args.releaseId, build.namespace);
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: project.name,
+      event: "release.buildAdded",
+      releaseTag: release.tag,
+      buildTag: build.tag,
+    });
   },
 });
 
@@ -296,6 +316,16 @@ export const removeBuildFromRelease = mutation({
     if (namespace) {
       await recalculateConnectionPercentages(ctx, args.releaseId, namespace);
     }
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: project.name,
+      event: "release.buildDeleted",
+      releaseTag: release.tag,
+      buildTag: build?.tag,
+    });
   },
 });
 
@@ -333,6 +363,7 @@ export const deleteRelease = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: args.projectId as unknown as string,
+      projectName: project.name,
       event: "release.deleted",
       releaseTag: release.tag,
     });

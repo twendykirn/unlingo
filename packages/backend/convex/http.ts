@@ -192,7 +192,7 @@ http.route({
         workspaceId,
         projectId,
         projectName: limitCheck.project.name,
-        event: "api/v1/translations",
+        event: "api.v1.translations.get",
         languageCode: lang,
         namespaceName: namespace,
       };
@@ -382,7 +382,7 @@ http.route({
         workspaceId,
         projectId,
         projectName: limitCheck.project.name,
-        event: "api/v1/keys",
+        event: "api.v1.keys.get",
         languageCode: lang,
         namespaceName: namespace,
       };
@@ -546,7 +546,7 @@ http.route({
         workspaceId,
         projectId,
         projectName: limitCheck.project.name,
-        event: "api/v1/builds",
+        event: "api.v1.builds.get",
         languageCode: lang || undefined,
       };
 
@@ -778,7 +778,7 @@ http.route({
         workspaceId,
         projectId,
         projectName: limitCheck.project.name,
-        event: "api/v1/builds/create",
+        event: "api.v1.builds.post",
         namespaceName: namespace,
       };
 

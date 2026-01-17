@@ -297,10 +297,12 @@ export const createTranslationKey = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: args.projectId as unknown as string,
+      projectName: project.name,
       event: "translationKey.created",
       namespaceId: args.namespaceId as unknown as string,
       namespaceName: namespace.name,
       count: 1,
+      translationKey: args.key,
     });
 
     return keyId;
@@ -421,10 +423,12 @@ export const createTranslationKeysBulk = mutation({
       await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
         workspaceId: args.workspaceId as unknown as string,
         projectId: args.projectId as unknown as string,
+        projectName: project.name,
         event: "translationKey.bulkCreated",
         namespaceId: args.namespaceId as unknown as string,
         namespaceName: namespace.name,
         count: createdCount,
+        translationKey: args.keys.map((k) => k.key).join(", "),
       });
     }
 
@@ -500,6 +504,17 @@ export const updateTranslationKey = mutation({
         targetLanguageIds: null,
       });
     }
+
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: project.name,
+      event: "translationKey.updated",
+      namespaceId: args.namespaceId as unknown as string,
+      namespaceName: namespace.name,
+      count: 1,
+      translationKey: keyDoc.key,
+    });
   },
 });
 
@@ -547,6 +562,7 @@ export const triggerBatchTranslation = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
       workspaceId: args.workspaceId as unknown as string,
       projectId: args.projectId as unknown as string,
+      projectName: project.name,
       event: "translationKey.batchTranslation",
       namespaceId: args.namespaceId as unknown as string,
       namespaceName: namespace.name,
@@ -792,6 +808,7 @@ export const deleteTranslationKeys = mutation({
       await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
         workspaceId: args.workspaceId as unknown as string,
         projectId: args.projectId as unknown as string,
+        projectName: project.name,
         event: "translationKey.deleted",
         namespaceId: args.namespaceId as unknown as string,
         namespaceName: namespace.name,
