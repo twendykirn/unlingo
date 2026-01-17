@@ -17,6 +17,7 @@ import {
   getTierFromProductId,
 } from "./polarUtils";
 import "../lib/polyfill";
+import { getFileUrl } from "./files";
 
 async function validateRequest(req: Request): Promise<WebhookEvent | null> {
   const payloadString = await req.text();
@@ -597,10 +598,7 @@ http.route({
         }
 
         // Generate signed URL with 10 minute expiry
-        const signedUrl = await ctx.runAction(internal.files.getSignedUrl, {
-          fileId: resolution.fileId!,
-          expiresIn: 600,
-        });
+        const signedUrl = await getFileUrl(resolution.fileId!, 600);
 
         const responseBody = JSON.stringify({
           build: resolution.tag,
@@ -647,10 +645,7 @@ http.route({
       // Generate signed URLs for all language files
       const languageUrls: Record<string, { url: string; fileSize?: number }> = {};
       for (const [langCode, fileInfo] of Object.entries(resolution.languageFiles!)) {
-        const signedUrl = await ctx.runAction(internal.files.getSignedUrl, {
-          fileId: fileInfo.fileId,
-          expiresIn: 600,
-        });
+        const signedUrl = await getFileUrl(fileInfo.fileId, 600);
         languageUrls[langCode] = {
           url: signedUrl,
           fileSize: fileInfo.fileSize,
