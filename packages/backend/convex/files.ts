@@ -44,18 +44,6 @@ export const getFileContent = internalAction({
   },
 });
 
-export const getSignedUrl = internalAction({
-  args: {
-    fileId: v.string(),
-    expiresIn: v.optional(v.number()),
-  },
-  handler: async (_, args) => {
-    const expiresIn = args.expiresIn ?? 600; // Default 10 minutes
-    const url = await s3.getUrl(args.fileId, expiresIn);
-    return url;
-  },
-});
-
 export const generateUploadUrl = mutation({
   args: {
     workspaceId: v.id("workspaces"),
