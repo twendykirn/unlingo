@@ -293,6 +293,18 @@ export const createTranslationKey = mutation({
       targetLanguageIds: null,
     });
 
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: project.name,
+      event: "translationKey.created",
+      namespaceId: args.namespaceId as unknown as string,
+      namespaceName: namespace.name,
+      count: 1,
+      translationKey: args.key,
+    });
+
     return keyId;
   },
 });
@@ -406,6 +418,20 @@ export const createTranslationKeysBulk = mutation({
       }
     }
 
+    // Track analytics event
+    if (createdCount > 0) {
+      await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+        workspaceId: args.workspaceId as unknown as string,
+        projectId: args.projectId as unknown as string,
+        projectName: project.name,
+        event: "translationKey.bulkCreated",
+        namespaceId: args.namespaceId as unknown as string,
+        namespaceName: namespace.name,
+        count: createdCount,
+        translationKey: args.keys.map((k) => k.key).join(", "),
+      });
+    }
+
     return {
       createdCount,
       skippedKeys,
@@ -478,6 +504,17 @@ export const updateTranslationKey = mutation({
         targetLanguageIds: null,
       });
     }
+
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: project.name,
+      event: "translationKey.updated",
+      namespaceId: args.namespaceId as unknown as string,
+      namespaceName: namespace.name,
+      count: 1,
+      translationKey: keyDoc.key,
+    });
   },
 });
 
@@ -520,6 +557,17 @@ export const triggerBatchTranslation = mutation({
         targetLanguageIds: args.targetLanguageIds,
       });
     }
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: project.name,
+      event: "translationKey.batchTranslation",
+      namespaceId: args.namespaceId as unknown as string,
+      namespaceName: namespace.name,
+      count: args.keyIds.length,
+    });
   },
 });
 
@@ -754,5 +802,18 @@ export const deleteTranslationKeys = mutation({
         translationKeys: workspace.currentUsage.translationKeys - count,
       },
     });
+
+    // Track analytics event
+    if (count > 0) {
+      await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+        workspaceId: args.workspaceId as unknown as string,
+        projectId: args.projectId as unknown as string,
+        projectName: project.name,
+        event: "translationKey.deleted",
+        namespaceId: args.namespaceId as unknown as string,
+        namespaceName: namespace.name,
+        count,
+      });
+    }
   },
 });

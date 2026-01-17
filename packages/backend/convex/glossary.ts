@@ -3,6 +3,7 @@ import { internalQuery, mutation, query } from "./_generated/server";
 import { ConvexError } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { authMiddleware } from "../middlewares/auth";
+import { internal } from "./_generated/api";
 
 export const getAllTerms = query({
   args: {
@@ -79,6 +80,15 @@ export const createTerm = mutation({
       translations: finalTranslations,
     });
 
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: project.name,
+      event: "glossary.termCreated",
+      term: args.term,
+    });
+
     return termId;
   },
 });
@@ -146,6 +156,15 @@ export const updateTerm = mutation({
     }
 
     await ctx.db.patch(args.termId, updates);
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: project.name,
+      event: "glossary.termUpdated",
+      term: args.term,
+    });
   },
 });
 
@@ -168,6 +187,15 @@ export const deleteTerm = mutation({
     }
 
     await ctx.db.delete(term._id);
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: term.projectId as unknown as string,
+      projectName: project.name,
+      event: "glossary.termDeleted",
+      term: term.term,
+    });
 
     return term._id;
   },
