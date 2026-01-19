@@ -75,7 +75,7 @@ export default function Header() {
                             <Link
                                 to="/"
                                 aria-label="home">
-                                <Logo className="h-5" />
+                                <Logo />
                             </Link>
 
                             <button
