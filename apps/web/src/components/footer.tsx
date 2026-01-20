@@ -3,27 +3,6 @@ import { Link } from '@tanstack/react-router'
 
 const links = [
     {
-        group: 'Product',
-        items: [
-            {
-                title: 'Features',
-                href: '#',
-            },
-            {
-                title: 'Solution',
-                href: '#',
-            },
-            {
-                title: 'Partnerships',
-                href: '#',
-            },
-            {
-                title: 'Mobile App',
-                href: '#',
-            },
-        ],
-    },
-    {
         group: 'Company',
         items: [
             {
@@ -31,12 +10,29 @@ const links = [
                 href: '#',
             },
             {
-                title: 'Licence',
+                title: 'Pricing',
                 href: '#',
             },
             {
-                title: 'Privacy',
+                title: 'FAQs',
                 href: '#',
+            },
+            {
+                title: 'Docs',
+                href: '#',
+            },
+        ],
+    },
+    {
+        group: 'Legal',
+        items: [
+            {
+                title: 'Terms of Service',
+                href: '/legal/terms-of-service',
+            },
+            {
+                title: 'Privacy Policy',
+                href: '/legal/privacy-policy',
             },
         ],
     },
@@ -56,8 +52,7 @@ export default function FooterSection() {
                             className="block size-fit">
                             <Logo />
                         </Link>
-
-                        <p className="text-muted-foreground text-balance text-sm">Tailark is a platform for building AI-powered applications.</p>
+                        <p className="text-muted-foreground text-balance text-sm">Simplifying global translation management for developers worldwide.</p>
                     </div>
 
                     <div className="col-span-3 grid gap-6 sm:grid-cols-3">
@@ -126,7 +121,7 @@ export default function FooterSection() {
                     className="h-px bg-[length:6px_1px] bg-repeat-x opacity-25 [background-image:linear-gradient(90deg,var(--color-foreground)_1px,transparent_1px)]"
                 />
                 <div className="flex flex-wrap justify-between gap-4">
-                    <span className="text-muted-foreground text-sm">© {new Date().getFullYear()} Tailark, All rights reserved </span>
+                    <span className="text-muted-foreground text-sm">© {new Date().getFullYear()} Igor Kirnosov s.p. All rights reserved </span>
 
                     <div className="ring-foreground/5 bg-card flex items-center gap-2 rounded-full border border-transparent py-1 pl-2 pr-4 shadow ring-1">
                         <div className="relative flex size-3">

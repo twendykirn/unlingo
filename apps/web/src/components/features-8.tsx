@@ -56,7 +56,7 @@ export default function FeaturesSection() {
                                 </div>
                             </div>
                             <div className="space-y-3">
-                                <h3 className="font-medium">CLI Compatible</h3>
+                                <h3 className="font-medium">CI/CD Compatible</h3>
                                 <p className="text-muted-foreground text-sm">
                                     Create latest builds manually during the deployment process.
                                 </p>
