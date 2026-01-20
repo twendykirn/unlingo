@@ -2,9 +2,9 @@ import { useState } from 'react'
 import {
     ArrowLeft,
     CameraIcon,
-    ChevronDownIcon,
+    ChevronsUpDownIcon,
     CopyIcon,
-    HammerIcon,
+    BoxesIcon,
     KeyRound,
     LanguagesIcon,
     Newspaper,
@@ -147,7 +147,7 @@ const sidebarItems = [
     { icon: Newspaper, label: 'Namespaces', active: true },
     { icon: PencilRulerIcon, label: 'Glossary', active: false },
     { icon: CameraIcon, label: 'Screenshots', active: false },
-    { icon: HammerIcon, label: 'Builds', active: false },
+    { icon: BoxesIcon, label: 'Builds', active: false },
     { icon: RocketIcon, label: 'Releases', active: false },
     { icon: KeyRound, label: 'Api Keys', active: false },
 ]
@@ -289,7 +289,7 @@ export default function EditorMockup() {
                             U
                         </div>
                         <span className="text-[10px] font-medium truncate flex-1">Unlingo</span>
-                        <ChevronDownIcon className="size-2.5 text-muted-foreground" />
+                        <ChevronsUpDownIcon className="size-2.5 text-muted-foreground" />
                     </button>
                     <button
                         type="button"
@@ -312,7 +312,7 @@ export default function EditorMockup() {
                             <span>{item.label}</span>
                         </button>
                     ))}
-                    <div className="mt-auto pt-2 border-t border-foreground/5">
+                    <div className="mt-auto pt-2">
                         <button
                             type="button"
                             className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-zinc-800 w-full"
