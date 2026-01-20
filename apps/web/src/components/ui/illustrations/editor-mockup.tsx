@@ -207,7 +207,7 @@ export default function EditorMockup() {
     return (
         <div
             aria-hidden
-            className="bg-background/90 inset-ring-1 inset-ring-background border-foreground/10 m-auto max-w-2xl translate-y-12 rounded-2xl border shadow-xl backdrop-blur-3xl overflow-hidden"
+            className="bg-background/90 inset-ring-1 inset-ring-background border-foreground/10 m-auto max-w-2xl translate-y-12 rounded-2xl border shadow-xl backdrop-blur-3xl overflow-hidden aspect-[16/10]"
         >
             {/* Window dots */}
             <div className="flex gap-1 p-3 pb-0">
@@ -216,9 +216,9 @@ export default function EditorMockup() {
                 <div className="bg-foreground/10 size-2 rounded-full" />
             </div>
 
-            <div className="flex">
+            <div className="flex h-[calc(100%-28px)]">
                 {/* Sidebar */}
-                <div className="w-36 border-r border-foreground/5 p-2 flex flex-col gap-1">
+                <div className="w-36 border-r border-foreground/5 p-2 flex flex-col gap-1 overflow-hidden">
                     {/* Workspace switcher */}
                     <button
                         type="button"
@@ -271,7 +271,7 @@ export default function EditorMockup() {
                 </div>
 
                 {/* Main content */}
-                <div className="flex-1 flex flex-col min-w-0">
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                     {/* Header */}
                     <div className="p-3 pb-2">
                         <div className="flex items-center justify-between gap-2">
@@ -304,7 +304,7 @@ export default function EditorMockup() {
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-hidden flex-1">
+                    <div className="overflow-auto flex-1 min-h-0">
                         <table className="w-full text-[9px]">
                             <thead>
                                 <tr className="bg-zinc-900">
