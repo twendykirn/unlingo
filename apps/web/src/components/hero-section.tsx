@@ -14,16 +14,6 @@ export default function HeroSection() {
                 className="bg-background overflow-hidden">
                 <section>
                     <div className="relative pb-36 pt-24 lg:pt-16">
-                        <video
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                            className="absolute inset-0 size-full object-cover"
-                        >
-                            <source src="/background.mp4" type="video/mp4" />
-                        </video>
-                        <div className="absolute inset-0 bg-background/60" />
                         <div className="relative z-10 mx-auto max-w-5xl px-6">
                             <div className="text-center">
                                 <h1 className="mx-auto mt-8 max-w-xl text-balance text-4xl font-semibold md:text-5xl">Powerful Analytics for Smarter Decisions</h1>
@@ -44,7 +34,7 @@ export default function HeroSection() {
                                 </div>
                             </div>
                         </div>
-                        <div className="relative z-10 mt-6 overflow-hidden pb-12 max-md:px-6">
+                        <div className="relative z-10 mt-18 overflow-hidden pb-12 max-md:px-6">
                             <EditorMockup />
                         </div>
                     </div>

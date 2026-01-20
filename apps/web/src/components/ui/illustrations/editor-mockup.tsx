@@ -205,7 +205,7 @@ export default function EditorMockup() {
     return (
         <div
             aria-hidden
-            className="bg-background/90 inset-ring-1 inset-ring-background border-foreground/10 m-auto max-w-2xl translate-y-12 rounded-2xl border shadow-xl backdrop-blur-3xl overflow-hidden aspect-[16/10]"
+            className="bg-background/90 inset-ring-1 inset-ring-background border-foreground/10 m-auto max-w-4xl rounded-2xl border shadow-xl backdrop-blur-3xl overflow-hidden aspect-[16/10]"
         >
             <div className="flex gap-1 p-3 pb-0">
                 <div className="bg-foreground/10 size-2 rounded-full" />

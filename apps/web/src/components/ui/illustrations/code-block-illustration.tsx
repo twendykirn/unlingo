@@ -23,7 +23,7 @@ export default function CodeBlockIllustration() {
         () => [
             { name: 'i18next', value: 'i18next' as CodeBlockType, ref: i18nextRef, lang: 'javascript' as BundledLanguage },
             { name: 'next-intl', value: 'next-intl' as CodeBlockType, ref: nextIntlRef, lang: 'javascript' as BundledLanguage },
-            { name: 'Fetch', value: 'fetch' as CodeBlockType, ref: fetchRef, lang: 'javascript' as BundledLanguage },
+            { name: 'fetch', value: 'fetch' as CodeBlockType, ref: fetchRef, lang: 'javascript' as BundledLanguage },
         ],
         []
     )
