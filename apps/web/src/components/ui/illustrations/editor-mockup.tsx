@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import {
     ArrowLeft,
@@ -209,17 +207,13 @@ export default function EditorMockup() {
             aria-hidden
             className="bg-background/90 inset-ring-1 inset-ring-background border-foreground/10 m-auto max-w-2xl translate-y-12 rounded-2xl border shadow-xl backdrop-blur-3xl overflow-hidden aspect-[16/10]"
         >
-            {/* Window dots */}
             <div className="flex gap-1 p-3 pb-0">
                 <div className="bg-foreground/10 size-2 rounded-full" />
                 <div className="bg-foreground/10 size-2 rounded-full" />
                 <div className="bg-foreground/10 size-2 rounded-full" />
             </div>
-
             <div className="flex h-[calc(100%-28px)]">
-                {/* Sidebar */}
                 <div className="w-36 border-r border-foreground/5 p-2 flex flex-col gap-1 overflow-hidden">
-                    {/* Workspace switcher */}
                     <button
                         type="button"
                         className="flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-zinc-800 text-left w-full mb-1"
@@ -230,8 +224,6 @@ export default function EditorMockup() {
                         <span className="text-[10px] font-medium truncate flex-1">Unlingo</span>
                         <ChevronDownIcon className="size-2.5 text-muted-foreground" />
                     </button>
-
-                    {/* Back to dashboard */}
                     <button
                         type="button"
                         className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-zinc-800 text-[9px] text-muted-foreground"
@@ -239,46 +231,38 @@ export default function EditorMockup() {
                         <ArrowLeft className="size-2.5" />
                         <span>Back to dashboard</span>
                     </button>
-
                     <div className="h-px bg-foreground/5 my-1" />
-
-                    {/* Nav items */}
                     {sidebarItems.map((item) => (
                         <button
                             key={item.label}
                             type="button"
-                            className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] ${
-                                item.active
-                                    ? 'bg-zinc-800 text-foreground'
-                                    : 'text-muted-foreground hover:bg-zinc-800/50'
-                            }`}
+                            className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] ${item.active
+                                ? 'bg-zinc-800 text-foreground'
+                                : 'text-muted-foreground hover:bg-zinc-800/50'
+                                }`}
                         >
                             <item.icon className="size-2.5" />
                             <span>{item.label}</span>
                         </button>
                     ))}
-
-                    {/* User */}
                     <div className="mt-auto pt-2 border-t border-foreground/5">
                         <button
                             type="button"
                             className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-zinc-800 w-full"
                         >
                             <div className="size-4 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
-                            <span className="text-[9px] text-muted-foreground truncate">user@example.com</span>
+                            <span className="text-[9px] text-muted-foreground truncate">user@unlingo.com</span>
                         </button>
                     </div>
                 </div>
 
-                {/* Main content */}
                 <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                    {/* Header */}
                     <div className="p-3 pb-2">
                         <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0">
-                                <h3 className="text-[11px] font-medium">common</h3>
+                            <div className="min-w-0 flex flex-col gap-1">
+                                <h3 className="text-[11px] font-medium mb-0">common • {filteredKeys.length} keys</h3>
                                 <span className="text-[9px] text-muted-foreground">
-                                    {filteredKeys.length} keys
+                                    Click on any cell to edit. Press Enter to save, Escape to cancel.
                                 </span>
                             </div>
                             <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -294,7 +278,7 @@ export default function EditorMockup() {
                                 </div>
                                 <button
                                     type="button"
-                                    className="bg-primary flex items-center gap-0.5 rounded-md px-2 py-1 hover:bg-primary/90"
+                                    className="text-black bg-primary flex items-center gap-0.5 rounded-md px-2 py-1 hover:bg-primary/90"
                                 >
                                     <PlusIcon className="size-2.5" />
                                     <span className="text-[9px]">Add Key</span>
@@ -302,8 +286,6 @@ export default function EditorMockup() {
                             </div>
                         </div>
                     </div>
-
-                    {/* Table */}
                     <div className="overflow-auto flex-1 min-h-0">
                         <table className="w-full text-[9px]">
                             <thead>
@@ -338,9 +320,8 @@ export default function EditorMockup() {
                                 {filteredKeys.map((row) => (
                                     <tr
                                         key={row.id}
-                                        className={`border-b border-foreground/5 ${
-                                            selectedRows.has(row.id) ? 'bg-primary/5' : ''
-                                        }`}
+                                        className={`border-b border-foreground/5 ${selectedRows.has(row.id) ? 'bg-primary/5' : ''
+                                            }`}
                                     >
                                         <td className="px-2 py-1.5 border-r border-foreground/5">
                                             <input
