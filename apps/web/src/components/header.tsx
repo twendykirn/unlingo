@@ -10,30 +10,22 @@ import {
 } from '@/components/ui/navigation-menu'
 import { Menu, X } from 'lucide-react'
 import { useMedia } from '@/hooks/use-media'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'motion/react'
 import { Link } from '@tanstack/react-router'
 
-interface FeatureLink {
-    href: string
-    name: string
-    description?: string
-    icon: React.ReactElement
-}
-
 interface MobileLink {
     groupName?: string
-    links?: FeatureLink[]
     name?: string
     href?: string
+    to?: string
 }
 
 const mobileLinks: MobileLink[] = [
-    { name: 'About', href: '/about' },
-    { name: 'Docs', href: '/' },
-    { name: 'Pricing', href: '/' },
-    { name: 'Discord', href: '/' },
+    { name: 'About', to: '/about' },
+    { name: 'Docs', href: 'https://docs.unlingo.com' },
+    { name: 'Pricing', to: '/#pricing' },
+    { name: 'Discord', href: 'https://discord.gg/TdDYte7KjG' },
 ]
 
 export default function Header() {
@@ -161,54 +153,30 @@ const MobileMenu = ({ closeMenu }: { closeMenu: () => void }) => {
         <nav
             role="navigation"
             className="w-full [--color-border:--alpha(var(--color-foreground)/5%)] [--color-muted:--alpha(var(--color-foreground)/5%)]">
-            <Accordion
-                className="**:hover:no-underline -mx-4 mt-0.5 space-y-0.5">
-                {mobileLinks.map((link, index) => {
-                    if (link.groupName && link.links) {
-                        return (
-                            <AccordionItem
-                                key={index}
-                                value={link.groupName}
-                                className="before:border-border group relative border-b-0 before:pointer-events-none before:absolute before:inset-x-4 before:bottom-0 before:border-b">
-                                <AccordionTrigger className="**:!font-normal data-[state=open]:bg-muted flex items-center justify-between px-4 py-3 text-lg">{link.groupName}</AccordionTrigger>
-                                <AccordionContent className="pb-5">
-                                    <ul>
-                                        {link.links.map((feature, featureIndex) => (
-                                            <li key={featureIndex}>
-                                                <Link
-                                                    to={feature.href}
-                                                    onClick={closeMenu}
-                                                    className="grid grid-cols-[auto_1fr] items-center gap-2.5 px-4 py-2">
-                                                    <div
-                                                        aria-hidden
-                                                        className="flex items-center justify-center *:size-4">
-                                                        {feature.icon}
-                                                    </div>
-                                                    <div className="text-base">{feature.name}</div>
-                                                </Link>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </AccordionContent>
-                            </AccordionItem>
-                        )
-                    }
-                    return null
-                })}
-            </Accordion>
             {mobileLinks.map((link, index) => {
-                if (link.name && link.href) {
+                if (!link.name) return null;
+
+                if (link.to) {
                     return (
                         <Link
                             key={index}
-                            to={link.href}
+                            to={link.to}
                             onClick={closeMenu}
                             className="group relative block border-0 border-b py-4 text-lg">
                             {link.name}
                         </Link>
                     )
                 }
-                return null
+
+                <a
+                    key={index}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={closeMenu}
+                    className="group relative block border-0 border-b py-4 text-lg">
+                    {link.name}
+                </a>
             })}
         </nav>
     )
@@ -229,21 +197,21 @@ const NavMenu = () => {
                     <NavigationMenuLink
                         asChild
                         className={navigationMenuTriggerStyle({ className: 'text-foreground/75 h-7 px-3 text-sm' })}>
-                        <Link to="/">Docs</Link>
+                        <a href="https://docs.unlingo.com" target="_blank" rel="noopener noreferrer">Docs</a>
                     </NavigationMenuLink>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
                     <NavigationMenuLink
                         asChild
                         className={navigationMenuTriggerStyle({ className: 'text-foreground/75 h-7 px-3 text-sm' })}>
-                        <Link to="/">Pricing</Link>
+                        <Link to="/" hash="pricing">Pricing</Link>
                     </NavigationMenuLink>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
                     <NavigationMenuLink
                         asChild
                         className={navigationMenuTriggerStyle({ className: 'text-foreground/75 h-7 px-3 text-sm' })}>
-                        <Link to="/">Discord</Link>
+                        <a href="https://discord.gg/TdDYte7KjG" target="_blank" rel="noopener noreferrer">Discord</a>
                     </NavigationMenuLink>
                 </NavigationMenuItem>
             </NavigationMenuList>

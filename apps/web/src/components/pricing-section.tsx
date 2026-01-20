@@ -44,6 +44,7 @@ export default function PricingSection() {
         <section
             data-theme="dark"
             className="bg-background py-16 md:py-24"
+            id="pricing"
         >
             <div className="mx-auto max-w-5xl px-6">
                 <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">

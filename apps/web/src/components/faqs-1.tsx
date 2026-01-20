@@ -46,7 +46,7 @@ export default function FAQs() {
     ]
 
     return (
-        <section className="bg-background py-16 md:py-24">
+        <section id="faqs" className="bg-background py-16 md:py-24">
             <div className="mx-auto max-w-5xl px-1 md:px-6">
                 <div className="grid gap-8 md:grid-cols-5 md:gap-12">
                     <div className="max-w-lg max-md:px-6 md:col-span-2">
@@ -54,11 +54,11 @@ export default function FAQs() {
                         <p className="text-muted-foreground mt-4 text-balance text-lg">Your questions answered</p>
                         <p className="text-muted-foreground mt-6 max-md:hidden">
                             Can't find what you're looking for? Contact our{' '}
-                            <Link
-                                to="/"
+                            <a
+                                href="mailto:support@unlingo.com"
                                 className="text-primary font-medium hover:underline">
                                 customer support team
-                            </Link>
+                            </a>
                         </p>
                     </div>
 
