@@ -16,8 +16,8 @@ export default function HeroSection() {
                     <div className="relative pb-36 pt-24 lg:pt-16">
                         <div className="relative z-10 mx-auto max-w-5xl px-6">
                             <div className="text-center">
-                                <h1 className="mx-auto mt-8 max-w-xl text-balance text-4xl font-semibold md:text-5xl">Powerful Analytics for Smarter Decisions</h1>
-                                <p className="text-muted-foreground mx-auto mb-8 mt-4 max-w-xl text-balance text-lg">With Tailark's personal AI, get your projects to the finish line faster and with no context switching.</p>
+                                <h1 className="mx-auto mt-8 max-w-xl text-balance text-4xl font-semibold md:text-5xl">Translate Your App in a Few Lines of Code</h1>
+                                <p className="text-muted-foreground mx-auto mb-8 mt-4 max-w-xl text-balance text-lg">Built for teams who want to ship fast. Integrate localization seamlessly and focus on building what matters.</p>
 
                                 <div className="flex items-center justify-center gap-3 max-sm:flex-col">
                                     <Button render={<Link to="/dashboard" />}>
