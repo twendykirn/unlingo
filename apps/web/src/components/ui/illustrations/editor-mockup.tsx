@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import {
     ArrowLeft,
+    CameraIcon,
     ChevronDownIcon,
     CopyIcon,
+    HammerIcon,
     KeyRound,
     LanguagesIcon,
     Newspaper,
@@ -69,6 +71,69 @@ const initialMockTranslationKeys: TranslationKey[] = [
             de: 'Dieses Feld ist erforderlich',
         },
     },
+    {
+        id: '6',
+        key: 'common.submit',
+        values: {
+            en: 'Submit',
+            fr: 'Soumettre',
+            de: 'Absenden',
+        },
+    },
+    {
+        id: '7',
+        key: 'common.loading',
+        values: {
+            en: 'Loading...',
+            fr: 'Chargement...',
+            de: 'Wird geladen...',
+        },
+    },
+    {
+        id: '8',
+        key: 'common.search',
+        values: {
+            en: 'Search',
+            fr: 'Rechercher',
+            de: 'Suchen',
+        },
+    },
+    {
+        id: '9',
+        key: 'common.settings',
+        values: {
+            en: 'Settings',
+            fr: 'Paramètres',
+            de: 'Einstellungen',
+        },
+    },
+    {
+        id: '10',
+        key: 'common.profile',
+        values: {
+            en: 'Profile',
+            fr: 'Profil',
+            de: 'Profil',
+        },
+    },
+    {
+        id: '11',
+        key: 'errors.not_found',
+        values: {
+            en: 'Page not found',
+            fr: 'Page non trouvée',
+            de: 'Seite nicht gefunden',
+        },
+    },
+    {
+        id: '12',
+        key: 'errors.unauthorized',
+        values: {
+            en: 'Unauthorized access',
+            fr: 'Accès non autorisé',
+            de: 'Nicht autorisierter Zugriff',
+        },
+    },
 ]
 
 const languages = [
@@ -81,6 +146,8 @@ const sidebarItems = [
     { icon: LanguagesIcon, label: 'Languages', active: false },
     { icon: Newspaper, label: 'Namespaces', active: true },
     { icon: PencilRulerIcon, label: 'Glossary', active: false },
+    { icon: CameraIcon, label: 'Screenshots', active: false },
+    { icon: HammerIcon, label: 'Builds', active: false },
     { icon: RocketIcon, label: 'Releases', active: false },
     { icon: KeyRound, label: 'Api Keys', active: false },
 ]
