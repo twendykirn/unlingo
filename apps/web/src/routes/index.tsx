@@ -2,10 +2,10 @@ import BentoFour from "@/components/bento-4";
 import SmartHomeBento from "@/components/bento-5";
 import CallToAction from "@/components/call-to-action";
 import FAQs from "@/components/faqs-1";
+import FeaturesSection from "@/components/features-8";
 import FooterSection from "@/components/footer";
 import GithubSpaceLogo from "@/components/github-space-logo";
 import HeroSection from "@/components/hero-section";
-import IntegrationsSection from "@/components/integrations-6";
 import PricingSection from "@/components/pricing-section";
 import { Button } from "@/components/ui/button";
 import { createFileRoute } from "@tanstack/react-router";
@@ -45,8 +45,8 @@ function HomeComponent() {
 				</div>
 			</section>
 			<SmartHomeBento />
-			<IntegrationsSection />
 			<PricingSection />
+			<FeaturesSection />
 			<FAQs />
 			<CallToAction />
 			<FooterSection />
