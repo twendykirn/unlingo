@@ -2,18 +2,20 @@ import { LogoIcon } from '@/components/logo'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { InfiniteSlider } from '@/components/ui/infinite-slider'
-import VSCode from '@/components/logos/vs-code'
-import Windsurf from '@/components/logos/windsurf'
-import ClaudeAI from '@/components/logos/claude'
-import OpenAI from '@/components/logos/open-ai'
+import NextJS from '@/components/logos/nextjs'
+import ReactLogo from '@/components/logos/react'
+import Vue from '@/components/logos/vue'
+import Svelte from '@/components/logos/svelte'
+import TanStack from '@/components/logos/tanstack'
+import Expo from '@/components/logos/expo'
+import ReactNative from '@/components/logos/react-native'
+import Angular from '@/components/logos/angular'
+import I18next from '@/components/logos/i18next'
+import Gatsby from '@/components/logos/gatsby'
+import Nuxt from '@/components/logos/nuxt'
+import Remix from '@/components/logos/remix'
+import Astro from '@/components/logos/astro'
 import { Vercel } from '@/components/logos/vercel'
-import { Linear } from '@/components/logos/linear'
-import Gemini from '@/components/logos/Gemini'
-import Replit from '@/components/logos/Replit'
-import VSCodium from '@/components/logos/VSCodium'
-import MagicUI from '@/components/logos/MagicUI'
-import GooglePaLM from '@/components/logos/GooglePaLM'
-import MediaWiki from '@/components/logos/MediaWiki'
 import { Link } from '@tanstack/react-router'
 
 export default function IntegrationsSection() {
@@ -29,22 +31,22 @@ export default function IntegrationsSection() {
                                 speed={20}
                                 speedOnHover={10}>
                                 <IntegrationCard>
-                                    <VSCode />
+                                    <NextJS />
                                 </IntegrationCard>
                                 <IntegrationCard>
-                                    <MediaWiki />
+                                    <ReactLogo />
                                 </IntegrationCard>
                                 <IntegrationCard>
-                                    <Windsurf />
+                                    <Vue />
                                 </IntegrationCard>
                                 <IntegrationCard>
-                                    <ClaudeAI />
+                                    <Svelte />
                                 </IntegrationCard>
                                 <IntegrationCard>
-                                    <OpenAI />
+                                    <TanStack />
                                 </IntegrationCard>
                                 <IntegrationCard>
-                                    <MagicUI />
+                                    <Angular />
                                 </IntegrationCard>
                             </InfiniteSlider>
                         </div>
@@ -56,22 +58,22 @@ export default function IntegrationsSection() {
                                 speedOnHover={10}
                                 reverse>
                                 <IntegrationCard>
-                                    <Gemini />
+                                    <Expo />
                                 </IntegrationCard>
                                 <IntegrationCard>
-                                    <Linear />
+                                    <ReactNative />
+                                </IntegrationCard>
+                                <IntegrationCard>
+                                    <Nuxt />
+                                </IntegrationCard>
+                                <IntegrationCard>
+                                    <Gatsby />
+                                </IntegrationCard>
+                                <IntegrationCard>
+                                    <Remix />
                                 </IntegrationCard>
                                 <IntegrationCard>
                                     <Vercel />
-                                </IntegrationCard>
-                                <IntegrationCard>
-                                    <MagicUI />
-                                </IntegrationCard>
-                                <IntegrationCard>
-                                    <VSCodium />
-                                </IntegrationCard>
-                                <IntegrationCard>
-                                    <GooglePaLM />
                                 </IntegrationCard>
                             </InfiniteSlider>
                         </div>
@@ -81,22 +83,22 @@ export default function IntegrationsSection() {
                                 speed={15}
                                 speedOnHover={10}>
                                 <IntegrationCard>
-                                    <Replit />
+                                    <Astro />
                                 </IntegrationCard>
                                 <IntegrationCard>
-                                    <MagicUI />
+                                    <I18next />
                                 </IntegrationCard>
                                 <IntegrationCard>
-                                    <Gemini />
+                                    <NextJS />
                                 </IntegrationCard>
                                 <IntegrationCard>
-                                    <VSCodium />
+                                    <Vue />
                                 </IntegrationCard>
                                 <IntegrationCard>
-                                    <MediaWiki />
+                                    <Svelte />
                                 </IntegrationCard>
                                 <IntegrationCard>
-                                    <GooglePaLM />
+                                    <ReactLogo />
                                 </IntegrationCard>
                             </InfiniteSlider>
                         </div>
