@@ -48,9 +48,97 @@ export default function CodeBlockIllustration() {
     }, [code, codeBlockConfigs])
 
     const codes: { [key in CodeBlockType]: string } = {
-        i18next: `const axios = require('axios');\n\nconst response = await axios.post('https://api.example.com/data', {\n  key: 'value',\n  anotherKey: 'anotherValue',\n});\n\nconsole.log(response.data);`,
-        'next-intl': `import requests\n\nresponse = requests.post('https://api.example.com/data', json={\n    'key': 'value',\n    'anotherKey': 'anotherValue',\n})\n\nprint(response.json())`,
-        fetch: `const response = await fetch(\n 'https://api.unlingo.com/v1/translations?release=YOUR_RELEASE_TAG&namespace=YOUR_NAMESPACE&lang=YOUR_LANGUAGE', {\n headers: {\n  'Authorization': 'Bearer your-api-key',\n }\n});\n\nconst data = await response.json();\n\nconsole.log(data.translations.welcome);`,
+        i18next: `import i18next from 'i18next';
+import { initReactI18next } from 'react-i18next';
+
+class UnlingoBackend {
+    constructor() {
+        this.type = 'backend';
+        // You can add own options if needed
+        this.init();
+    }
+
+    init() {}
+
+    async read(language, namespace, callback) {
+        try {
+            const url = new URL('/v1/translations', 'https://api.unlingo.com');
+            url.searchParams.set('release', process.env.UNLINGO_RELEASE_TAG);
+            url.searchParams.set('namespace', namespace);
+            url.searchParams.set('lang', language);
+
+            const response = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'x-api-key': process.env.UNLINGO_API_KEY,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return callback(new Error(errorData.error), null);
+            }
+
+            const data = await response.json();
+            callback(null, data.translations);
+        } catch (error) {
+            console.error('Unlingo Backend Error:', error);
+            callback(error, null);
+        }
+    }
+}
+
+export default UnlingoBackend;
+
+i18next
+  .use(UnlingoBackend)
+  .use(initReactI18next)
+  .init({
+    ...
+  });
+
+export default i18next;`,
+        'next-intl': `import { getRequestConfig } from 'next-intl/server';
+import { hasLocale } from 'next-intl';
+import { routing } from './routing';
+
+export default getRequestConfig(async ({ requestLocale }) => {
+  const requested = await requestLocale;
+  const locale = hasLocale(routing.locales, requested)
+    ? requested
+    : routing.defaultLocale;
+
+    const url = new URL('/v1/translations', 'https://api.unlingo.com');
+    url.searchParams.set('release', process.env.UNLINGO_RELEASE_TAG);
+    url.searchParams.set('namespace', process.env.UNLINGO_NAMESPACE);
+    url.searchParams.set('lang', locale);
+
+    const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+            'x-api-key': process.env.UNLINGO_API_KEY,
+            'Content-Type': 'application/json',
+        },
+    });
+
+    const data = await response.json();
+
+  return {
+    locale,
+    messages: data.translations,
+  };
+});`,
+        fetch: `const response = await fetch(
+ 'https://api.unlingo.com/v1/translations?release=YOUR_RELEASE_TAG&namespace=YOUR_NAMESPACE&lang=YOUR_LANGUAGE', {
+ headers: {
+  'Authorization': 'Bearer your-api-key',
+ }
+});
+
+const data = await response.json();
+
+console.log(data.translations.welcome);`,
     }
 
     const currentLang = langMap[code]
