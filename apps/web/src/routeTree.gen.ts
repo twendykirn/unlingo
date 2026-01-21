@@ -14,6 +14,8 @@ import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
+import { Route as LegalTermsOfServiceRouteImport } from './routes/legal/terms-of-service'
+import { Route as LegalPrivacyPolicyRouteImport } from './routes/legal/privacy-policy'
 import { Route as AuthSelectOrgRouteImport } from './routes/_auth/select-org'
 import { Route as AuthNewRouteImport } from './routes/_auth/new'
 import { Route as AuthOrgRouteImport } from './routes/_auth/_org'
@@ -54,6 +56,16 @@ const SignUpSplatRoute = SignUpSplatRouteImport.update({
 const SignInSplatRoute = SignInSplatRouteImport.update({
   id: '/sign-in/$',
   path: '/sign-in/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalTermsOfServiceRoute = LegalTermsOfServiceRouteImport.update({
+  id: '/legal/terms-of-service',
+  path: '/legal/terms-of-service',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalPrivacyPolicyRoute = LegalPrivacyPolicyRouteImport.update({
+  id: '/legal/privacy-policy',
+  path: '/legal/privacy-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSelectOrgRoute = AuthSelectOrgRouteImport.update({
@@ -157,6 +169,8 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/new': typeof AuthNewRoute
   '/select-org': typeof AuthSelectOrgRoute
+  '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
+  '/legal/terms-of-service': typeof LegalTermsOfServiceRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/dashboard/billing': typeof AuthOrgDashboardBillingRoute
@@ -179,6 +193,8 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/new': typeof AuthNewRoute
   '/select-org': typeof AuthSelectOrgRoute
+  '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
+  '/legal/terms-of-service': typeof LegalTermsOfServiceRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/dashboard/billing': typeof AuthOrgDashboardBillingRoute
@@ -204,6 +220,8 @@ export interface FileRoutesById {
   '/_auth/_org': typeof AuthOrgRouteWithChildren
   '/_auth/new': typeof AuthNewRoute
   '/_auth/select-org': typeof AuthSelectOrgRoute
+  '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
+  '/legal/terms-of-service': typeof LegalTermsOfServiceRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/_auth/_org/dashboard/billing': typeof AuthOrgDashboardBillingRoute
@@ -228,6 +246,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/new'
     | '/select-org'
+    | '/legal/privacy-policy'
+    | '/legal/terms-of-service'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/dashboard/billing'
@@ -250,6 +270,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/new'
     | '/select-org'
+    | '/legal/privacy-policy'
+    | '/legal/terms-of-service'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/dashboard/billing'
@@ -274,6 +296,8 @@ export interface FileRouteTypes {
     | '/_auth/_org'
     | '/_auth/new'
     | '/_auth/select-org'
+    | '/legal/privacy-policy'
+    | '/legal/terms-of-service'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/_auth/_org/dashboard/billing'
@@ -296,6 +320,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   AboutRoute: typeof AboutRoute
+  LegalPrivacyPolicyRoute: typeof LegalPrivacyPolicyRoute
+  LegalTermsOfServiceRoute: typeof LegalTermsOfServiceRoute
   SignInSplatRoute: typeof SignInSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
   ApiApiKeysWorkspaceIdProjectIdKeyIdRoute: typeof ApiApiKeysWorkspaceIdProjectIdKeyIdRoute
@@ -337,6 +363,20 @@ declare module '@tanstack/react-router' {
       path: '/sign-in/$'
       fullPath: '/sign-in/$'
       preLoaderRoute: typeof SignInSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/terms-of-service': {
+      id: '/legal/terms-of-service'
+      path: '/legal/terms-of-service'
+      fullPath: '/legal/terms-of-service'
+      preLoaderRoute: typeof LegalTermsOfServiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/privacy-policy': {
+      id: '/legal/privacy-policy'
+      path: '/legal/privacy-policy'
+      fullPath: '/legal/privacy-policy'
+      preLoaderRoute: typeof LegalPrivacyPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth/select-org': {
@@ -516,6 +556,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   AboutRoute: AboutRoute,
+  LegalPrivacyPolicyRoute: LegalPrivacyPolicyRoute,
+  LegalTermsOfServiceRoute: LegalTermsOfServiceRoute,
   SignInSplatRoute: SignInSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
   ApiApiKeysWorkspaceIdProjectIdKeyIdRoute:
