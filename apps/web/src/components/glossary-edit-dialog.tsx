@@ -95,19 +95,7 @@ const GlossaryEditDialog = ({ isOpen, setIsOpen, workspace, project, term, langu
     };
 
     return (
-        <Dialog
-            open={isOpen}
-            onOpenChange={open => {
-                if (!open) {
-                    setIsNonTranslatable(false);
-                    setIsCaseSensitive(false);
-                    setIsForbidden(false);
-                    setTranslations({});
-                }
-
-                setIsOpen(open);
-            }}
-        >
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogPopup className="sm:max-w-md">
                 <Form className="contents" onSubmit={handleUpdate}>
                     <DialogHeader>

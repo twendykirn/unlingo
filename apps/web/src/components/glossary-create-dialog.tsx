@@ -100,6 +100,7 @@ const GlossaryCreateDialog = ({ isOpen, setIsOpen, workspace, project, languages
                     setIsCaseSensitive(false);
                     setIsForbidden(false);
                     setTranslations({});
+                    setIsLoading(false);
                 }
 
                 setIsOpen(open);
