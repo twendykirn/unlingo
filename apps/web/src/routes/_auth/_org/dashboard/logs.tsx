@@ -72,6 +72,7 @@ function RouteComponent() {
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const page = useRef(0);
     const timeRange = useRef<TimeRange>('24h');
+    const isInitialLoad = useRef(true);
 
     const clerkId = organization?.id;
 
@@ -174,6 +175,13 @@ function RouteComponent() {
         fetchMoreOnBottomReached(tableContainerRef.current)
     }, [fetchMoreOnBottomReached]);
 
+    useEffect(() => {
+        if (workspace && isInitialLoad.current) {
+            isInitialLoad.current = false;
+            loadEvents();
+        }
+    }, [workspace]);
+
     const table = useReactTable({
         data: events,
         columns,
@@ -204,7 +212,7 @@ function RouteComponent() {
                         <SidebarTrigger className="-ml-1" />
                     </div>
                 </header>
-                <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+                <div className="flex flex-col gap-4 p-4 pt-0 max-w-full flex-1">
                     <div className="flex items-center">
                         <h1>Logs</h1>
                         <div className="flex items-center ml-auto gap-2">
@@ -241,108 +249,102 @@ function RouteComponent() {
                         </div>
                     </div>
                     {events.length > 0 ? (
-                        <>
+                        <div className='h-full'>
                             {workspace ? (
                                 <AutoSizer>
                                     {({ width, height }) => (
-                                        <Card>
-                                            <CardContent>
-                                                <div
-                                                    className="container"
-                                                    onScroll={e => fetchMoreOnBottomReached(e.currentTarget)}
-                                                    ref={tableContainerRef}
+                                        <div
+                                            className="overflow-auto relative"
+                                            onScroll={e => fetchMoreOnBottomReached(e.currentTarget)}
+                                            ref={tableContainerRef}
+                                            style={{
+                                                width: width + 'px',
+                                                height: height + 'px',
+                                            }}
+                                        >
+                                            <Table style={{ display: 'grid' }}>
+                                                <TableHeader
                                                     style={{
-                                                        overflow: 'auto', //our scrollable table container
-                                                        position: 'relative', //needed for sticky header
-                                                        height,
-                                                        width,
+                                                        display: 'grid',
+                                                        position: 'sticky',
+                                                        top: 0,
+                                                        zIndex: 1,
                                                     }}
                                                 >
-                                                    <Table style={{ display: 'grid' }}>
-                                                        <TableHeader
-                                                            style={{
-                                                                display: 'grid',
-                                                                position: 'sticky',
-                                                                top: 0,
-                                                                zIndex: 1,
-                                                            }}
+                                                    {table.getHeaderGroups().map(headerGroup => (
+                                                        <TableRow
+                                                            key={headerGroup.id}
+                                                            style={{ display: 'flex', width: '100%' }}
                                                         >
-                                                            {table.getHeaderGroups().map(headerGroup => (
-                                                                <TableRow
-                                                                    key={headerGroup.id}
-                                                                    style={{ display: 'flex', width: '100%' }}
-                                                                >
-                                                                    {headerGroup.headers.map(header => {
-                                                                        return (
-                                                                            <TableHead
-                                                                                key={header.id}
-                                                                                style={{
-                                                                                    display: 'flex',
-                                                                                    width: header.getSize(),
-                                                                                    alignItems: 'center',
-                                                                                }}
-                                                                            >
-                                                                                {flexRender(
-                                                                                    header.column.columnDef.header,
-                                                                                    header.getContext()
-                                                                                )}
-                                                                            </TableHead>
-                                                                        )
-                                                                    })}
-                                                                </TableRow>
-                                                            ))}
-                                                        </TableHeader>
-                                                        <TableBody
-                                                            style={{
-                                                                display: 'grid',
-                                                                height: `${rowVirtualizer.getTotalSize()}px`, //tells scrollbar how big the table is
-                                                                position: 'relative', //needed for absolute positioning of rows
-                                                            }}
-                                                        >
-                                                            {rowVirtualizer.getVirtualItems().map(virtualRow => {
-                                                                const row = rows[virtualRow.index] as Row<OpenpanelEvent>
+                                                            {headerGroup.headers.map(header => {
                                                                 return (
-                                                                    <TableRow
-                                                                        data-index={virtualRow.index} //needed for dynamic row height measurement
-                                                                        ref={node => rowVirtualizer.measureElement(node)} //measure dynamic row height
-                                                                        key={row.id}
+                                                                    <TableHead
+                                                                        key={header.id}
                                                                         style={{
                                                                             display: 'flex',
-                                                                            position: 'absolute',
-                                                                            transform: `translateY(${virtualRow.start}px)`, //this should always be a `style` as it changes on scroll
-                                                                            width: '100%',
-                                                                        }}
-                                                                        className='cursor-pointer'
-                                                                        onClick={() => {
-                                                                            setSelectedEvent(row.original);
-                                                                            setIsSheetOpen(true);
+                                                                            width: header.getSize(),
+                                                                            alignItems: 'center',
                                                                         }}
                                                                     >
-                                                                        {row.getVisibleCells().map(cell => {
-                                                                            return (
-                                                                                <TableCell
-                                                                                    key={cell.id}
-                                                                                    style={{
-                                                                                        display: 'flex',
-                                                                                        width: cell.column.getSize(),
-                                                                                    }}
-                                                                                >
-                                                                                    {flexRender(
-                                                                                        cell.column.columnDef.cell,
-                                                                                        cell.getContext()
-                                                                                    )}
-                                                                                </TableCell>
-                                                                            )
-                                                                        })}
-                                                                    </TableRow>
+                                                                        {flexRender(
+                                                                            header.column.columnDef.header,
+                                                                            header.getContext()
+                                                                        )}
+                                                                    </TableHead>
                                                                 )
                                                             })}
-                                                        </TableBody>
-                                                    </Table>
-                                                </div>
-                                                {loading ? <Spinner /> : null}
-                                            </CardContent>
-                                        </Card>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableHeader>
+                                                <TableBody
+                                                    style={{
+                                                        display: 'grid',
+                                                        height: `${rowVirtualizer.getTotalSize()}px`, //tells scrollbar how big the table is
+                                                        position: 'relative', //needed for absolute positioning of rows
+                                                    }}
+                                                >
+                                                    {rowVirtualizer.getVirtualItems().map(virtualRow => {
+                                                        const row = rows[virtualRow.index] as Row<OpenpanelEvent>
+                                                        return (
+                                                            <TableRow
+                                                                data-index={virtualRow.index} //needed for dynamic row height measurement
+                                                                ref={node => rowVirtualizer.measureElement(node)} //measure dynamic row height
+                                                                key={row.id}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    position: 'absolute',
+                                                                    transform: `translateY(${virtualRow.start}px)`, //this should always be a `style` as it changes on scroll
+                                                                    width: '100%',
+                                                                }}
+                                                                className='cursor-pointer'
+                                                                onClick={() => {
+                                                                    setSelectedEvent(row.original);
+                                                                    setIsSheetOpen(true);
+                                                                }}
+                                                            >
+                                                                {row.getVisibleCells().map(cell => {
+                                                                    return (
+                                                                        <TableCell
+                                                                            key={cell.id}
+                                                                            style={{
+                                                                                display: 'flex',
+                                                                                width: cell.column.getSize(),
+                                                                            }}
+                                                                        >
+                                                                            {flexRender(
+                                                                                cell.column.columnDef.cell,
+                                                                                cell.getContext()
+                                                                            )}
+                                                                        </TableCell>
+                                                                    )
+                                                                })}
+                                                            </TableRow>
+                                                        )
+                                                    })}
+                                                </TableBody>
+                                            </Table>
+                                            {loading ? <Spinner /> : null}
+                                        </div>
                                     )}
                                 </AutoSizer>
                             ) : (
@@ -350,7 +352,7 @@ function RouteComponent() {
                                     <Spinner />
                                 </div>
                             )}
-                        </>
+                        </div>
                     ) : (
                         <Empty>
                             <EmptyHeader>
