@@ -313,8 +313,6 @@ const PremiumLockDialog = ({ isOpen }: Props) => {
                                     <MenuItem
                                         variant="destructive"
                                         onClick={() => {
-                                            (window as any).uj?.identify(null);
-                                            (window as any).uj?.destroy();
                                             signOut();
                                         }}
                                     >

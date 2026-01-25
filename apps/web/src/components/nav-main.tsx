@@ -3,9 +3,6 @@ import {
     Settings,
     CreditCard,
     Mail,
-    Map,
-    MessagesSquare,
-    GitBranch,
     Logs,
 } from "lucide-react"
 import {
@@ -15,8 +12,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { useEffect } from "react"
-import { useClerk, useUser } from "@clerk/tanstack-react-start"
+import { useClerk } from "@clerk/tanstack-react-start"
 import { useNavigate } from "@tanstack/react-router"
 
 interface Props {
@@ -24,29 +20,9 @@ interface Props {
 }
 
 export function NavMain({ activeItem }: Props) {
-    const { user } = useUser();
     const { openOrganizationProfile } = useClerk();
 
     const navigate = useNavigate();
-
-    useEffect(() => {
-        if (typeof window !== 'undefined' && user) {
-            const uj = (window as any).uj;
-
-            if (uj) {
-                uj.init((import.meta as any).env.VITE_USERJOT_PROJECT_ID, {
-                    position: 'right',
-                    theme: 'auto',
-                    trigger: 'custom',
-                });
-                uj.identify({
-                    id: user.id,
-                    email: user.primaryEmailAddress?.emailAddress,
-                    avatar: user.imageUrl,
-                });
-            }
-        }
-    }, [user]);
 
     const handleNavigateToHome = () => {
         navigate({
@@ -114,30 +90,6 @@ export function NavMain({ activeItem }: Props) {
             <SidebarGroup>
                 <SidebarGroupLabel>Support</SidebarGroupLabel>
                 <SidebarMenu>
-                    <SidebarMenuItem key='changelog'>
-                        <SidebarMenuButton className="text-sidebar-foreground/70" onClick={() => {
-                            (window as any).uj?.showWidget({ section: 'updates' });
-                        }}>
-                            <GitBranch />
-                            <span>Changelog</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem key='roadmap'>
-                        <SidebarMenuButton className="text-sidebar-foreground/70" onClick={() => {
-                            (window as any).uj?.showWidget({ section: 'roadmap' });
-                        }}>
-                            <Map />
-                            <span>Roadmap</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem key='feedback'>
-                        <SidebarMenuButton className="text-sidebar-foreground/70" onClick={() => {
-                            (window as any).uj?.showWidget({ section: 'feedback' });
-                        }}>
-                            <MessagesSquare />
-                            <span>Feedback</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
                     <SidebarMenuItem key='email'>
                         <SidebarMenuButton
                             className="text-sidebar-foreground/70"
