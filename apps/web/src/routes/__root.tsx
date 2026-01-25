@@ -7,7 +7,6 @@ import {
 	createRootRouteWithContext,
 	useRouteContext,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import appCss from "../index.css?url";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ConvexQueryClient } from "@convex-dev/react-query";
@@ -81,7 +80,6 @@ function RootDocument() {
 								</div>
 							</AnchoredToastProvider>
 						</ToastProvider>
-						<TanStackRouterDevtools position="bottom-right" />
 						<Scripts />
 					</body>
 				</html>

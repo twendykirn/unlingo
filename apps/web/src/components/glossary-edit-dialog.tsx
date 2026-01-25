@@ -55,6 +55,8 @@ const GlossaryEditDialog = ({ isOpen, setIsOpen, workspace, project, term, langu
 
         if (!termValue.trim()) return;
 
+        if (!isNonTranslatable && !isCaseSensitive && !isForbidden && !description?.trim()) return;
+
         setIsLoading(true);
 
         try {
@@ -93,7 +95,19 @@ const GlossaryEditDialog = ({ isOpen, setIsOpen, workspace, project, term, langu
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog
+            open={isOpen}
+            onOpenChange={open => {
+                if (!open) {
+                    setIsNonTranslatable(false);
+                    setIsCaseSensitive(false);
+                    setIsForbidden(false);
+                    setTranslations({});
+                }
+
+                setIsOpen(open);
+            }}
+        >
             <DialogPopup className="sm:max-w-md">
                 <Form className="contents" onSubmit={handleUpdate}>
                     <DialogHeader>
@@ -112,27 +126,24 @@ const GlossaryEditDialog = ({ isOpen, setIsOpen, workspace, project, term, langu
                             <Textarea name="description" defaultValue={term.description || ''} />
                         </Field>
                         <div className="flex flex-col gap-3">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <Checkbox
-                                    checked={isNonTranslatable}
-                                    onCheckedChange={(checked) => setIsNonTranslatable(checked === true)}
-                                />
-                                <span className="text-sm">Non-translatable (keep as-is)</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <Checkbox
-                                    checked={isCaseSensitive}
-                                    onCheckedChange={(checked) => setIsCaseSensitive(checked === true)}
-                                />
-                                <span className="text-sm">Case sensitive</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <Checkbox
-                                    checked={isForbidden}
-                                    onCheckedChange={(checked) => setIsForbidden(checked === true)}
-                                />
-                                <span className="text-sm">Forbidden (should not be used)</span>
-                            </label>
+                            <Field name="isNonTranslatable">
+                                <FieldLabel>
+                                    <Checkbox value={isNonTranslatable + ''} onCheckedChange={setIsNonTranslatable} />
+                                    Non-translatable (keep as-is)
+                                </FieldLabel>
+                            </Field>
+                            <Field name="isCaseSensitive">
+                                <FieldLabel>
+                                    <Checkbox value={isCaseSensitive + ''} onCheckedChange={setIsCaseSensitive} />
+                                    Case sensitive
+                                </FieldLabel>
+                            </Field>
+                            <Field name="isForbidden">
+                                <FieldLabel>
+                                    <Checkbox value={isForbidden + ''} onCheckedChange={setIsForbidden} />
+                                    Forbidden (should not be used)
+                                </FieldLabel>
+                            </Field>
                         </div>
                         {!isNonTranslatable && languages.length > 0 && (
                             <Field className="border-t pt-4">
@@ -158,7 +169,7 @@ const GlossaryEditDialog = ({ isOpen, setIsOpen, workspace, project, term, langu
                         <DialogClose render={<Button variant="ghost" />}>
                             Cancel
                         </DialogClose>
-                        <Button type="submit">{isLoading ? <Spinner /> : 'Update'}</Button>
+                        <Button disabled={isLoading} type="submit">{isLoading ? <Spinner /> : 'Update'}</Button>
                     </DialogFooter>
                 </Form>
             </DialogPopup>
