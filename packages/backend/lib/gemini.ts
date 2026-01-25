@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import "./polyfill";
 
 export interface DetectedTextRegion {
   text: string;
