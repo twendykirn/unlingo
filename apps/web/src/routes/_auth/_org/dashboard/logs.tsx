@@ -58,6 +58,57 @@ function getDateRange(range: TimeRange) {
 
 export const Route = createFileRoute('/_auth/_org/dashboard/logs')({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: 'Logs - Unlingo',
+            },
+            {
+                name: 'description',
+                content: 'View API request logs and analytics for your Unlingo translation projects.',
+            },
+            {
+                property: 'og:type',
+                content: 'website',
+            },
+            {
+                property: 'og:title',
+                content: 'Logs - Unlingo',
+            },
+            {
+                property: 'og:description',
+                content: 'View API request logs and analytics for your Unlingo translation projects.',
+            },
+            {
+                property: 'og:url',
+                content: 'https://unlingo.com/dashboard/logs',
+            },
+            {
+                property: 'og:image',
+                content: '/og.png',
+            },
+            {
+                name: 'twitter:card',
+                content: 'summary_large_image',
+            },
+            {
+                name: 'twitter:title',
+                content: 'Logs - Unlingo',
+            },
+            {
+                name: 'twitter:description',
+                content: 'View API request logs and analytics for your Unlingo translation projects.',
+            },
+            {
+                name: 'twitter:image',
+                content: '/og.png',
+            },
+            {
+                name: 'robots',
+                content: 'noindex, nofollow',
+            },
+        ],
+    }),
 })
 
 function RouteComponent() {

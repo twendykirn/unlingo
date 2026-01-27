@@ -24,6 +24,53 @@ export const Route = createFileRoute(
     '/_auth/_org/projects/$projectId/screenshots/',
 )({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: 'Screenshots - Unlingo',
+            },
+            {
+                name: 'description',
+                content: 'Manage visual context screenshots for your Unlingo translation project.',
+            },
+            {
+                property: 'og:type',
+                content: 'website',
+            },
+            {
+                property: 'og:title',
+                content: 'Screenshots - Unlingo',
+            },
+            {
+                property: 'og:description',
+                content: 'Manage visual context screenshots for your Unlingo translation project.',
+            },
+            {
+                property: 'og:image',
+                content: '/og.png',
+            },
+            {
+                name: 'twitter:card',
+                content: 'summary_large_image',
+            },
+            {
+                name: 'twitter:title',
+                content: 'Screenshots - Unlingo',
+            },
+            {
+                name: 'twitter:description',
+                content: 'Manage visual context screenshots for your Unlingo translation project.',
+            },
+            {
+                name: 'twitter:image',
+                content: '/og.png',
+            },
+            {
+                name: 'robots',
+                content: 'noindex, nofollow',
+            },
+        ],
+    }),
 })
 
 function RouteComponent() {

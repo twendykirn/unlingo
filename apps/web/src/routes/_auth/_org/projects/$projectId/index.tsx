@@ -23,6 +23,53 @@ import { useCallback, useState } from 'react';
 
 export const Route = createFileRoute('/_auth/_org/projects/$projectId/')({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: 'Namespaces - Unlingo',
+            },
+            {
+                name: 'description',
+                content: 'Manage namespaces and translation keys for your Unlingo project.',
+            },
+            {
+                property: 'og:type',
+                content: 'website',
+            },
+            {
+                property: 'og:title',
+                content: 'Namespaces - Unlingo',
+            },
+            {
+                property: 'og:description',
+                content: 'Manage namespaces and translation keys for your Unlingo project.',
+            },
+            {
+                property: 'og:image',
+                content: '/og.png',
+            },
+            {
+                name: 'twitter:card',
+                content: 'summary_large_image',
+            },
+            {
+                name: 'twitter:title',
+                content: 'Namespaces - Unlingo',
+            },
+            {
+                name: 'twitter:description',
+                content: 'Manage namespaces and translation keys for your Unlingo project.',
+            },
+            {
+                name: 'twitter:image',
+                content: '/og.png',
+            },
+            {
+                name: 'robots',
+                content: 'noindex, nofollow',
+            },
+        ],
+    }),
 })
 
 function RouteComponent() {

@@ -4,6 +4,53 @@ import HeroHeader from "@/components/header";
 
 export const Route = createFileRoute('/legal/terms-of-service')({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: "Terms of Service - Unlingo",
+            },
+            {
+                name: "description",
+                content: "Read the Unlingo Terms of Service to understand the rules and conditions for using our platform.",
+            },
+            {
+                property: "og:type",
+                content: "website",
+            },
+            {
+                property: "og:title",
+                content: "Terms of Service - Unlingo",
+            },
+            {
+                property: "og:description",
+                content: "Read the Unlingo Terms of Service to understand the rules and conditions for using our platform.",
+            },
+            {
+                property: "og:url",
+                content: "https://unlingo.com/legal/terms-of-service",
+            },
+            {
+                property: "og:image",
+                content: "/og.png",
+            },
+            {
+                name: "twitter:card",
+                content: "summary_large_image",
+            },
+            {
+                name: "twitter:title",
+                content: "Terms of Service - Unlingo",
+            },
+            {
+                name: "twitter:description",
+                content: "Read the Unlingo Terms of Service to understand the rules and conditions for using our platform.",
+            },
+            {
+                name: "twitter:image",
+                content: "/og.png",
+            },
+        ],
+    }),
 })
 
 function RouteComponent() {

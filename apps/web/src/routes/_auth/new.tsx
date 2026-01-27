@@ -26,6 +26,57 @@ import { BadgeCheck, LogOut } from 'lucide-react';
 
 export const Route = createFileRoute('/_auth/new')({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: 'Create Organization - Unlingo',
+            },
+            {
+                name: 'description',
+                content: 'Create a new organization to start managing your translation projects with Unlingo.',
+            },
+            {
+                property: 'og:type',
+                content: 'website',
+            },
+            {
+                property: 'og:title',
+                content: 'Create Organization - Unlingo',
+            },
+            {
+                property: 'og:description',
+                content: 'Create a new organization to start managing your translation projects with Unlingo.',
+            },
+            {
+                property: 'og:url',
+                content: 'https://unlingo.com/new',
+            },
+            {
+                property: 'og:image',
+                content: '/og.png',
+            },
+            {
+                name: 'twitter:card',
+                content: 'summary_large_image',
+            },
+            {
+                name: 'twitter:title',
+                content: 'Create Organization - Unlingo',
+            },
+            {
+                name: 'twitter:description',
+                content: 'Create a new organization to start managing your translation projects with Unlingo.',
+            },
+            {
+                name: 'twitter:image',
+                content: '/og.png',
+            },
+            {
+                name: 'robots',
+                content: 'noindex, nofollow',
+            },
+        ],
+    }),
 })
 
 function RouteComponent() {

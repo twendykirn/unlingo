@@ -23,6 +23,57 @@ import { useEffect, useMemo, useState } from 'react'
 
 export const Route = createFileRoute('/_auth/_org/dashboard/billing')({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: 'Usage & Billing - Unlingo',
+            },
+            {
+                name: 'description',
+                content: 'View your usage statistics, manage your subscription, and handle billing for your Unlingo account.',
+            },
+            {
+                property: 'og:type',
+                content: 'website',
+            },
+            {
+                property: 'og:title',
+                content: 'Usage & Billing - Unlingo',
+            },
+            {
+                property: 'og:description',
+                content: 'View your usage statistics, manage your subscription, and handle billing for your Unlingo account.',
+            },
+            {
+                property: 'og:url',
+                content: 'https://unlingo.com/dashboard/billing',
+            },
+            {
+                property: 'og:image',
+                content: '/og.png',
+            },
+            {
+                name: 'twitter:card',
+                content: 'summary_large_image',
+            },
+            {
+                name: 'twitter:title',
+                content: 'Usage & Billing - Unlingo',
+            },
+            {
+                name: 'twitter:description',
+                content: 'View your usage statistics, manage your subscription, and handle billing for your Unlingo account.',
+            },
+            {
+                name: 'twitter:image',
+                content: '/og.png',
+            },
+            {
+                name: 'robots',
+                content: 'noindex, nofollow',
+            },
+        ],
+    }),
 })
 
 function RouteComponent() {

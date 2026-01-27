@@ -31,11 +31,11 @@ export const Route = createFileRoute('/_auth/_org/dashboard/')({
     head: () => ({
         meta: [
             {
-                title: 'Dashboard - Unlingo',
+                title: 'Projects - Unlingo',
             },
             {
                 name: 'description',
-                content: 'Manage your influencer discovery campaigns, view crawl results, and track your credits on the ReachFinder dashboard.',
+                content: 'Manage your translation projects, namespaces, and languages on the Unlingo dashboard.',
             },
             {
                 property: 'og:type',
@@ -43,19 +43,19 @@ export const Route = createFileRoute('/_auth/_org/dashboard/')({
             },
             {
                 property: 'og:title',
-                content: 'Dashboard - Unlingo',
+                content: 'Projects - Unlingo',
             },
             {
                 property: 'og:description',
-                content: 'Manage your influencer discovery campaigns, view crawl results, and track your credits on the ReachFinder dashboard.',
+                content: 'Manage your translation projects, namespaces, and languages on the Unlingo dashboard.',
             },
             {
                 property: 'og:url',
-                content: 'https://reachfinder.dev/dashboard',
+                content: 'https://unlingo.com/dashboard',
             },
             {
                 property: 'og:image',
-                content: 'https://reachfinder.dev/og-image.png',
+                content: '/og.png',
             },
             {
                 name: 'twitter:card',
@@ -63,15 +63,15 @@ export const Route = createFileRoute('/_auth/_org/dashboard/')({
             },
             {
                 name: 'twitter:title',
-                content: 'Dashboard - ReachFinder',
+                content: 'Projects - Unlingo',
             },
             {
                 name: 'twitter:description',
-                content: 'Manage your influencer discovery campaigns, view crawl results, and track your credits on the ReachFinder dashboard.',
+                content: 'Manage your translation projects, namespaces, and languages on the Unlingo dashboard.',
             },
             {
                 name: 'twitter:image',
-                content: 'https://reachfinder.dev/og-image.png',
+                content: '/og.png',
             },
             {
                 name: 'robots',
