@@ -41,7 +41,47 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "My App",
+				title: "Unlingo - Developer Platform for Internationalization",
+			},
+			{
+				name: "description",
+				content: "Unlingo is a developer platform for internationalization. Manage translations, host translation files, and integrate with popular i18n libraries.",
+			},
+			{
+				property: "og:type",
+				content: "website",
+			},
+			{
+				property: "og:title",
+				content: "Unlingo - Developer Platform for Internationalization",
+			},
+			{
+				property: "og:description",
+				content: "Unlingo is a developer platform for internationalization. Manage translations, host translation files, and integrate with popular i18n libraries.",
+			},
+			{
+				property: "og:image",
+				content: "/og.png",
+			},
+			{
+				property: "og:site_name",
+				content: "Unlingo",
+			},
+			{
+				name: "twitter:card",
+				content: "summary_large_image",
+			},
+			{
+				name: "twitter:title",
+				content: "Unlingo - Developer Platform for Internationalization",
+			},
+			{
+				name: "twitter:description",
+				content: "Unlingo is a developer platform for internationalization. Manage translations, host translation files, and integrate with popular i18n libraries.",
+			},
+			{
+				name: "twitter:image",
+				content: "/og.png",
 			},
 		],
 		links: [

@@ -5,6 +5,53 @@ import { Card } from '@/components/ui/card';
 
 export const Route = createFileRoute('/legal/privacy-policy')({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: "Privacy Policy - Unlingo",
+            },
+            {
+                name: "description",
+                content: "Read the Unlingo Privacy Policy to understand how we collect, use, and protect your personal information.",
+            },
+            {
+                property: "og:type",
+                content: "website",
+            },
+            {
+                property: "og:title",
+                content: "Privacy Policy - Unlingo",
+            },
+            {
+                property: "og:description",
+                content: "Read the Unlingo Privacy Policy to understand how we collect, use, and protect your personal information.",
+            },
+            {
+                property: "og:url",
+                content: "https://unlingo.com/legal/privacy-policy",
+            },
+            {
+                property: "og:image",
+                content: "/og.png",
+            },
+            {
+                name: "twitter:card",
+                content: "summary_large_image",
+            },
+            {
+                name: "twitter:title",
+                content: "Privacy Policy - Unlingo",
+            },
+            {
+                name: "twitter:description",
+                content: "Read the Unlingo Privacy Policy to understand how we collect, use, and protect your personal information.",
+            },
+            {
+                name: "twitter:image",
+                content: "/og.png",
+            },
+        ],
+    }),
 })
 
 function RouteComponent() {

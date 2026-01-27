@@ -24,6 +24,53 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 
 export const Route = createFileRoute('/_auth/_org/projects/$projectId/builds')({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: 'Builds - Unlingo',
+            },
+            {
+                name: 'description',
+                content: 'Manage translation builds and export configurations for your Unlingo project.',
+            },
+            {
+                property: 'og:type',
+                content: 'website',
+            },
+            {
+                property: 'og:title',
+                content: 'Builds - Unlingo',
+            },
+            {
+                property: 'og:description',
+                content: 'Manage translation builds and export configurations for your Unlingo project.',
+            },
+            {
+                property: 'og:image',
+                content: '/og.png',
+            },
+            {
+                name: 'twitter:card',
+                content: 'summary_large_image',
+            },
+            {
+                name: 'twitter:title',
+                content: 'Builds - Unlingo',
+            },
+            {
+                name: 'twitter:description',
+                content: 'Manage translation builds and export configurations for your Unlingo project.',
+            },
+            {
+                name: 'twitter:image',
+                content: '/og.png',
+            },
+            {
+                name: 'robots',
+                content: 'noindex, nofollow',
+            },
+        ],
+    }),
 })
 
 function RouteComponent() {

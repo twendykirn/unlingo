@@ -27,6 +27,53 @@ export const Route = createFileRoute(
   '/_auth/_org/projects/$projectId/languages',
 )({
   component: RouteComponent,
+  head: () => ({
+    meta: [
+      {
+        title: 'Languages - Unlingo',
+      },
+      {
+        name: 'description',
+        content: 'Manage supported languages for your Unlingo translation project.',
+      },
+      {
+        property: 'og:type',
+        content: 'website',
+      },
+      {
+        property: 'og:title',
+        content: 'Languages - Unlingo',
+      },
+      {
+        property: 'og:description',
+        content: 'Manage supported languages for your Unlingo translation project.',
+      },
+      {
+        property: 'og:image',
+        content: '/og.png',
+      },
+      {
+        name: 'twitter:card',
+        content: 'summary_large_image',
+      },
+      {
+        name: 'twitter:title',
+        content: 'Languages - Unlingo',
+      },
+      {
+        name: 'twitter:description',
+        content: 'Manage supported languages for your Unlingo translation project.',
+      },
+      {
+        name: 'twitter:image',
+        content: '/og.png',
+      },
+      {
+        name: 'robots',
+        content: 'noindex, nofollow',
+      },
+    ],
+  }),
 })
 
 function RouteComponent() {

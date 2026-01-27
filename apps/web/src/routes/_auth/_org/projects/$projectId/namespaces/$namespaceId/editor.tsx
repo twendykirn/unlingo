@@ -53,6 +53,53 @@ export const Route = createFileRoute(
             key: typeof search.key === 'string' ? search.key : undefined,
         };
     },
+    head: () => ({
+        meta: [
+            {
+                title: 'Translation Editor - Unlingo',
+            },
+            {
+                name: 'description',
+                content: 'Edit and manage translations for your Unlingo namespace.',
+            },
+            {
+                property: 'og:type',
+                content: 'website',
+            },
+            {
+                property: 'og:title',
+                content: 'Translation Editor - Unlingo',
+            },
+            {
+                property: 'og:description',
+                content: 'Edit and manage translations for your Unlingo namespace.',
+            },
+            {
+                property: 'og:image',
+                content: '/og.png',
+            },
+            {
+                name: 'twitter:card',
+                content: 'summary_large_image',
+            },
+            {
+                name: 'twitter:title',
+                content: 'Translation Editor - Unlingo',
+            },
+            {
+                name: 'twitter:description',
+                content: 'Edit and manage translations for your Unlingo namespace.',
+            },
+            {
+                name: 'twitter:image',
+                content: '/og.png',
+            },
+            {
+                name: 'robots',
+                content: 'noindex, nofollow',
+            },
+        ],
+    }),
 });
 
 const columnHelper = createColumnHelper<Doc<'translationKeys'>>();

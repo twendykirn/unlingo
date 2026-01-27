@@ -40,6 +40,53 @@ interface ApiKey {
 
 export const Route = createFileRoute('/_auth/_org/projects/$projectId/api-keys')({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: 'API Keys - Unlingo',
+            },
+            {
+                name: 'description',
+                content: 'Manage API keys for your Unlingo translation project.',
+            },
+            {
+                property: 'og:type',
+                content: 'website',
+            },
+            {
+                property: 'og:title',
+                content: 'API Keys - Unlingo',
+            },
+            {
+                property: 'og:description',
+                content: 'Manage API keys for your Unlingo translation project.',
+            },
+            {
+                property: 'og:image',
+                content: '/og.png',
+            },
+            {
+                name: 'twitter:card',
+                content: 'summary_large_image',
+            },
+            {
+                name: 'twitter:title',
+                content: 'API Keys - Unlingo',
+            },
+            {
+                name: 'twitter:description',
+                content: 'Manage API keys for your Unlingo translation project.',
+            },
+            {
+                name: 'twitter:image',
+                content: '/og.png',
+            },
+            {
+                name: 'robots',
+                content: 'noindex, nofollow',
+            },
+        ],
+    }),
 })
 
 function RouteComponent() {

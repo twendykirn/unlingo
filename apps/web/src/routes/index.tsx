@@ -12,6 +12,53 @@ import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
 	component: HomeComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Unlingo - Developer Platform for Internationalization",
+			},
+			{
+				name: "description",
+				content: "Unlingo is a developer platform for internationalization. Manage translations, host translation files, and integrate with popular i18n libraries.",
+			},
+			{
+				property: "og:type",
+				content: "website",
+			},
+			{
+				property: "og:title",
+				content: "Unlingo - Developer Platform for Internationalization",
+			},
+			{
+				property: "og:description",
+				content: "Unlingo is a developer platform for internationalization. Manage translations, host translation files, and integrate with popular i18n libraries.",
+			},
+			{
+				property: "og:url",
+				content: "https://unlingo.com",
+			},
+			{
+				property: "og:image",
+				content: "/og.png",
+			},
+			{
+				name: "twitter:card",
+				content: "summary_large_image",
+			},
+			{
+				name: "twitter:title",
+				content: "Unlingo - Developer Platform for Internationalization",
+			},
+			{
+				name: "twitter:description",
+				content: "Unlingo is a developer platform for internationalization. Manage translations, host translation files, and integrate with popular i18n libraries.",
+			},
+			{
+				name: "twitter:image",
+				content: "/og.png",
+			},
+		],
+	}),
 });
 
 function HomeComponent() {

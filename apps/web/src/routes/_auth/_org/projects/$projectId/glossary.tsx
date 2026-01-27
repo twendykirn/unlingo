@@ -26,6 +26,53 @@ export const Route = createFileRoute(
     '/_auth/_org/projects/$projectId/glossary',
 )({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: 'Glossary - Unlingo',
+            },
+            {
+                name: 'description',
+                content: 'Manage glossary terms for consistent translations across your Unlingo project.',
+            },
+            {
+                property: 'og:type',
+                content: 'website',
+            },
+            {
+                property: 'og:title',
+                content: 'Glossary - Unlingo',
+            },
+            {
+                property: 'og:description',
+                content: 'Manage glossary terms for consistent translations across your Unlingo project.',
+            },
+            {
+                property: 'og:image',
+                content: '/og.png',
+            },
+            {
+                name: 'twitter:card',
+                content: 'summary_large_image',
+            },
+            {
+                name: 'twitter:title',
+                content: 'Glossary - Unlingo',
+            },
+            {
+                name: 'twitter:description',
+                content: 'Manage glossary terms for consistent translations across your Unlingo project.',
+            },
+            {
+                name: 'twitter:image',
+                content: '/og.png',
+            },
+            {
+                name: 'robots',
+                content: 'noindex, nofollow',
+            },
+        ],
+    }),
 })
 
 function RouteComponent() {

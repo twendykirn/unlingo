@@ -12,6 +12,57 @@ import { useMemo } from 'react';
 
 export const Route = createFileRoute('/_auth/select-org')({
     component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: 'Select Organization - Unlingo',
+            },
+            {
+                name: 'description',
+                content: 'Select an organization to access your Unlingo translation projects.',
+            },
+            {
+                property: 'og:type',
+                content: 'website',
+            },
+            {
+                property: 'og:title',
+                content: 'Select Organization - Unlingo',
+            },
+            {
+                property: 'og:description',
+                content: 'Select an organization to access your Unlingo translation projects.',
+            },
+            {
+                property: 'og:url',
+                content: 'https://unlingo.com/select-org',
+            },
+            {
+                property: 'og:image',
+                content: '/og.png',
+            },
+            {
+                name: 'twitter:card',
+                content: 'summary_large_image',
+            },
+            {
+                name: 'twitter:title',
+                content: 'Select Organization - Unlingo',
+            },
+            {
+                name: 'twitter:description',
+                content: 'Select an organization to access your Unlingo translation projects.',
+            },
+            {
+                name: 'twitter:image',
+                content: '/og.png',
+            },
+            {
+                name: 'robots',
+                content: 'noindex, nofollow',
+            },
+        ],
+    }),
 })
 
 function RouteComponent() {
