@@ -27,7 +27,7 @@ export default function HeroSection() {
                                         key={2}
                                         variant="outline"
                                         className="pl-3.5"
-                                        render={<Link to="/dashboard" />}>
+                                        render={<a href="https://youtu.be/O7Gqt6BXUGM" target='_blank' />}>
                                         <Play className="fill-foreground !size-3" />
                                         <span className="text-nowrap">Watch Video</span>
                                     </Button>
