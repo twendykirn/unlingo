@@ -1,0 +1,579 @@
+import { internalAction, internalMutation, mutation, query } from "./_generated/server";
+import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
+import { deleteFile, getFileUrl } from "./files";
+import { authMiddleware } from "../middlewares/auth";
+import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
+import { detectTextInScreenshot } from "../lib/gemini";
+
+export const getScreenshotsForProject = query({
+  args: {
+    projectId: v.id("projects"),
+    workspaceId: v.id("workspaces"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const result = await ctx.db
+      .query("screenshots")
+      .withIndex("by_project_name", (q) => q.eq("projectId", args.projectId))
+      .paginate(args.paginationOpts);
+
+    const screenshotsWithUrls = await Promise.all(
+      result.page.map(async (screenshot) => {
+        const imageUrl = await getFileUrl(screenshot.imageFileId, 60 * 60 * 24);
+        return {
+          ...screenshot,
+          imageUrl,
+        };
+      }),
+    );
+
+    return {
+      ...result,
+      page: screenshotsWithUrls,
+    };
+  },
+});
+
+export const createScreenshot = mutation({
+  args: {
+    projectId: v.id("projects"),
+    workspaceId: v.id("workspaces"),
+    name: v.string(),
+    imageFileId: v.string(),
+    imageSize: v.number(),
+    imageMimeType: v.string(),
+    dimensions: v.object({
+      width: v.number(),
+      height: v.number(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId, async () => {
+      await deleteFile(ctx, args.imageFileId);
+    });
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      await deleteFile(ctx, args.imageFileId);
+      return { screenshotId: null, error: "Project not found or access denied" };
+    }
+
+    const existingScreenshot = await ctx.db
+      .query("screenshots")
+      .withIndex("by_project_name", (q) => q.eq("projectId", args.projectId).eq("name", args.name))
+      .first();
+
+    if (existingScreenshot) {
+      await deleteFile(ctx, args.imageFileId);
+      return { screenshotId: null, error: "A screenshot with this name already exists in this project" };
+    }
+
+    // Check file size limit (10MB)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    if (args.imageSize > MAX_FILE_SIZE) {
+      await deleteFile(ctx, args.imageFileId);
+      console.error("Image file size exceeds limit:", args.imageSize);
+      return {
+        screenshotId: null,
+        error: "Image file size cannot exceed 10MB. Please compress your image and try again",
+      };
+    }
+
+    const screenshotId = await ctx.db.insert("screenshots", {
+      projectId: args.projectId,
+      name: args.name,
+      imageFileId: args.imageFileId,
+      imageSize: args.imageSize,
+      imageMimeType: args.imageMimeType,
+      dimensions: args.dimensions,
+      status: 1,
+    });
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: args.projectId as unknown as string,
+      projectName: project.name,
+      event: "screenshot.created",
+      screenshotName: args.name,
+    });
+
+    return { screenshotId, error: null };
+  },
+});
+
+export const deleteScreenshot = mutation({
+  args: {
+    screenshotId: v.id("screenshots"),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const screenshot = await ctx.db.get(args.screenshotId);
+    if (!screenshot) {
+      throw new Error("Screenshot not found");
+    }
+
+    const project = await ctx.db.get(screenshot.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    // Delete all containers for this screenshot
+    const containers = await ctx.db
+      .query("screenshotContainers")
+      .withIndex("by_screenshot", (q) => q.eq("screenshotId", args.screenshotId))
+      .collect();
+
+    for (const container of containers) {
+      await ctx.db.delete(container._id);
+    }
+
+    await deleteFile(ctx, screenshot.imageFileId);
+
+    await ctx.db.delete(args.screenshotId);
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: screenshot.projectId as unknown as string,
+      projectName: project.name,
+      event: "screenshot.deleted",
+      screenshotName: screenshot.name,
+    });
+
+    return { success: true };
+  },
+});
+
+export const createContainer = mutation({
+  args: {
+    screenshotId: v.id("screenshots"),
+    translationKeyId: v.id("translationKeys"),
+    position: v.object({
+      x: v.number(),
+      y: v.number(),
+      width: v.number(),
+      height: v.number(),
+    }),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const screenshot = await ctx.db.get(args.screenshotId);
+    if (!screenshot) {
+      throw new Error("Screenshot not found or access denied");
+    }
+
+    const project = await ctx.db.get(screenshot.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const translationKey = await ctx.db.get(args.translationKeyId);
+    if (!translationKey || translationKey.projectId !== project._id || translationKey.status === -1) {
+      throw new Error("Translation key not found or access denied");
+    }
+
+    const containerId = await ctx.db.insert("screenshotContainers", {
+      screenshotId: args.screenshotId,
+      translationKeyId: args.translationKeyId,
+      position: args.position,
+    });
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: screenshot.projectId as unknown as string,
+      projectName: project.name,
+      event: "screenshot.containerAdded",
+      screenshotName: screenshot.name,
+      translationKey: translationKey.key,
+    });
+
+    return containerId;
+  },
+});
+
+export const updateContainer = mutation({
+  args: {
+    containerId: v.id("screenshotContainers"),
+    position: v.optional(
+      v.object({
+        x: v.number(),
+        y: v.number(),
+        width: v.number(),
+        height: v.number(),
+      }),
+    ),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const container = await ctx.db.get(args.containerId);
+    if (!container) {
+      throw new Error("Container not found or access denied");
+    }
+
+    const screenshot = await ctx.db.get(container.screenshotId);
+    if (!screenshot) {
+      throw new Error("Screenshot not found or access denied");
+    }
+
+    const project = await ctx.db.get(screenshot.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const updates: any = {};
+    if (args.position) updates.position = args.position;
+
+    await ctx.db.patch(args.containerId, updates);
+    return { success: true };
+  },
+});
+
+export const deleteContainer = mutation({
+  args: {
+    containerId: v.id("screenshotContainers"),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const container = await ctx.db.get(args.containerId);
+    if (!container) {
+      throw new Error("Container not found or access denied");
+    }
+
+    const screenshot = await ctx.db.get(container.screenshotId);
+    if (!screenshot) {
+      throw new Error("Screenshot not found or access denied");
+    }
+
+    const project = await ctx.db.get(screenshot.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const translationKey = await ctx.db.get(container.translationKeyId);
+    if (!translationKey || translationKey.projectId !== project._id || translationKey.status === -1) {
+      throw new Error("Translation key not found or access denied");
+    }
+
+    await ctx.db.delete(args.containerId);
+
+    // Track analytics event
+    await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+      workspaceId: args.workspaceId as unknown as string,
+      projectId: screenshot.projectId as unknown as string,
+      projectName: project.name,
+      event: "screenshot.containerDeleted",
+      screenshotName: screenshot.name,
+      translationKey: translationKey.key,
+    });
+
+    return { success: true };
+  },
+});
+
+export const getContainersForScreenshot = query({
+  args: {
+    screenshotId: v.id("screenshots"),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const screenshot = await ctx.db.get(args.screenshotId);
+    if (!screenshot) {
+      throw new Error("Screenshot not found or access denied");
+    }
+
+    const project = await ctx.db.get(screenshot.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const containers = await ctx.db
+      .query("screenshotContainers")
+      .withIndex("by_screenshot", (q) => q.eq("screenshotId", args.screenshotId))
+      .collect();
+
+    const containersWithKeys = await Promise.all(
+      containers.map(async (container) => {
+        const translationKey = await ctx.db.get(container.translationKeyId);
+        if (!translationKey || translationKey.status === -1) {
+          return null;
+        }
+
+        const namespace = await ctx.db.get(translationKey.namespaceId);
+
+        // Get primary value from translation key values
+        let primaryValue: string | null = null;
+        if (project.primaryLanguageId && translationKey.values) {
+          primaryValue = translationKey.values[project.primaryLanguageId] || null;
+        }
+
+        return {
+          ...container,
+          translationKey: {
+            _id: translationKey._id,
+            key: translationKey.key,
+            namespaceName: namespace?.name || "Unknown",
+            primaryValue,
+          },
+        };
+      }),
+    );
+
+    return containersWithKeys.filter((c) => c !== null);
+  },
+});
+
+export const getScreenshot = query({
+  args: {
+    screenshotId: v.id("screenshots"),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const screenshot = await ctx.db.get(args.screenshotId);
+    if (!screenshot) {
+      throw new Error("Screenshot not found or access denied");
+    }
+
+    const project = await ctx.db.get(screenshot.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    const imageUrl = await getFileUrl(screenshot.imageFileId, 60 * 60 * 24);
+
+    return {
+      ...screenshot,
+      imageUrl,
+    };
+  },
+});
+
+export const updateScreenshotStatus = internalMutation({
+  args: {
+    screenshotId: v.id("screenshots"),
+  },
+  handler: async (ctx, args) => {
+    const screenshot = await ctx.db.get(args.screenshotId);
+    if (!screenshot) {
+      throw new Error("Screenshot not found");
+    }
+
+    await ctx.db.patch(screenshot._id, { status: 1 });
+  },
+});
+
+export const detectTextAction = internalAction({
+  args: {
+    screenshotId: v.id("screenshots"),
+    projectId: v.id("projects"),
+    imageUrl: v.string(),
+    imageDimensions: v.object({
+      width: v.number(),
+      height: v.number(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const detectedRegions = await detectTextInScreenshot(args.imageUrl, args.imageDimensions);
+
+    if (detectedRegions.length === 0) {
+      await ctx.runMutation(internal.screenshots.updateScreenshotStatus, {
+        screenshotId: args.screenshotId,
+      });
+
+      return { success: true, created: 0, skipped: 0, message: "No UI text detected in screenshot" };
+    }
+
+    await ctx.runMutation(internal.screenshots.createContainersFromDetection, {
+      screenshotId: args.screenshotId,
+      projectId: args.projectId,
+      detectedRegions: detectedRegions.map((region) => ({
+        text: region.text,
+        x: region.boundingBox.x,
+        y: region.boundingBox.y,
+        width: region.boundingBox.width,
+        height: region.boundingBox.height,
+      })),
+    });
+  },
+});
+
+// Extract brackets and variable names from text, leaving only the static text
+// Handles both single {var} and double {{var}} braces
+const extractVariablesFromText = (text: string): string => {
+  // Replace double braces {{var}} with empty string
+  let result = text.replace(/\{\{\w+\}\}/g, "");
+  // Replace single braces {var} with empty string
+  result = result.replace(/\{\w+\}/g, "");
+  // Normalize whitespace (collapse multiple spaces into one, trim)
+  result = result.replace(/\s+/g, " ").trim();
+  return result.toLowerCase();
+};
+
+export const createContainersFromDetection = internalMutation({
+  args: {
+    screenshotId: v.id("screenshots"),
+    projectId: v.id("projects"),
+    detectedRegions: v.array(
+      v.object({
+        text: v.string(),
+        x: v.number(),
+        y: v.number(),
+        width: v.number(),
+        height: v.number(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const project = await ctx.db.get(args.projectId);
+      if (!project) {
+        throw new Error("Project not found");
+      }
+
+      const existingContainers = await ctx.db
+        .query("screenshotContainers")
+        .withIndex("by_screenshot", (q) => q.eq("screenshotId", args.screenshotId))
+        .collect();
+
+      const existingKeyIds = new Set(existingContainers.map((c) => c.translationKeyId));
+
+      let created = 0;
+      let skipped = 0;
+
+      for (const region of args.detectedRegions) {
+        const detectedText = region.text;
+
+        const detectedTextNormalized = extractVariablesFromText(detectedText);
+
+        const valueResults = await ctx.db
+          .query("translationValues")
+          .withSearchIndex("search_values", (q) => q.search("values", detectedText).eq("projectId", args.projectId))
+          .take(5);
+
+        let matchedKeyId: Id<"translationKeys"> | null = null;
+
+        for (const valueResult of valueResults) {
+          const key = await ctx.db.get(valueResult.translationKeyId);
+          if (!key || key.status === -1) {
+            continue;
+          }
+
+          const searchResultNormalized = extractVariablesFromText(valueResult.values);
+
+          if (detectedTextNormalized === searchResultNormalized) {
+            matchedKeyId = valueResult.translationKeyId;
+            break;
+          }
+        }
+
+        if (!matchedKeyId) {
+          skipped++;
+          continue;
+        }
+
+        if (existingKeyIds.has(matchedKeyId)) {
+          skipped++;
+          continue;
+        }
+
+        await ctx.db.insert("screenshotContainers", {
+          screenshotId: args.screenshotId,
+          translationKeyId: matchedKeyId,
+          position: {
+            x: Math.max(0, Math.min(100, region.x)),
+            y: Math.max(0, Math.min(100, region.y)),
+            width: Math.max(1, Math.min(100, region.width)),
+            height: Math.max(1, Math.min(100, region.height)),
+          },
+        });
+
+        existingKeyIds.add(matchedKeyId);
+        created++;
+      }
+
+      await ctx.db.patch(args.screenshotId, { status: 1 });
+
+      return {
+        success: true,
+        created,
+        skipped,
+        message:
+          created > 0
+            ? `Created ${created} container${created !== 1 ? "s" : ""} from detected text`
+            : "No matching translation keys found for detected text",
+      };
+    } catch (error) {
+      await ctx.db.patch(args.screenshotId, { status: 1 });
+      throw error;
+    }
+  },
+});
+
+export const triggerTextDetection = mutation({
+  args: {
+    screenshotId: v.id("screenshots"),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    await authMiddleware(ctx, args.workspaceId);
+
+    const screenshot = await ctx.db.get(args.screenshotId);
+    if (!screenshot) {
+      throw new Error("Screenshot not found or access denied");
+    }
+
+    const project = await ctx.db.get(screenshot.projectId);
+    if (!project || project.workspaceId !== args.workspaceId) {
+      throw new Error("Project not found or access denied");
+    }
+
+    await ctx.db.patch(screenshot._id, { status: 3 });
+
+    try {
+      const imageUrl = await getFileUrl(screenshot.imageFileId, 60 * 60);
+
+      await ctx.scheduler.runAfter(0, internal.screenshots.detectTextAction, {
+        screenshotId: args.screenshotId,
+        projectId: project._id,
+        imageUrl,
+        imageDimensions: screenshot.dimensions,
+      });
+
+      // Track analytics event
+      await ctx.scheduler.runAfter(0, internal.analytics.ingestEvent, {
+        workspaceId: args.workspaceId as unknown as string,
+        projectId: project._id as unknown as string,
+        projectName: project.name,
+        event: "screenshot.textDetection",
+        screenshotName: screenshot.name,
+      });
+    } catch (error) {
+      await ctx.db.patch(screenshot._id, { status: 1 });
+      throw error;
+    }
+
+    return { success: true };
+  },
+});

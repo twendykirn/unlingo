@@ -1,0 +1,216 @@
+import { AlertDialog, AlertDialogDescription, AlertDialogHeader, AlertDialogPopup, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialogPanel } from '@/components/ui/alert-dialog-panel';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { toastManager } from '@/components/ui/toast';
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
+import { useClerk, useOrganization, useOrganizationList, useUser } from '@clerk/tanstack-react-start';
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { BadgeCheck, LogOut, Plus } from 'lucide-react';
+import { useMemo } from 'react';
+
+export const Route = createFileRoute('/_auth/select-org')({
+    component: RouteComponent,
+    head: () => ({
+        meta: [
+            {
+                title: 'Select Organization - Unlingo',
+            },
+            {
+                name: 'description',
+                content: 'Select an organization to access your Unlingo translation projects.',
+            },
+            {
+                property: 'og:type',
+                content: 'website',
+            },
+            {
+                property: 'og:title',
+                content: 'Select Organization - Unlingo',
+            },
+            {
+                property: 'og:description',
+                content: 'Select an organization to access your Unlingo translation projects.',
+            },
+            {
+                property: 'og:url',
+                content: 'https://unlingo.com/select-org',
+            },
+            {
+                property: 'og:image',
+                content: '/og.png',
+            },
+            {
+                name: 'twitter:card',
+                content: 'summary_large_image',
+            },
+            {
+                name: 'twitter:title',
+                content: 'Select Organization - Unlingo',
+            },
+            {
+                name: 'twitter:description',
+                content: 'Select an organization to access your Unlingo translation projects.',
+            },
+            {
+                name: 'twitter:image',
+                content: '/og.png',
+            },
+            {
+                name: 'robots',
+                content: 'noindex, nofollow',
+            },
+        ],
+    }),
+})
+
+function RouteComponent() {
+    const navigate = useNavigate();
+
+    const { user } = useUser();
+    const { openUserProfile, signOut } = useClerk();
+    const { organization } = useOrganization();
+    const {
+        userMemberships,
+        isLoaded: orgListLoaded,
+        setActive,
+    } = useOrganizationList({
+        userMemberships: {
+            infinite: true,
+        },
+    });
+
+    const email = user?.primaryEmailAddress?.emailAddress || '';
+    const avatar = user?.imageUrl || '';
+
+    const userOrgs = useMemo(() => {
+        if (!orgListLoaded || userMemberships.isLoading) return [];
+
+        return userMemberships.data.filter(org => org.organization);
+    }, [orgListLoaded, userMemberships]);
+
+    const handleOrganizationSwitch = async (orgId: string) => {
+        if (orgId === organization?.id) {
+            navigate({
+                to: "/dashboard",
+            });
+            return;
+        }
+
+        try {
+            await setActive?.({ organization: orgId });
+            navigate({
+                to: "/dashboard",
+            });
+        } catch (error) {
+            toastManager.add({
+                description: "Failed to switch organization",
+                title: "Error",
+                type: "error",
+            });
+        }
+    };
+
+    const handleCreateOrganization = () => {
+        navigate({
+            to: "/new",
+        });
+    };
+
+    if (!orgListLoaded || userMemberships.isLoading) {
+        return (
+            <div className='flex items-center justify-center py-12'>
+                <Spinner />
+            </div>
+        );
+    }
+
+    return (
+        <div className='min-h-screen bg-black text-white flex items-center justify-center p-6'>
+            <AlertDialog open={true}>
+                <AlertDialogPopup>
+                    <AlertDialogHeader>
+                        <div className="flex items-center justify-between w-full">
+                            <div className='flex flex-col gap-2'>
+                                <AlertDialogTitle>Select Organization</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Select or create your organization.
+                                </AlertDialogDescription>
+                            </div>
+                            <Menu>
+                                <MenuTrigger
+                                    className="flex items-center gap-2"
+                                    render={<Avatar className="cursor-pointer hover:opacity-90" />}
+                                >
+                                    <AvatarImage src={avatar} alt={email} />
+                                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                </MenuTrigger>
+                                <MenuPopup
+                                    side="right"
+                                    align="end"
+                                    sideOffset={4}
+                                >
+                                    <MenuGroup>
+                                        <MenuGroupLabel className="p-0 font-normal">
+                                            <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                                                <Avatar className="h-8 w-8 rounded-lg">
+                                                    <AvatarImage src={avatar} alt={email} />
+                                                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                                </Avatar>
+                                                <div className="grid flex-1 text-left text-sm leading-tight">
+                                                    <span className="truncate font-medium">{email}</span>
+                                                </div>
+                                            </div>
+                                        </MenuGroupLabel>
+                                    </MenuGroup>
+                                    <MenuSeparator />
+                                    <MenuGroup>
+                                        <MenuItem onClick={() => {
+                                            openUserProfile();
+                                        }}>
+                                            <BadgeCheck />
+                                            Account
+                                        </MenuItem>
+                                    </MenuGroup>
+                                    <MenuSeparator />
+                                    <MenuItem
+                                        variant="destructive"
+                                        onClick={() => {
+                                            signOut();
+                                        }}
+                                    >
+                                        <LogOut />
+                                        Log out
+                                    </MenuItem>
+                                </MenuPopup>
+                            </Menu>
+                        </div>
+                    </AlertDialogHeader>
+                    <AlertDialogPanel className='grid gap-4'>
+                        {userOrgs.map(org => (
+                            <Button
+                                key={org.id}
+                                variant="ghost"
+                                onClick={() => handleOrganizationSwitch(org.organization.id)}
+                            >
+                                <Avatar className="size-6 rounded-md">
+                                    <AvatarImage
+                                        alt={org.organization.name}
+                                        src={org.organization.imageUrl}
+                                    />
+                                    <AvatarFallback>{org.organization.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                {org.organization.name}
+                            </Button>
+                        ))}
+                        <Button onClick={() => handleCreateOrganization()}>
+                            <Plus />
+                            Add workspace
+                        </Button>
+                    </AlertDialogPanel>
+                </AlertDialogPopup>
+            </AlertDialog>
+        </div>
+    );
+}

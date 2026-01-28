@@ -1,0 +1,334 @@
+---
+title: API Reference
+description: Complete reference for Unlingo's REST API endpoints.
+---
+
+Complete reference for Unlingo's REST API endpoints. All API requests require authentication via API key.
+
+## Authentication
+
+All API endpoints require authentication using an API key. You can pass your API key in one of two ways:
+
+- `x-api-key` header
+- `Authorization: Bearer` header
+
+```bash title="Example Request"
+curl -X GET "https://api.unlingo.com/v1/translations?release=1.0.0&namespace=common&lang=en" \
+  -H "x-api-key: your_api_key_here"
+```
+
+## Base URL
+
+```
+https://api.unlingo.com
+```
+
+## Endpoints
+
+### Translations
+
+#### GET /v1/translations
+
+Retrieve translations for a specific release, namespace, and language. Returns the full translation file content.
+
+**Headers**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `x-api-key` | string | Yes | Your project API key with `translations.read` permission |
+
+**Query Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `release` | string | Yes | Release tag (e.g., `1.0.0`) |
+| `namespace` | string | Yes | Namespace name (e.g., `common`) |
+| `lang` | string | Yes | Language code (e.g., `en`, `fr`, `de`) |
+
+**Responses**
+
+```json title="200 Success"
+{
+  "translations": {
+    "greeting": "Hello",
+    "farewell": "Goodbye",
+    "welcome": "Welcome to our app"
+  },
+  "release": {
+    "tag": "1.0.0"
+  },
+  "build": {
+    "tag": "v1.0.0",
+    "namespace": "common"
+  }
+}
+```
+
+```json title="400 Missing Parameters"
+{
+  "error": "Missing required parameters: release, namespace, and lang are required",
+  "example": "/v1/translations?release=1.0.0&namespace=common&lang=en"
+}
+```
+
+```json title="401 Invalid API Key"
+{
+  "error": "Invalid API key"
+}
+```
+
+```json title="404 Not Found"
+{
+  "error": "Release tag '1.0.0' not found"
+}
+```
+
+```json title="429 Rate Limit Exceeded"
+{
+  "error": "Request limit exceeded. Please upgrade your plan or wait for the monthly reset.",
+  "currentUsage": 10500,
+  "limit": 10000,
+  "resetPeriod": "monthly"
+}
+```
+
+---
+
+### Keys
+
+#### GET /v1/keys
+
+Retrieve a single translation key value. Useful for fetching individual translations without loading the entire namespace.
+
+**Headers**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `x-api-key` | string | Yes | Your project API key with `translations.read` permission |
+
+**Query Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `namespace` | string | Yes | Namespace name (e.g., `common`) |
+| `key` | string | Yes | Translation key (e.g., `greeting.hello`) |
+| `lang` | string | Yes | Language code (e.g., `en`, `fr`, `de`) |
+
+**Responses**
+
+```json title="200 Success"
+{
+  "key": "greeting.hello",
+  "value": "Hello, World!",
+  "namespace": "common",
+  "language": "en"
+}
+```
+
+```json title="400 Missing Parameters"
+{
+  "error": "Missing required parameters: namespace, key, and lang are required",
+  "example": "/v1/keys?namespace=common&key=greeting.hello&lang=en"
+}
+```
+
+```json title="404 Not Found"
+{
+  "error": "Key 'greeting.hello' not found in namespace 'common'"
+}
+```
+
+```json title="429 Rate Limit Exceeded"
+{
+  "error": "Request limit exceeded. Please upgrade your plan or wait for the monthly reset.",
+  "currentUsage": 10500,
+  "limit": 10000,
+  "resetPeriod": "monthly"
+}
+```
+
+---
+
+### Builds
+
+#### GET /v1/builds
+
+Retrieve build information and download URLs for translation files. Can return a single language or all languages in a build.
+
+**Headers**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `x-api-key` | string | Yes | Your project API key with `translations.load` permission |
+
+**Query Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `build` | string | Yes | Build tag (e.g., `v1.0.0`) |
+| `lang` | string | No | Language code. If provided, returns only that language. Otherwise returns all languages. |
+
+**Responses**
+
+Single language response:
+
+```json title="200 Success (Single Language)"
+{
+  "build": "v1.0.0",
+  "namespace": "common",
+  "language": "en",
+  "url": "https://storage.example.com/signed-url...",
+  "expiresIn": 600
+}
+```
+
+All languages response:
+
+```json title="200 Success (All Languages)"
+{
+  "build": "v1.0.0",
+  "namespace": "common",
+  "languages": {
+    "en": {
+      "url": "https://storage.example.com/signed-url-en...",
+      "fileSize": 2048
+    },
+    "fr": {
+      "url": "https://storage.example.com/signed-url-fr...",
+      "fileSize": 2156
+    },
+    "de": {
+      "url": "https://storage.example.com/signed-url-de...",
+      "fileSize": 2234
+    }
+  },
+  "expiresIn": 600
+}
+```
+
+```json title="202 Build Not Ready"
+{
+  "error": "Build 'v1.0.0' is not ready yet: Processing languages"
+}
+```
+
+```json title="400 Missing Parameters"
+{
+  "error": "Missing required parameter: build is required",
+  "example": "/v1/builds?build=v1.0.0 or /v1/builds?build=v1.0.0&lang=en"
+}
+```
+
+```json title="404 Not Found"
+{
+  "error": "Build 'v1.0.0' not found"
+}
+```
+
+---
+
+#### POST /v1/builds
+
+Create a new build for a namespace. This triggers the build process which generates optimized translation files for all languages in the namespace.
+
+**Headers**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `x-api-key` | string | Yes | Your project API key with `translations.write` permission |
+
+**Request Body**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `namespace` | string | Yes | Namespace name to build (e.g., `common`) |
+| `build` | string | Yes | Build tag (e.g., `v1.0.0`). Must be unique within the project. |
+
+```json title="Request Body Example"
+{
+  "namespace": "common",
+  "build": "v1.0.0"
+}
+```
+
+**Responses**
+
+```json title="202 Build Started"
+{
+  "success": true,
+  "buildId": "abc123xyz",
+  "build": "v1.0.0",
+  "namespace": "common",
+  "status": "building",
+  "message": "Build creation started. Use GET /v1/builds?build=v1.0.0 to check status."
+}
+```
+
+```json title="400 Invalid Request"
+{
+  "error": "Missing required fields: namespace and build are required",
+  "example": "{ \"namespace\": \"common\", \"build\": \"v1.0.0\" }"
+}
+```
+
+```json title="404 Namespace Not Found"
+{
+  "error": "Namespace 'common' not found"
+}
+```
+
+```json title="409 Conflict"
+{
+  "error": "Build tag 'v1.0.0' already exists"
+}
+```
+
+```json title="429 Rate Limit Exceeded"
+{
+  "error": "Request limit exceeded. Please upgrade your plan or wait for the monthly reset.",
+  "currentUsage": 10500,
+  "limit": 10000,
+  "resetPeriod": "monthly"
+}
+```
+
+---
+
+## Rate Limiting
+
+API requests are subject to rate limiting based on your plan. When you exceed your limit, you'll receive a `429` response with details about your current usage.
+
+| Plan | Monthly Requests |
+|------|-----------------|
+| Free | 1,000 |
+| Pro | 100,000 |
+| Enterprise | Unlimited |
+
+---
+
+## Error Handling
+
+All API errors return a JSON response with an `error` field describing the issue.
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Success |
+| 202 | Accepted (async processing) |
+| 400 | Bad request (missing/invalid parameters) |
+| 401 | Unauthorized (invalid/missing API key) |
+| 404 | Resource not found |
+| 409 | Conflict (e.g., duplicate build tag) |
+| 429 | Rate limit exceeded |
+| 500 | Internal server error |
+
+---
+
+## API Key Permissions
+
+API keys can have different permissions that control which endpoints they can access:
+
+| Permission | Endpoints | Description |
+|------------|-----------|-------------|
+| `translations.read` | GET /v1/translations, GET /v1/keys | Read translation content |
+| `translations.load` | GET /v1/builds | Load build files |
+| `translations.write` | POST /v1/builds | Create builds |

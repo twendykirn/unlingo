@@ -28,7 +28,7 @@ The developer platform for modern internationalization. Host, manage, and delive
 - **Backend**: Convex (Database & API)
 - **Authentication**: Clerk
 - **Payments**: Polar
-- **Analytics**: PostHog (API Analytics), Databuddy (Web Analytics)
+- **Analytics**: OpenPanel
 - **Email**: Resend
 - **Hosting**: Vercel
 - **Development**: Turborepo, ESLint, Prettier
@@ -65,7 +65,7 @@ Copyright (c) 2025 Igor Kirnosov s.p.
 ## 🔗 Links
 
 - **Website**: [unlingo.com](https://unlingo.com)
-- **Documentation**: [docs.unlingo.com](https://docs.unlingo.com)
+- **Documentation**: [unlingo.com/docs](https://unlingo.com/docs)
 - **Discord Community**: [Join our Discord](https://discord.gg/TdDYte7KjG)
 - **Twitter**: [@twendykirn](https://x.com/twendykirn)
 
