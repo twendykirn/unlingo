@@ -1,6 +1,6 @@
 import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
-import { ingestApiRequest, ApiRequestEventType, fetchEvents } from "../lib/openpanel";
+import { ingestApiRequest, ApiRequestEventType, fetchEvents, identifyUser } from "../lib/openpanel";
 import { authMiddlewareAction } from "../middlewares/auth";
 
 export const getEvents = action({
@@ -120,6 +120,19 @@ export const ingestEvent = internalAction({
       await ingestApiRequest(params);
     } catch (e) {
       console.warn("Failed to ingest Openpanel event", e);
+    }
+  },
+});
+
+export const identifyWorkspace = internalAction({
+  args: {
+    workspaceId: v.string(),
+  },
+  handler: async (_, args) => {
+    try {
+      await identifyUser(args.workspaceId);
+    } catch (e) {
+      console.warn("Failed to identify workspace in Openpanel", e);
     }
   },
 });

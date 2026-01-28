@@ -9,7 +9,7 @@ export default function FAQs() {
                 {
                     id: 'item-1',
                     question: 'Does Unlingo have a free trial?',
-                    answer: 'Yes! We offer a 30-day free trial so you can test Unlingo before committing to a paid plan. After the trial period, you can choose a plan that fits your needs.',
+                    answer: 'Yes! We offer a 7-day free trial on our cheapest tier so you can test Unlingo before committing to a paid plan. After the trial period, you can choose a plan that fits your needs.',
                 },
                 {
                     id: 'item-2',

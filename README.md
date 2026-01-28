@@ -65,7 +65,7 @@ Copyright (c) 2025 Igor Kirnosov s.p.
 ## 🔗 Links
 
 - **Website**: [unlingo.com](https://unlingo.com)
-- **Documentation**: [docs.unlingo.com](https://docs.unlingo.com)
+- **Documentation**: [unlingo.com/docs](https://unlingo.com/docs)
 - **Discord Community**: [Join our Discord](https://discord.gg/TdDYte7KjG)
 - **Twitter**: [@twendykirn](https://x.com/twendykirn)
 

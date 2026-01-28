@@ -23,7 +23,7 @@ interface MobileLink {
 
 const mobileLinks: MobileLink[] = [
     { name: 'About', to: '/about' },
-    { name: 'Docs', href: 'https://docs.unlingo.com' },
+    { name: 'Docs', to: '/docs' },
     { name: 'Pricing', to: '/#pricing' },
     { name: 'Discord', href: 'https://discord.gg/TdDYte7KjG' },
 ]
@@ -197,7 +197,7 @@ const NavMenu = () => {
                     <NavigationMenuLink
                         asChild
                         className={navigationMenuTriggerStyle({ className: 'text-foreground/75 h-7 px-3 text-sm' })}>
-                        <a href="https://docs.unlingo.com" target="_blank" rel="noopener noreferrer">Docs</a>
+                        <Link to="/docs/$">Docs</Link>
                     </NavigationMenuLink>
                 </NavigationMenuItem>
                 <NavigationMenuItem>

@@ -7,6 +7,7 @@ import {
 	createRootRouteWithContext,
 	useRouteContext,
 } from "@tanstack/react-router";
+import "@/lib/openpanel"; // Initialize OpenPanel tracking
 import appCss from "../index.css?url";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ConvexQueryClient } from "@convex-dev/react-query";
@@ -17,6 +18,7 @@ import { auth } from "@clerk/tanstack-react-start/server";
 import { createServerFn } from "@tanstack/react-start";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { dark } from '@clerk/themes';
+import { RootProvider } from 'fumadocs-ui/provider/tanstack';
 
 const fetchClerkAuth = createServerFn({ method: "GET" }).handler(async () => {
 	const clerkAuth = await auth();
@@ -108,18 +110,22 @@ function RootDocument() {
 			theme: dark
 		}}>
 			<ConvexProviderWithClerk client={context.convexClient} useAuth={useAuth}>
-				<html lang="en" className="dark">
+				<html lang="en" className="dark" suppressHydrationWarning>
 					<head>
 						<HeadContent />
 					</head>
-					<body>
-						<ToastProvider>
-							<AnchoredToastProvider>
-								<div className="grid h-svh grid-rows-[auto_1fr]">
+					<body className="min-h-screen">
+						<RootProvider
+								theme={{
+									enabled: false,
+								}}
+							>
+							<ToastProvider>
+								<AnchoredToastProvider>
 									<Outlet />
-								</div>
-							</AnchoredToastProvider>
-						</ToastProvider>
+								</AnchoredToastProvider>
+							</ToastProvider>
+						</RootProvider>
 						<Scripts />
 					</body>
 				</html>

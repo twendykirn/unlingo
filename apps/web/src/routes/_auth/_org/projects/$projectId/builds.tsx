@@ -13,7 +13,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useOrganization } from '@clerk/tanstack-react-start';
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { debounce } from '@tanstack/pacer';
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Doc, Id } from '@unlingo/backend/convex/_generated/dataModel';
@@ -203,7 +203,7 @@ function RouteComponent() {
                                     >
                                         Create build
                                     </Button>
-                                    <Button size="sm" variant="outline" render={<a href="https://docs.unlingo.com" target="_blank" />}>
+                                    <Button size="sm" variant="outline" render={<Link to='/docs/$' target='_blank' />}>
                                         <BookIcon className="opacity-72" />
                                         View docs
                                     </Button>

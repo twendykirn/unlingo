@@ -16,7 +16,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from '@/components/ui/tooltip';
 import { LANGUAGES } from '@/constants/languages';
 import { formatDate, formatTimeAgo } from '@/utils/time';
 import { useOrganization } from '@clerk/tanstack-react-start';
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Doc, Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { useQuery } from 'convex/react';
@@ -186,7 +186,7 @@ function RouteComponent() {
                   >
                     Create language
                   </Button>
-                  <Button size="sm" variant="outline" render={<a href="https://docs.unlingo.com" target="_blank" />}>
+                  <Button size="sm" variant="outline" render={<Link to='/docs/$' target='_blank' />}>
                     <BookIcon className="opacity-72" />
                     View docs
                   </Button>

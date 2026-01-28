@@ -16,6 +16,8 @@ import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as LegalTermsOfServiceRouteImport } from './routes/legal/terms-of-service'
 import { Route as LegalPrivacyPolicyRouteImport } from './routes/legal/privacy-policy'
+import { Route as DocsSplatRouteImport } from './routes/docs/$'
+import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as AuthSelectOrgRouteImport } from './routes/_auth/select-org'
 import { Route as AuthNewRouteImport } from './routes/_auth/new'
 import { Route as AuthOrgRouteImport } from './routes/_auth/_org'
@@ -66,6 +68,16 @@ const LegalTermsOfServiceRoute = LegalTermsOfServiceRouteImport.update({
 const LegalPrivacyPolicyRoute = LegalPrivacyPolicyRouteImport.update({
   id: '/legal/privacy-policy',
   path: '/legal/privacy-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsSplatRoute = DocsSplatRouteImport.update({
+  id: '/docs/$',
+  path: '/docs/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSearchRoute = ApiSearchRouteImport.update({
+  id: '/api/search',
+  path: '/api/search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSelectOrgRoute = AuthSelectOrgRouteImport.update({
@@ -169,6 +181,8 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/new': typeof AuthNewRoute
   '/select-org': typeof AuthSelectOrgRoute
+  '/api/search': typeof ApiSearchRoute
+  '/docs/$': typeof DocsSplatRoute
   '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
   '/legal/terms-of-service': typeof LegalTermsOfServiceRoute
   '/sign-in/$': typeof SignInSplatRoute
@@ -193,6 +207,8 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/new': typeof AuthNewRoute
   '/select-org': typeof AuthSelectOrgRoute
+  '/api/search': typeof ApiSearchRoute
+  '/docs/$': typeof DocsSplatRoute
   '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
   '/legal/terms-of-service': typeof LegalTermsOfServiceRoute
   '/sign-in/$': typeof SignInSplatRoute
@@ -220,6 +236,8 @@ export interface FileRoutesById {
   '/_auth/_org': typeof AuthOrgRouteWithChildren
   '/_auth/new': typeof AuthNewRoute
   '/_auth/select-org': typeof AuthSelectOrgRoute
+  '/api/search': typeof ApiSearchRoute
+  '/docs/$': typeof DocsSplatRoute
   '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
   '/legal/terms-of-service': typeof LegalTermsOfServiceRoute
   '/sign-in/$': typeof SignInSplatRoute
@@ -246,6 +264,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/new'
     | '/select-org'
+    | '/api/search'
+    | '/docs/$'
     | '/legal/privacy-policy'
     | '/legal/terms-of-service'
     | '/sign-in/$'
@@ -270,6 +290,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/new'
     | '/select-org'
+    | '/api/search'
+    | '/docs/$'
     | '/legal/privacy-policy'
     | '/legal/terms-of-service'
     | '/sign-in/$'
@@ -296,6 +318,8 @@ export interface FileRouteTypes {
     | '/_auth/_org'
     | '/_auth/new'
     | '/_auth/select-org'
+    | '/api/search'
+    | '/docs/$'
     | '/legal/privacy-policy'
     | '/legal/terms-of-service'
     | '/sign-in/$'
@@ -320,6 +344,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   AboutRoute: typeof AboutRoute
+  ApiSearchRoute: typeof ApiSearchRoute
+  DocsSplatRoute: typeof DocsSplatRoute
   LegalPrivacyPolicyRoute: typeof LegalPrivacyPolicyRoute
   LegalTermsOfServiceRoute: typeof LegalTermsOfServiceRoute
   SignInSplatRoute: typeof SignInSplatRoute
@@ -377,6 +403,20 @@ declare module '@tanstack/react-router' {
       path: '/legal/privacy-policy'
       fullPath: '/legal/privacy-policy'
       preLoaderRoute: typeof LegalPrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/$': {
+      id: '/docs/$'
+      path: '/docs/$'
+      fullPath: '/docs/$'
+      preLoaderRoute: typeof DocsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/search': {
+      id: '/api/search'
+      path: '/api/search'
+      fullPath: '/api/search'
+      preLoaderRoute: typeof ApiSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth/select-org': {
@@ -556,6 +596,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   AboutRoute: AboutRoute,
+  ApiSearchRoute: ApiSearchRoute,
+  DocsSplatRoute: DocsSplatRoute,
   LegalPrivacyPolicyRoute: LegalPrivacyPolicyRoute,
   LegalTermsOfServiceRoute: LegalTermsOfServiceRoute,
   SignInSplatRoute: SignInSplatRoute,

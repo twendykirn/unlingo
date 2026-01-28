@@ -19,7 +19,7 @@ const links = [
             },
             {
                 title: 'Docs',
-                href: 'https://docs.unlingo.com',
+                to: '/docs',
             },
         ],
     },
@@ -63,21 +63,14 @@ export default function FooterSection() {
                                 <span className="block font-medium">{link.group}</span>
 
                                 <div className="flex flex-wrap gap-4 sm:flex-col">
-                                    {link.items.map((item, index) => item.to ? (
+                                    {link.items.map((item, index) => (
                                         <Link
                                             key={index}
                                             to={item.to}
                                             className="text-muted-foreground hover:text-primary block duration-150">
                                             <span>{item.title}</span>
                                         </Link>
-                                    ) : <a
-                                        key={index}
-                                        href={item.href}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-muted-foreground hover:text-primary block duration-150">
-                                        <span>{item.title}</span>
-                                    </a>
+                                    )
                                     )}
                                 </div>
                             </div>

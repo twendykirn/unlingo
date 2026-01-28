@@ -952,7 +952,8 @@ http.route({
           const workspaceId = subscriptionEvent.data.customer.externalId;
           if (workspaceId) {
             const isActive =
-              subscriptionEvent.data.status === "active" && !subscriptionEvent.data.customerCancellationReason;
+              (subscriptionEvent.data.status === "active" || subscriptionEvent.data.status === "trialing") &&
+              !subscriptionEvent.data.customerCancellationReason;
             const tierInfo = getTierFromProductId(subscriptionEvent.data.product?.id);
 
             await ctx.runMutation(internal.workspaces.updateWorkspaceLimits, {

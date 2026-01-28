@@ -29,14 +29,12 @@ export const authMiddleware = async (
       // Get active subscription (endedAt is null)
       const currentSubscription = await ctx.db
         .query("polarSubscriptions")
-        .withIndex("by_customer_ended_at", (q) =>
-          q.eq("customerId", customer._id).eq("endedAt", null)
-        )
+        .withIndex("by_customer_ended_at", (q) => q.eq("customerId", customer._id).eq("endedAt", null))
         .unique();
 
       isPremium =
         currentSubscription !== null &&
-        currentSubscription.status === "active" &&
+        (currentSubscription.status === "active" || currentSubscription.status === "trialing") &&
         !currentSubscription.customerCancellationReason;
     }
 

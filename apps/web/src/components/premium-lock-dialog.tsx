@@ -25,15 +25,15 @@ interface Props {
 }
 
 const PLAN_CONFIG: Record<string, { requests: string; keys: string }> = {
-    pro10kRequests: { requests: "10K", keys: "1K" },
-    pro50kRequests: { requests: "50K", keys: "5K" },
-    pro250kRequests: { requests: "250K", keys: "25K" },
-    pro500kRequests: { requests: "500K", keys: "50K" },
-    pro1mRequests: { requests: "1M", keys: "100K" },
-    pro2mRequests: { requests: "2M", keys: "200K" },
-    pro10mRequests: { requests: "10M", keys: "200K" },
-    pro50mRequests: { requests: "50M", keys: "200K" },
-    pro100mRequests: { requests: "100M", keys: "200K" },
+    pro5: { requests: "10K", keys: "500" },
+    pro12: { requests: "50K", keys: "2K" },
+    pro25: { requests: "100K", keys: "10K" },
+    pro50: { requests: "200K", keys: "20K" },
+    pro75: { requests: "350K", keys: "35K" },
+    pro100: { requests: "500K", keys: "50K" },
+    pro250: { requests: "1.5M", keys: "75K" },
+    pro500: { requests: "4M", keys: "100K" },
+    pro1000: { requests: "10M", keys: "100K" },
 };
 
 const INCLUDED_FEATURES = [
@@ -245,15 +245,20 @@ const PremiumLockDialog = ({ isOpen }: Props) => {
                                         </div>
                                     )}
                                     <div className="space-y-2">
-                                        <div className="font-semibold text-foreground">
-                                            ${plan.price}
-                                            <span className="text-xs font-normal text-muted-foreground">
-                                                /{plan.interval}
-                                            </span>
+                                        <div className="flex items-center justify-between">
+                                            <div className="font-semibold text-foreground">
+                                                ${plan.price}
+                                                <span className="text-xs font-normal text-muted-foreground">
+                                                    /{plan.interval}
+                                                </span>
+                                            </div>
+                                            {plan.price === planList[0]?.price && (
+                                                <span className="text-xs text-primary font-medium">7-day trial</span>
+                                            )}
                                         </div>
                                         <div className="text-sm text-muted-foreground space-y-1">
-                                            <div>{plan.requests} requests/month</div>
                                             <div>{plan.keys} keys/workspace</div>
+                                            <div>{plan.requests} requests/month</div>
                                         </div>
                                     </div>
                                 </button>

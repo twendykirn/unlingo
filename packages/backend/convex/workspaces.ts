@@ -59,7 +59,7 @@ export const createOrganizationWorkspace = mutation({
       },
       limits: {
         requests: 10000,
-        translationKeys: 1000,
+        translationKeys: 500,
       },
       workspaceUsageId,
     });
@@ -70,11 +70,15 @@ export const createOrganizationWorkspace = mutation({
       email: args.contactEmail,
     });
 
+    // Identify workspace in OpenPanel
+    await ctx.scheduler.runAfter(0, internal.analytics.identifyWorkspace, {
+      workspaceId,
+    });
+
     console.log(`Created team workspace for organization ${args.clerkOrgId} by user ${identity.issuer}`);
     return workspaceId;
   },
 });
-
 
 export const deleteOrganizationWorkspace = internalMutation({
   args: {
@@ -202,14 +206,12 @@ export const getWorkspaceWithSubscription = query({
       // Get active subscription (endedAt is null)
       const currentSubscription = await ctx.db
         .query("polarSubscriptions")
-        .withIndex("by_customer_ended_at", (q) =>
-          q.eq("customerId", customer._id).eq("endedAt", null)
-        )
+        .withIndex("by_customer_ended_at", (q) => q.eq("customerId", customer._id).eq("endedAt", null))
         .unique();
 
       const isPremium =
         currentSubscription &&
-        currentSubscription.status === "active" &&
+        (currentSubscription.status === "active" || currentSubscription.status === "trialing") &&
         !currentSubscription.customerCancellationReason;
 
       console.log(
@@ -244,7 +246,6 @@ export const getWorkspaceForAuthMiddlewareAction = internalQuery({
     }
   },
 });
-
 
 export const updateWorkspaceContactEmail = mutation({
   args: {
@@ -319,19 +320,19 @@ export const updateWorkspaceLimits = internalMutation({
       case "starter":
         limits = {
           requests: 10000,
-          translationKeys: 1000,
+          translationKeys: 500,
         };
         break;
       case "hobby":
         limits = {
           requests: 50000,
-          translationKeys: 5000,
+          translationKeys: 2000,
         };
         break;
       case "premium":
         limits = {
-          requests: args.requestLimit || 250000,
-          translationKeys: args.translationKeysLimit || 15000,
+          requests: args.requestLimit || 100000,
+          translationKeys: args.translationKeysLimit || 10000,
         };
         break;
       default:

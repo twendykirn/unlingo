@@ -130,69 +130,69 @@ export const getPolarConfig = () => {
 };
 
 /**
- * Product tier configuration
+ * Product tier configuration (keyed by price in dollars)
  */
 export const PRODUCT_CONFIG = {
-  pro10kRequests: {
+  pro5: {
     tier: "starter" as const,
     requests: 10000,
-    translationKeys: 1000,
+    translationKeys: 500,
   },
-  pro50kRequests: {
+  pro12: {
     tier: "hobby" as const,
     requests: 50000,
-    translationKeys: 5000,
+    translationKeys: 2000,
   },
-  pro250kRequests: {
+  pro25: {
     tier: "premium" as const,
-    requests: 250000,
-    translationKeys: 25000,
+    requests: 100000,
+    translationKeys: 10000,
   },
-  pro500kRequests: {
+  pro50: {
+    tier: "premium" as const,
+    requests: 200000,
+    translationKeys: 20000,
+  },
+  pro75: {
+    tier: "premium" as const,
+    requests: 350000,
+    translationKeys: 35000,
+  },
+  pro100: {
     tier: "premium" as const,
     requests: 500000,
     translationKeys: 50000,
   },
-  pro1mRequests: {
+  pro250: {
     tier: "premium" as const,
-    requests: 1000000,
+    requests: 1500000,
+    translationKeys: 75000,
+  },
+  pro500: {
+    tier: "premium" as const,
+    requests: 4000000,
     translationKeys: 100000,
   },
-  pro2mRequests: {
-    tier: "premium" as const,
-    requests: 2000000,
-    translationKeys: 200000,
-  },
-  pro10mRequests: {
+  pro1000: {
     tier: "premium" as const,
     requests: 10000000,
-    translationKeys: 200000,
-  },
-  pro50mRequests: {
-    tier: "premium" as const,
-    requests: 50000000,
-    translationKeys: 200000,
-  },
-  pro100mRequests: {
-    tier: "premium" as const,
-    requests: 100000000,
-    translationKeys: 200000,
+    translationKeys: 100000,
   },
 } as const;
 
 /**
- * Get product IDs from environment
+ * Get product IDs from environment (keyed by price in dollars)
  */
 export const getProductIds = () => ({
-  pro10kRequests: process.env.POLAR_PRO_10K_PRODUCT_ID!,
-  pro50kRequests: process.env.POLAR_PRO_50K_PRODUCT_ID!,
-  pro250kRequests: process.env.POLAR_PRO_250K_PRODUCT_ID!,
-  pro500kRequests: process.env.POLAR_PRO_500K_PRODUCT_ID!,
-  pro1mRequests: process.env.POLAR_PRO_1M_PRODUCT_ID!,
-  pro2mRequests: process.env.POLAR_PRO_2M_PRODUCT_ID!,
-  pro10mRequests: process.env.POLAR_PRO_10M_PRODUCT_ID!,
-  pro50mRequests: process.env.POLAR_PRO_50M_PRODUCT_ID!,
-  pro100mRequests: process.env.POLAR_PRO_100M_PRODUCT_ID!,
+  pro5: process.env.POLAR_PRO_5_PRODUCT_ID!,
+  pro12: process.env.POLAR_PRO_12_PRODUCT_ID!,
+  pro25: process.env.POLAR_PRO_25_PRODUCT_ID!,
+  pro50: process.env.POLAR_PRO_50_PRODUCT_ID!,
+  pro75: process.env.POLAR_PRO_75_PRODUCT_ID!,
+  pro100: process.env.POLAR_PRO_100_PRODUCT_ID!,
+  pro250: process.env.POLAR_PRO_250_PRODUCT_ID!,
+  pro500: process.env.POLAR_PRO_500_PRODUCT_ID!,
+  pro1000: process.env.POLAR_PRO_1000_PRODUCT_ID!,
 });
 
 /**
@@ -206,7 +206,7 @@ export const getTierFromProductId = (
   translationKeys: number;
 } => {
   if (!productId) {
-    return { tier: "starter", requests: 10000, translationKeys: 1000 };
+    return { tier: "starter", requests: 10000, translationKeys: 500 };
   }
 
   const productIds = getProductIds();
@@ -217,7 +217,7 @@ export const getTierFromProductId = (
     }
   }
 
-  return { tier: "starter", requests: 10000, translationKeys: 1000 };
+  return { tier: "starter", requests: 10000, translationKeys: 500 };
 };
 
 /**

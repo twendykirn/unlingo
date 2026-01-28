@@ -44,15 +44,7 @@ function getOpenpanelConfig(): OpenpanelConfig {
   return { clientId, clientSecret, projectId };
 }
 
-export async function identifyUser(
-  profileId: string,
-  userData: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    properties?: Record<string, any>;
-  },
-): Promise<void> {
+export async function identifyUser(profileId: string): Promise<void> {
   try {
     const config = getOpenpanelConfig();
     const url = `${OPEN_PANEL_API_URL}/track`;
@@ -68,10 +60,6 @@ export async function identifyUser(
         type: "identify",
         payload: {
           profileId,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          email: userData.email,
-          properties: userData.properties || {},
         },
       }),
     });

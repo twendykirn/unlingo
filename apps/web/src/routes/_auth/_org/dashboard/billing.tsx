@@ -152,31 +152,31 @@ function RouteComponent() {
 
         switch (requests) {
             case 10000:
-                name = products.pro10kRequests?.name;
+                name = products.pro5?.name;
                 break;
             case 50000:
-                name = products.pro50kRequests?.name;
+                name = products.pro12?.name;
                 break;
-            case 250000:
-                name = products.pro250kRequests?.name;
+            case 100000:
+                name = products.pro25?.name;
+                break;
+            case 200000:
+                name = products.pro50?.name;
+                break;
+            case 350000:
+                name = products.pro75?.name;
                 break;
             case 500000:
-                name = products.pro500kRequests?.name;
+                name = products.pro100?.name;
                 break;
-            case 1000000:
-                name = products.pro1mRequests?.name;
+            case 1500000:
+                name = products.pro250?.name;
                 break;
-            case 2000000:
-                name = products.pro2mRequests?.name;
+            case 4000000:
+                name = products.pro500?.name;
                 break;
             case 10000000:
-                name = products.pro10mRequests?.name;
-                break;
-            case 50000000:
-                name = products.pro50mRequests?.name;
-                break;
-            case 100000000:
-                name = products.pro100mRequests?.name;
+                name = products.pro1000?.name;
                 break;
             default:
                 name = 'Custom Package';
@@ -193,8 +193,8 @@ function RouteComponent() {
     }, [workspace]);
 
     useEffect(() => {
-        if (products && products.pro10kRequests) {
-            setSelectedPackage(products.pro10kRequests.polarId);
+        if (products && products.pro5) {
+            setSelectedPackage(products.pro5.polarId);
         }
     }, [products]);
 

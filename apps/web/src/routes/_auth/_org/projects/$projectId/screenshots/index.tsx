@@ -186,7 +186,7 @@ function RouteComponent() {
                                     >
                                         Upload screenshot
                                     </Button>
-                                    <Button size="sm" variant="outline" render={<a href="https://docs.unlingo.com" target="_blank" />}>
+                                    <Button size="sm" variant="outline" render={<Link to='/docs/$' target='_blank' />}>
                                         <BookIcon className="opacity-72" />
                                         View docs
                                     </Button>

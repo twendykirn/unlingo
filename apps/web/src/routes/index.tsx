@@ -8,7 +8,7 @@ import GithubSpaceLogo from "@/components/github-space-logo";
 import HeroSection from "@/components/hero-section";
 import PricingSection from "@/components/pricing-section";
 import { Button } from "@/components/ui/button";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
 	component: HomeComponent,
@@ -83,7 +83,7 @@ function HomeComponent() {
 								<Button
 									size="sm"
 									variant="outline"
-									render={<a href='https://docs.unlingo.com' target='_blank' />}>
+									render={<Link to='/docs/$' target='_blank' />}>
 									Docs
 								</Button>
 							</div>

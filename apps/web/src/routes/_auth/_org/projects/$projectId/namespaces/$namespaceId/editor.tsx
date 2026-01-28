@@ -6,7 +6,7 @@ import { Menu, MenuGroup, MenuItem, MenuPopup, MenuTrigger } from '@/components/
 import { ProjectSidebar } from '@/components/project-sidebar';
 import { Spinner } from '@/components/ui/spinner';
 import { useOrganization } from '@clerk/tanstack-react-start';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { api } from '@unlingo/backend/convex/_generated/api';
 import type { Doc, Id } from '@unlingo/backend/convex/_generated/dataModel';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
@@ -573,7 +573,7 @@ function EditorComponent() {
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        render={<a href="https://docs.unlingo.com" target="_blank" />}
+                                        render={<Link to='/docs/$' target='_blank' />}
                                     >
                                         <BookIcon className="opacity-72" />
                                         View docs
