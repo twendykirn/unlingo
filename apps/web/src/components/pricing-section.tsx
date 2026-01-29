@@ -27,18 +27,18 @@ const INCLUDED_FEATURES = [
 ]
 
 export default function PricingSection() {
-    const [selectedTier, setSelectedTier] = useState<string | null>(null)
+    const [selectedTier, setSelectedTier] = useState<number | null>(null)
 
     useEffect(() => {
         if (!selectedTier) {
-            const defaultPlan = PLANS.find(p => p.keys === "10K") || PLANS[2] || PLANS[0]
+            const defaultPlan = PLANS.find(p => p.price === 25) || PLANS[2] || PLANS[0]
             if (defaultPlan) {
-                setSelectedTier(defaultPlan.keys)
+                setSelectedTier(defaultPlan.price)
             }
         }
     }, [selectedTier])
 
-    const selectedPlan = PLANS.find(p => p.keys === selectedTier)
+    const selectedPlan = PLANS.find(p => p.price === selectedTier)
 
     return (
         <section
@@ -60,10 +60,10 @@ export default function PricingSection() {
                                         <button
                                             key={plan.keys}
                                             type="button"
-                                            onClick={() => setSelectedTier(plan.keys)}
+                                            onClick={() => setSelectedTier(plan.price)}
                                             className={cn(
                                                 "px-4 py-2 rounded-full text-sm font-medium transition-all border",
-                                                selectedTier === plan.keys
+                                                selectedTier === plan.price
                                                     ? "bg-foreground text-background border-foreground"
                                                     : "bg-transparent text-foreground border-border hover:border-foreground/50"
                                             )}
@@ -83,7 +83,7 @@ export default function PricingSection() {
                             <div>
                                 <div className="flex items-baseline justify-between">
                                     <div>
-                                        <span className="text-5xl md:text-6xl font-bold text-foreground">
+                                        <span className="text-5xl font-bold text-foreground">
                                             ${selectedPlan?.price ?? "—"}
                                         </span>
                                         <span className="text-muted-foreground ml-2">
