@@ -1,7 +1,7 @@
-import { OpenPanel } from '@openpanel/web';
+import { OpenPanel } from "@openpanel/web";
 
 export const op = new OpenPanel({
-  clientId: import.meta.env.VITE_OPENPANEL_CLIENT_ID!,
+  clientId: import.meta.env.VITE_OPEN_PANEL_CLIENT_ID!,
   trackScreenViews: true,
   trackAttributes: true,
   trackOutgoingLinks: true,
